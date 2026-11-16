@@ -1,0 +1,446 @@
+{
+  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, return?} or {ok: false, error}.",
+  "spec_version": "1.0.0",
+  "generated_by": "spec/reference/generate.py",
+  "cases": [
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2-PQ9X",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2-PQ9X"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair/?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=trackman",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "provider": "trackman"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?code=K7M2PQ9X&target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&utm=x",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": {
+        "ok": false,
+        "error": "missing:code"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?code=K7M2PQ9X",
+      "expected": {
+        "ok": false,
+        "error": "missing:target"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2",
+      "expected": {
+        "ok": false,
+        "error": "invalid:code"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2+PQ9X",
+      "expected": {
+        "ok": false,
+        "error": "invalid:code"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&code=AAAAAAAA",
+      "expected": {
+        "ok": false,
+        "error": "duplicate:code"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=",
+      "expected": {
+        "ok": false,
+        "error": "empty:code"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=http%3A%2F%2Fapp.example.org&code=K7M2PQ9X",
+      "expected": {
+        "ok": false,
+        "error": "invalid:target"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=http%3A%2F%2Flocalhost%3A8000%2Flm%2Fv1&code=K7M2PQ9X",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "http://localhost:8000/lm/v1",
+        "code": "K7M2PQ9X"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fuser%40app.example.org&code=K7M2PQ9X",
+      "expected": {
+        "ok": false,
+        "error": "invalid:target"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2F%3Fx%3D1&code=K7M2PQ9X",
+      "expected": {
+        "ok": false,
+        "error": "invalid:target"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=javascript%3Aalert(1)&code=K7M2PQ9X",
+      "expected": {
+        "ok": false,
+        "error": "invalid:target"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=Trackman",
+      "expected": {
+        "ok": false,
+        "error": "invalid:provider"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X%ZZ",
+      "expected": {
+        "ok": false,
+        "error": "invalid:encoding"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X%C3",
+      "expected": {
+        "ok": false,
+        "error": "invalid:encoding"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X#frag",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync:pair?code=K7M2PQ9X",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "GLMSYNC://pair?code=K7M2PQ9X",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://unpair?x=1",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "https://example.org",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync",
+      "expected": {
+        "ok": true,
+        "action": "sync"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&return=exampleapp%3A%2F%2Fsynced",
+      "expected": {
+        "ok": true,
+        "action": "sync",
+        "target": "https://app.example.org/lm/v1",
+        "return": "exampleapp://synced"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync?return=https%3A%2F%2Fapp.example.org%2Fprofile%3Ftab%3Dlm",
+      "expected": {
+        "ok": true,
+        "action": "sync",
+        "return": "https://app.example.org/profile?tab=lm"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync?return=javascript%3Aalert(1)",
+      "expected": {
+        "ok": false,
+        "error": "invalid:return"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync?return=data%3Atext%2Fhtml%2Cx",
+      "expected": {
+        "ok": false,
+        "error": "invalid:return"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync?return=exampleapp%3Asynced",
+      "expected": {
+        "ok": false,
+        "error": "invalid:return"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync?return=http%3A%2F%2Fevil.example",
+      "expected": {
+        "ok": false,
+        "error": "invalid:return"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync?return=glmsync%3A%2F%2Fsync",
+      "expected": {
+        "ok": false,
+        "error": "invalid:return"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync?return=https%3A%2F%2Fa.example%2F%20x",
+      "expected": {
+        "ok": false,
+        "error": "invalid:return"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync?target=ftp%3A%2F%2Fx&return=exampleapp%3A%2F%2Fsynced",
+      "expected": {
+        "ok": false,
+        "error": "invalid:target"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync?return=%2Frelative",
+      "expected": {
+        "ok": false,
+        "error": "invalid:return"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1%0A&code=K7M2PQ9X",
+      "expected": {
+        "ok": false,
+        "error": "invalid:target"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X\n",
+      "expected": {
+        "ok": false,
+        "error": "invalid:code"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync?return=https%3A%2F%2Fapp.example.org",
+      "expected": {
+        "ok": true,
+        "action": "sync",
+        "return": "https://app.example.org"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync?return=http%3A%2F%2Flocalhost%3A8081",
+      "expected": {
+        "ok": true,
+        "action": "sync",
+        "return": "http://localhost:8081"
+      }
+    },
+    {
+      "rule": "parse_pair_fragment",
+      "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X"
+      }
+    },
+    {
+      "rule": "parse_pair_fragment",
+      "input": "target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=demo",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "provider": "demo"
+      }
+    },
+    {
+      "rule": "parse_pair_fragment",
+      "input": "#code=K7M2PQ9X",
+      "expected": {
+        "ok": false,
+        "error": "missing:target"
+      }
+    },
+    {
+      "rule": "parse_pair_fragment",
+      "input": "#",
+      "expected": {
+        "ok": false,
+        "error": "missing:target"
+      }
+    },
+    {
+      "rule": "parse_pair_fragment",
+      "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": {
+        "ok": false,
+        "error": "duplicate:target"
+      }
+    },
+    {
+      "rule": "return_allowed",
+      "input": {
+        "url": "https://app.example.org/profile",
+        "prefixes": [
+          "https://app.example.org/",
+          "exampleapp://",
+          "https://app.example.net"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "rule": "return_allowed",
+      "input": {
+        "url": "https://app.example.org.evil.test/",
+        "prefixes": [
+          "https://app.example.org/",
+          "exampleapp://",
+          "https://app.example.net"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "rule": "return_allowed",
+      "input": {
+        "url": "exampleapp://synced",
+        "prefixes": [
+          "https://app.example.org/",
+          "exampleapp://",
+          "https://app.example.net"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "rule": "return_allowed",
+      "input": {
+        "url": "exampleapp:synced",
+        "prefixes": [
+          "https://app.example.org/",
+          "exampleapp://",
+          "https://app.example.net"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "rule": "return_allowed",
+      "input": {
+        "url": "https://app.example.net/x",
+        "prefixes": [
+          "https://app.example.org/",
+          "exampleapp://",
+          "https://app.example.net"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "rule": "return_allowed",
+      "input": {
+        "url": "javascript://app.example.org/",
+        "prefixes": [
+          "https://app.example.org/",
+          "exampleapp://",
+          "https://app.example.net"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "rule": "return_allowed",
+      "input": {
+        "url": "otherapp://x",
+        "prefixes": [
+          "https://app.example.org/",
+          "exampleapp://",
+          "https://app.example.net"
+        ]
+      },
+      "expected": false
+    }
+  ]
+}

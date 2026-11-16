@@ -1,0 +1,2922 @@
+{
+  "$comment": "Trackman's answers (synthetic) -> olmd/1 batches. input.fetched: {sessions: [{activity, node}], scorecards, round_shots: [{id, holes}], shots_none}. Compare as JSON values; numbers exactly, except in rounds[].shots[] where a number may differ by compare.round_shot_tolerance (rounding to centimetres differs between languages at exact halves).",
+  "spec_version": "1.0.0",
+  "generated_by": "spec/reference/generate.py",
+  "compare": {
+    "round_shot_tolerance": 0.011
+  },
+  "cases": [
+    {
+      "name": "simulator_session",
+      "why": "A bay session: ball and club data, a stroke without flight left out.",
+      "input": {
+        "fetched": {
+          "sessions": [
+            {
+              "activity": {
+                "id": "ACT-1",
+                "time": "2026-11-10T17:05:00Z",
+                "kind": "SIMULATOR",
+                "location": {
+                  "name": "Example Golf Hall"
+                }
+              },
+              "node": {
+                "strokes": [
+                  {
+                    "time": "2026-11-10T17:06:12Z",
+                    "club": "Iron7",
+                    "measurement": {
+                      "carry": 140.2,
+                      "total": 148.0,
+                      "carrySide": -3.4,
+                      "totalSide": -4.1,
+                      "ballSpeed": 50.0,
+                      "clubSpeed": 36.0,
+                      "smashFactor": 1.389,
+                      "launchAngle": 17.1,
+                      "spinRate": 6812.4,
+                      "spinAxis": 2.6,
+                      "curve": 3.2,
+                      "clubPath": -2.3,
+                      "faceAngle": -0.8
+                    }
+                  },
+                  {
+                    "time": "2026-11-10T17:07:40Z",
+                    "club": "Driver",
+                    "measurement": {
+                      "carry": 205.0,
+                      "carrySide": 7.9,
+                      "ballSpeed": 64.0,
+                      "spinRate": 2600
+                    }
+                  },
+                  {
+                    "time": "2026-11-10T17:08:02Z",
+                    "club": "Putter",
+                    "measurement": {}
+                  },
+                  {
+                    "time": "2026-11-10T17:09:30Z",
+                    "club": "PitchingWedge",
+                    "measurement": {
+                      "carry": null,
+                      "ballSpeed": 31.25,
+                      "launchAngle": 31.0
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z"
+      },
+      "expected": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              },
+              {
+                "played_at": "2026-11-10T17:07:40Z",
+                "club": "Dr",
+                "club_raw": "Driver",
+                "ball": {
+                  "speed_mps": 64.0,
+                  "spin_rpm": 2600
+                },
+                "flight": {
+                  "carry_m": 205.0,
+                  "side_m": 7.9
+                }
+              },
+              {
+                "played_at": "2026-11-10T17:09:30Z",
+                "club": "PW",
+                "club_raw": "PitchingWedge",
+                "ball": {
+                  "speed_mps": 31.25,
+                  "launch_angle_deg": 31.0
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "range_session",
+      "why": "A range session names its spin ballSpin and may send only the total side; where both spins come, spinRate wins.",
+      "input": {
+        "fetched": {
+          "sessions": [
+            {
+              "activity": {
+                "id": "ACT-2",
+                "time": "2026-11-11T08:00:00Z",
+                "kind": "RANGE_PRACTICE",
+                "location": {
+                  "name": "Example Range"
+                }
+              },
+              "node": {
+                "strokes": [
+                  {
+                    "time": "2026-11-11T08:00:05Z",
+                    "club": "PitchingWedge",
+                    "measurement": {
+                      "carry": 105.0,
+                      "totalSide": 1.5,
+                      "ballSpeed": 38.0,
+                      "ballSpin": 8900
+                    }
+                  },
+                  {
+                    "time": "2026-11-11T08:01:00Z",
+                    "club": "SandWedge",
+                    "measurement": {
+                      "carry": 72.5,
+                      "spinRate": 9400,
+                      "ballSpin": 9999
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z"
+      },
+      "expected": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-2",
+            "started_at": "2026-11-11T08:00:00Z",
+            "kind": "range",
+            "kind_raw": "RANGE_PRACTICE",
+            "location": {
+              "name": "Example Range"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-11T08:00:05Z",
+                "club": "PW",
+                "club_raw": "PitchingWedge",
+                "ball": {
+                  "speed_mps": 38.0,
+                  "spin_rpm": 8900
+                },
+                "flight": {
+                  "carry_m": 105.0,
+                  "total_side_m": 1.5
+                }
+              },
+              {
+                "played_at": "2026-11-11T08:01:00Z",
+                "club": "SW",
+                "club_raw": "SandWedge",
+                "ball": {
+                  "spin_rpm": 9400
+                },
+                "flight": {
+                  "carry_m": 72.5
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "session_kinds",
+      "why": "Kinds map to olmd's; unknown ones are 'other'; played rounds and sessions without an id are no sessions; a number as id is written out.",
+      "input": {
+        "fetched": {
+          "sessions": [
+            {
+              "activity": {
+                "id": "ACT-3",
+                "time": "2026-11-10T17:05:00Z",
+                "kind": "VIRTUAL_RANGE",
+                "location": {
+                  "name": "Example Golf Hall"
+                }
+              },
+              "node": {
+                "strokes": []
+              }
+            },
+            {
+              "activity": {
+                "id": "ACT-4",
+                "time": "2026-11-10T17:05:00Z",
+                "kind": "SHOT_ANALYSIS"
+              },
+              "node": {
+                "strokes": []
+              }
+            },
+            {
+              "activity": {
+                "id": "ACT-5",
+                "time": "2026-11-10T17:05:00Z",
+                "kind": "PERFORMANCE_CENTER",
+                "location": {
+                  "name": "  "
+                }
+              },
+              "node": {
+                "strokes": []
+              }
+            },
+            {
+              "activity": {
+                "id": "ACT-6",
+                "time": "2026-11-10T17:05:00Z",
+                "kind": "SOMETHING_NEW",
+                "location": {
+                  "name": "Example Golf Hall"
+                }
+              },
+              "node": {
+                "strokes": []
+              }
+            },
+            {
+              "activity": {
+                "id": "ACT-7",
+                "time": null,
+                "kind": null,
+                "location": {
+                  "name": "Example Golf Hall"
+                }
+              },
+              "node": {}
+            },
+            {
+              "activity": {
+                "id": "ACT-8",
+                "time": "2026-11-10T17:05:00Z",
+                "kind": "COURSE_PLAY",
+                "location": {
+                  "name": "Example Golf Hall"
+                }
+              },
+              "node": {
+                "strokes": []
+              }
+            },
+            {
+              "activity": {
+                "id": null,
+                "time": "2026-11-10T17:05:00Z",
+                "kind": "SIMULATOR",
+                "location": {
+                  "name": "Example Golf Hall"
+                }
+              },
+              "node": {
+                "strokes": []
+              }
+            },
+            {
+              "activity": {
+                "id": 9001,
+                "time": "2026-11-10T17:05:00Z",
+                "kind": "MAP_MY_BAG",
+                "location": {
+                  "name": "Example Golf Hall"
+                }
+              },
+              "node": {
+                "strokes": []
+              }
+            },
+            {
+              "activity": {
+                "id": "ACT-10",
+                "time": "2026-11-10T17:05:00Z",
+                "kind": "RANGE_FIND_MY_DISTANCE",
+                "location": {
+                  "name": "Example Golf Hall"
+                }
+              },
+              "node": null
+            },
+            {
+              "activity": {
+                "id": "ACT-11",
+                "time": "2026-11-10T17:05:00Z",
+                "kind": "SIMULATOR",
+                "location": {
+                  "name": "Example Golf Hall"
+                }
+              },
+              "node": {
+                "strokes": "failed"
+              }
+            },
+            {
+              "activity": "ACT-12",
+              "node": {
+                "strokes": []
+              }
+            }
+          ]
+        },
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z"
+      },
+      "expected": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-3",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "virtual_range",
+            "kind_raw": "VIRTUAL_RANGE",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": []
+          },
+          {
+            "external_id": "ACT-4",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "shot_analysis",
+            "kind_raw": "SHOT_ANALYSIS",
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": []
+          },
+          {
+            "external_id": "ACT-5",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "other",
+            "kind_raw": "PERFORMANCE_CENTER",
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": []
+          },
+          {
+            "external_id": "ACT-6",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "other",
+            "kind_raw": "SOMETHING_NEW",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": []
+          },
+          {
+            "external_id": "ACT-7",
+            "kind": "other",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": []
+          },
+          {
+            "external_id": "9001",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "map_my_bag",
+            "kind_raw": "MAP_MY_BAG",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": []
+          },
+          {
+            "external_id": "ACT-10",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "find_my_distance",
+            "kind_raw": "RANGE_FIND_MY_DISTANCE",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": []
+          },
+          {
+            "external_id": "ACT-11",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": []
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "junk_strokes",
+      "why": "Every field may be missing or of the wrong type: mapped or dropped, never fatal. Numbers written as text are dropped; times are RFC 3339 only.",
+      "input": {
+        "fetched": {
+          "sessions": [
+            {
+              "activity": {
+                "id": "ACT-20",
+                "time": "2026-11-10T17:05:00Z",
+                "kind": "SIMULATOR",
+                "location": {
+                  "name": "Example Golf Hall"
+                }
+              },
+              "node": {
+                "strokes": [
+                  null,
+                  "stroke",
+                  17,
+                  {
+                    "club": "Iron8"
+                  },
+                  {
+                    "club": "Iron8",
+                    "measurement": "fast"
+                  },
+                  {
+                    "time": "yesterday",
+                    "club": true,
+                    "measurement": {
+                      "carry": "140",
+                      "ballSpeed": false,
+                      "total": 150.5
+                    }
+                  },
+                  {
+                    "time": "2026-02-30T10:00:00Z",
+                    "club": {
+                      "name": "7i"
+                    },
+                    "measurement": {
+                      "carry": 98.0,
+                      "spinRate": "high",
+                      "launchAngle": [
+                        12
+                      ]
+                    }
+                  },
+                  {
+                    "time": 1731250000,
+                    "club": "",
+                    "measurement": {
+                      "ballSpeed": 44.0,
+                      "carry": null,
+                      "clubSpeed": null
+                    }
+                  },
+                  {
+                    "time": "  2026-11-10T18:00:00  ",
+                    "club": "  Hybrid4  ",
+                    "measurement": {
+                      "carry": 180,
+                      "ballSpeed": 59
+                    }
+                  },
+                  {
+                    "time": "2026-11-10T18:01:00+01:00",
+                    "club": "Unknown",
+                    "measurement": {
+                      "carry": 0,
+                      "ballSpeed": 0
+                    }
+                  },
+                  {
+                    "time": "2026-11-10T18:02:00.123456789-05:30",
+                    "club": "Wedge56",
+                    "measurement": {
+                      "carry": 88.8
+                    }
+                  },
+                  {
+                    "time": "2026-11-10",
+                    "club": "Wood3",
+                    "measurement": {
+                      "carry": 210.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-10T18:03Z",
+                    "club": "Wood5",
+                    "measurement": {
+                      "carry": 195.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-10T18:04:00+25:00",
+                    "club": "Iron4",
+                    "measurement": {
+                      "carry": 170.0
+                    }
+                  },
+                  {
+                    "club": "Chipper",
+                    "measurement": {
+                      "carry": 30.0
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z"
+      },
+      "expected": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-20",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "flight": {
+                  "total_m": 150.5
+                }
+              },
+              {
+                "flight": {
+                  "carry_m": 98.0
+                }
+              },
+              {
+                "ball": {
+                  "speed_mps": 44.0
+                }
+              },
+              {
+                "played_at": "2026-11-10T18:00:00Z",
+                "club": "4H",
+                "club_raw": "Hybrid4",
+                "ball": {
+                  "speed_mps": 59
+                },
+                "flight": {
+                  "carry_m": 180
+                }
+              },
+              {
+                "played_at": "2026-11-10T18:01:00+01:00",
+                "club_raw": "Unknown",
+                "ball": {
+                  "speed_mps": 0
+                },
+                "flight": {
+                  "carry_m": 0
+                }
+              },
+              {
+                "played_at": "2026-11-10T18:02:00.123456789-05:30",
+                "club": "56°",
+                "club_raw": "Wedge56",
+                "flight": {
+                  "carry_m": 88.8
+                }
+              },
+              {
+                "club": "3W",
+                "club_raw": "Wood3",
+                "flight": {
+                  "carry_m": 210.0
+                }
+              },
+              {
+                "club": "5W",
+                "club_raw": "Wood5",
+                "flight": {
+                  "carry_m": 195.0
+                }
+              },
+              {
+                "club": "4i",
+                "club_raw": "Iron4",
+                "flight": {
+                  "carry_m": 170.0
+                }
+              },
+              {
+                "club": "Chipper",
+                "club_raw": "Chipper",
+                "flight": {
+                  "carry_m": 30.0
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "club_names",
+      "why": "Trackman's club names and their canonical codes.",
+      "input": {
+        "fetched": {
+          "sessions": [
+            {
+              "activity": {
+                "id": "ACT-30",
+                "time": "2026-11-10T17:05:00Z",
+                "kind": "MAP_MY_BAG",
+                "location": {
+                  "name": "Example Golf Hall"
+                }
+              },
+              "node": {
+                "strokes": [
+                  {
+                    "time": "2026-11-12T09:00:00Z",
+                    "club": "Driver",
+                    "measurement": {
+                      "carry": 100.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:01:00Z",
+                    "club": "Wood2",
+                    "measurement": {
+                      "carry": 101.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:02:00Z",
+                    "club": "Wood3",
+                    "measurement": {
+                      "carry": 102.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:03:00Z",
+                    "club": "Wood5",
+                    "measurement": {
+                      "carry": 103.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:04:00Z",
+                    "club": "Wood7",
+                    "measurement": {
+                      "carry": 104.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:05:00Z",
+                    "club": "Hybrid2",
+                    "measurement": {
+                      "carry": 105.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:06:00Z",
+                    "club": "Hybrid3",
+                    "measurement": {
+                      "carry": 106.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:07:00Z",
+                    "club": "Hybrid4",
+                    "measurement": {
+                      "carry": 107.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:08:00Z",
+                    "club": "Hybrid5",
+                    "measurement": {
+                      "carry": 108.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:09:00Z",
+                    "club": "Iron1",
+                    "measurement": {
+                      "carry": 109.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:10:00Z",
+                    "club": "Iron2",
+                    "measurement": {
+                      "carry": 110.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:11:00Z",
+                    "club": "Iron3",
+                    "measurement": {
+                      "carry": 111.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:12:00Z",
+                    "club": "Iron4",
+                    "measurement": {
+                      "carry": 112.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:13:00Z",
+                    "club": "Iron5",
+                    "measurement": {
+                      "carry": 113.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:14:00Z",
+                    "club": "Iron6",
+                    "measurement": {
+                      "carry": 114.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:15:00Z",
+                    "club": "Iron7",
+                    "measurement": {
+                      "carry": 115.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:16:00Z",
+                    "club": "Iron8",
+                    "measurement": {
+                      "carry": 116.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:17:00Z",
+                    "club": "Iron9",
+                    "measurement": {
+                      "carry": 117.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:18:00Z",
+                    "club": "PitchingWedge",
+                    "measurement": {
+                      "carry": 118.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:19:00Z",
+                    "club": "GapWedge",
+                    "measurement": {
+                      "carry": 119.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:20:00Z",
+                    "club": "ApproachWedge",
+                    "measurement": {
+                      "carry": 120.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:21:00Z",
+                    "club": "SandWedge",
+                    "measurement": {
+                      "carry": 121.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:22:00Z",
+                    "club": "LobWedge",
+                    "measurement": {
+                      "carry": 122.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:23:00Z",
+                    "club": "Wedge46",
+                    "measurement": {
+                      "carry": 123.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:24:00Z",
+                    "club": "Wedge50",
+                    "measurement": {
+                      "carry": 124.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:25:00Z",
+                    "club": "Wedge56",
+                    "measurement": {
+                      "carry": 125.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:26:00Z",
+                    "club": "Wedge60",
+                    "measurement": {
+                      "carry": 126.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:27:00Z",
+                    "club": "Putter",
+                    "measurement": {
+                      "carry": 127.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:28:00Z",
+                    "club": "Unknown",
+                    "measurement": {
+                      "carry": 128.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:29:00Z",
+                    "club": "UtilityWood19",
+                    "measurement": {
+                      "carry": 129.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:30:00Z",
+                    "club": "",
+                    "measurement": {
+                      "carry": 130.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:31:00Z",
+                    "club": null,
+                    "measurement": {
+                      "carry": 131.0
+                    }
+                  },
+                  {
+                    "time": "2026-11-12T09:32:00Z",
+                    "club": 7,
+                    "measurement": {
+                      "carry": 132.0
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z"
+      },
+      "expected": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-30",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "map_my_bag",
+            "kind_raw": "MAP_MY_BAG",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-12T09:00:00Z",
+                "club": "Dr",
+                "club_raw": "Driver",
+                "flight": {
+                  "carry_m": 100.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:01:00Z",
+                "club": "2W",
+                "club_raw": "Wood2",
+                "flight": {
+                  "carry_m": 101.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:02:00Z",
+                "club": "3W",
+                "club_raw": "Wood3",
+                "flight": {
+                  "carry_m": 102.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:03:00Z",
+                "club": "5W",
+                "club_raw": "Wood5",
+                "flight": {
+                  "carry_m": 103.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:04:00Z",
+                "club": "7W",
+                "club_raw": "Wood7",
+                "flight": {
+                  "carry_m": 104.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:05:00Z",
+                "club": "2H",
+                "club_raw": "Hybrid2",
+                "flight": {
+                  "carry_m": 105.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:06:00Z",
+                "club": "3H",
+                "club_raw": "Hybrid3",
+                "flight": {
+                  "carry_m": 106.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:07:00Z",
+                "club": "4H",
+                "club_raw": "Hybrid4",
+                "flight": {
+                  "carry_m": 107.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:08:00Z",
+                "club": "5H",
+                "club_raw": "Hybrid5",
+                "flight": {
+                  "carry_m": 108.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:09:00Z",
+                "club": "1i",
+                "club_raw": "Iron1",
+                "flight": {
+                  "carry_m": 109.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:10:00Z",
+                "club": "2i",
+                "club_raw": "Iron2",
+                "flight": {
+                  "carry_m": 110.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:11:00Z",
+                "club": "3i",
+                "club_raw": "Iron3",
+                "flight": {
+                  "carry_m": 111.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:12:00Z",
+                "club": "4i",
+                "club_raw": "Iron4",
+                "flight": {
+                  "carry_m": 112.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:13:00Z",
+                "club": "5i",
+                "club_raw": "Iron5",
+                "flight": {
+                  "carry_m": 113.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:14:00Z",
+                "club": "6i",
+                "club_raw": "Iron6",
+                "flight": {
+                  "carry_m": 114.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:15:00Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "flight": {
+                  "carry_m": 115.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:16:00Z",
+                "club": "8i",
+                "club_raw": "Iron8",
+                "flight": {
+                  "carry_m": 116.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:17:00Z",
+                "club": "9i",
+                "club_raw": "Iron9",
+                "flight": {
+                  "carry_m": 117.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:18:00Z",
+                "club": "PW",
+                "club_raw": "PitchingWedge",
+                "flight": {
+                  "carry_m": 118.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:19:00Z",
+                "club": "GW",
+                "club_raw": "GapWedge",
+                "flight": {
+                  "carry_m": 119.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:20:00Z",
+                "club": "GW",
+                "club_raw": "ApproachWedge",
+                "flight": {
+                  "carry_m": 120.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:21:00Z",
+                "club": "SW",
+                "club_raw": "SandWedge",
+                "flight": {
+                  "carry_m": 121.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:22:00Z",
+                "club": "LW",
+                "club_raw": "LobWedge",
+                "flight": {
+                  "carry_m": 122.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:23:00Z",
+                "club": "46°",
+                "club_raw": "Wedge46",
+                "flight": {
+                  "carry_m": 123.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:24:00Z",
+                "club": "50°",
+                "club_raw": "Wedge50",
+                "flight": {
+                  "carry_m": 124.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:25:00Z",
+                "club": "56°",
+                "club_raw": "Wedge56",
+                "flight": {
+                  "carry_m": 125.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:26:00Z",
+                "club": "60°",
+                "club_raw": "Wedge60",
+                "flight": {
+                  "carry_m": 126.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:27:00Z",
+                "club": "Putter",
+                "club_raw": "Putter",
+                "flight": {
+                  "carry_m": 127.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:28:00Z",
+                "club_raw": "Unknown",
+                "flight": {
+                  "carry_m": 128.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:29:00Z",
+                "club": "Utility Wood 19",
+                "club_raw": "UtilityWood19",
+                "flight": {
+                  "carry_m": 129.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:30:00Z",
+                "flight": {
+                  "carry_m": 130.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:31:00Z",
+                "flight": {
+                  "carry_m": 131.0
+                }
+              },
+              {
+                "played_at": "2026-11-12T09:32:00Z",
+                "flight": {
+                  "carry_m": 132.0
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "scorecard",
+      "why": "A simulator round's scorecard.",
+      "input": {
+        "fetched": {
+          "scorecards": [
+            {
+              "id": "SC-1001",
+              "createdAt": "2026-10-19T20:10:00Z",
+              "startedAt": "2026-10-19T18:00:00Z",
+              "course": {
+                "displayName": "Example Links"
+              },
+              "teeName": "Yellow",
+              "par": 72,
+              "numberOfHolesPlayed": 18,
+              "grossScore": 94,
+              "toPar": 22,
+              "stat": {
+                "driveAverage": 201.4,
+                "numberOfPutts": 36,
+                "greenInRegulation": 4,
+                "fairwayHitFairway": 6,
+                "fairwayHitLeft": 3,
+                "fairwayHitRight": 5
+              },
+              "holes": [
+                {
+                  "holeNumber": 1,
+                  "par": 4,
+                  "grossScore": 5,
+                  "putts": 2,
+                  "greenInRegulation": false
+                },
+                {
+                  "holeNumber": 2,
+                  "par": 3,
+                  "grossScore": 3,
+                  "putts": 1,
+                  "greenInRegulation": true
+                }
+              ]
+            }
+          ]
+        },
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z"
+      },
+      "expected": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [],
+        "rounds": [
+          {
+            "external_id": "SC-1001",
+            "kind": "simulator",
+            "played_at": "2026-10-19T18:00:00Z",
+            "course": {
+              "name": "Example Links"
+            },
+            "tee": {
+              "name": "Yellow"
+            },
+            "holes_played": 18,
+            "par": 72,
+            "gross_score": 94,
+            "to_par": 22,
+            "stats": {
+              "putts": 36,
+              "greens_in_regulation": 4,
+              "fairways_hit": 6,
+              "fairways_left": 3,
+              "fairways_right": 5,
+              "drive_average_m": 201.4
+            },
+            "holes": [
+              {
+                "number": 1,
+                "par": 4,
+                "score": 5,
+                "putts": 2,
+                "gir": false
+              },
+              {
+                "number": 2,
+                "par": 3,
+                "score": 3,
+                "putts": 1,
+                "gir": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "broken_scorecard",
+      "why": "Text where numbers belong, a course that is no object, holes that are no holes.",
+      "input": {
+        "fetched": {
+          "scorecards": [
+            {
+              "id": 4711,
+              "createdAt": "2026-10-20T11:00:00Z",
+              "startedAt": "soon",
+              "course": "Example Links",
+              "teeName": 7,
+              "par": "72",
+              "numberOfHolesPlayed": 9.0,
+              "grossScore": 45.5,
+              "toPar": null,
+              "stat": [
+                1,
+                2
+              ],
+              "holes": [
+                null,
+                "x",
+                {
+                  "holeNumber": 0,
+                  "par": 4
+                },
+                {
+                  "holeNumber": "3",
+                  "par": "four",
+                  "grossScore": 6,
+                  "greenInRegulation": "no"
+                }
+              ]
+            },
+            null,
+            {
+              "id": ""
+            },
+            {
+              "id": true
+            },
+            {
+              "id": "SC-1001"
+            }
+          ]
+        },
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z"
+      },
+      "expected": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [],
+        "rounds": [
+          {
+            "external_id": "4711",
+            "kind": "simulator",
+            "played_at": "2026-10-20T11:00:00Z",
+            "holes_played": 9,
+            "par": 72,
+            "holes": [
+              {
+                "number": 3,
+                "score": 6
+              }
+            ]
+          },
+          {
+            "external_id": "SC-1001",
+            "kind": "simulator"
+          }
+        ]
+      }
+    },
+    {
+      "name": "round_shots_chain",
+      "why": "Without positions each shot starts where the one before stopped; after a penalty or a drop at Trackman's target distance; a holed shot ends at 0.",
+      "input": {
+        "fetched": {
+          "scorecards": [
+            {
+              "id": "SC-2001",
+              "createdAt": "2026-10-19T20:10:00Z",
+              "startedAt": "2026-10-19T18:00:00Z",
+              "course": {
+                "displayName": "Example Links"
+              },
+              "teeName": "Yellow",
+              "par": 72,
+              "numberOfHolesPlayed": 18,
+              "grossScore": 94,
+              "toPar": 22,
+              "stat": {
+                "driveAverage": 201.4,
+                "numberOfPutts": 36,
+                "greenInRegulation": 4,
+                "fairwayHitFairway": 6,
+                "fairwayHitLeft": 3,
+                "fairwayHitRight": 5
+              },
+              "holes": [
+                {
+                  "holeNumber": 1,
+                  "par": 4,
+                  "grossScore": 5,
+                  "putts": 2,
+                  "greenInRegulation": false
+                },
+                {
+                  "holeNumber": 2,
+                  "par": 3,
+                  "grossScore": 3,
+                  "putts": 1,
+                  "greenInRegulation": true
+                }
+              ]
+            }
+          ],
+          "round_shots": [
+            {
+              "id": "SC-2001",
+              "holes": [
+                {
+                  "holeNumber": 1,
+                  "shots": [
+                    {
+                      "shotNumber": 2,
+                      "club": "Iron8",
+                      "launchLie": "Fairway",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": 139.5,
+                        "targetDistance": 150.0,
+                        "distanceFromPinTotal": 6.4
+                      }
+                    },
+                    {
+                      "shotNumber": 1,
+                      "club": "Driver",
+                      "launchLie": "Tee",
+                      "finalLie": "Fairway",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": 221.0,
+                        "targetDistance": 230.0,
+                        "distanceFromPinTotal": 142.0
+                      }
+                    },
+                    {
+                      "shotNumber": 3,
+                      "club": "Putter",
+                      "launchLie": "Green",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": 0.8
+                      }
+                    },
+                    {
+                      "shotNumber": 4,
+                      "club": "Putter",
+                      "launchLie": "Green",
+                      "finalLie": "Hole",
+                      "shotsToAdd": 0,
+                      "shotResult": "Holed",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      }
+                    }
+                  ]
+                },
+                {
+                  "holeNumber": 7,
+                  "shots": [
+                    {
+                      "shotNumber": 1,
+                      "club": "Iron7",
+                      "launchLie": "Tee",
+                      "finalLie": "Water",
+                      "shotsToAdd": 1,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": 145.0,
+                        "distanceFromPinTotal": 12.0
+                      },
+                      "dropPosition": {
+                        "x": 3.2
+                      }
+                    },
+                    {
+                      "shotNumber": 2,
+                      "club": "Wedge56",
+                      "launchLie": "Fairway",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": 35.0,
+                        "distanceFromPinTotal": 3.1
+                      }
+                    },
+                    {
+                      "shotNumber": 3,
+                      "club": "Putter",
+                      "launchLie": "Green",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": 0.4
+                      },
+                      "dropPosition": {
+                        "x": 1.0
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z"
+      },
+      "expected": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [],
+        "rounds": [
+          {
+            "external_id": "SC-2001",
+            "kind": "simulator",
+            "played_at": "2026-10-19T18:00:00Z",
+            "course": {
+              "name": "Example Links"
+            },
+            "tee": {
+              "name": "Yellow"
+            },
+            "holes_played": 18,
+            "par": 72,
+            "gross_score": 94,
+            "to_par": 22,
+            "stats": {
+              "putts": 36,
+              "greens_in_regulation": 4,
+              "fairways_hit": 6,
+              "fairways_left": 3,
+              "fairways_right": 5,
+              "drive_average_m": 201.4
+            },
+            "holes": [
+              {
+                "number": 1,
+                "par": 4,
+                "score": 5,
+                "putts": 2,
+                "gir": false
+              },
+              {
+                "number": 2,
+                "par": 3,
+                "score": 3,
+                "putts": 1,
+                "gir": true
+              }
+            ],
+            "shots": [
+              {
+                "hole": 1,
+                "number": 1,
+                "club": "Dr",
+                "club_raw": "Driver",
+                "lie_before": "Tee",
+                "lie_after": "Fairway",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 230.0,
+                "to_pin_after_m": 142.0,
+                "target_m": 230.0,
+                "carry_m": 221.0
+              },
+              {
+                "hole": 1,
+                "number": 2,
+                "club": "8i",
+                "club_raw": "Iron8",
+                "lie_before": "Fairway",
+                "lie_after": "Green",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 142.0,
+                "to_pin_after_m": 6.4,
+                "target_m": 150.0,
+                "carry_m": 139.5
+              },
+              {
+                "hole": 1,
+                "number": 3,
+                "club": "Putter",
+                "club_raw": "Putter",
+                "lie_before": "Green",
+                "lie_after": "Green",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 6.4,
+                "to_pin_after_m": 0.8
+              },
+              {
+                "hole": 1,
+                "number": 4,
+                "club": "Putter",
+                "club_raw": "Putter",
+                "lie_before": "Green",
+                "lie_after": "Hole",
+                "result": "Holed",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 0.8,
+                "to_pin_after_m": 0.0
+              },
+              {
+                "hole": 7,
+                "number": 1,
+                "club": "7i",
+                "club_raw": "Iron7",
+                "lie_before": "Tee",
+                "lie_after": "Water",
+                "penalty_strokes": 1,
+                "to_pin_before_m": 145.0,
+                "to_pin_after_m": 12.0,
+                "target_m": 145.0
+              },
+              {
+                "hole": 7,
+                "number": 2,
+                "club": "56°",
+                "club_raw": "Wedge56",
+                "lie_before": "Fairway",
+                "lie_after": "Green",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 35.0,
+                "to_pin_after_m": 3.1,
+                "target_m": 35.0
+              },
+              {
+                "hole": 7,
+                "number": 3,
+                "club": "Putter",
+                "club_raw": "Putter",
+                "lie_before": "Green",
+                "lie_after": "Green",
+                "penalty_strokes": 0,
+                "to_pin_after_m": 0.4
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "round_shots_points",
+      "why": "With positions the distances to the flag and where each shot came to rest against the line to it are worked out from x and z; putts the simulator adds, gimmes and pick-ups are no penalties.",
+      "input": {
+        "fetched": {
+          "round_shots": [
+            {
+              "id": "SC-1999",
+              "holes": [
+                {
+                  "holeNumber": 4,
+                  "pinPosition": {
+                    "x": 1000.0,
+                    "y": 57.3,
+                    "z": 500.0
+                  },
+                  "shots": [
+                    {
+                      "shotNumber": 1,
+                      "club": "Driver",
+                      "launchLie": "Tee",
+                      "finalLie": "Fairway",
+                      "shotsToAdd": 0,
+                      "shotResult": "NormalShot",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": 1000.0,
+                        "y": 61.0,
+                        "z": 850.0
+                      },
+                      "finalPosition": {
+                        "x": 1054.0,
+                        "y": 52.0,
+                        "z": 572.0
+                      }
+                    },
+                    {
+                      "shotNumber": 2,
+                      "club": "Wedge52",
+                      "launchLie": "Fairway",
+                      "finalLie": "Green",
+                      "shotsToAdd": 2,
+                      "shotResult": "AutoPutt",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": 1054.0,
+                        "y": 50.0,
+                        "z": 572.0
+                      },
+                      "finalPosition": {
+                        "x": 1003.0,
+                        "y": 57.6,
+                        "z": 504.0
+                      }
+                    }
+                  ]
+                },
+                {
+                  "holeNumber": 5,
+                  "pinPosition": {
+                    "x": 10.0,
+                    "y": 50.0,
+                    "z": 10.0
+                  },
+                  "shots": [
+                    {
+                      "shotNumber": 1,
+                      "club": "Iron7",
+                      "launchLie": "Tee",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": 150.0,
+                        "distanceFromPinTotal": 7.5
+                      }
+                    },
+                    {
+                      "shotNumber": 2,
+                      "club": "Putter",
+                      "launchLie": "Green",
+                      "finalLie": "Hole",
+                      "shotsToAdd": 0,
+                      "shotResult": "Holed",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": "far",
+                        "z": 1
+                      },
+                      "finalPosition": null
+                    }
+                  ]
+                },
+                {
+                  "holeNumber": 6,
+                  "pinPosition": {
+                    "x": 0.0,
+                    "y": 50.0,
+                    "z": 0.0
+                  },
+                  "shots": [
+                    {
+                      "shotNumber": 1,
+                      "club": "Iron7",
+                      "launchLie": "Tee",
+                      "finalLie": "Water",
+                      "shotsToAdd": 1,
+                      "shotResult": "Water",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": 0.0,
+                        "y": 50.0,
+                        "z": 150.0
+                      },
+                      "finalPosition": {
+                        "x": 3.0,
+                        "y": 50.0,
+                        "z": 20.0
+                      }
+                    },
+                    {
+                      "shotNumber": 2,
+                      "club": "Wedge56",
+                      "launchLie": "Green",
+                      "finalLie": "Green",
+                      "shotsToAdd": 1,
+                      "shotResult": "Gimme",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": 0.0,
+                        "y": 50.0,
+                        "z": 30.0
+                      },
+                      "finalPosition": {
+                        "x": 0.0,
+                        "y": 50.0,
+                        "z": 0.6
+                      }
+                    },
+                    {
+                      "shotNumber": 3,
+                      "club": "Putter",
+                      "launchLie": "Green",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": 0.2,
+                        "y": 50.0,
+                        "z": 0.3
+                      },
+                      "finalPosition": {
+                        "x": 0.0,
+                        "y": 50.0,
+                        "z": 0.0
+                      }
+                    }
+                  ]
+                },
+                {
+                  "holeNumber": 8,
+                  "pinPosition": {
+                    "x": 100.0,
+                    "y": 50.0,
+                    "z": 100.0
+                  },
+                  "shots": [
+                    {
+                      "shotNumber": 1,
+                      "club": "Iron7",
+                      "launchLie": "Rough",
+                      "finalLie": "HoleCup",
+                      "shotsToAdd": 2,
+                      "shotResult": "Pickup",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      }
+                    },
+                    {
+                      "shotNumber": 2,
+                      "club": "Iron6",
+                      "launchLie": "Tee",
+                      "finalLie": "Fairway",
+                      "shotsToAdd": 9,
+                      "shotResult": "Rehit",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      }
+                    },
+                    {
+                      "shotNumber": 3,
+                      "club": "Iron5",
+                      "launchLie": "Tee",
+                      "finalLie": "Fairway",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": 100.0,
+                        "y": 50.0,
+                        "z": 1100.0
+                      },
+                      "finalPosition": {
+                        "x": 2100.0,
+                        "y": 50.0,
+                        "z": 100.0
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z"
+      },
+      "expected": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [],
+        "rounds": [
+          {
+            "external_id": "SC-1999",
+            "shots": [
+              {
+                "hole": 4,
+                "number": 1,
+                "club": "Dr",
+                "club_raw": "Driver",
+                "lie_before": "Tee",
+                "lie_after": "Fairway",
+                "result": "NormalShot",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 350.0,
+                "to_pin_after_m": 90.0,
+                "rest_side_m": -54.0,
+                "rest_long_m": -72.0
+              },
+              {
+                "hole": 4,
+                "number": 2,
+                "club": "52°",
+                "club_raw": "Wedge52",
+                "lie_before": "Fairway",
+                "lie_after": "Green",
+                "result": "AutoPutt",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 90.0,
+                "to_pin_after_m": 5.0,
+                "rest_side_m": 0.0,
+                "rest_long_m": -5.0
+              },
+              {
+                "hole": 5,
+                "number": 1,
+                "club": "7i",
+                "club_raw": "Iron7",
+                "lie_before": "Tee",
+                "lie_after": "Green",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 150.0,
+                "to_pin_after_m": 7.5,
+                "target_m": 150.0
+              },
+              {
+                "hole": 5,
+                "number": 2,
+                "club": "Putter",
+                "club_raw": "Putter",
+                "lie_before": "Green",
+                "lie_after": "Hole",
+                "result": "Holed",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 7.5,
+                "to_pin_after_m": 0.0
+              },
+              {
+                "hole": 6,
+                "number": 1,
+                "club": "7i",
+                "club_raw": "Iron7",
+                "lie_before": "Tee",
+                "lie_after": "Water",
+                "result": "Water",
+                "penalty_strokes": 1,
+                "to_pin_before_m": 150.0,
+                "to_pin_after_m": 20.22,
+                "rest_side_m": -3.0,
+                "rest_long_m": -20.0
+              },
+              {
+                "hole": 6,
+                "number": 2,
+                "club": "56°",
+                "club_raw": "Wedge56",
+                "lie_before": "Green",
+                "lie_after": "Green",
+                "result": "Gimme",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 30.0,
+                "to_pin_after_m": 0.6,
+                "rest_side_m": 0.0,
+                "rest_long_m": -0.6
+              },
+              {
+                "hole": 6,
+                "number": 3,
+                "club": "Putter",
+                "club_raw": "Putter",
+                "lie_before": "Green",
+                "lie_after": "Green",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 0.36,
+                "to_pin_after_m": 0.0
+              },
+              {
+                "hole": 8,
+                "number": 1,
+                "club": "7i",
+                "club_raw": "Iron7",
+                "lie_before": "Rough",
+                "lie_after": "HoleCup",
+                "result": "Pickup",
+                "penalty_strokes": 0,
+                "to_pin_after_m": 0.0
+              },
+              {
+                "hole": 8,
+                "number": 2,
+                "club": "6i",
+                "club_raw": "Iron6",
+                "lie_before": "Tee",
+                "lie_after": "Fairway",
+                "result": "Rehit",
+                "penalty_strokes": 5,
+                "to_pin_before_m": 0.0
+              },
+              {
+                "hole": 8,
+                "number": 3,
+                "club": "5i",
+                "club_raw": "Iron5",
+                "lie_before": "Tee",
+                "lie_after": "Fairway",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 1000.0
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "round_shots_junk",
+      "why": "Holes and shots that are none are left out; the first shot of a number wins.",
+      "input": {
+        "fetched": {
+          "round_shots": [
+            {
+              "id": "SC-1998",
+              "holes": [
+                null,
+                "x",
+                {
+                  "holeNumber": 99,
+                  "shots": [
+                    {
+                      "shotNumber": 1,
+                      "club": "Iron7",
+                      "launchLie": "Tee",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      }
+                    }
+                  ]
+                },
+                {
+                  "holeNumber": "3",
+                  "shots": [
+                    null,
+                    {
+                      "shotNumber": "x"
+                    },
+                    {
+                      "shotNumber": 1,
+                      "club": null,
+                      "launchLie": 5,
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": 1000000000.0,
+                        "targetDistance": -3,
+                        "distanceFromPinTotal": "far"
+                      }
+                    },
+                    {
+                      "shotNumber": 1,
+                      "club": "Iron9",
+                      "launchLie": "Tee",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": 2.0
+                      }
+                    }
+                  ]
+                },
+                {
+                  "holeNumber": 9,
+                  "shots": "none"
+                },
+                {
+                  "holeNumber": true,
+                  "shots": []
+                },
+                {
+                  "holeNumber": 10,
+                  "pinPosition": {
+                    "x": 10000000.0,
+                    "y": 50.0,
+                    "z": 0.0
+                  },
+                  "shots": [
+                    {
+                      "shotNumber": 31,
+                      "club": "Iron7",
+                      "launchLie": "Tee",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      }
+                    },
+                    {
+                      "shotNumber": 0,
+                      "club": "Iron7",
+                      "launchLie": "Tee",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      }
+                    },
+                    {
+                      "shotNumber": 1.0,
+                      "club": "Iron8",
+                      "launchLie": "Tee",
+                      "finalLie": "Green",
+                      "shotsToAdd": "1",
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": 501,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": 0.0,
+                        "y": 50.0,
+                        "z": 100.0
+                      },
+                      "finalPosition": {
+                        "x": 0.0,
+                        "y": 50.0,
+                        "z": 0.0
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": null,
+              "holes": []
+            },
+            "SC-1997"
+          ]
+        },
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z"
+      },
+      "expected": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [],
+        "rounds": [
+          {
+            "external_id": "SC-1998",
+            "shots": [
+              {
+                "hole": 3,
+                "number": 1,
+                "lie_after": "Green",
+                "penalty_strokes": 0
+              },
+              {
+                "hole": 10,
+                "number": 1,
+                "club": "8i",
+                "club_raw": "Iron8",
+                "lie_before": "Tee",
+                "lie_after": "Green",
+                "penalty_strokes": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "rounds_merged",
+      "why": "Shots join their scorecard; shots for a round sent earlier come with its id only; a round without shots at Trackman carries shots: [].",
+      "input": {
+        "fetched": {
+          "scorecards": [
+            {
+              "id": "SC-3001",
+              "createdAt": "2026-10-19T20:10:00Z",
+              "startedAt": "2026-10-19T18:00:00Z",
+              "course": {
+                "displayName": "Example Links"
+              },
+              "teeName": "Yellow",
+              "par": 72,
+              "numberOfHolesPlayed": 18,
+              "grossScore": 94,
+              "toPar": 22,
+              "stat": {
+                "driveAverage": 201.4,
+                "numberOfPutts": 36,
+                "greenInRegulation": 4,
+                "fairwayHitFairway": 6,
+                "fairwayHitLeft": 3,
+                "fairwayHitRight": 5
+              },
+              "holes": [
+                {
+                  "holeNumber": 1,
+                  "par": 4,
+                  "grossScore": 5,
+                  "putts": 2,
+                  "greenInRegulation": false
+                },
+                {
+                  "holeNumber": 2,
+                  "par": 3,
+                  "grossScore": 3,
+                  "putts": 1,
+                  "greenInRegulation": true
+                }
+              ]
+            },
+            {
+              "id": "SC-3002",
+              "createdAt": "2026-10-19T20:10:00Z",
+              "startedAt": "2026-10-19T18:00:00Z",
+              "course": {
+                "displayName": "Example Links"
+              },
+              "teeName": "Yellow",
+              "par": 72,
+              "numberOfHolesPlayed": 18,
+              "grossScore": 94,
+              "toPar": 22,
+              "stat": {
+                "driveAverage": 201.4,
+                "numberOfPutts": 36,
+                "greenInRegulation": 4,
+                "fairwayHitFairway": 6,
+                "fairwayHitLeft": 3,
+                "fairwayHitRight": 5
+              },
+              "holes": [
+                {
+                  "holeNumber": 1,
+                  "par": 4,
+                  "grossScore": 5,
+                  "putts": 2,
+                  "greenInRegulation": false
+                },
+                {
+                  "holeNumber": 2,
+                  "par": 3,
+                  "grossScore": 3,
+                  "putts": 1,
+                  "greenInRegulation": true
+                }
+              ]
+            }
+          ],
+          "round_shots": [
+            {
+              "id": "SC-3001",
+              "holes": [
+                {
+                  "holeNumber": 1,
+                  "shots": [
+                    {
+                      "shotNumber": 2,
+                      "club": "Iron8",
+                      "launchLie": "Fairway",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": 139.5,
+                        "targetDistance": 150.0,
+                        "distanceFromPinTotal": 6.4
+                      }
+                    },
+                    {
+                      "shotNumber": 1,
+                      "club": "Driver",
+                      "launchLie": "Tee",
+                      "finalLie": "Fairway",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": 221.0,
+                        "targetDistance": 230.0,
+                        "distanceFromPinTotal": 142.0
+                      }
+                    },
+                    {
+                      "shotNumber": 3,
+                      "club": "Putter",
+                      "launchLie": "Green",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": 0.8
+                      }
+                    },
+                    {
+                      "shotNumber": 4,
+                      "club": "Putter",
+                      "launchLie": "Green",
+                      "finalLie": "Hole",
+                      "shotsToAdd": 0,
+                      "shotResult": "Holed",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "SC-2500",
+              "holes": [
+                {
+                  "holeNumber": 7,
+                  "shots": [
+                    {
+                      "shotNumber": 1,
+                      "club": "Iron7",
+                      "launchLie": "Tee",
+                      "finalLie": "Water",
+                      "shotsToAdd": 1,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": 145.0,
+                        "distanceFromPinTotal": 12.0
+                      },
+                      "dropPosition": {
+                        "x": 3.2
+                      }
+                    },
+                    {
+                      "shotNumber": 2,
+                      "club": "Wedge56",
+                      "launchLie": "Fairway",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": 35.0,
+                        "distanceFromPinTotal": 3.1
+                      }
+                    },
+                    {
+                      "shotNumber": 3,
+                      "club": "Putter",
+                      "launchLie": "Green",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": 0.4
+                      },
+                      "dropPosition": {
+                        "x": 1.0
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "SC-3001",
+              "holes": [
+                {
+                  "holeNumber": 4,
+                  "pinPosition": {
+                    "x": 1000.0,
+                    "y": 57.3,
+                    "z": 500.0
+                  },
+                  "shots": [
+                    {
+                      "shotNumber": 1,
+                      "club": "Driver",
+                      "launchLie": "Tee",
+                      "finalLie": "Fairway",
+                      "shotsToAdd": 0,
+                      "shotResult": "NormalShot",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": 1000.0,
+                        "y": 61.0,
+                        "z": 850.0
+                      },
+                      "finalPosition": {
+                        "x": 1054.0,
+                        "y": 52.0,
+                        "z": 572.0
+                      }
+                    },
+                    {
+                      "shotNumber": 2,
+                      "club": "Wedge52",
+                      "launchLie": "Fairway",
+                      "finalLie": "Green",
+                      "shotsToAdd": 2,
+                      "shotResult": "AutoPutt",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": 1054.0,
+                        "y": 50.0,
+                        "z": 572.0
+                      },
+                      "finalPosition": {
+                        "x": 1003.0,
+                        "y": 57.6,
+                        "z": 504.0
+                      }
+                    }
+                  ]
+                },
+                {
+                  "holeNumber": 5,
+                  "pinPosition": {
+                    "x": 10.0,
+                    "y": 50.0,
+                    "z": 10.0
+                  },
+                  "shots": [
+                    {
+                      "shotNumber": 1,
+                      "club": "Iron7",
+                      "launchLie": "Tee",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": 150.0,
+                        "distanceFromPinTotal": 7.5
+                      }
+                    },
+                    {
+                      "shotNumber": 2,
+                      "club": "Putter",
+                      "launchLie": "Green",
+                      "finalLie": "Hole",
+                      "shotsToAdd": 0,
+                      "shotResult": "Holed",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": "far",
+                        "z": 1
+                      },
+                      "finalPosition": null
+                    }
+                  ]
+                },
+                {
+                  "holeNumber": 6,
+                  "pinPosition": {
+                    "x": 0.0,
+                    "y": 50.0,
+                    "z": 0.0
+                  },
+                  "shots": [
+                    {
+                      "shotNumber": 1,
+                      "club": "Iron7",
+                      "launchLie": "Tee",
+                      "finalLie": "Water",
+                      "shotsToAdd": 1,
+                      "shotResult": "Water",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": 0.0,
+                        "y": 50.0,
+                        "z": 150.0
+                      },
+                      "finalPosition": {
+                        "x": 3.0,
+                        "y": 50.0,
+                        "z": 20.0
+                      }
+                    },
+                    {
+                      "shotNumber": 2,
+                      "club": "Wedge56",
+                      "launchLie": "Green",
+                      "finalLie": "Green",
+                      "shotsToAdd": 1,
+                      "shotResult": "Gimme",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": 0.0,
+                        "y": 50.0,
+                        "z": 30.0
+                      },
+                      "finalPosition": {
+                        "x": 0.0,
+                        "y": 50.0,
+                        "z": 0.6
+                      }
+                    },
+                    {
+                      "shotNumber": 3,
+                      "club": "Putter",
+                      "launchLie": "Green",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": 0.2,
+                        "y": 50.0,
+                        "z": 0.3
+                      },
+                      "finalPosition": {
+                        "x": 0.0,
+                        "y": 50.0,
+                        "z": 0.0
+                      }
+                    }
+                  ]
+                },
+                {
+                  "holeNumber": 8,
+                  "pinPosition": {
+                    "x": 100.0,
+                    "y": 50.0,
+                    "z": 100.0
+                  },
+                  "shots": [
+                    {
+                      "shotNumber": 1,
+                      "club": "Iron7",
+                      "launchLie": "Rough",
+                      "finalLie": "HoleCup",
+                      "shotsToAdd": 2,
+                      "shotResult": "Pickup",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      }
+                    },
+                    {
+                      "shotNumber": 2,
+                      "club": "Iron6",
+                      "launchLie": "Tee",
+                      "finalLie": "Fairway",
+                      "shotsToAdd": 9,
+                      "shotResult": "Rehit",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      }
+                    },
+                    {
+                      "shotNumber": 3,
+                      "club": "Iron5",
+                      "launchLie": "Tee",
+                      "finalLie": "Fairway",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      },
+                      "launchPosition": {
+                        "x": 100.0,
+                        "y": 50.0,
+                        "z": 1100.0
+                      },
+                      "finalPosition": {
+                        "x": 2100.0,
+                        "y": 50.0,
+                        "z": 100.0
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "shots_none": [
+            "SC-3002",
+            "SC-2400",
+            2300,
+            null,
+            "SC-3001"
+          ]
+        },
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z"
+      },
+      "expected": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [],
+        "rounds": [
+          {
+            "external_id": "SC-3001",
+            "kind": "simulator",
+            "played_at": "2026-10-19T18:00:00Z",
+            "course": {
+              "name": "Example Links"
+            },
+            "tee": {
+              "name": "Yellow"
+            },
+            "holes_played": 18,
+            "par": 72,
+            "gross_score": 94,
+            "to_par": 22,
+            "stats": {
+              "putts": 36,
+              "greens_in_regulation": 4,
+              "fairways_hit": 6,
+              "fairways_left": 3,
+              "fairways_right": 5,
+              "drive_average_m": 201.4
+            },
+            "holes": [
+              {
+                "number": 1,
+                "par": 4,
+                "score": 5,
+                "putts": 2,
+                "gir": false
+              },
+              {
+                "number": 2,
+                "par": 3,
+                "score": 3,
+                "putts": 1,
+                "gir": true
+              }
+            ],
+            "shots": [
+              {
+                "hole": 1,
+                "number": 1,
+                "club": "Dr",
+                "club_raw": "Driver",
+                "lie_before": "Tee",
+                "lie_after": "Fairway",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 230.0,
+                "to_pin_after_m": 142.0,
+                "target_m": 230.0,
+                "carry_m": 221.0
+              },
+              {
+                "hole": 1,
+                "number": 2,
+                "club": "8i",
+                "club_raw": "Iron8",
+                "lie_before": "Fairway",
+                "lie_after": "Green",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 142.0,
+                "to_pin_after_m": 6.4,
+                "target_m": 150.0,
+                "carry_m": 139.5
+              },
+              {
+                "hole": 1,
+                "number": 3,
+                "club": "Putter",
+                "club_raw": "Putter",
+                "lie_before": "Green",
+                "lie_after": "Green",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 6.4,
+                "to_pin_after_m": 0.8
+              },
+              {
+                "hole": 1,
+                "number": 4,
+                "club": "Putter",
+                "club_raw": "Putter",
+                "lie_before": "Green",
+                "lie_after": "Hole",
+                "result": "Holed",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 0.8,
+                "to_pin_after_m": 0.0
+              }
+            ]
+          },
+          {
+            "external_id": "SC-3002",
+            "kind": "simulator",
+            "played_at": "2026-10-19T18:00:00Z",
+            "course": {
+              "name": "Example Links"
+            },
+            "tee": {
+              "name": "Yellow"
+            },
+            "holes_played": 18,
+            "par": 72,
+            "gross_score": 94,
+            "to_par": 22,
+            "stats": {
+              "putts": 36,
+              "greens_in_regulation": 4,
+              "fairways_hit": 6,
+              "fairways_left": 3,
+              "fairways_right": 5,
+              "drive_average_m": 201.4
+            },
+            "holes": [
+              {
+                "number": 1,
+                "par": 4,
+                "score": 5,
+                "putts": 2,
+                "gir": false
+              },
+              {
+                "number": 2,
+                "par": 3,
+                "score": 3,
+                "putts": 1,
+                "gir": true
+              }
+            ],
+            "shots": []
+          },
+          {
+            "external_id": "SC-2500",
+            "shots": [
+              {
+                "hole": 7,
+                "number": 1,
+                "club": "7i",
+                "club_raw": "Iron7",
+                "lie_before": "Tee",
+                "lie_after": "Water",
+                "penalty_strokes": 1,
+                "to_pin_before_m": 145.0,
+                "to_pin_after_m": 12.0,
+                "target_m": 145.0
+              },
+              {
+                "hole": 7,
+                "number": 2,
+                "club": "56°",
+                "club_raw": "Wedge56",
+                "lie_before": "Fairway",
+                "lie_after": "Green",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 35.0,
+                "to_pin_after_m": 3.1,
+                "target_m": 35.0
+              },
+              {
+                "hole": 7,
+                "number": 3,
+                "club": "Putter",
+                "club_raw": "Putter",
+                "lie_before": "Green",
+                "lie_after": "Green",
+                "penalty_strokes": 0,
+                "to_pin_after_m": 0.4
+              }
+            ]
+          },
+          {
+            "external_id": "SC-2400",
+            "shots": []
+          },
+          {
+            "external_id": "2300",
+            "shots": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_new",
+      "why": "A sync that found nothing new is an empty batch, not an error.",
+      "input": {
+        "fetched": {},
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z"
+      },
+      "expected": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [],
+        "rounds": []
+      }
+    }
+  ]
+}

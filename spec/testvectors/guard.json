@@ -1,0 +1,8546 @@
+{
+  "$comment": "The load guard (spec/guard.md). Replay the steps in order with a fresh guard per scenario: run = begin a sync run, start/finish = a request (status 0: no answer), check = must answer `expected` ({ok: true} or {ok: false, reasons sorted, until: seconds or null}).",
+  "spec_version": "1.0.0",
+  "generated_by": "spec/reference/generate.py",
+  "limits": {
+    "$comment": "The load guard's limits (spec/guard.md). Normative: a client of this project never exceeds them, whatever a target's plan says. Counted per provider account, across restarts.",
+    "version": 1,
+    "concurrency": 1,
+    "pause_s": {
+      "min": 1,
+      "max": 3
+    },
+    "per_run": 40,
+    "per_hour": 60,
+    "hour_window_s": 3600,
+    "per_day": 300,
+    "day_window_s": 86400,
+    "backoff": {
+      "statuses": "429, 500-599, 0 (no response)",
+      "first_s": 60,
+      "factor": 2,
+      "max_s": 3600
+    },
+    "log_days": 14
+  },
+  "cases": [
+    {
+      "name": "one_at_a_time",
+      "why": "Busy while a request is out; at least pause_s.min after the last ended.",
+      "steps": [
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 0.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 0.2,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "pause"
+            ],
+            "until": 1.5
+          }
+        },
+        {
+          "op": "check",
+          "t": 1.2,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "pause"
+            ],
+            "until": 1.5
+          }
+        },
+        {
+          "op": "check",
+          "t": 1.5,
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "check",
+          "t": 1.5,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1.5,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 2.0,
+          "status": 200,
+          "account": "A"
+        }
+      ]
+    },
+    {
+      "name": "per_run",
+      "why": "At most per_run requests in one sync run; a new run may go on.",
+      "steps": [
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 0.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 0.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 0.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 2.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 2.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 2.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 6.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 6.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 6.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 8.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 8.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 8.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 10.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 10.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 10.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 12.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 12.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 12.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 14.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 14.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 14.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 16.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 16.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 16.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 18.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 18.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 18.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 22.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 22.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 22.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 24.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 24.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 24.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 26.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 28.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 28.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 28.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 30.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 30.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 30.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 32.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 32.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 32.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 34.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 34.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 34.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 38.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 38.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 38.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 40.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 40.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 40.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 44.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 44.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 44.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 46.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 46.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 46.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 48.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 48.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 48.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 50.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 50.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 50.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 54.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 54.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 54.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 56.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 56.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 56.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 58.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 58.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 58.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 60.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 60.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 60.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 62.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 62.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 62.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 64.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 64.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 64.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 66.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 66.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 66.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 68.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 68.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 68.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 70.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 70.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 70.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 72.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 72.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 72.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 74.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 74.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 74.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 76.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 76.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 76.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 78.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 78.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 78.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 80.0,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "per_run"
+            ],
+            "until": null
+          }
+        },
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 81.0,
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "check",
+          "t": 81.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 81.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 81.5,
+          "status": 200,
+          "account": "A"
+        }
+      ]
+    },
+    {
+      "name": "per_hour_rolling",
+      "why": "The last 60 minutes, rolling: the oldest request leaving the window frees one place.",
+      "steps": [
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 0.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 0.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 0.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 30.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 30.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 30.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 60.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 60.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 60.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 90.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 90.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 90.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 120.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 120.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 120.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 150.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 150.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 150.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 180.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 180.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 180.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 210.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 210.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 210.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 240.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 240.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 240.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 270.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 270.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 270.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 300.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 300.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 300.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 330.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 330.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 330.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 360.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 360.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 360.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 390.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 390.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 390.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 420.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 420.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 420.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 450.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 450.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 450.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 480.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 480.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 480.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 510.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 510.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 510.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 540.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 540.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 540.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 570.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 570.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 570.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 600.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 600.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 600.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 630.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 630.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 630.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 660.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 660.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 660.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 690.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 690.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 690.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 720.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 720.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 720.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 750.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 750.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 750.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 780.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 780.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 780.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 810.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 810.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 810.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 840.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 840.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 840.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 870.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 870.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 870.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 900.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 900.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 900.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 930.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 930.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 930.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 960.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 960.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 960.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 990.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 990.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 990.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1020.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1020.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1020.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1050.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1050.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1050.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1080.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1080.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1080.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1110.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1110.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1110.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1140.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1140.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1140.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1170.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1170.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1170.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 1200.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1200.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1200.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1230.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1230.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1230.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1260.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1260.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1260.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1290.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1290.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1290.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1320.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1320.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1320.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1350.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1350.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1350.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1380.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1380.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1380.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1410.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1410.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1410.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1440.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1440.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1440.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1470.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1470.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1470.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1500.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1500.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1500.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1530.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1530.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1530.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1560.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1560.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1560.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1590.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1590.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1590.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1620.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1620.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1620.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1650.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1650.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1650.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1680.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1680.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1680.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1710.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1710.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1710.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1740.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1740.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1740.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 1770.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 1770.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 1770.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 1800.0,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "per_hour"
+            ],
+            "until": 3600.0
+          }
+        },
+        {
+          "op": "check",
+          "t": 3599.9,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "per_hour"
+            ],
+            "until": 3600.0
+          }
+        },
+        {
+          "op": "check",
+          "t": 3600,
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "check",
+          "t": 3600,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 3600,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 3600.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 3602,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "per_hour"
+            ],
+            "until": 3630.0
+          }
+        }
+      ]
+    },
+    {
+      "name": "per_day_rolling",
+      "why": "The last 24 hours, rolling, history included.",
+      "steps": [
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 0.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 0.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 0.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 3600.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 3600.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 3600.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 3661.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 3661.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 3661.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 3722.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 3722.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 3722.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 3783.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 3783.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 3783.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 3844.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 3844.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 3844.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 3905.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 3905.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 3905.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 3966.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 3966.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 3966.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4027.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4027.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4027.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4088.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4088.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4088.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4149.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4149.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4149.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4210.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4210.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4210.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4271.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4271.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4271.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4332.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4332.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4332.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4393.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4393.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4393.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4454.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4454.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4454.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4515.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4515.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4515.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4576.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4576.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4576.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4637.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4637.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4637.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4698.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4698.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4698.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4759.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4759.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4759.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4820.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4820.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4820.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4881.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4881.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4881.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4942.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4942.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4942.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 5003.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 5003.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 5003.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 5064.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 5064.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 5064.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 5125.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 5125.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 5125.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 5186.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 5186.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 5186.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 5247.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 5247.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 5247.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 5308.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 5308.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 5308.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 5369.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 5369.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 5369.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 8969.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 8969.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 8969.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9030.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9030.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9030.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9091.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9091.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9091.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9152.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9152.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9152.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9213.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9213.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9213.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9274.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9274.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9274.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9335.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9335.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9335.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9396.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9396.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9396.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9457.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9457.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9457.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9518.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9518.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9518.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9579.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9579.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9579.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9640.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9640.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9640.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9701.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9701.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9701.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9762.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9762.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9762.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9823.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9823.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9823.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9884.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9884.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9884.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 9945.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 9945.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 9945.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 10006.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 10006.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 10006.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 10067.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 10067.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 10067.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 10128.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 10128.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 10128.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 10189.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 10189.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 10189.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 10250.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 10250.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 10250.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 10311.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 10311.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 10311.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 10372.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 10372.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 10372.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 10433.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 10433.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 10433.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 10494.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 10494.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 10494.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 10555.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 10555.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 10555.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 10616.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 10616.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 10616.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 10677.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 10677.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 10677.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 10738.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 10738.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 10738.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 14338.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 14338.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 14338.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 14399.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 14399.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 14399.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 14460.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 14460.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 14460.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 14521.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 14521.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 14521.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 14582.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 14582.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 14582.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 14643.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 14643.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 14643.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 14704.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 14704.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 14704.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 14765.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 14765.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 14765.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 14826.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 14826.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 14826.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 14887.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 14887.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 14887.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 14948.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 14948.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 14948.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15009.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15009.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15009.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15070.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15070.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15070.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15131.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15131.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15131.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15192.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15192.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15192.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15253.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15253.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15253.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15314.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15314.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15314.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15375.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15375.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15375.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15436.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15436.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15436.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15497.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15497.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15497.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15558.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15558.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15558.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15619.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15619.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15619.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15680.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15680.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15680.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15741.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15741.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15741.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15802.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15802.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15802.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15863.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15863.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15863.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15924.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15924.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15924.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 15985.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 15985.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 15985.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 16046.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 16046.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 16046.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 16107.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 16107.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 16107.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 19707.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 19707.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 19707.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 19768.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 19768.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 19768.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 19829.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 19829.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 19829.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 19890.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 19890.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 19890.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 19951.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 19951.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 19951.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20012.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20012.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20012.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20073.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20073.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20073.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20134.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20134.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20134.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20195.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20195.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20195.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20256.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20256.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20256.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20317.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20317.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20317.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20378.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20378.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20378.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20439.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20439.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20439.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20500.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20500.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20500.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20561.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20561.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20561.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20622.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20622.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20622.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20683.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20683.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20683.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20744.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20744.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20744.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20805.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20805.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20805.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20866.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20866.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20866.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20927.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20927.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20927.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20988.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20988.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20988.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 21049.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 21049.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 21049.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 21110.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 21110.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 21110.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 21171.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 21171.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 21171.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 21232.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 21232.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 21232.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 21293.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 21293.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 21293.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 21354.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 21354.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 21354.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 21415.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 21415.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 21415.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 21476.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 21476.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 21476.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25076.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25076.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25076.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25137.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25137.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25137.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25198.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25198.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25198.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25259.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25259.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25259.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25320.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25320.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25320.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25381.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25381.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25381.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25442.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25442.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25442.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25503.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25503.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25503.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25564.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25564.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25564.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25625.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25625.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25625.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25686.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25686.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25686.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25747.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25747.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25747.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25808.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25808.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25808.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25869.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25869.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25869.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25930.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25930.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25930.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 25991.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 25991.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 25991.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 26052.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26052.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26052.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 26113.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26113.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26113.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 26174.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26174.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26174.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 26235.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26235.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26235.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 26296.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26296.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26296.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 26357.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26357.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26357.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 26418.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26418.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26418.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 26479.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26479.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26479.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 26540.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26540.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26540.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 26601.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26601.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26601.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 26662.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26662.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26662.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 26723.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26723.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26723.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 26784.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26784.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26784.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 26845.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 26845.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 26845.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 30445.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 30445.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 30445.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 30506.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 30506.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 30506.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 30567.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 30567.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 30567.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 30628.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 30628.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 30628.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 30689.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 30689.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 30689.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 30750.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 30750.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 30750.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 30811.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 30811.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 30811.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 30872.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 30872.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 30872.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 30933.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 30933.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 30933.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 30994.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 30994.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 30994.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31055.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31055.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31055.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31116.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31116.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31116.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31177.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31177.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31177.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31238.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31238.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31238.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31299.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31299.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31299.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31360.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31360.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31360.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31421.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31421.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31421.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31482.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31482.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31482.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31543.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31543.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31543.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31604.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31604.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31604.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31665.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31665.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31665.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31726.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31726.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31726.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31787.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31787.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31787.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31848.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31848.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31848.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31909.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31909.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31909.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 31970.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 31970.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 31970.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 32031.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 32031.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 32031.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 32092.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 32092.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 32092.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 32153.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 32153.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 32153.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 32214.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 32214.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 32214.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 35814.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 35814.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 35814.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 35875.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 35875.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 35875.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 35936.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 35936.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 35936.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 35997.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 35997.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 35997.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36058.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36058.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36058.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36119.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36119.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36119.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36180.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36180.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36180.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36241.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36241.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36241.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36302.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36302.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36302.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36363.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36363.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36363.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36424.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36424.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36424.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36485.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36485.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36485.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36546.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36546.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36546.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36607.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36607.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36607.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36668.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36668.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36668.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36729.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36729.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36729.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36790.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36790.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36790.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36851.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36851.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36851.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36912.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36912.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36912.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 36973.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 36973.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 36973.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 37034.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 37034.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 37034.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 37095.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 37095.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 37095.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 37156.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 37156.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 37156.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 37217.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 37217.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 37217.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 37278.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 37278.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 37278.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 37339.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 37339.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 37339.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 37400.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 37400.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 37400.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 37461.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 37461.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 37461.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 37522.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 37522.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 37522.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 37583.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 37583.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 37583.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 41183.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 41183.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 41183.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 41244.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 41244.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 41244.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 41305.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 41305.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 41305.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 41366.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 41366.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 41366.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 41427.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 41427.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 41427.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 41488.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 41488.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 41488.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 41549.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 41549.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 41549.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 41610.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 41610.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 41610.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 41671.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 41671.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 41671.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 41732.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 41732.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 41732.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 41793.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 41793.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 41793.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 41854.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 41854.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 41854.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 41915.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 41915.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 41915.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 41976.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 41976.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 41976.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42037.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42037.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42037.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42098.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42098.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42098.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42159.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42159.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42159.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42220.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42220.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42220.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42281.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42281.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42281.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42342.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42342.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42342.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42403.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42403.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42403.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42464.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42464.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42464.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42525.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42525.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42525.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42586.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42586.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42586.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42647.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42647.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42647.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42708.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42708.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42708.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42769.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42769.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42769.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42830.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42830.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42830.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 42891.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42891.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42891.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 42952.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 42952.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 42952.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 46552.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 46552.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 46552.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 46613.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 46613.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 46613.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 46674.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 46674.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 46674.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 46735.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 46735.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 46735.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 46796.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 46796.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 46796.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 46857.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 46857.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 46857.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 46918.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 46918.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 46918.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 46979.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 46979.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 46979.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47040.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47040.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47040.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47101.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47101.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47101.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47162.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47162.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47162.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47223.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47223.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47223.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47284.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47284.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47284.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47345.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47345.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47345.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47406.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47406.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47406.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47467.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47467.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47467.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47528.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47528.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47528.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47589.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47589.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47589.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47650.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47650.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47650.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47711.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47711.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47711.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47772.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47772.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47772.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47833.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47833.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47833.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47894.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47894.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47894.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 47955.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 47955.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 47955.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 48016.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 48016.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 48016.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 48077.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 48077.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 48077.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 48138.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 48138.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 48138.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 48199.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 48199.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 48199.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 48260.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 48260.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 48260.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 48321.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 48321.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 48321.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 51921.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 51921.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 51921.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 51982.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 51982.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 51982.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52043.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52043.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52043.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52104.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52104.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52104.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52165.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52165.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52165.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52226.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52226.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52226.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52287.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52287.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52287.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52348.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52348.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52348.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52409.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52409.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52409.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52470.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52470.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52470.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52531.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52531.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52531.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52592.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52592.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52592.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52653.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52653.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52653.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52714.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52714.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52714.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52775.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52775.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52775.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52836.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52836.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52836.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52897.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52897.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52897.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 52958.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 52958.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 52958.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 53019.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 53019.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 53019.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 53080.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 53080.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 53080.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 53141.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 53141.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 53141.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 53202.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 53202.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 53202.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 53263.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 53263.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 53263.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 53324.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 53324.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 53324.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 53385.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 53385.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 53385.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 53446.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 53446.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 53446.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 53507.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 53507.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 53507.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 53568.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 53568.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 53568.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 53629.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 53629.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 53629.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 53690.0,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "per_day"
+            ],
+            "until": 86400.0
+          }
+        },
+        {
+          "op": "check",
+          "t": 86400,
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "check",
+          "t": 86400,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 86400,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 86400.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 86410,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "per_day"
+            ],
+            "until": 90000.0
+          }
+        },
+        {
+          "op": "check",
+          "t": 90061,
+          "expected": {
+            "ok": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "backoff",
+      "why": "After 429, 5xx or no answer: 60 s, doubled each time in a row; a good answer starts again at 60 s.",
+      "steps": [
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 0.5,
+          "status": 429,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 30,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "backoff"
+            ],
+            "until": 60.5
+          }
+        },
+        {
+          "op": "check",
+          "t": 60.5,
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "check",
+          "t": 60.5,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 60.5,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 61.0,
+          "status": 503,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 150,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "backoff"
+            ],
+            "until": 181.0
+          }
+        },
+        {
+          "op": "check",
+          "t": 181,
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "check",
+          "t": 181,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 181,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 181.5,
+          "status": 0,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 400,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "backoff"
+            ],
+            "until": 421.5
+          }
+        },
+        {
+          "op": "check",
+          "t": 421.5,
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "check",
+          "t": 421.5,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 421.5,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 422.0,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 423,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 423,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 423.5,
+          "status": 500,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 483.4,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "backoff"
+            ],
+            "until": 483.5
+          }
+        },
+        {
+          "op": "check",
+          "t": 483.5,
+          "expected": {
+            "ok": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "backoff_cap",
+      "why": "The backoff never grows past max_s.",
+      "steps": [
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 0.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 0.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 0.5,
+          "status": 500,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 0.5,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "backoff",
+              "pause"
+            ],
+            "until": 60.5
+          }
+        },
+        {
+          "op": "check",
+          "t": 4000.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 4000.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 4000.5,
+          "status": 500,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4000.5,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "backoff",
+              "pause"
+            ],
+            "until": 4120.5
+          }
+        },
+        {
+          "op": "check",
+          "t": 8000.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 8000.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 8000.5,
+          "status": 500,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 8000.5,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "backoff",
+              "pause"
+            ],
+            "until": 8240.5
+          }
+        },
+        {
+          "op": "check",
+          "t": 12000.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 12000.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 12000.5,
+          "status": 500,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 12000.5,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "backoff",
+              "pause"
+            ],
+            "until": 12480.5
+          }
+        },
+        {
+          "op": "check",
+          "t": 16000.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 16000.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 16000.5,
+          "status": 500,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 16000.5,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "backoff",
+              "pause"
+            ],
+            "until": 16960.5
+          }
+        },
+        {
+          "op": "check",
+          "t": 20000.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 20000.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 20000.5,
+          "status": 500,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 20000.5,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "backoff",
+              "pause"
+            ],
+            "until": 21920.5
+          }
+        },
+        {
+          "op": "check",
+          "t": 24000.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 24000.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 24000.5,
+          "status": 500,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 24000.5,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "backoff",
+              "pause"
+            ],
+            "until": 27600.5
+          }
+        },
+        {
+          "op": "check",
+          "t": 28000.0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 28000.0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 28000.5,
+          "status": 500,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 28000.5,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "backoff",
+              "pause"
+            ],
+            "until": 31600.5
+          }
+        }
+      ]
+    },
+    {
+      "name": "retry_after",
+      "why": "Retry-After holds when it is longer than the backoff, even past the hour; a shorter one doesn't shorten the backoff; on a good answer it means nothing.",
+      "steps": [
+        {
+          "op": "run"
+        },
+        {
+          "op": "check",
+          "t": 0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 0.5,
+          "status": 429,
+          "account": "A",
+          "retry_after_s": 7200
+        },
+        {
+          "op": "check",
+          "t": 3700,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "backoff"
+            ],
+            "until": 7200.5
+          }
+        },
+        {
+          "op": "check",
+          "t": 7200.5,
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "check",
+          "t": 7200.5,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 7200.5,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 7201.0,
+          "status": 503,
+          "account": "A",
+          "retry_after_s": 5
+        },
+        {
+          "op": "check",
+          "t": 7262,
+          "expected": {
+            "ok": false,
+            "reasons": [
+              "backoff"
+            ],
+            "until": 7321.0
+          }
+        },
+        {
+          "op": "check",
+          "t": 8000,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 8000,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 8000.5,
+          "status": 200,
+          "account": "A",
+          "retry_after_s": 999
+        },
+        {
+          "op": "check",
+          "t": 8002,
+          "expected": {
+            "ok": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "per_account",
+      "why": "Counts and pauses are kept per provider account.",
+      "steps": [
+        {
+          "op": "run",
+          "account": "A"
+        },
+        {
+          "op": "run",
+          "account": "B"
+        },
+        {
+          "op": "check",
+          "t": 0,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 0,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 0.5,
+          "status": 200,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 0.1,
+          "account": "B",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "check",
+          "t": 0.1,
+          "account": "B",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 0.1,
+          "account": "B"
+        },
+        {
+          "op": "finish",
+          "t": 0.6,
+          "status": 200,
+          "account": "B"
+        },
+        {
+          "op": "check",
+          "t": 2,
+          "account": "A",
+          "expected": {
+            "ok": true
+          }
+        },
+        {
+          "op": "start",
+          "t": 2,
+          "account": "A"
+        },
+        {
+          "op": "finish",
+          "t": 2.5,
+          "status": 429,
+          "account": "A"
+        },
+        {
+          "op": "check",
+          "t": 4,
+          "account": "B",
+          "expected": {
+            "ok": true
+          }
+        }
+      ]
+    }
+  ]
+}

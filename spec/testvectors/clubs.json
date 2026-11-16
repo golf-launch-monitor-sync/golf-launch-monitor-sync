@@ -1,0 +1,414 @@
+{
+  "$comment": "Club names -> canonical codes. camel: a provider's CamelCase names (Trackman); normalize: names as other monitors and people write them.",
+  "spec_version": "1.0.0",
+  "generated_by": "spec/reference/generate.py",
+  "cases": [
+    {
+      "rule": "camel",
+      "raw": "Driver",
+      "code": "Dr"
+    },
+    {
+      "rule": "camel",
+      "raw": "Wood2",
+      "code": "2W"
+    },
+    {
+      "rule": "camel",
+      "raw": "Wood3",
+      "code": "3W"
+    },
+    {
+      "rule": "camel",
+      "raw": "Wood5",
+      "code": "5W"
+    },
+    {
+      "rule": "camel",
+      "raw": "Wood7",
+      "code": "7W"
+    },
+    {
+      "rule": "camel",
+      "raw": "Hybrid2",
+      "code": "2H"
+    },
+    {
+      "rule": "camel",
+      "raw": "Hybrid3",
+      "code": "3H"
+    },
+    {
+      "rule": "camel",
+      "raw": "Hybrid4",
+      "code": "4H"
+    },
+    {
+      "rule": "camel",
+      "raw": "Hybrid5",
+      "code": "5H"
+    },
+    {
+      "rule": "camel",
+      "raw": "Iron1",
+      "code": "1i"
+    },
+    {
+      "rule": "camel",
+      "raw": "Iron2",
+      "code": "2i"
+    },
+    {
+      "rule": "camel",
+      "raw": "Iron3",
+      "code": "3i"
+    },
+    {
+      "rule": "camel",
+      "raw": "Iron4",
+      "code": "4i"
+    },
+    {
+      "rule": "camel",
+      "raw": "Iron5",
+      "code": "5i"
+    },
+    {
+      "rule": "camel",
+      "raw": "Iron6",
+      "code": "6i"
+    },
+    {
+      "rule": "camel",
+      "raw": "Iron7",
+      "code": "7i"
+    },
+    {
+      "rule": "camel",
+      "raw": "Iron8",
+      "code": "8i"
+    },
+    {
+      "rule": "camel",
+      "raw": "Iron9",
+      "code": "9i"
+    },
+    {
+      "rule": "camel",
+      "raw": "PitchingWedge",
+      "code": "PW"
+    },
+    {
+      "rule": "camel",
+      "raw": "GapWedge",
+      "code": "GW"
+    },
+    {
+      "rule": "camel",
+      "raw": "ApproachWedge",
+      "code": "GW"
+    },
+    {
+      "rule": "camel",
+      "raw": "SandWedge",
+      "code": "SW"
+    },
+    {
+      "rule": "camel",
+      "raw": "LobWedge",
+      "code": "LW"
+    },
+    {
+      "rule": "camel",
+      "raw": "Wedge46",
+      "code": "46°"
+    },
+    {
+      "rule": "camel",
+      "raw": "Wedge50",
+      "code": "50°"
+    },
+    {
+      "rule": "camel",
+      "raw": "Wedge56",
+      "code": "56°"
+    },
+    {
+      "rule": "camel",
+      "raw": "Wedge60",
+      "code": "60°"
+    },
+    {
+      "rule": "camel",
+      "raw": "Putter",
+      "code": "Putter"
+    },
+    {
+      "rule": "camel",
+      "raw": "Unknown",
+      "code": "unknown"
+    },
+    {
+      "rule": "camel",
+      "raw": "UtilityWood19",
+      "code": "Utility Wood 19"
+    },
+    {
+      "rule": "camel",
+      "raw": "",
+      "code": "unknown"
+    },
+    {
+      "rule": "camel",
+      "raw": null,
+      "code": "unknown"
+    },
+    {
+      "rule": "camel",
+      "raw": 7,
+      "code": "unknown"
+    },
+    {
+      "rule": "camel",
+      "raw": "  Iron7 ",
+      "code": "7i"
+    },
+    {
+      "rule": "camel",
+      "raw": "IRON7",
+      "code": "7i"
+    },
+    {
+      "rule": "camel",
+      "raw": "Iron10",
+      "code": "10i"
+    },
+    {
+      "rule": "camel",
+      "raw": "Wedge12",
+      "code": "Wedge 12"
+    },
+    {
+      "rule": "camel",
+      "raw": "Wedge72",
+      "code": "Wedge 72"
+    },
+    {
+      "rule": "camel",
+      "raw": {
+        "x": 1
+      },
+      "code": "unknown"
+    },
+    {
+      "rule": "camel",
+      "raw": true,
+      "code": "unknown"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 Iron",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7i",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "I7",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Eisen 7",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7er Eisen",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7er",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3er Holz",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Hierro 7",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Madera 3",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Híbrido 4",
+      "code": "4H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "IJzer 7",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Hout 3",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "W3",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 wood",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Rescue 5",
+      "code": "5H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56°",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 deg",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Wedge 52",
+      "code": "52°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "52 Grad",
+      "code": "52°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56er",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12",
+      "code": "12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "D",
+      "code": "Dr"
+    },
+    {
+      "rule": "normalize",
+      "raw": "dr",
+      "code": "Dr"
+    },
+    {
+      "rule": "normalize",
+      "raw": "1W",
+      "code": "Dr"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Pitching Wedge",
+      "code": "PW"
+    },
+    {
+      "rule": "normalize",
+      "raw": "AW",
+      "code": "GW"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Gap-Wedge",
+      "code": "GW"
+    },
+    {
+      "rule": "normalize",
+      "raw": "sand_wedge",
+      "code": "SW"
+    },
+    {
+      "rule": "normalize",
+      "raw": "lob wedge",
+      "code": "LW"
+    },
+    {
+      "rule": "normalize",
+      "raw": "low wedge",
+      "code": "LW"
+    },
+    {
+      "rule": "normalize",
+      "raw": "PT",
+      "code": "Putter"
+    },
+    {
+      "rule": "normalize",
+      "raw": "unknown",
+      "code": "unknown"
+    },
+    {
+      "rule": "normalize",
+      "raw": "N/A",
+      "code": "unknown"
+    },
+    {
+      "rule": "normalize",
+      "raw": "-",
+      "code": "unknown"
+    },
+    {
+      "rule": "normalize",
+      "raw": "",
+      "code": "unknown"
+    },
+    {
+      "rule": "normalize",
+      "raw": "  ",
+      "code": "unknown"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Chipper",
+      "code": "Chipper"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Hybrid",
+      "code": "Hybrid"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Iron 10",
+      "code": "10i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "10 iron",
+      "code": "10i"
+    }
+  ]
+}

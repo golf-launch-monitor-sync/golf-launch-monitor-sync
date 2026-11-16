@@ -1,0 +1,21 @@
+{
+  "name": "@glmsync/spec",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "The olmd/1 schema, the load guard's limits, the planning rules and the deep links, as TypeScript.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1"
+  },
+  "devDependencies": {
+    "yaml": "^2.9.1"
+  }
+}

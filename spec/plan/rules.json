@@ -1,0 +1,23 @@
+{
+  "$comment": "The reference planning rules of a target (spec/planning.md). Informative: a target may plan more gently; the load guard (spec/guard/limits.json) holds regardless.",
+  "version": 1,
+  "regular_gap_min": { "min": 38, "max": 52 },
+  "open_gap_s": 600,
+  "connect_gap_s": 120,
+  "recent_days": 90,
+  "history_days": 5475,
+  "max_window_days": 730,
+  "window_slack_days": 3,
+  "sync_max_sessions": 40,
+  "history_chunk_sessions": 10,
+  "history_pause_s": { "min": 60, "max": 120 },
+  "barren_chunks": 5,
+  "max_tries": 3,
+  "max_waiting": 200,
+  "max_given_up": 2000,
+  "lease_s": 300,
+  "rounds_wanted_regular": 5,
+  "rounds_wanted_days": 30,
+  "rounds_wanted_history": 25,
+  "pace_floor": 0.5
+}

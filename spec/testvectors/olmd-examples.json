@@ -1,0 +1,1009 @@
+{
+  "$comment": "olmd/1 batches that must (valid: true) or must not validate against spec/olmd/olmd-1.schema.json.",
+  "spec_version": "1.0.0",
+  "generated_by": "spec/reference/generate.py",
+  "cases": [
+    {
+      "name": "minimal",
+      "why": "No sessions, no rounds.",
+      "valid": true,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "demo",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [],
+        "rounds": []
+      }
+    },
+    {
+      "name": "simulator_session",
+      "why": "As the Trackman provider writes it.",
+      "valid": true,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "everything",
+      "why": "Every optional part at once.",
+      "valid": true,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                },
+                "target": {
+                  "distance_m": 140.0
+                },
+                "extra": {
+                  "note": "read, never run"
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": [],
+        "generator": {
+          "name": "golf-launch-monitor-sync",
+          "version": "0.1.0"
+        },
+        "sync": {
+          "plan_id": "pl_7d1c",
+          "reason": "timer"
+        },
+        "progress": {
+          "more_available": true,
+          "oldest_seen": "2025-03-01T10:00:00Z",
+          "skipped_known": 12
+        },
+        "notice": {
+          "code": "guard_limit",
+          "message": "Enough asked of the provider today; tomorrow it goes on."
+        },
+        "failed": [
+          {
+            "external_id": "ACT-9",
+            "started_at": "2026-11-09T10:00:00Z"
+          }
+        ],
+        "extra": {
+          "anything": [
+            "is",
+            "kept",
+            1
+          ]
+        }
+      }
+    },
+    {
+      "name": "wrong_format",
+      "why": "Another format version.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/2",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "no_provider",
+      "why": "provider is required.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "provider_case",
+      "why": "Provider ids are lower case.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "Trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "no_account_ref",
+      "why": "account_ref is required.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "short_account_ref",
+      "why": "Too short to be a hash.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "abc",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "local_time",
+      "why": "Times carry their zone.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "null_value",
+      "why": "Unknown values are left out, not null.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": null,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "yards",
+      "why": "Units are SI: there is no yards field.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2,
+                  "carry_yd": 150
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "unknown_kind",
+      "why": "Session kinds are a closed list (other + kind_raw).",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "SIMULATOR",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "session_without_id",
+      "why": "Every session has its external_id.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "carry_as_text",
+      "why": "Numbers are JSON numbers.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": "140.2",
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "empty_group",
+      "why": "An empty group is left out.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {},
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": []
+      }
+    },
+    {
+      "name": "round_shot_far",
+      "why": "A worked-out distance to the flag is at most 1000 m.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": [
+          {
+            "external_id": "R1",
+            "shots": [
+              {
+                "hole": 1,
+                "number": 1,
+                "to_pin_before_m": 1500
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "round_shot_without_hole",
+      "why": "A round's shot names its hole.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": [
+          {
+            "external_id": "R1",
+            "shots": [
+              {
+                "number": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown_top_level",
+      "why": "Extensions go into extra.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": [],
+        "player": "Someone"
+      }
+    },
+    {
+      "name": "notice_code",
+      "why": "Notice codes are a closed list.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": [],
+        "notice": {
+          "code": "hello"
+        }
+      }
+    }
+  ]
+}

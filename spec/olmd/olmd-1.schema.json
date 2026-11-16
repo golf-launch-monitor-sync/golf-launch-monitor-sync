@@ -1,0 +1,267 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://golf-launch-monitor-sync.github.io/schemas/olmd-1.schema.json",
+  "title": "Open Launch Monitor Data, version 1 (olmd/1)",
+  "description": "A batch of launch monitor history: practice sessions with their shots, and simulator rounds with their holes and shots. SI units, RFC 3339 times with zone. Unknown values are left out, never null. See spec/olmd.md. SPDX-License-Identifier: MIT. Copyright (c) 2026 Reginald Stadlbauer.",
+  "type": "object",
+  "required": ["format", "provider", "account_ref", "generated_at", "sessions", "rounds"],
+  "additionalProperties": false,
+  "properties": {
+    "format": { "const": "olmd/1" },
+    "provider": { "$ref": "#/$defs/slug", "description": "Where the data comes from, e.g. 'trackman'." },
+    "account_ref": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{16,128}$",
+      "description": "Which provider account, without naming it: base64url SHA-256 of 'olmd-account-v1|salt|provider|subject' (spec/olmd.md)."
+    },
+    "generated_at": { "$ref": "#/$defs/time" },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "version": { "type": "string", "minLength": 1, "maxLength": 50 }
+      }
+    },
+    "sync": {
+      "type": "object",
+      "description": "The plan this batch answers (absent in a file export).",
+      "additionalProperties": false,
+      "properties": {
+        "plan_id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "reason": { "enum": ["connect", "open", "timer", "manual", "backfill"] }
+      }
+    },
+    "sessions": { "type": "array", "items": { "$ref": "#/$defs/session" } },
+    "rounds": { "type": "array", "items": { "$ref": "#/$defs/round" } },
+    "failed": {
+      "type": "array",
+      "description": "Sessions the provider could not send this time: a later sync asks again.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["external_id"],
+        "properties": {
+          "external_id": { "$ref": "#/$defs/id" },
+          "started_at": { "$ref": "#/$defs/time" }
+        }
+      }
+    },
+    "progress": {
+      "type": "object",
+      "description": "How far the fetch got through the provider's history.",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "more_available": { "type": "boolean" },
+        "oldest_seen": { "$ref": "#/$defs/time" },
+        "skipped_known": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "notice": { "$ref": "#/$defs/notice" },
+    "extra": { "$ref": "#/$defs/extra" }
+  },
+  "$defs": {
+    "slug": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{1,39}$" },
+    "id": { "type": "string", "minLength": 1, "maxLength": 400 },
+    "time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "number": { "type": "number" },
+    "distance": { "type": "number", "minimum": 0, "maximum": 1000 },
+    "extra": {
+      "type": "object",
+      "description": "Anything a producer wants to keep that has no field (yet). Read as data, never executed."
+    },
+    "club": { "type": "string", "minLength": 1, "maxLength": 40, "description": "Canonical code (Dr, 3W, 4H, 7i, PW, GW, SW, LW, 56°, Putter) where one fits, else the name as the player set it." },
+    "club_raw": { "type": "string", "minLength": 1, "maxLength": 100, "description": "The club as the provider names it." },
+    "notice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code"],
+      "properties": {
+        "code": { "enum": ["auth_expired", "guard_limit", "provider_unavailable", "provider_blocked", "partial"] },
+        "message": { "type": "string", "maxLength": 500 },
+        "until": { "$ref": "#/$defs/time" }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["external_id", "kind", "shots"],
+      "properties": {
+        "external_id": { "$ref": "#/$defs/id" },
+        "started_at": { "$ref": "#/$defs/time" },
+        "kind": {
+          "enum": ["range", "simulator", "shot_analysis", "map_my_bag", "combine", "find_my_distance", "virtual_range", "course_practice", "other"]
+        },
+        "kind_raw": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "location": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "facility": { "type": "string", "minLength": 1, "maxLength": 200 }
+          }
+        },
+        "device": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["maker"],
+          "properties": {
+            "maker": { "$ref": "#/$defs/slug" },
+            "model": { "type": "string", "minLength": 1, "maxLength": 100 }
+          }
+        },
+        "shots": { "type": "array", "items": { "$ref": "#/$defs/shot" } },
+        "extra": { "$ref": "#/$defs/extra" }
+      }
+    },
+    "shot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "played_at": { "$ref": "#/$defs/time" },
+        "club": { "$ref": "#/$defs/club" },
+        "club_raw": { "$ref": "#/$defs/club_raw" },
+        "ball": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "speed_mps": { "$ref": "#/$defs/number" },
+            "launch_angle_deg": { "$ref": "#/$defs/number" },
+            "launch_direction_deg": { "$ref": "#/$defs/number" },
+            "spin_rpm": { "$ref": "#/$defs/number" },
+            "spin_axis_deg": { "$ref": "#/$defs/number" }
+          }
+        },
+        "club_delivery": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "speed_mps": { "$ref": "#/$defs/number" },
+            "attack_angle_deg": { "$ref": "#/$defs/number" },
+            "path_deg": { "$ref": "#/$defs/number" },
+            "face_angle_deg": { "$ref": "#/$defs/number" },
+            "face_to_path_deg": { "$ref": "#/$defs/number" },
+            "dynamic_loft_deg": { "$ref": "#/$defs/number" },
+            "smash_factor": { "$ref": "#/$defs/number" }
+          }
+        },
+        "flight": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "carry_m": { "$ref": "#/$defs/number" },
+            "total_m": { "$ref": "#/$defs/number" },
+            "side_m": { "$ref": "#/$defs/number" },
+            "total_side_m": { "$ref": "#/$defs/number" },
+            "curve_m": { "$ref": "#/$defs/number" },
+            "apex_m": { "$ref": "#/$defs/number" },
+            "landing_angle_deg": { "$ref": "#/$defs/number" },
+            "flight_time_s": { "$ref": "#/$defs/number" }
+          }
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "distance_m": { "$ref": "#/$defs/number" }
+          }
+        },
+        "extra": { "$ref": "#/$defs/extra" }
+      }
+    },
+    "round": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["external_id"],
+      "properties": {
+        "external_id": { "$ref": "#/$defs/id" },
+        "kind": { "enum": ["simulator", "course"] },
+        "played_at": { "$ref": "#/$defs/time" },
+        "course": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name"],
+          "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 200 } }
+        },
+        "tee": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name"],
+          "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 100 } }
+        },
+        "holes_played": { "type": "integer" },
+        "par": { "type": "integer" },
+        "gross_score": { "type": "integer" },
+        "to_par": { "type": "integer" },
+        "stats": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "putts": { "type": "integer" },
+            "greens_in_regulation": { "type": "integer" },
+            "fairways_hit": { "type": "integer" },
+            "fairways_left": { "type": "integer" },
+            "fairways_right": { "type": "integer" },
+            "drive_average_m": { "$ref": "#/$defs/number" }
+          }
+        },
+        "holes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["number"],
+            "properties": {
+              "number": { "type": "integer", "minimum": 1, "maximum": 36 },
+              "par": { "type": "integer" },
+              "score": { "type": "integer" },
+              "putts": { "type": "integer" },
+              "gir": { "type": "boolean" }
+            }
+          }
+        },
+        "shots": {
+          "type": "array",
+          "description": "Each shot of the round. Absent: not fetched (yet). Empty: the provider has none.",
+          "items": { "$ref": "#/$defs/round_shot" }
+        },
+        "extra": { "$ref": "#/$defs/extra" }
+      }
+    },
+    "round_shot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hole", "number"],
+      "properties": {
+        "hole": { "type": "integer", "minimum": 1, "maximum": 36 },
+        "number": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "club": { "$ref": "#/$defs/club" },
+        "club_raw": { "$ref": "#/$defs/club_raw" },
+        "lie_before": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "lie_after": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "result": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "penalty_strokes": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "to_pin_before_m": { "$ref": "#/$defs/distance" },
+        "to_pin_after_m": { "$ref": "#/$defs/distance" },
+        "rest_side_m": { "type": "number", "minimum": -1000, "maximum": 1000 },
+        "rest_long_m": { "type": "number", "minimum": -1000, "maximum": 1000 },
+        "target_m": { "$ref": "#/$defs/distance" },
+        "carry_m": { "$ref": "#/$defs/distance" },
+        "total_m": { "$ref": "#/$defs/distance" },
+        "extra": { "$ref": "#/$defs/extra" }
+      }
+    }
+  }
+}

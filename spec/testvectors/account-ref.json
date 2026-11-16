@@ -1,0 +1,43 @@
+{
+  "$comment": "account_ref = base64url (unpadded) of SHA-256('olmd-account-v1|' + salt + '|' + provider + '|' + subject), UTF-8.",
+  "spec_version": "1.0.0",
+  "generated_by": "spec/reference/generate.py",
+  "cases": [
+    {
+      "salt": "s4lt-0001",
+      "provider": "trackman",
+      "subject": "7c1d2e3f-0000-4000-8000-000000000001",
+      "expected": "lDSql569G6P7eC7pI8qtBVamRuVKhsiXiU0YCRw5-TU"
+    },
+    {
+      "salt": "s4lt-0001",
+      "provider": "trackman",
+      "subject": "7c1d2e3f-0000-4000-8000-000000000002",
+      "expected": "SomHDcTaWMlA_9pL_9o2wbuIYo2pSZPrnG-AW6kfIXM"
+    },
+    {
+      "salt": "s4lt-0002",
+      "provider": "trackman",
+      "subject": "7c1d2e3f-0000-4000-8000-000000000001",
+      "expected": "OBJWynKYLQh0WN2ku9N1K0zT8x4nsHIdqNeHW0O2dcE"
+    },
+    {
+      "salt": "s4lt-0001",
+      "provider": "demo",
+      "subject": "7c1d2e3f-0000-4000-8000-000000000001",
+      "expected": "Q8mvN7H7cg60lMYrygepFuU8u5zo_Awb5DSnk_U4Ax8"
+    },
+    {
+      "salt": "",
+      "provider": "trackman",
+      "subject": "user|with|bars",
+      "expected": "3M-rr3crbKivI8dd0peE2ayJAm18FkQ6dzIVe1UkBaQ"
+    },
+    {
+      "salt": "sälz",
+      "provider": "trackman",
+      "subject": "ünïcödé",
+      "expected": "2X1FL4leTAVdOkfr-SkZAp_0ay2ft6CJhmZTHBsAcmU"
+    }
+  ]
+}
