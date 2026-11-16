@@ -1,0 +1,6 @@
+{
+  "platforms": ["android"],
+  "android": {
+    "modules": ["glmsync.companion.sync.GlmsyncSyncModule"]
+  }
+}

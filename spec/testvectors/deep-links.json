@@ -1,6 +1,6 @@
 {
-  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, return?} or {ok: false, error}.",
-  "spec_version": "1.0.1",
+  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, return?} or {ok: false, error}. parse_sync_intent (the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> {ok: true, target, reason} or {ok: false, error}.",
+  "spec_version": "1.1.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {
@@ -441,6 +441,190 @@
         ]
       },
       "expected": false
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+        "reason": "open"
+      },
+      "expected": {
+        "ok": true,
+        "target": "https://app.example.org/lm/v1",
+        "reason": "open"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+        "reason": "manual"
+      },
+      "expected": {
+        "ok": true,
+        "target": "https://app.example.org/lm/v1",
+        "reason": "manual"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+        "reason": null
+      },
+      "expected": {
+        "ok": true,
+        "target": "https://app.example.org/lm/v1",
+        "reason": "manual"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+        "reason": "timer"
+      },
+      "expected": {
+        "ok": true,
+        "target": "https://app.example.org/lm/v1",
+        "reason": "manual"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+        "reason": "backfill"
+      },
+      "expected": {
+        "ok": true,
+        "target": "https://app.example.org/lm/v1",
+        "reason": "manual"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+        "reason": "OPEN"
+      },
+      "expected": {
+        "ok": true,
+        "target": "https://app.example.org/lm/v1",
+        "reason": "manual"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+        "reason": 1
+      },
+      "expected": {
+        "ok": true,
+        "target": "https://app.example.org/lm/v1",
+        "reason": "manual"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "glmsync://sync/?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&utm=x",
+        "reason": "open"
+      },
+      "expected": {
+        "ok": true,
+        "target": "https://app.example.org/lm/v1",
+        "reason": "open"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "glmsync://sync",
+        "reason": "open"
+      },
+      "expected": {
+        "ok": false,
+        "error": "missing:target"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&return=exampleapp%3A%2F%2Fsynced",
+        "reason": "manual"
+      },
+      "expected": {
+        "ok": false,
+        "error": "unexpected:return"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X",
+        "reason": "manual"
+      },
+      "expected": {
+        "ok": false,
+        "error": "invalid:action"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "glmsync://sync?target=ftp%3A%2F%2Fx",
+        "reason": "open"
+      },
+      "expected": {
+        "ok": false,
+        "error": "invalid:target"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+        "reason": "open"
+      },
+      "expected": {
+        "ok": false,
+        "error": "duplicate:target"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": null,
+        "reason": "open"
+      },
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "",
+        "reason": "open"
+      },
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "https://app.example.org/sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+        "reason": "open"
+      },
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
     }
   ]
 }

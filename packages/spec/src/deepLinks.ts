@@ -131,3 +131,28 @@ export function pairLink(target: string, code: string, provider?: string): strin
   if (provider) q.push(`provider=${encodeURIComponent(provider)}`);
   return `glmsync://pair?${q.join('&')}`;
 }
+
+/**
+ * Android: a target binds to the companion app's sync service (spec/deep-links.md, "Android"). The
+ * intent's action is `SYNC_ACTION`, its data a sync link naming the target, its extra `SYNC_REASON_EXTRA`
+ * `open` or `manual`.
+ */
+export const SYNC_ACTION = 'glmsync.intent.action.SYNC';
+export const SYNC_REASON_EXTRA = 'glmsync.extra.REASON';
+
+export type SyncIntentReason = 'open' | 'manual';
+export type SyncIntentResult = { ok: true; target: string; reason: SyncIntentReason } | { ok: false; error: string };
+
+/**
+ * What a target asks for when it binds: a sync link that names the target and has nothing to jump back
+ * to (a service opens nothing). A missing or unknown reason reads as `manual`: a target app can't claim a
+ * reason of the client's own (timer, connect, backfill).
+ */
+export function parseSyncIntent(data: unknown, reason?: unknown): SyncIntentResult {
+  const link = parseLink(data);
+  if (!link.ok) return link;
+  if (link.action !== 'sync') return { ok: false, error: 'invalid:action' };
+  if (link.target === undefined) return { ok: false, error: 'missing:target' };
+  if (link.return !== undefined) return { ok: false, error: 'unexpected:return' };
+  return { ok: true, target: link.target, reason: reason === 'open' ? 'open' : 'manual' };
+}

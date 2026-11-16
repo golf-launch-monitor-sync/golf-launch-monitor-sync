@@ -23,7 +23,7 @@ matches the version it says.
 | `account-ref.json` | `account_ref` | exact |
 | `plan.json` | the reference planning rules ([planning.md](../planning.md)) | times as instants within `compare.time_tolerance_s`; objects regardless of key order |
 | `guard.json` | the load guard ([guard.md](../guard.md)): scenarios replayed step by step | exact (`until` in seconds) |
-| `deep-links.json` | parsing deep links and the pairing fragment, where a sync may return to | exact |
+| `deep-links.json` | parsing deep links and the pairing fragment, where a sync may return to, what the Android sync service reads from a binding | exact |
 | `olmd-examples.json` | batches that must (`valid: true`) or must not validate against the schema | — |
 
 All data here is **synthetic**: made up for the vectors, never recorded from anyone's account.

@@ -11,7 +11,7 @@ Everything another implementation needs, in one place, independent of this proje
 | The **target API** an app implements to receive data | [target-api.md](target-api.md) | [api/target-api.yaml](api/target-api.yaml) |
 | The **planning rules** a target keeps | [planning.md](planning.md) | [plan/rules.json](plan/rules.json) |
 | The **load guard** every client keeps | [guard.md](guard.md) | [guard/limits.json](guard/limits.json) |
-| **Deep links** and the pairing page | [deep-links.md](deep-links.md) | — |
+| **Deep links**, the pairing page and the Android sync service | [deep-links.md](deep-links.md) | — |
 | **Test vectors** for all of the above | [testvectors/README.md](testvectors/README.md) | [testvectors/](testvectors/) |
 | The **reference** that writes the vectors | [reference/README.md](reference/README.md) | [reference/](reference/) |
 

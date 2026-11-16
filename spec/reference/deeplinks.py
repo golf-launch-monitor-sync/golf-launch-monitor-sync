@@ -4,6 +4,8 @@
 
     glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>]
     glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
+    Android: a bound service with the action glmsync.intent.action.SYNC, data glmsync://sync?target=…,
+             extra glmsync.extra.REASON = open | manual
     https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>]
 
 Parsed by hand rather than with a URL library, so that every port reads the same strings the same
@@ -123,3 +125,24 @@ def return_allowed(url: str, prefixes: list[str]) -> bool:
     if not valid_return(url):
         return False
     return any((p.endswith("/") or p.endswith("://")) and url.startswith(p) for p in prefixes)
+
+
+SYNC_INTENT_REASONS = {"open", "manual"}
+
+
+def parse_sync_intent(data: Any, reason: Any = None) -> dict[str, Any]:
+    """What a target asks for when it binds to the companion app's sync service on Android: the intent's
+    data, a sync link that names the target (and nothing to jump back to: a service opens nothing), and
+    the extra glmsync.extra.REASON. A missing or unknown reason reads as manual; a target app can't
+    claim a reason of the client's own (timer, connect, backfill)."""
+    link = parse_link(data)
+    if not link["ok"]:
+        return link
+    if link["action"] != "sync":
+        return {"ok": False, "error": "invalid:action"}
+    if "target" not in link:
+        return {"ok": False, "error": "missing:target"}
+    if "return" in link:
+        return {"ok": False, "error": "unexpected:return"}
+    return {"ok": True, "target": link["target"],
+            "reason": reason if isinstance(reason, str) and reason in SYNC_INTENT_REASONS else "manual"}

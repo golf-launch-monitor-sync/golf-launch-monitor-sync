@@ -11,7 +11,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'coverage', '__pycache__', 'testvectors']);
 // Formats without comments, and files whose form is fixed by others.
 const NO_HEADER = /(\.json|\.lock|LICENSE|\.gitignore|\.editorconfig|\.nvmrc|pnpm-lock\.yaml)$/;
-const SOURCE = /\.(ts|tsx|mts|js|mjs|py|ya?ml|md|sh|css|html)$/;
+const SOURCE = /\.(ts|tsx|mts|js|mjs|py|ya?ml|md|sh|css|html|kt|kts|gradle|xml)$/;
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

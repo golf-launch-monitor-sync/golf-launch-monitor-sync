@@ -24,13 +24,19 @@ portal in a sign-in window - so that window lives here, in a small app that does
   held the player's key before, and only a key of that same account (`SignIns.renewalFits`). When that
   fails, the app says so and the target hears it (`auth_expired`).
 - **Syncs only when a target's plan says so**: on opening the app (`open`), after pairing or signing
-  in (`connect`), on "fetch now" and on a sync link (`manual`), and in the background (`timer`,
+  in (`connect`), on "fetch now" and on a sync link (`manual`), when a target app binds on Android
+  (`open` or `manual`, as it says), and in the background (`timer`,
   `expo-background-task`: Android's WorkManager about every 30 minutes, iOS as often as it wakes the
   app). Each asks the plan first; the provider is asked only when it is due, and never past the
   [load guard](../../spec/guard.md), whose counts outlive restarts. The older history comes a chunk at
   a time while the app is open (and one chunk per background wake), spaced as the target says.
 - **Jumps back** after `glmsync://sync?return=…` - only to an address that starts with a prefix the
   paired target named as its own at pairing; otherwise it stays and says what it did.
+- **Fetches without a switch on Android**: a target app in front binds to the sync service
+  (`glmsync.intent.action.SYNC`, [spec](../../spec/deep-links.md#android)); every bind runs a sync of
+  that target's pairings as a headless JavaScript task (`modules/glmsync-sync`, `src/nudge.ts`), in
+  the same queue as the screen's runs, the plan first. Only a paired target, one at a time per target
+  and not again within ten seconds (`src/lib/nudge.ts`); nothing comes back over the binding.
 - **Shows the counts** ("requests today 14 of 300"), and **exports the guard's log** of the last 14 days
   (times, kinds, statuses, durations - never content) through the share sheet.
 - **Demo**: a made-up player (`@glmsync/provider-demo`) for trying the app without an account, and
@@ -56,14 +62,18 @@ provider the sign-in goes too.
 ## Layout
 
 ```
-index.ts            entry: the background task first, then the screen
+index.ts            entry: the background task and the Android sync task first, then the screen
 app.config.ts       ids (from the environment for forks), scheme glmsync, EAS project and updates
 src/lib/            everything without a screen, tested with vitest: secrets, sign-ins, pairings,
-                    links, the runner (pair, sync, history, file, "Is this you?"), the wording
+                    links, the runner (pair, sync, history, file, "Is this you?"), the Android sync
+                    service's rules (nudge), the wording
 src/ui/             the screens: App (links, opening, quiet renewal), Home, PairView, SignInView,
                     SyncView, Licenses, TrackmanLoginView
 src/platform.ts     the phone's parts: secure store, storage, share sheet
 src/background.ts   the background task
+src/nudge.ts        the headless task behind the Android sync service
+modules/glmsync-sync  the Android sync service (Kotlin, a local Expo module; its manifest adds the
+                    service to the app)
 scripts/            licenses.mjs (the licences page), release.sh (builds and updates at Expo)
 ```
 

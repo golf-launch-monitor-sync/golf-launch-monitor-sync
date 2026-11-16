@@ -287,8 +287,20 @@ def deep_link_vectors() -> dict[str, Any]:
               "exampleapp:synced", "https://app.example.net/x", "javascript://app.example.org/", "otherapp://x"]:
         cases.append({"rule": "return_allowed", "input": {"url": u, "prefixes": prefixes},
                       "expected": deeplinks.return_allowed(u, prefixes)})
+    sync = f"glmsync://sync?target={t}"
+    intents: list[tuple[Any, Any]] = [
+        (sync, "open"), (sync, "manual"), (sync, None), (sync, "timer"), (sync, "backfill"), (sync, "OPEN"),
+        (sync, 1), (f"glmsync://sync/?target={t}&utm=x", "open"), ("glmsync://sync", "open"),
+        (f"glmsync://sync?target={t}&return=exampleapp%3A%2F%2Fsynced", "manual"),
+        (f"glmsync://pair?target={t}&code=K7M2PQ9X", "manual"), ("glmsync://sync?target=ftp%3A%2F%2Fx", "open"),
+        (f"glmsync://sync?target={t}&target={t}", "open"), (None, "open"), ("", "open"),
+        (f"https://app.example.org/sync?target={t}", "open")]
+    cases += [{"rule": "parse_sync_intent", "input": {"data": d, "reason": r},
+               "expected": deeplinks.parse_sync_intent(d, r)} for d, r in intents]
     return doc("Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> "
-               "{ok: true, action, target?, code?, provider?, return?} or {ok: false, error}.", cases)
+               "{ok: true, action, target?, code?, provider?, return?} or {ok: false, error}. parse_sync_intent "
+               "(the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> "
+               "{ok: true, target, reason} or {ok: false, error}.", cases)
 
 
 def olmd_examples() -> dict[str, Any]:

@@ -1,6 +1,6 @@
 {
   "$comment": "account_ref = base64url (unpadded) of SHA-256('olmd-account-v1|' + salt + '|' + provider + '|' + subject), UTF-8.",
-  "spec_version": "1.0.1",
+  "spec_version": "1.1.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {

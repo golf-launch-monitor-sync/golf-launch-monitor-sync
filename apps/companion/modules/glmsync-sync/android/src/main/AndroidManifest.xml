@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: MIT -->
+<!-- Copyright (c) 2026 Reginald Stadlbauer -->
+<!-- The sync service of spec/deep-links.md, "Android". Merged into the app's manifest by the build, so no
+     config plugin is needed.
+     - exported, with no permission: any target app may bind to it, as any app may open a glmsync:// link;
+       what a binding can do is no more than a sync link (src/lib/nudge.ts);
+     - the filter names the action only: a target looks the service up with an intent that carries the
+       action alone (queryIntentServices), which a filter with a <data> element would not match;
+     - WAKE_LOCK: React Native's headless task holds one while the JavaScript runs. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <application>
+        <service
+            android:name="glmsync.companion.sync.SyncService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="glmsync.intent.action.SYNC" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

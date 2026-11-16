@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Reginald Stadlbauer
+// The sync service a target app binds to on Android (spec/deep-links.md, "Android"): a local Expo
+// module of the companion app, linked by Expo's autolinking from apps/companion/modules.
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'glmsync.companion.sync'
+version = '0.1.0'
+
+android {
+  namespace "glmsync.companion.sync"
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+  }
+}
+
+dependencies {
+  // HeadlessJsTaskService: the service runs the sync as a JavaScript task, with or without a screen.
+  implementation 'com.facebook.react:react-android'
+}
