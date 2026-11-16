@@ -14,7 +14,7 @@
 import type { ExpoConfig } from 'expo/config';
 
 /** The EAS project of the published app (expo.dev › regsta-consulting-gmbh › golf-launch-monitor-sync). */
-const EAS_PROJECT_ID = '';
+const EAS_PROJECT_ID = '3211863d-c9de-40df-8a07-860c44d75166';
 
 const env = (name: string) => (process.env[name] ?? '').trim();
 const id = env('GLMSYNC_APP_ID') || 'consulting.regsta.glmsync';
