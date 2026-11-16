@@ -29,6 +29,9 @@ test('pairs from the app’s page, takes the sign-in from the portal, asks, and 
   const key = world.key();
   world.portal.token = key;
   await connect.getByTestId('open-portal').click();
+  await expect.poll(() => context.pages().some((p) => p.url().startsWith(PORTAL))).toBe(true);
+  // The tab the extension opened may be attached to the test a moment late; the player's own tab is certain.
+  await (await context.newPage()).goto(PORTAL);
   await expect(connect.getByTestId('confirm')).toContainText('Is this your Trackman account?');
   await expect(connect.getByTestId('confirm')).toContainText('Alex Example');
   await expect(connect.getByTestId('confirm')).toContainText('2 activities, the newest on 15 Nov 2026 at Example Range');

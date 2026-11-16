@@ -95,6 +95,8 @@ export class World {
   }
 
   async route(context: BrowserContext): Promise<void> {
+    // Anything not answered below never reaches a network (Playwright tries the routes added last first).
+    await context.route((url) => url.protocol === 'http:' || url.protocol === 'https:', (route) => route.abort('blockedbyclient'));
     await context.route(`${WEB}/**`, (route) => {
       const path = new URL(route.request().url()).pathname.replace(/^\/golf-launch-monitor-sync/, '') || '/';
       let file = path.endsWith('/') ? `${path}index.html` : path;
