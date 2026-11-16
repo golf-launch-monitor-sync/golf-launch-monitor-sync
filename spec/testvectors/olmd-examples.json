@@ -1,6 +1,6 @@
 {
   "$comment": "olmd/1 batches that must (valid: true) or must not validate against spec/olmd/olmd-1.schema.json.",
-  "spec_version": "1.0.0",
+  "spec_version": "1.0.1",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {

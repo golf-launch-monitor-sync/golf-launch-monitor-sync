@@ -1,0 +1,18 @@
+{
+  "name": "@glmsync/provider-demo",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "A provider of made-up sessions and a round, for tests, demonstrations and app reviews. Asks no one anything.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@glmsync/core": "workspace:*",
+    "@glmsync/spec": "workspace:*"
+  }
+}

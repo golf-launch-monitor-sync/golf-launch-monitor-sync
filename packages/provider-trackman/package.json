@@ -1,0 +1,19 @@
+{
+  "name": "@glmsync/provider-trackman",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Reads the player's own Trackman account with their own sign-in, into olmd/1. Unofficial: not affiliated with or endorsed by Trackman.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@glmsync/core": "workspace:*",
+    "@glmsync/spec": "workspace:*"
+  }
+}

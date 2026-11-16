@@ -1,6 +1,6 @@
 {
   "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, return?} or {ok: false, error}.",
-  "spec_version": "1.0.0",
+  "spec_version": "1.0.1",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {

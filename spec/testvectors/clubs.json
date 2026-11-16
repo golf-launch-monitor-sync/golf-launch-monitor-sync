@@ -1,6 +1,6 @@
 {
   "$comment": "Club names -> canonical codes. camel: a provider's CamelCase names (Trackman); normalize: names as other monitors and people write them.",
-  "spec_version": "1.0.0",
+  "spec_version": "1.0.1",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {
@@ -206,6 +206,21 @@
       "code": "unknown"
     },
     {
+      "rule": "camel",
+      "raw": "Iron٧",
+      "code": "Iron٧"
+    },
+    {
+      "rule": "camel",
+      "raw": "\u001cIron7 ",
+      "code": "7i"
+    },
+    {
+      "rule": "camel",
+      "raw": "﻿Driver",
+      "code": "﻿Driver"
+    },
+    {
       "rule": "normalize",
       "raw": "7 Iron",
       "code": "7i"
@@ -409,6 +424,51 @@
       "rule": "normalize",
       "raw": "10 iron",
       "code": "10i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Eisen ٧",
+      "code": "Eisen ٧"
+    },
+    {
+      "rule": "normalize",
+      "raw": "٥٦",
+      "code": "٥٦"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 Iron",
+      "code": "7 Iron"
+    },
+    {
+      "rule": "normalize",
+      "raw": " 7 Iron ",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7\tiron",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "﻿7 Iron",
+      "code": "﻿7 Iron"
+    },
+    {
+      "rule": "normalize",
+      "raw": "𝟕 iron",
+      "code": "𝟕 iron"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Wedge ٥٦",
+      "code": "Wedge ٥٦"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Pitching Wedge",
+      "code": "Pitching Wedge"
     }
   ]
 }

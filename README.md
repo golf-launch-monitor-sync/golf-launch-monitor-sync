@@ -10,9 +10,9 @@ Syncs the data of your launch monitor — practice sessions, every shot, simulat
 > portal does. Trademarks belong to their owners and are used here only to say which accounts the
 > project can read.
 
-**Status:** the spec is written (format, target API, planning rules, load guard, deep links, test
-vectors). The TypeScript core, the Trackman provider, the browser extension, the web app and the
-companion app follow.
+**Status:** the spec (format, target API, planning rules, load guard, deep links, test vectors), the
+TypeScript core with the load guard, the Trackman provider and a demo provider are written. The
+browser extension, the web app and the companion app follow.
 
 ## How it works
 
@@ -62,9 +62,9 @@ And, as a rule for every line of code here:
 | --- | --- |
 | [`spec/`](spec/README.md) | The format, the target API, the planning rules, the load guard, deep links, test vectors, and the Python reference that writes the vectors. |
 | `packages/spec` | The spec for TypeScript: olmd types and schema check, limits, deep links, `account_ref`. |
-| `packages/core` | *(next)* Types, plan and push client, the load guard, cursors, errors. |
-| `packages/provider-trackman` | *(next)* Reading a Trackman account, into olmd. |
-| `packages/provider-demo` | *(next)* Synthetic sessions, for tests and app reviews. |
+| [`packages/core`](packages/core/README.md) | One sync from a target's plan to an imported batch: plan and push client, the file target and its cursor, the load guard, errors. |
+| [`packages/provider-trackman`](packages/provider-trackman/README.md) | Reading your own Trackman account, into olmd. |
+| [`packages/provider-demo`](packages/provider-demo/README.md) | A made-up player's sessions and rounds, for tests, trying it out and app reviews. |
 | `apps/extension`, `apps/web`, `apps/companion` | *(later)* The clients. |
 
 ## Development

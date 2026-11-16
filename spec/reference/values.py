@@ -4,7 +4,8 @@
 
 Every helper maps a value or drops it (None); none of them raises. They are deliberately
 narrow so that the TypeScript port can match them exactly: numbers are JSON numbers only
-(a number written as text is dropped), times are RFC 3339 only.
+(a number written as text is dropped), times are RFC 3339 only, and digits are ASCII digits
+(Python's \\d would also take other scripts' digits, which no other language reads alike).
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ from datetime import datetime
 from typing import Any
 
 # RFC 3339 date-time; a time without a zone is read as UTC (spec/olmd.md, "Times").
-_TIME = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})?$")
+_TIME = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})?$", re.ASCII)
 
 
 def num(v: Any) -> float | int | None:
@@ -33,7 +34,7 @@ def integer(v: Any) -> int | None:
         return v
     if isinstance(v, float):
         return int(v) if math.isfinite(v) and v == int(v) else None
-    if isinstance(v, str) and re.fullmatch(r"\s*[+-]?\d{1,9}\s*", v):
+    if isinstance(v, str) and re.fullmatch(r"\s*[+-]?\d{1,9}\s*", v, re.ASCII):
         return int(v)
     return None
 

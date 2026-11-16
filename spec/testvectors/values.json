@@ -1,6 +1,6 @@
 {
   "$comment": "Reading untrusted values (spec/reference/values.py): when -> an RFC 3339 time with zone or null (no zone: UTC, 'Z' added); integer -> whole number or null; num -> finite JSON number or null (text is never a number).",
-  "spec_version": "1.0.0",
+  "spec_version": "1.0.1",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {
@@ -129,6 +129,26 @@
       "expected": null
     },
     {
+      "rule": "when",
+      "value": "٢٠٢٦-11-10T17:06:12Z",
+      "expected": null
+    },
+    {
+      "rule": "when",
+      "value": "2026-11-10T17:06:12 ",
+      "expected": "2026-11-10T17:06:12Z"
+    },
+    {
+      "rule": "when",
+      "value": " 2026-11-10T17:06:12Z",
+      "expected": "2026-11-10T17:06:12Z"
+    },
+    {
+      "rule": "when",
+      "value": "﻿2026-11-10T17:06:12Z",
+      "expected": null
+    },
+    {
       "rule": "integer",
       "value": 3,
       "expected": 3
@@ -214,6 +234,36 @@
       "rule": "integer",
       "value": 1000000000000.0,
       "expected": 1000000000000
+    },
+    {
+      "rule": "integer",
+      "value": "-0",
+      "expected": 0
+    },
+    {
+      "rule": "integer",
+      "value": "٣",
+      "expected": null
+    },
+    {
+      "rule": "integer",
+      "value": " 12",
+      "expected": null
+    },
+    {
+      "rule": "integer",
+      "value": "\t7\n",
+      "expected": 7
+    },
+    {
+      "rule": "integer",
+      "value": "1234567890",
+      "expected": null
+    },
+    {
+      "rule": "integer",
+      "value": "007",
+      "expected": 7
     },
     {
       "rule": "num",

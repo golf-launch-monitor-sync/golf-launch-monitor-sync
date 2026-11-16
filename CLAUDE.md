@@ -59,8 +59,8 @@ against it.
 spec/                 format (olmd/1), target API (OpenAPI), planning rules, guard limits, deep links,
                       test vectors, and the Python reference that writes them
 packages/spec         the spec for TypeScript (types, schema check, limits, deep links, account_ref)
-packages/core         (next) types, plan and push client, the guard, cursors, errors
-packages/provider-*   (next) trackman, demo
+packages/core         one sync: plan and push client, file target and cursor, the guard, errors
+packages/provider-*   trackman, demo (each with a fake for tests: core/testing, provider-trackman/testing)
 apps/extension        (later) browser extension, Manifest V3
 apps/web              (later) static web app (GitHub Pages)
 apps/companion        (later) companion app (Expo)

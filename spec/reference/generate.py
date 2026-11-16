@@ -55,11 +55,15 @@ def trackman_vectors() -> dict[str, Any]:
 
 def club_vectors() -> dict[str, Any]:
     camel = [{"raw": r, "code": clubs.camel_club(r)} for r in cases_trackman.CLUB_NAMES + [
-        "  Iron7 ", "IRON7", "Iron10", "Wedge12", "Wedge72", {"x": 1}, True]]
+        "  Iron7 ", "IRON7", "Iron10", "Wedge12", "Wedge72", {"x": 1}, True,
+        # Only ASCII digits are digits; the ends are trimmed of what Python calls a space (not U+FEFF).
+        "Iron\u0667", "\x1cIron7\u2003", "\ufeffDriver"]]
     generic = ["7 Iron", "7i", "I7", "Eisen 7", "7er Eisen", "7er", "3er Holz", "Hierro 7", "Madera 3",
                "Híbrido 4", "IJzer 7", "Hout 3", "W3", "3 wood", "Rescue 5", "56", "56°", "56 deg", "Wedge 52",
                "52 Grad", "56er", "12", "D", "dr", "1W", "Pitching Wedge", "AW", "Gap-Wedge", "sand_wedge", "lob wedge",
-               "low wedge", "PT", "unknown", "N/A", "-", "", "  ", "Chipper", "Hybrid", "Iron 10", "10 iron"]
+               "low wedge", "PT", "unknown", "N/A", "-", "", "  ", "Chipper", "Hybrid", "Iron 10", "10 iron",
+               "Eisen \u0667", "\u0665\u0666", "7\u00a0Iron", "\u00a07 Iron\u2003", "7\tiron", "\ufeff7 Iron",
+               "\U0001d7d5 iron", "Wedge \u0665\u0666", "Pitching\u200aWedge"]
     norm = [{"raw": r, "code": clubs.normalize_club(r)} for r in generic]
     return doc("Club names -> canonical codes. camel: a provider's CamelCase names (Trackman); normalize: names "
                "as other monitors and people write them.", [{"rule": "camel", **c} for c in camel] +
@@ -72,8 +76,11 @@ def value_vectors() -> dict[str, Any]:
              "  2026-11-10T17:06:12Z  ", "2026-11-10t17:06:12z", "2026-11-10 17:06:12Z", "2026-11-10",
              "2026-11-10T17:06Z", "2026-02-29T10:00:00Z", "2028-02-29T10:00:00Z", "2026-13-01T00:00:00Z",
              "2026-11-10T24:00:00Z", "2026-11-10T17:60:00Z", "2026-11-10T17:06:61Z", "2026-11-10T17:06:12+24:00",
-             "2026-11-10T17:06:12+0100", "20261110T170612Z", "", "soon", None, 1731250000, True]
-    ints = [3, -2, 0, 9.0, 9.5, "3", " 12 ", "+4", "-1", "3.0", "x", "", None, True, False, [1], 1e12]
+             "2026-11-10T17:06:12+0100", "20261110T170612Z", "", "soon", None, 1731250000, True,
+             "\u0662\u0660\u0662\u0666-11-10T17:06:12Z", "2026-11-10T17:06:12\u00a0", "\u20282026-11-10T17:06:12Z",
+             "\ufeff2026-11-10T17:06:12Z"]
+    ints = [3, -2, 0, 9.0, 9.5, "3", " 12 ", "+4", "-1", "3.0", "x", "", None, True, False, [1], 1e12,
+            "-0", "\u0663", "\u00a012", "\t7\n", "1234567890", "007"]
     nums = [1, 1.5, -0.25, 0, "1.5", None, True, [1], {"v": 1}]
     cases = [{"rule": "when", "value": v, "expected": values.when(v)} for v in times]
     cases += [{"rule": "integer", "value": v, "expected": values.integer(v)} for v in ints]

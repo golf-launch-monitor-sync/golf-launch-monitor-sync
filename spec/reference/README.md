@@ -8,7 +8,7 @@ must match its vectors field for field.
 
 | File | Rule |
 | --- | --- |
-| `values.py` | Reading untrusted values: numbers are JSON numbers only, times RFC 3339 only. |
+| `values.py` | Reading untrusted values: numbers are JSON numbers only, times RFC 3339 only, digits ASCII only. |
 | `clubs.py` | Club names → canonical codes. |
 | `trackman.py` | Trackman's answers → olmd/1, including the distances to the flag worked out from the course's points. |
 | `account.py` | `account_ref`. |
@@ -26,4 +26,6 @@ The Trackman mapping and the planning rules come from an earlier implementation 
 with real accounts; they were moved here unchanged, except that the reading of values became
 stricter so that every language reads them alike: a number written as text, `true`/`false` where a
 number belongs, a time that isn't RFC 3339, or a score with a fraction is now dropped instead of
-being coerced. The vectors pin both the behaviour and these edges.
+being coerced. Since 1.0.1 digits are ASCII digits and the spaces inside a club name ASCII spaces
+(`re.ASCII`): Python's `\d` would also read other scripts' digits, which no other language reads
+alike. The vectors pin both the behaviour and these edges.

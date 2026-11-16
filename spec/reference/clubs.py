@@ -4,7 +4,8 @@
 
 The canonical codes of olmd/1 (spec/olmd.md, "Clubs"): Dr, nW, nH, ni, PW, GW, SW, LW, NN° (a
 wedge by its loft) and Putter. A name none of the rules reads is kept as it came (trimmed), so
-nothing a player named is lost; "unknown" means no club was set.
+nothing a player named is lost; "unknown" means no club was set. Digits and the spaces inside a
+name are ASCII only (re.ASCII), so every language reads a name alike.
 """
 
 from __future__ import annotations
@@ -13,12 +14,12 @@ import re
 
 _CLUB_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # "d": some monitors write the driver as one letter.
-    (re.compile(r"^(driver|dr|d|1 ?w|1 ?wood|wood ?1|1 ?(?:er )?holz|holz ?1|madera ?1|hout ?1|1 ?hout)$"), "Dr"),
-    (re.compile(r"^(putter|pt)$"), "Putter"),
-    (re.compile(r"^(pw|pitching ?wedge|p)$"), "PW"),
-    (re.compile(r"^(gw|aw|uw|gap ?wedge|approach ?wedge)$"), "GW"),
-    (re.compile(r"^(sw|sand ?wedge|s)$"), "SW"),
-    (re.compile(r"^(lw|lob ?wedge|low ?wedge|l)$"), "LW"),  # "low": how dictation hears "lob"
+    (re.compile(r"^(driver|dr|d|1 ?w|1 ?wood|wood ?1|1 ?(?:er )?holz|holz ?1|madera ?1|hout ?1|1 ?hout)$", re.ASCII), "Dr"),
+    (re.compile(r"^(putter|pt)$", re.ASCII), "Putter"),
+    (re.compile(r"^(pw|pitching ?wedge|p)$", re.ASCII), "PW"),
+    (re.compile(r"^(gw|aw|uw|gap ?wedge|approach ?wedge)$", re.ASCII), "GW"),
+    (re.compile(r"^(sw|sand ?wedge|s)$", re.ASCII), "SW"),
+    (re.compile(r"^(lw|lob ?wedge|low ?wedge|l)$", re.ASCII), "LW"),  # "low": how dictation hears "lob"
 ]
 # "7 Iron", "7i", "Eisen 7", "7er Eisen" / "7er" (an iron) / "3er Holz"; Spanish and Dutch:
 # "Hierro 7", "Madera 3", "Híbrido 4", "IJzer 7", "Hout 3"; "I7", "W3"; "IRON7".
@@ -26,9 +27,10 @@ _KINDS = r"w|wood|holz|madera|hout|h|hy|hybrid|híbrido|hibrido|rescue|i|iron|ei
 _NUMBERED = re.compile(
     rf"^(?:(?P<n1>\d{{1,2}}) ?(?:er )?(?P<k1>{_KINDS})"
     rf"|(?P<k2>{_KINDS}) ?(?P<n2>\d{{1,2}})"
-    r"|(?P<n3>\d{1,2}) ?er)$"
+    r"|(?P<n3>\d{1,2}) ?er)$",
+    re.ASCII,
 )
-_WEDGE_DEG = re.compile(r"^(?:(\d{2}) ?(?:°|deg|degree|grad)?(?: ?wedge)?|wedge ?(\d{2}) ?(?:°|deg|degree|grad)?)$")
+_WEDGE_DEG = re.compile(r"^(?:(\d{2}) ?(?:°|deg|degree|grad)?(?: ?wedge)?|wedge ?(\d{2}) ?(?:°|deg|degree|grad)?)$", re.ASCII)
 
 UNKNOWN_CLUB = "unknown"
 _NO_CLUB = {"", "unknown", "unbekannt", "none", "null", "n/a", "na", "?", "-", "kein", "no club", "other", "sonstige"}
@@ -43,7 +45,7 @@ def normalize_club(raw: str) -> str:
     if is_unknown_club(raw):
         return UNKNOWN_CLUB
     s = raw.strip().lower().replace("-", " ").replace("_", " ")
-    s = re.sub(r"\s+", " ", s)
+    s = re.sub(r"\s+", " ", s, flags=re.ASCII)
     for pattern, code in _CLUB_PATTERNS:
         if pattern.match(s):
             return code
@@ -65,7 +67,7 @@ def normalize_club(raw: str) -> str:
 
 
 # Trackman writes its clubs in CamelCase ("Iron7", "PitchingWedge", "Wood3"): split into words first.
-_CAMEL = re.compile(r"(?<=[a-z])(?=[A-Z0-9])|(?<=[0-9])(?=[A-Za-z])")
+_CAMEL = re.compile(r"(?<=[a-z])(?=[A-Z0-9])|(?<=[0-9])(?=[A-Za-z])", re.ASCII)
 
 
 def camel_club(raw: object) -> str:
