@@ -166,6 +166,18 @@ async function openConnectWindow(): Promise<void> {
   }
 }
 
+/**
+ * A tab with `url`. With no ordinary browser window open (a Mac keeps Chrome running without one, and
+ * the connect window is a popup, which takes no tabs) a new window instead.
+ */
+async function openTab(url: string): Promise<void> {
+  try {
+    await chrome.tabs.create({ url });
+  } catch {
+    await chrome.windows.create({ url, type: 'normal', focused: true });
+  }
+}
+
 async function offer(fragment: string): Promise<Reply> {
   const read = BrowserClient.readFragment(fragment);
   if (!read) return { ok: false, error: 'link' };
@@ -263,7 +275,7 @@ async function handle(m: Message): Promise<Reply> {
       await refreshIcon();
       return { ok: true, status: await client.status() };
     case 'open-portal':
-      await chrome.tabs.create({ url: PORTAL_URL });
+      await openTab(PORTAL_URL);
       return { ok: true };
   }
 }
