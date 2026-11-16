@@ -1,0 +1,211 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Reginald Stadlbauer
+/**
+ * The one page: the provider sign-ins (with how much was asked of the provider today), the apps this
+ * phone is paired with and how their last sync went, fetching now, the request log to export, the
+ * demo, the licences.
+ */
+
+import type { GuardCounts } from '@glmsync/core';
+import * as Linking from 'expo-linking';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { lang, t } from '../i18n';
+import type { KeyedPairing } from '../lib/pairings';
+import { hostOf } from '../lib/links';
+import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
+import { countsText, errorText, runText, when } from '../lib/text';
+import { shareFile, version } from '../platform';
+import type { Screen } from './App';
+import { Body, Button, Card, colors, s, Small, Title } from './parts';
+
+const REPO = 'https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync';
+
+export function Home({
+  svc,
+  message,
+  dismiss,
+  go,
+  renewing,
+}: {
+  svc: Services;
+  message: string | null;
+  dismiss: () => void;
+  go: (s: Screen) => void;
+  renewing: boolean;
+}) {
+  const [counts, setCounts] = useState<Partial<Record<ProviderId, GuardCounts | null>>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const pairings = svc.pairings.list();
+  const now = Date.now();
+
+  const refreshCounts = useCallback(async () => {
+    const out: Partial<Record<ProviderId, GuardCounts | null>> = {};
+    for (const p of PROVIDERS) out[p] = await svc.runner.counts(p);
+    setCounts(out);
+  }, [svc]);
+
+  // The counts follow every run and sign-in.
+  useEffect(() => {
+    void refreshCounts();
+    const offs = [svc.runner.subscribe(() => void refreshCounts()), svc.signIns.subscribe(() => void refreshCounts())];
+    return () => {
+      for (const off of offs) off();
+    };
+  }, [svc, refreshCounts]);
+
+  async function act(name: string, fn: () => Promise<unknown>) {
+    setBusy(name);
+    setNote(null);
+    try {
+      await fn();
+    } catch (e) {
+      setNote(errorText(e, Date.now(), lang, t));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function signOut(provider: ProviderId) {
+    Alert.alert(t('signout.title', { provider: svc.providers[provider].name }), t('signout.text'), [
+      { text: t('action.cancel'), style: 'cancel' },
+      {
+        text: t('signout.yes'),
+        style: 'destructive',
+        onPress: () =>
+          void act(`out-${provider}`, async () => {
+            svc.runner.stop(); // a run under way with this sign-in stops
+            await svc.signIns.forget(provider);
+          }),
+      },
+    ]);
+  }
+
+  function unpair(p: KeyedPairing) {
+    Alert.alert(t('unpair.title', { target: p.target.name }), t('unpair.text', { target: p.target.name }), [
+      { text: t('action.cancel'), style: 'cancel' },
+      { text: t('unpair.yes'), style: 'destructive', onPress: () => void act(`unpair-${p.key}`, () => svc.runner.unpair(p.key)) },
+    ]);
+  }
+
+  const shown = PROVIDERS.filter((p) => p === 'trackman' || svc.signIns.get(p) || svc.signIns.had(p) || pairings.some((x) => x.provider === p));
+
+  return (
+    <ScrollView contentContainerStyle={s.scroll}>
+      <View style={{ gap: 4 }}>
+        <Text style={s.heading} accessibilityRole="header">
+          {t('app.name')}
+        </Text>
+        <Body muted>{t('app.what')}</Body>
+      </View>
+
+      {message && (
+        <Card>
+          <Body warn>{message}</Body>
+          <Button label={t('action.ok')} kind="secondary" onPress={dismiss} />
+        </Card>
+      )}
+      {note && (
+        <Card>
+          <Body warn>{note}</Body>
+        </Card>
+      )}
+
+      {shown.map((id) => {
+        const p = svc.providers[id];
+        const signIn = svc.signIns.get(id);
+        const valid = svc.signIns.valid(id);
+        const had = svc.signIns.had(id);
+        const line = countsText(counts[id] ?? null, now, lang, t);
+        return (
+          <Card key={id}>
+            <View style={[s.row, { justifyContent: 'space-between', alignItems: 'center' }]}>
+              <Title>{p.name}</Title>
+              <Text style={s.badge}>{id === 'demo' ? t('provider.demo.badge') : t('provider.unofficial')}</Text>
+            </View>
+            <Small>{id === 'demo' ? t('provider.demo.notice') : t('provider.trackman.unofficial')}</Small>
+            {valid && signIn ? (
+              <Body>{t('provider.signedIn', { player: signIn.player ?? t('signin.noName'), since: when(signIn.at, now, lang, t) })}</Body>
+            ) : had ? (
+              <Body warn>{renewing && id === 'trackman' ? t('provider.renewing') : t('provider.expired')}</Body>
+            ) : (
+              <Body muted>{t('provider.signedOut')}</Body>
+            )}
+            {line && <Small>{line}</Small>}
+            <View style={s.row}>
+              {(!valid || !signIn) && <Button label={had ? t('provider.signInAgain') : t('provider.signIn')} onPress={() => go({ name: 'signin', provider: id })} />}
+              {valid && (
+                <Button
+                  label={t('file.save')}
+                  kind="secondary"
+                  busy={busy === `file-${id}`}
+                  onPress={() =>
+                    void act(`file-${id}`, async () => {
+                      const run = await svc.runner.toFile(id);
+                      setNote(run.status === 'synced' ? null : runText(run, Date.now(), lang, t));
+                    })
+                  }
+                />
+              )}
+              {(signIn || had) && <Button label={t('provider.signOut')} kind="secondary" busy={busy === `out-${id}`} onPress={() => signOut(id)} />}
+            </View>
+          </Card>
+        );
+      })}
+
+      <Card>
+        <Title>{t('targets.title')}</Title>
+        {pairings.length === 0 ? (
+          <Body muted>{t('targets.none')}</Body>
+        ) : (
+          pairings.map((p) => (
+            <View key={p.key} style={{ gap: 4, paddingVertical: 6, borderTopWidth: 1, borderColor: colors.line }}>
+              <Body>{p.target.name}</Body>
+              <Small>
+                {hostOf(p.base)} · {svc.providers[p.provider as ProviderId]?.name ?? p.provider}
+              </Small>
+              <Small>{runText(svc.runner.lastRun(p.key), now, lang, t)}</Small>
+              <View style={s.row}>
+                <Button label={t('unpair.button')} kind="danger" busy={busy === `unpair-${p.key}`} onPress={() => unpair(p)} />
+              </View>
+            </View>
+          ))
+        )}
+        {pairings.length > 0 && (
+          <Button label={t('sync.now')} busy={busy === 'sync'} onPress={() => void act('sync', () => svc.runner.syncAll('manual'))} />
+        )}
+        <Small>{t('targets.plan')}</Small>
+      </Card>
+
+      {!shown.includes('demo') && (
+        <Card>
+          <Title>{t('demo.title')}</Title>
+          <Body muted>{t('demo.text')}</Body>
+          <Button label={t('demo.button')} kind="secondary" onPress={() => go({ name: 'signin', provider: 'demo' })} />
+        </Card>
+      )}
+
+      <Card>
+        <Title>{t('log.title')}</Title>
+        <Body muted>{t('log.text')}</Body>
+        <Button
+          label={t('log.export')}
+          kind="secondary"
+          busy={busy === 'log'}
+          onPress={() => void act('log', async () => shareFile(await svc.runner.logFile()))}
+        />
+      </Card>
+
+      <View style={{ gap: 8, paddingBottom: 24 }}>
+        <Pressable accessibilityRole="link" onPress={() => go({ name: 'licenses' })}>
+          <Text style={s.link}>{t('licenses.title')}</Text>
+        </Pressable>
+        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(REPO).catch(() => undefined)}>
+          <Text style={s.link}>{t('about.source')}</Text>
+        </Pressable>
+        <Small>{t('about.line', { version })}</Small>
+      </View>
+    </ScrollView>
+  );
+}

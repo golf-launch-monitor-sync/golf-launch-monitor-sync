@@ -1,0 +1,118 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Reginald Stadlbauer
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { GuardLimitError, ProviderAuthError, TargetError, type GuardCounts } from '@glmsync/core';
+import { describe, expect, it } from 'vitest';
+import de from '../i18n/de.json' with { type: 'json' };
+import en from '../i18n/en.json' with { type: 'json' };
+import type { LastRun } from './runner.ts';
+import { countsText, errorText, pickLanguage, runText, translator, when } from './text.ts';
+import { fromTrackman, isSignInPage, readCapturedToken } from './trackmanPage.ts';
+
+const SRC = fileURLToPath(new URL('..', import.meta.url));
+const NOW = Date.parse('2026-11-16T15:00:00Z');
+const t = translator(en);
+
+function sources(dir: string): string[] {
+  return readdirSync(dir).flatMap((n) => {
+    const p = join(dir, n);
+    return statSync(p).isDirectory() ? sources(p) : /\.tsx?$/.test(n) && !n.endsWith('.test.ts') ? [p] : [];
+  });
+}
+
+describe('the two languages', () => {
+  const placeholders = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+
+  it('have the same keys and the same placeholders', () => {
+    expect(Object.keys(de).sort()).toEqual(Object.keys(en).sort());
+    for (const k of Object.keys(en) as (keyof typeof en)[]) expect(placeholders(de[k]), k).toEqual(placeholders(en[k]));
+  });
+
+  it('have every key the app uses', () => {
+    const used = new Set<string>();
+    for (const f of sources(SRC)) for (const m of readFileSync(f, 'utf8').matchAll(/\bt\('([a-zA-Z.]+)'/g)) used.add(m[1] as string);
+    expect(used.size).toBeGreaterThan(50);
+    expect([...used].filter((k) => !(k in en))).toEqual([]);
+  });
+
+  it('say "unofficial" next to the provider, and never put its name in the app name', () => {
+    expect(en['provider.trackman.unofficial']).toMatch(/not affiliated with, endorsed by or supported by Trackman/);
+    expect(de['provider.trackman.unofficial']).toMatch(/nicht mit Trackman verbunden/);
+    expect(en['app.name']).not.toMatch(/trackman/i);
+  });
+
+  it('German for a phone set to German, else English', () => {
+    expect(pickLanguage(['de', 'en'])).toBe('de');
+    expect(pickLanguage(['de-AT'])).toBe('de');
+    expect(pickLanguage([null, 'fr'])).toBe('en');
+    expect(pickLanguage([])).toBe('en');
+  });
+});
+
+describe('what a run says', () => {
+  const run = (r: Partial<LastRun>): LastRun => ({ at: NOW - 60_000, reason: 'timer', status: 'synced', ...r });
+
+  it('new data, nothing new, and why a sync stopped', () => {
+    expect(runText(run({ result: { sessions: 3, shots: 40, rounds: 1, round_shots: 1, duplicates: 0 } }), NOW, 'en', t)).toMatch(/: 3 new sessions, 1 rounds$/);
+    expect(runText(run({ result: { sessions: 0, shots: 0, rounds: 0, round_shots: 0, duplicates: 2 } }), NOW, 'en', t)).toMatch(/nothing new$/);
+    expect(runText(run({ notice: 'guard_limit', until: new Date(NOW + 3600_000).toISOString() }), NOW, 'en', t)).toMatch(/goes on today/);
+    expect(runText(run({ notice: 'auth_expired' }), NOW, 'en', t)).toMatch(/sign-in ran out/);
+    expect(runText(run({ more: true, result: { sessions: 40, shots: 400, rounds: 0, round_shots: 0, duplicates: 0 } }), NOW, 'en', t)).toMatch(/more comes/);
+  });
+
+  it('every status has words, none shows a key', () => {
+    for (const status of ['not_due', 'busy', 'signed_out', 'other_account', 'disconnected', 'unpaired', 'cancelled', 'failed'] as const) {
+      const text = runText(run({ status, error: 'unreachable' }), NOW, 'de', translator(de));
+      expect(text).not.toMatch(/run\.|notice\./);
+    }
+    expect(runText(null, NOW, 'en', t)).toBe('Not synced yet.');
+  });
+
+  it('times: today, yesterday, or the date', () => {
+    expect(when(NOW - 3600_000, NOW, 'en', t)).toMatch(/^today /);
+    expect(when(NOW - 86_400_000, NOW, 'en', t)).toMatch(/^yesterday /);
+    expect(when(NOW - 5 * 86_400_000, NOW, 'en', t)).not.toMatch(/today|yesterday/);
+    expect(when('not a time', NOW, 'en', t)).toBe('');
+  });
+
+  it('the counters, and a pause', () => {
+    const c: GuardCounts = { run: 2, hour: 5, day: 14, limits: { per_run: 40, per_hour: 60, per_day: 300 }, blocked_until: null };
+    expect(countsText(c, NOW, 'en', t)).toBe('Requests today 14 of 300, this hour 5 of 60');
+    expect(countsText({ ...c, blocked_until: new Date(NOW + 600_000).toISOString() }, NOW, 'en', t)).toMatch(/paused until today/);
+    expect(countsText(null, NOW, 'en', t)).toBeNull();
+  });
+});
+
+describe('what went wrong', () => {
+  it('in the player\'s words, never the message from outside', () => {
+    expect(errorText(new TargetError('code_invalid', 'evil <b>text</b>'), NOW, 'en', t)).toBe(en['error.codeInvalid']);
+    expect(errorText(new TargetError('token_invalid', 'evil'), NOW, 'en', t)).toBe('The app\'s server refused (token_invalid).');
+    expect(errorText(new ProviderAuthError('x'), NOW, 'en', t)).toBe(en['error.authRejected']);
+    expect(errorText(new GuardLimitError(['per_day'], NOW + 3600_000), NOW, 'en', t)).toMatch(/goes on today/);
+    expect(errorText(new Error('boom'), NOW, 'en', t)).toBe(en['error.generic']);
+  });
+});
+
+describe('the sign-in window', () => {
+  const key = 'eyJhbGciOiJub25lIn0.eyJzdWIiOiJ4In0.sig';
+
+  it('takes a key only from a Trackman page, and only one shaped like a key', () => {
+    expect(readCapturedToken('https://portal.trackmangolf.com/x', JSON.stringify({ token: key }))).toBe(key);
+    expect(readCapturedToken('https://evil.example/', JSON.stringify({ token: key }))).toBeNull();
+    expect(readCapturedToken('https://trackmangolf.com.evil.example/', JSON.stringify({ token: key }))).toBeNull();
+    expect(readCapturedToken('http://portal.trackmangolf.com/', JSON.stringify({ token: key }))).toBeNull();
+    expect(readCapturedToken('https://appleid.apple.com/', JSON.stringify({ token: key }))).toBeNull();
+    expect(readCapturedToken('https://portal.trackmangolf.com/', JSON.stringify({ token: 'not a key' }))).toBeNull();
+    expect(readCapturedToken('https://portal.trackmangolf.com/', '{broken')).toBeNull();
+  });
+
+  it('opens Trackman\'s pages and the sign-in providers its page offers, nothing else', () => {
+    expect(fromTrackman('https://login.trackmangolf.com/')).toBe(true);
+    expect(fromTrackman('https://trackman.com/')).toBe(true);
+    expect(isSignInPage('https://accounts.google.com/o/oauth2')).toBe(true);
+    expect(fromTrackman('https://example.com/?u=trackmangolf.com')).toBe(false);
+    expect(isSignInPage('https://accounts.google.com.evil.example/')).toBe(false);
+  });
+});

@@ -1,0 +1,5 @@
+src/licenses.json
+dist/
+.expo/
+/android
+/ios

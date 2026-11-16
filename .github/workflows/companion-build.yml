@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Reginald Stadlbauer
+#
+# A new build of the companion app at Expo, by hand only: the Android APK (internal distribution) or
+# the iOS build, which goes to TestFlight by itself (internal testers, no review). Needed once at the
+# start and whenever the native part changes (companion-update.yml says when).
+#
+# Only from main, after the tests of that commit passed. The Expo token is a secret of the
+# environment "release", which only main may use.
+name: Companion build
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Which build
+        type: choice
+        options: [android, ios, all]
+        default: android
+
+permissions:
+  contents: read
+
+concurrency:
+  group: companion-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'golf-launch-monitor-sync/golf-launch-monitor-sync' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: bash apps/companion/scripts/release.sh build --platform "$PLATFORM"
+        env:
+          PLATFORM: ${{ inputs.platform }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

@@ -11,8 +11,8 @@ Syncs the data of your launch monitor — practice sessions, every shot, simulat
 > project can read.
 
 **Status:** the spec (format, target API, planning rules, load guard, deep links, test vectors), the
-TypeScript core with the load guard, the Trackman provider and a demo provider are written. The
-browser extension, the web app and the companion app follow.
+TypeScript core with the load guard, the Trackman provider, a demo provider and the companion app for
+the phone are written. The browser extension and the web app follow.
 
 ## How it works
 
@@ -65,7 +65,8 @@ And, as a rule for every line of code here:
 | [`packages/core`](packages/core/README.md) | One sync from a target's plan to an imported batch: plan and push client, the file target and its cursor, the load guard, errors. |
 | [`packages/provider-trackman`](packages/provider-trackman/README.md) | Reading your own Trackman account, into olmd. |
 | [`packages/provider-demo`](packages/provider-demo/README.md) | A made-up player's sessions and rounds, for tests, trying it out and app reviews. |
-| `apps/extension`, `apps/web`, `apps/companion` | *(later)* The clients. |
+| [`apps/companion`](apps/companion/README.md) | The companion app for the phone (Expo, iOS and Android): the provider's sign-in window, pairing by deep link, syncs when a target's plan says so. |
+| `apps/extension`, `apps/web` | *(later)* The browser clients. |
 
 ## Development
 

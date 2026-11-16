@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Reginald Stadlbauer
+#
+# The companion app follows main: a push that changes it (or what it is made of) goes out as an
+# over-the-air update (EAS Update, channel "preview") to every build that can run it, once the tests
+# of that very commit passed here. Where no build can run the code (its native part changed), nothing
+# goes out and the run's summary says to start a build by hand (companion-build.yml).
+#
+# The Expo token is a secret of the environment "release", which only main may use: a pull request,
+# a fork or another branch never reaches it. Nothing else here has a secret.
+name: Companion update
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/companion/**
+      - packages/**
+      - spec/**
+      - pnpm-lock.yaml
+      - .github/workflows/companion-update.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One after the other, none cancelled halfway: an older update must not land after a newer one.
+concurrency:
+  group: companion-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: github.repository == 'golf-launch-monitor-sync/golf-launch-monitor-sync' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Nothing goes out red: the same checks as CI, on this commit.
+      - run: pnpm typecheck
+      - run: pnpm test
+      # A newer push is on its way: that one publishes (this run's code would be older than main).
+      - name: Still main's tip?
+        id: tip
+        run: |
+          tip="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}" refs/heads/main | cut -f1)"
+          if [ "$tip" = "$GITHUB_SHA" ]; then echo "go=true" >> "$GITHUB_OUTPUT"
+          else echo "A newer commit is on main ($tip); its run publishes." | tee -a "$GITHUB_STEP_SUMMARY"; fi
+      - if: steps.tip.outputs.go == 'true'
+        run: bash apps/companion/scripts/release.sh update
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

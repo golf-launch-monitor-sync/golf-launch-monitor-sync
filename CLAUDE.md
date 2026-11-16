@@ -63,7 +63,7 @@ packages/core         one sync: plan and push client, file target and cursor, th
 packages/provider-*   trackman, demo (each with a fake for tests: core/testing, provider-trackman/testing)
 apps/extension        (later) browser extension, Manifest V3
 apps/web              (later) static web app (GitHub Pages)
-apps/companion        (later) companion app (Expo)
+apps/companion        companion app (Expo): sign-in window, deep links, background sync
 tools/                repository-wide checks
 ```
 
