@@ -61,10 +61,11 @@ spec/                 format (olmd/1), target API (OpenAPI), planning rules, gua
 packages/spec         the spec for TypeScript (types, schema check, limits, deep links, account_ref)
 packages/core         one sync: plan and push client, file target and cursor, the guard, errors
 packages/provider-*   trackman, demo (each with a fake for tests: core/testing, provider-trackman/testing)
-apps/extension        (later) browser extension, Manifest V3
-apps/web              (later) static web app (GitHub Pages)
+packages/browser      what the extension and the web app share (BrowserClient, texts en/de, the panel)
+apps/extension        browser extension, Manifest V3 (Chrome/Edge and Firefox builds)
+apps/web              static web app (GitHub Pages): pairing page, syncing by hand
 apps/companion        companion app (Expo): sign-in window, deep links, background sync
-tools/                repository-wide checks
+tools/                repository-wide checks, the browser build (esbuild), the click checks' world
 ```
 
 Node 22 + pnpm 10 workspaces, TypeScript (strict), vitest. Before every push:
@@ -77,7 +78,11 @@ pnpm vectors:check
 ```
 
 Tests are **offline**: no real provider, no real target. A provider is tested against a hand-made
-fake that answers in its shapes.
+fake that answers in its shapes. The browser clients also have click checks (`pnpm e2e`, Playwright:
+`apps/*/e2e/`, with `tools/e2e/world.ts` answering every request in the test); run them when you
+change a client. Browser bundles may not evaluate code (Manifest V3, the web app's CSP): the schema
+check is compiled ahead of time there (`tools/browser-build.mjs`). Extension releases: a tag
+`extension-v<version>` builds the store packages (`release.yml`); submitting them is done by hand.
 
 ## 5. Working agreements
 

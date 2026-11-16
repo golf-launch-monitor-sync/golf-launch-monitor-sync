@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Reginald Stadlbauer
+# The browser extension's store packages, on a tag `extension-v<version>` (the version in
+# apps/extension/package.json): tests, click checks, Mozilla's linter, then a GitHub release with
+# one zip for Chrome and Edge and one for Firefox. Submitting them to the stores is done by hand;
+# no store credentials are kept here.
+name: Release extension
+
+on:
+  push:
+    tags: ['extension-v*']
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: The tag names the package's version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=$(node -p "require('./apps/extension/package.json').version")
+          test "$TAG" = "extension-v$version" || { echo "Tag $TAG, but apps/extension/package.json says $version"; exit 1; }
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm --filter @glmsync/extension package
+      - run: pnpm e2e
+      - name: Mozilla's linter on the Firefox build
+        run: npx --yes web-ext@8 lint --source-dir apps/extension/dist/firefox --warnings-as-errors
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" apps/extension/dist/*.zip \
+            --repo "$GITHUB_REPOSITORY" --title "Browser extension ${TAG#extension-v}" \
+            --notes "Packages for the Chrome Web Store (also Edge Add-ons) and Firefox Add-ons. Unsigned: install from the stores, or load unpacked for testing (apps/extension/README.md)."

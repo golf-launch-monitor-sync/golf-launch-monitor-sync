@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'coverage', '__pycache__', 'testvectors']);
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'dist-e2e', 'coverage', '__pycache__', 'testvectors', 'test-results', 'playwright-report']);
 // Formats without comments, and files whose form is fixed by others.
 const NO_HEADER = /(\.json|\.lock|LICENSE|\.gitignore|\.editorconfig|\.nvmrc|pnpm-lock\.yaml)$/;
 const SOURCE = /\.(ts|tsx|mts|js|mjs|py|ya?ml|md|sh|css|html|kt|kts|gradle|xml)$/;

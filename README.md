@@ -11,8 +11,9 @@ Syncs the data of your launch monitor — practice sessions, every shot, simulat
 > project can read.
 
 **Status:** the spec (format, target API, planning rules, load guard, deep links, test vectors), the
-TypeScript core with the load guard, the Trackman provider, a demo provider and the companion app for
-the phone are written. The browser extension and the web app follow.
+TypeScript core with the load guard, the Trackman provider, a demo provider, the
+[browser extension](apps/extension/README.md), the [web app](apps/web/README.md) and the companion app
+for the phone are written; none of them is in a store yet.
 
 ## How it works
 
@@ -65,8 +66,10 @@ And, as a rule for every line of code here:
 | [`packages/core`](packages/core/README.md) | One sync from a target's plan to an imported batch: plan and push client, the file target and its cursor, the load guard, errors. |
 | [`packages/provider-trackman`](packages/provider-trackman/README.md) | Reading your own Trackman account, into olmd. |
 | [`packages/provider-demo`](packages/provider-demo/README.md) | A made-up player's sessions and rounds, for tests, trying it out and app reviews. |
+| [`packages/browser`](packages/browser/README.md) | What the extension and the web app share: the key, pairings, "Is this you?", syncs, texts (English, German). |
+| [`apps/extension`](apps/extension/README.md) | The browser extension (Manifest V3; Chrome, Edge, Firefox): syncs in the background when a target's plan says so. |
+| [`apps/web`](apps/web/README.md) | The web app on GitHub Pages: the pairing page, and syncing by hand without the extension. |
 | [`apps/companion`](apps/companion/README.md) | The companion app for the phone (Expo, iOS and Android): the provider's sign-in window, pairing by deep link, syncs when a target's plan says so. |
-| `apps/extension`, `apps/web` | *(later)* The browser clients. |
 
 ## Development
 
@@ -78,7 +81,11 @@ pnpm typecheck
 pnpm test                    # vitest; offline, synthetic data only
 pnpm vectors                 # rewrite spec/testvectors from spec/reference
 pnpm vectors:check           # CI: are they up to date?
+pnpm build                   # the extension (apps/extension/dist) and the web app (apps/web/dist)
+pnpm e2e                     # click checks: Chromium with the extension, everything answered in the test
 ```
+
+The click checks need Playwright's full Chromium once: `pnpm exec playwright install chromium`.
 
 Contributions are welcome — please read [`CLAUDE.md`](CLAUDE.md) (the house rules, for humans
 too) first. Test data is **synthetic only**: never commit data from a real account, yours included.

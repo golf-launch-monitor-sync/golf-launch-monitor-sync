@@ -1,0 +1,29 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MIT -->
+<!-- Copyright (c) 2026 Reginald Stadlbauer -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https: http://localhost:* http://127.0.0.1:*; base-uri 'none'; form-action 'none'; object-src 'none'" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Golf Launch Monitor Sync</title>
+    <link rel="icon" href="./icon.png" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header><img src="./icon.png" alt="" /><h1 data-t="app.name">Golf Launch Monitor Sync</h1></header>
+      <p data-t="app.tagline"></p>
+      <p data-t="home.how"></p>
+      <div class="row">
+        <a id="install-link" class="button primary" target="_blank" rel="noopener" data-t="pair.install"></a>
+        <a class="button" href="./app.html" data-t="home.manual"></a>
+      </div>
+      <p><a href="https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/tree/main/spec" data-t="home.spec"></a></p>
+      <p class="muted small unofficial" data-t="app.unofficial.trackman"></p>
+      <footer><a href="https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync" data-t="footer.source"></a></footer>
+    </main>
+    <script src="./index.js"></script>
+  </body>
+</html>

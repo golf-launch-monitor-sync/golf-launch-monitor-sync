@@ -1,0 +1,18 @@
+{
+  "name": "@glmsync/web",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Golf Launch Monitor Sync's web app (GitHub Pages): the pairing page, and syncing by hand without the extension.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@glmsync/browser": "workspace:*",
+    "@glmsync/core": "workspace:*",
+    "@glmsync/provider-trackman": "workspace:*",
+    "@glmsync/spec": "workspace:*"
+  }
+}

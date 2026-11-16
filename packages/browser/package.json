@@ -1,0 +1,23 @@
+{
+  "name": "@glmsync/browser",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "What the browser extension and the web app of Golf Launch Monitor Sync share: the provider key, pairings, \"Is this you?\", syncs, texts.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./render": "./src/render.ts",
+    "./download": "./src/download.ts",
+    "./style.css": "./src/style.css"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@glmsync/core": "workspace:*",
+    "@glmsync/provider-trackman": "workspace:*",
+    "@glmsync/spec": "workspace:*"
+  }
+}

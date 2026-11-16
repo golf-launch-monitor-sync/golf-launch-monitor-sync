@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Reginald Stadlbauer
-# Every push to main and every pull request: types, tests, and whether the vectors are what the
-# reference writes. Read-only; no secrets; nothing is published from here.
+# Every push to main and every pull request: types, tests, whether the vectors are what the
+# reference writes, and the click checks of the extension and the web app (with the store packages
+# built on the way). Read-only; no secrets; nothing is published from here.
 name: CI
 
 on:
@@ -59,3 +60,34 @@ jobs:
           persist-credentials: false
       # The runner's own Python 3; the reference needs the standard library only.
       - run: python3 --version && python3 spec/reference/generate.py --check
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The full Chromium: the headless shell loads no extensions.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm --filter @glmsync/extension package
+      - run: pnpm e2e
+      # The store packages of main, for testers before a release (unsigned; load unpacked).
+      - if: github.event_name == 'push'
+        uses: actions/upload-artifact@v5
+        with:
+          name: extension-packages
+          path: apps/extension/dist/*.zip
+          retention-days: 30
+      - if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: e2e-results
+          path: test-results/
+          retention-days: 7

@@ -5,8 +5,10 @@
   "license": "MIT",
   "description": "The olmd/1 schema, the load guard's limits, the planning rules and the deep links, as TypeScript.",
   "type": "module",
+  "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./standalone": "./src/standalone.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

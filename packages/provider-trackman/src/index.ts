@@ -12,6 +12,7 @@
  * `mapping`      Trackman's answers as olmd/1 (the port of spec/reference/trackman.py)
  * `queries`      the queries, next to `client` that sends them
  * `account`      the account a sign-in opens (its `sub`), read without asking anyone
+ * `portal`       finding the player's own key where the signed-in portal keeps it (clients that read it there)
  *
  * The sign-in itself - reading it from the portal, a sign-in window - is the client's business; this
  * module only uses the token it is handed, and sends it to Trackman and nowhere else.
@@ -26,6 +27,7 @@ export { GRAPHQL_URL, query } from './client.ts';
 export { fetchForPlan, freshState, listActivities, MAX_STROKES_PER_SESSION, SHOTS_OFF_MS, who, type Activity, type TrackmanState, type Who } from './fetch.ts';
 export * from './mapping.ts';
 export * as queries from './queries.ts';
+export * as portal from './portal.ts';
 
 export const UNOFFICIAL =
   'Unofficial. Golf Launch Monitor Sync is not affiliated with, endorsed by or supported by Trackman. It reads your own account with your own sign-in, the way Trackman’s web portal does.';

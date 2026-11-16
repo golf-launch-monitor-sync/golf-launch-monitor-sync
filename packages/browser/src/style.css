@@ -1,0 +1,68 @@
+/* SPDX-License-Identifier: MIT */
+/* Copyright (c) 2026 Reginald Stadlbauer */
+/* The browser clients' look: the extension's popup and connect window, the web app. */
+:root {
+  --bg: #ffffff;
+  --fg: #16232c;
+  --muted: #5b6b75;
+  --line: #dfe5e8;
+  --accent: #14532d;
+  --accent-fg: #ffffff;
+  --warn-bg: #fdf3e1;
+  --warn-fg: #7a4b00;
+  --ok-bg: #e6f4ea;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11181d;
+    --fg: #e6edf0;
+    --muted: #9aaab3;
+    --line: #2a363d;
+    --accent: #3fae6a;
+    --accent-fg: #0b1a10;
+    --warn-bg: #3a2c12;
+    --warn-fg: #f5d28a;
+    --ok-bg: #173323;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+main { padding: 14px 16px 18px; }
+header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+header img { width: 28px; height: 28px; }
+h1 { font-size: 16px; margin: 0; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 16px 0 6px; }
+h3 { font-size: 15px; margin: 0 0 4px; }
+p { margin: 4px 0; }
+section { border-top: 1px solid var(--line); padding-top: 2px; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.note { padding: 8px 10px; border-radius: 8px; background: var(--ok-bg); }
+.note.warn { background: var(--warn-bg); color: var(--warn-fg); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+button, .button {
+  font: inherit; cursor: pointer; border-radius: 8px; padding: 7px 12px;
+  border: 1px solid var(--line); background: transparent; color: var(--fg); text-decoration: none; display: inline-block;
+}
+button.primary, .button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+button.link { border: 0; padding: 4px 0; color: var(--muted); text-decoration: underline; }
+button:disabled { opacity: .55; cursor: default; }
+.pairing { padding: 8px 0; }
+.confirm { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.who { font-size: 16px; font-weight: 600; }
+.unofficial { margin-top: 16px; }
+textarea, input[type=text] {
+  width: 100%; font: 12px/1.3 ui-monospace, monospace; padding: 8px; border-radius: 8px;
+  border: 1px solid var(--line); background: transparent; color: var(--fg);
+}
+a { color: var(--accent); }
+footer { margin-top: 14px; font-size: 12px; color: var(--muted); display: flex; gap: 12px; }
+.bookmarklet { cursor: grab; }
+main.page { max-width: 640px; margin: 0 auto; padding: 24px 18px 40px; }
+[hidden] { display: none !important; }

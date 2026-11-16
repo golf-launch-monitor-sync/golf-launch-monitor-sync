@@ -5,9 +5,11 @@
   "license": "MIT",
   "description": "Reads the player's own Trackman account with their own sign-in, into olmd/1. Unofficial: not affiliated with or endorsed by Trackman.",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./testing": "./src/testing.ts"
+    "./testing": "./src/testing.ts",
+    "./portal": "./src/portal.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
