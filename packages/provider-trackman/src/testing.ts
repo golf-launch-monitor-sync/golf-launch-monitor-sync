@@ -14,6 +14,8 @@ export type Json = Record<string, unknown>;
 export interface TrackmanRequest {
   /** The query's name: Activities, Session, Rounds, RoundShots, Who, Profile. */
   name: string;
+  /** The whole query as sent. */
+  query: string;
   variables: Json;
   token: string;
   at: number;
@@ -57,7 +59,7 @@ export class FakeTrackman {
     const body = JSON.parse(init.body ?? '{}') as { query?: string; variables?: Json };
     const name = /query (\w+)/.exec(body.query ?? '')?.[1] ?? '?';
     const token = (init.headers.Authorization ?? '').replace(/^Bearer /, '');
-    const req: TrackmanRequest = { name, variables: body.variables ?? {}, token, at: this.now(), headers: init.headers, credentials: init.credentials };
+    const req: TrackmanRequest = { name, query: body.query ?? '', variables: body.variables ?? {}, token, at: this.now(), headers: init.headers, credentials: init.credentials };
     this.requests.push(req);
     const o = this.override?.(req);
     if (o instanceof Error) throw o;
@@ -73,6 +75,13 @@ export class FakeTrackman {
         return respond(200, { data: { me: { activities: { totalCount: all.length, items: all.slice(skip, skip + take) } } } });
       }
       case 'Session': {
+        // As Trackman does since Nov 2026: fragments of several types in one query clash on their
+        // strokes' `time` (non-null on one type), and the query is refused as a whole.
+        if ((body.query ?? '').split('... on ').length > 2) {
+          return respond(200, {
+            errors: [{ message: 'Fields `time` conflict because they return conflicting types `DateTime` and `DateTime!`.' }],
+          });
+        }
         const node = this.nodes.has(String(v.id)) ? this.nodes.get(String(v.id)) : { __typename: 'SimulatorSessionActivity', strokes: [] };
         return respond(200, { data: { node } });
       }

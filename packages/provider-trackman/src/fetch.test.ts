@@ -93,6 +93,25 @@ describe('one sync', () => {
     expect(out.failed).toEqual([{ external_id: 'BAD', started_at: '2026-11-09T10:00:00Z' }, { external_id: 'GONE', started_at: '2026-11-10T17:05:00Z' }]);
   });
 
+  it("asks each session with its own type only, so Trackman's types can't clash", async () => {
+    tm.activities = [
+      { ...act('SIM'), __typename: 'SimulatorSessionActivity' },
+      { ...act('RANGE', '2026-11-10T16:00:00Z', 'RANGE_PRACTICE'), __typename: 'RangePracticeActivity' },
+      act('OLD', '2026-11-10T15:00:00Z'), // no type in the list: the interface
+    ];
+    for (const id of ['SIM', 'RANGE', 'OLD']) tm.nodes.set(id, { strokes: [stroke(140)] });
+    const out = await run({});
+    expect(out.failed).toEqual([]);
+    expect(out.sessions.map((s) => [s.external_id, s.shots.length])).toEqual([['SIM', 1], ['RANGE', 1], ['OLD', 1]]);
+    const asked = Object.fromEntries(tm.requests.filter((r) => r.name === 'Session').map((r) => [String(r.variables.id), r.query]));
+    expect(asked.SIM).toContain('... on SimulatorSessionActivity');
+    expect(asked.SIM).toContain('clubPath');
+    expect(asked.RANGE).toContain('... on RangePracticeActivity');
+    expect(asked.RANGE).toContain('ballSpin');
+    expect(asked.OLD).toContain('... on SessionActivity');
+    expect(tm.requests.find((r) => r.name === 'Activities')?.query).toMatch(/items \{\s*__typename id time kind/);
+  });
+
   it('asks once more for a session Trackman answered with errors, and takes what came', async () => {
     tm.activities = [act('A1')];
     tm.nodes.set('A1', { strokes: [stroke(140), stroke(141)] });

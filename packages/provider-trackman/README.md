@@ -40,6 +40,9 @@ const who = await provider.who(providerContext({ guard, account }), token);
 
 ## How a fetch behaves
 
+- Each session is asked for with the fragment of its own type only (the list says which,
+  `__typename`); with every type in one query Trackman refused the whole query as soon as one
+  type's stroke `time` turned non-null (Nov 2026).
 - A session Trackman answers with errors is asked for once more right away and taken as it comes;
   one it can't send waits (`failed`), and the target asks for it again later.
 - Trouble with Trackman as a whole — the sign-in (`auth_expired`), no network or no permission to

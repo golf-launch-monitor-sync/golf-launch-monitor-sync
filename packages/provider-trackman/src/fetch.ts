@@ -33,7 +33,7 @@ import {
 import { PLAN_RULES } from '@glmsync/spec';
 import { query } from './client.ts';
 import { GAME_KINDS, toOlmd, type Raw } from './mapping.ts';
-import { ACTIVITIES_QUERY, PROFILE_QUERY, ROUND_SHOTS_QUERY, ROUNDS_QUERY, SESSION_QUERY, WHO_QUERY } from './queries.ts';
+import { ACTIVITIES_QUERY, PROFILE_QUERY, ROUND_SHOTS_QUERY, ROUNDS_QUERY, sessionQuery, WHO_QUERY } from './queries.ts';
 
 const DAY = 86_400_000;
 const PAGE = 100;
@@ -58,7 +58,7 @@ export const SHOTS_OFF_MS = 6 * 3600_000;
  * doesn't change, and paging a long list again for every chunk would spend the guard's day on it. */
 const LIST_REUSE_MS = 12 * 3600_000;
 
-export type Activity = { id: unknown; time?: unknown; kind?: unknown; location?: { name?: unknown } | null };
+export type Activity = { __typename?: unknown; id: unknown; time?: unknown; kind?: unknown; location?: { name?: unknown } | null };
 type Obj = Record<string, unknown>;
 const obj = (v: unknown): Obj | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Obj) : null);
 
@@ -116,13 +116,14 @@ export async function listActivities(ctx: ProviderContext, token: string, since:
 async function fetchSession(ctx: ProviderContext, token: string, item: Activity): Promise<{ activity: Activity; node: Obj } | null> {
   type Answer = { node?: unknown };
   let node: unknown;
+  const gql = sessionQuery(item.__typename);
   try {
     try {
       // Complete, or else once more right away and take what Trackman can send.
-      node = (await query<Answer>(ctx, 'session', token, SESSION_QUERY, { id: item.id }, { partialOk: false })).node;
+      node = (await query<Answer>(ctx, 'session', token, gql, { id: item.id }, { partialOk: false })).node;
     } catch (e) {
       if (stopsTheFetch(e)) throw e;
-      node = (await query<Answer>(ctx, 'session', token, SESSION_QUERY, { id: item.id })).node;
+      node = (await query<Answer>(ctx, 'session', token, gql, { id: item.id })).node;
     }
   } catch (e) {
     if (stopsTheFetch(e)) throw e;

@@ -63,7 +63,8 @@ describe('what is asked for', () => {
 
   it("asks for no shot field the mapping doesn't read", () => {
     const read = ['carry', 'total', 'carrySide', 'totalSide', 'ballSpeed', 'clubSpeed', 'smashFactor', 'launchAngle', 'spinRate', 'ballSpin', 'clubPath', 'faceAngle', 'spinAxis', 'curve'];
-    const asked = queries.SESSION_QUERY.match(/measurement \{([^}]*)\}/g)?.flatMap((m) => m.replace(/measurement \{|\}/g, '').trim().split(/\s+/)) ?? [];
+    const all = [...queries.SESSION_TYPES, undefined].map((t) => queries.sessionQuery(t)).join('\n');
+    const asked = all.match(/measurement \{([^}]*)\}/g)?.flatMap((m) => m.replace(/measurement \{|\}/g, '').trim().split(/\s+/)) ?? [];
     expect(new Set(asked)).toEqual(new Set(read));
   });
 

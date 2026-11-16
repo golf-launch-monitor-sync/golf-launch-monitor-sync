@@ -49,7 +49,7 @@ query Activities($skip: Int, $take: Int, $timeFrom: DateTime) {
     activities(skip: $skip, take: $take, timeFrom: $timeFrom) {
       totalCount
       items {
-        id time kind
+        __typename id time kind
         ... on RangePracticeActivity { location { name } }
       }
     }
@@ -69,20 +69,33 @@ const RANGE_MEASUREMENT = `
   launchAngle ballSpin spinAxis curve
 `;
 
-export const SESSION_QUERY = `
+// One session, asked for with the fragment of its own type only (`__typename` from the list). With
+// every type's fragment in one query Trackman has to merge the fields they share; once one type's
+// stroke `time` became `DateTime!` while the others' stayed `DateTime`, the whole query was refused
+// for every session (Nov 2026: "Fields `time` conflict because they return conflicting types"). A
+// query with one fragment has nothing to merge, whatever Trackman tightens next.
+const RANGE_TYPES = new Set(['RangePracticeActivity', 'RangeFindMyDistanceActivity']);
+export const SESSION_TYPES: ReadonlySet<string> = new Set([
+  ...RANGE_TYPES,
+  'SimulatorSessionActivity',
+  'ShotAnalysisSessionActivity',
+  'MapMyBagSessionActivity',
+  'VirtualRangeSessionActivity',
+]);
+
+/** The query for one session of the given type; a type the list didn't name goes by the interface. */
+export function sessionQuery(type?: unknown): string {
+  const on = typeof type === 'string' && SESSION_TYPES.has(type) ? type : 'SessionActivity';
+  const measurement = RANGE_TYPES.has(on) ? RANGE_MEASUREMENT : BAY_MEASUREMENT;
+  return `
 query Session($id: ID!) {
   node(id: $id) {
     __typename
-    ... on RangePracticeActivity { id time kind strokes { time club measurement { ${RANGE_MEASUREMENT} } } }
-    ... on RangeFindMyDistanceActivity { id time kind strokes { time club measurement { ${RANGE_MEASUREMENT} } } }
-    ... on SimulatorSessionActivity { id time kind strokes { time club measurement { ${BAY_MEASUREMENT} } } }
-    ... on ShotAnalysisSessionActivity { id time kind strokes { time club measurement { ${BAY_MEASUREMENT} } } }
-    ... on MapMyBagSessionActivity { id time kind strokes { time club measurement { ${BAY_MEASUREMENT} } } }
-    ... on VirtualRangeSessionActivity { id time kind strokes { time club measurement { ${BAY_MEASUREMENT} } } }
-    ... on SessionActivity { id time kind strokes { time club measurement { ${BAY_MEASUREMENT} } } }
+    ... on ${on} { id time kind strokes { time club measurement { ${measurement} } } }
   }
 }
 `;
+}
 
 export const ROUNDS_QUERY = `
 query Rounds($skip: Int, $take: Int) {
