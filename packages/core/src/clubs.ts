@@ -18,18 +18,28 @@ const CLUB_PATTERNS: [RegExp, string][] = [
   // "d": some monitors write the driver as one letter.
   [/^(driver|dr|d|1 ?w|1 ?wood|wood ?1|1 ?(?:er )?holz|holz ?1|madera ?1|hout ?1|1 ?hout)$/, 'Dr'],
   [/^(putter|pt)$/, 'Putter'],
-  [/^(pw|pitching ?wedge|p)$/, 'PW'],
-  [/^(gw|aw|uw|gap ?wedge|approach ?wedge)$/, 'GW'],
-  [/^(sw|sand ?wedge|s)$/, 'SW'],
-  [/^(lw|lob ?wedge|low ?wedge|l)$/, 'LW'], // "low": how dictation hears "lob"
+  // A wedge's name alone ("Pitching", "Sand") or with a letter ("S Wedge"), as some monitors shorten it.
+  [/^(pw|pitching ?wedge|pitching|p ?wedge|p)$/, 'PW'],
+  // AW and UW are GW: which of a player's wedges they mean is the target's question, not a code.
+  [/^(gw|aw|uw|gap ?wedge|approach ?wedge|gap|approach|g ?wedge|a ?wedge)$/, 'GW'],
+  [/^(sw|sand ?wedge|sand|s ?wedge|s)$/, 'SW'],
+  [/^(lw|lob ?wedge|low ?wedge|lob|l ?wedge|l)$/, 'LW'], // "low": how dictation hears "lob"
 ];
-const KINDS = 'w|wood|holz|madera|hout|h|hy|hybrid|híbrido|hibrido|rescue|i|iron|eisen|hierro|ijzer';
+// A fairway wood ("3 FW", "Fairway 5") is a wood; a utility or driving iron ("4U", "UT 3", "3 DI") the
+// iron of its number.
+const KINDS =
+  'fairway wood|fairway|fwy|fw|w|wood|holz|madera|hout|hyb|hybrid|hy|h|híbrido|hibrido|rescue|' +
+  'driving iron|utility iron|utility|util|ut|u|di|i|iron|eisen|hierro|ijzer';
 // n1 kind1 | kind2 n2 | n3 "er"
 const NUMBERED = new RegExp(`^(?:([0-9]{1,2}) ?(?:er )?(${KINDS})|(${KINDS}) ?([0-9]{1,2})|([0-9]{1,2}) ?er)$`);
 const WEDGE_DEG = /^(?:([0-9]{2}) ?(?:°|deg|degree|grad)?(?: ?wedge)?|wedge ?([0-9]{2}) ?(?:°|deg|degree|grad)?)$/;
+// A wedge named with its loft ("SW 56", "56° Sand Wedge", "LW60"): the loft says more than the name.
+const WEDGE_NAMES = '(?:pw|gw|aw|uw|sw|lw|pitching|gap|approach|sand|lob)(?: ?wedge)?';
+const DEG = '(?:°|deg|degree|grad)?';
+const NAMED_DEG = new RegExp(`^(?:([0-9]{2}) ?${DEG} ?${WEDGE_NAMES}|${WEDGE_NAMES} ?([0-9]{2}) ?${DEG})$`);
 const NO_CLUB = new Set(['', 'unknown', 'unbekannt', 'none', 'null', 'n/a', 'na', '?', '-', 'kein', 'no club', 'other', 'sonstige']);
-const WOODS = new Set(['w', 'wood', 'holz', 'madera', 'hout']);
-const HYBRIDS = new Set(['h', 'hy', 'hybrid', 'híbrido', 'hibrido', 'rescue']);
+const WOODS = new Set(['w', 'wood', 'holz', 'madera', 'hout', 'fw', 'fwy', 'fairway', 'fairway wood']);
+const HYBRIDS = new Set(['h', 'hy', 'hyb', 'hybrid', 'híbrido', 'hibrido', 'rescue']);
 
 export function isUnknownClub(club: string | null | undefined): boolean {
   return club === null || club === undefined || NO_CLUB.has(strip(club).toLowerCase());
@@ -49,8 +59,9 @@ export function normalizeClub(raw: string): string {
     if (Number(n) >= 40) return `${n}°`; // "56er" is a wedge's loft, never an iron
     return `${n}i`;
   }
-  const w = WEDGE_DEG.exec(s);
-  if (w) {
+  for (const pattern of [WEDGE_DEG, NAMED_DEG]) {
+    const w = pattern.exec(s);
+    if (!w) continue;
     const loft = (w[1] ?? w[2]) as string;
     if (Number(loft) >= 40 && Number(loft) <= 70) return `${loft}°`; // a wedge's loft ("12" is a shot number)
   }

@@ -1,6 +1,6 @@
 {
   "$comment": "Club names -> canonical codes. camel: a provider's CamelCase names (Trackman); normalize: names as other monitors and people write them.",
-  "spec_version": "1.2.0",
+  "spec_version": "1.3.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {
@@ -469,6 +469,171 @@
       "rule": "normalize",
       "raw": "Pitching Wedge",
       "code": "Pitching Wedge"
+    },
+    {
+      "rule": "normalize",
+      "raw": "4U",
+      "code": "4i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "U4",
+      "code": "4i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Utility 4",
+      "code": "4i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "4 Utility",
+      "code": "4i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "UT 3",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 DI",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Driving Iron 2",
+      "code": "2i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "2 Utility Iron",
+      "code": "2i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 FW",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FW3",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Fairway 5",
+      "code": "5W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "5 Fairway Wood",
+      "code": "5W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 Fwy",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "4 Hyb",
+      "code": "4H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Sand",
+      "code": "SW"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Pitching",
+      "code": "PW"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Lob",
+      "code": "LW"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Gap",
+      "code": "GW"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Approach",
+      "code": "GW"
+    },
+    {
+      "rule": "normalize",
+      "raw": "S Wedge",
+      "code": "SW"
+    },
+    {
+      "rule": "normalize",
+      "raw": "P-Wedge",
+      "code": "PW"
+    },
+    {
+      "rule": "normalize",
+      "raw": "UW",
+      "code": "GW"
+    },
+    {
+      "rule": "normalize",
+      "raw": "SW 56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 SW",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56° Sand Wedge",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "LW60",
+      "code": "60°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "50 Gap Wedge",
+      "code": "50°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Approach 52",
+      "code": "52°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "SW 12",
+      "code": "SW 12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Stealth 7i",
+      "code": "Stealth 7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "TSR3",
+      "code": "TSR3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Mein 7er",
+      "code": "Mein 7er"
+    },
+    {
+      "rule": "normalize",
+      "raw": "Vokey",
+      "code": "Vokey"
     }
   ]
 }

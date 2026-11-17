@@ -92,9 +92,12 @@ A reader that keeps one side value takes `side_m` and falls back to `total_side_
 
 `club` is a canonical code where one fits: `Dr`, `2W`…`9W` (woods), `2H`…`9H` (hybrids), `1i`…`9i`,
 `PW`, `GW`, `SW`, `LW`, a wedge by its loft (`50°`…`60°`), `Putter`. A name no rule reads is kept as
-the player set it (`Chipper`); no club set means no `club` at all. The rules, with the names other
-monitors and people use: [`reference/clubs.py`](reference/clubs.py), vectors in
-[`testvectors/clubs.json`](testvectors/clubs.json).
+the player set it (`Chipper`); no club set means no `club` at all. A utility or driving iron is the
+iron of its number (`4U`, `3 DI` → `4i`, `3i`), a fairway wood a wood (`3 FW` → `3W`), a wedge named
+with its loft the loft (`SW 56` → `56°`); `AW` and `UW` are `GW`, and a maker's or player's own name
+(`TSR3`) stays as it came: which club it means is the target's question, with `club_raw` beside it.
+The rules, with the names other monitors and people use: [`reference/clubs.py`](reference/clubs.py),
+vectors in [`testvectors/clubs.json`](testvectors/clubs.json).
 
 ## A round
 

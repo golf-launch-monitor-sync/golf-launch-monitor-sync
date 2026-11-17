@@ -16,14 +16,21 @@ _CLUB_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # "d": some monitors write the driver as one letter.
     (re.compile(r"^(driver|dr|d|1 ?w|1 ?wood|wood ?1|1 ?(?:er )?holz|holz ?1|madera ?1|hout ?1|1 ?hout)$", re.ASCII), "Dr"),
     (re.compile(r"^(putter|pt)$", re.ASCII), "Putter"),
-    (re.compile(r"^(pw|pitching ?wedge|p)$", re.ASCII), "PW"),
-    (re.compile(r"^(gw|aw|uw|gap ?wedge|approach ?wedge)$", re.ASCII), "GW"),
-    (re.compile(r"^(sw|sand ?wedge|s)$", re.ASCII), "SW"),
-    (re.compile(r"^(lw|lob ?wedge|low ?wedge|l)$", re.ASCII), "LW"),  # "low": how dictation hears "lob"
+    # A wedge's name alone ("Pitching", "Sand") or with a letter ("S Wedge"), as some monitors shorten it.
+    (re.compile(r"^(pw|pitching ?wedge|pitching|p ?wedge|p)$", re.ASCII), "PW"),
+    # AW and UW are GW: which of a player's wedges they mean is the target's question, not a code.
+    (re.compile(r"^(gw|aw|uw|gap ?wedge|approach ?wedge|gap|approach|g ?wedge|a ?wedge)$", re.ASCII), "GW"),
+    (re.compile(r"^(sw|sand ?wedge|sand|s ?wedge|s)$", re.ASCII), "SW"),
+    (re.compile(r"^(lw|lob ?wedge|low ?wedge|lob|l ?wedge|l)$", re.ASCII), "LW"),  # "low": how dictation hears "lob"
 ]
 # "7 Iron", "7i", "Eisen 7", "7er Eisen" / "7er" (an iron) / "3er Holz"; Spanish and Dutch:
-# "Hierro 7", "Madera 3", "Híbrido 4", "IJzer 7", "Hout 3"; "I7", "W3"; "IRON7".
-_KINDS = r"w|wood|holz|madera|hout|h|hy|hybrid|híbrido|hibrido|rescue|i|iron|eisen|hierro|ijzer"
+# "Hierro 7", "Madera 3", "Híbrido 4", "IJzer 7", "Hout 3"; "I7", "W3"; "IRON7". A fairway wood
+# ("3 FW", "Fairway 5") is a wood; a utility or driving iron ("4U", "UT 3", "Utility 4", "3 DI") the
+# iron of its number.
+_WOODS = ("w", "wood", "holz", "madera", "hout", "fw", "fwy", "fairway", "fairway wood")
+_HYBRIDS = ("h", "hy", "hyb", "hybrid", "híbrido", "hibrido", "rescue")
+_KINDS = ("fairway wood|fairway|fwy|fw|w|wood|holz|madera|hout|hyb|hybrid|hy|h|híbrido|hibrido|rescue|"
+          "driving iron|utility iron|utility|util|ut|u|di|i|iron|eisen|hierro|ijzer")
 _NUMBERED = re.compile(
     rf"^(?:(?P<n1>\d{{1,2}}) ?(?:er )?(?P<k1>{_KINDS})"
     rf"|(?P<k2>{_KINDS}) ?(?P<n2>\d{{1,2}})"
@@ -31,6 +38,12 @@ _NUMBERED = re.compile(
     re.ASCII,
 )
 _WEDGE_DEG = re.compile(r"^(?:(\d{2}) ?(?:°|deg|degree|grad)?(?: ?wedge)?|wedge ?(\d{2}) ?(?:°|deg|degree|grad)?)$", re.ASCII)
+# A wedge named with its loft ("SW 56", "56° Sand Wedge", "LW60"): the loft says more than the name.
+_WEDGE_NAMES = r"(?:pw|gw|aw|uw|sw|lw|pitching|gap|approach|sand|lob)(?: ?wedge)?"
+_NAMED_DEG = re.compile(
+    rf"^(?:(\d{{2}}) ?(?:°|deg|degree|grad)? ?{_WEDGE_NAMES}|{_WEDGE_NAMES} ?(\d{{2}}) ?(?:°|deg|degree|grad)?)$",
+    re.ASCII,
+)
 
 UNKNOWN_CLUB = "unknown"
 _NO_CLUB = {"", "unknown", "unbekannt", "none", "null", "n/a", "na", "?", "-", "kein", "no club", "other", "sonstige"}
@@ -53,16 +66,17 @@ def normalize_club(raw: str) -> str:
     if m:
         n = m.group("n1") or m.group("n2") or m.group("n3")
         kind = m.group("k1") or m.group("k2") or "i"
-        if kind in ("w", "wood", "holz", "madera", "hout"):
+        if kind in _WOODS:
             return f"{n}W"
-        if kind in ("h", "hy", "hybrid", "híbrido", "hibrido", "rescue"):
+        if kind in _HYBRIDS:
             return f"{n}H"
         if int(n) >= 40:  # "56er" is a wedge's loft, never an iron
             return f"{n}°"
         return f"{n}i"
-    m = _WEDGE_DEG.match(s)
-    if m and 40 <= int(m.group(1) or m.group(2)) <= 70:  # a wedge's loft ("12" is a shot number)
-        return f"{m.group(1) or m.group(2)}°"
+    for pattern in (_WEDGE_DEG, _NAMED_DEG):
+        m = pattern.match(s)
+        if m and 40 <= int(m.group(1) or m.group(2)) <= 70:  # a wedge's loft ("12" is a shot number)
+            return f"{m.group(1) or m.group(2)}°"
     return raw.strip()
 
 

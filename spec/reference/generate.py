@@ -63,7 +63,15 @@ def club_vectors() -> dict[str, Any]:
                "52 Grad", "56er", "12", "D", "dr", "1W", "Pitching Wedge", "AW", "Gap-Wedge", "sand_wedge", "lob wedge",
                "low wedge", "PT", "unknown", "N/A", "-", "", "  ", "Chipper", "Hybrid", "Iron 10", "10 iron",
                "Eisen \u0667", "\u0665\u0666", "7\u00a0Iron", "\u00a07 Iron\u2003", "7\tiron", "\ufeff7 Iron",
-               "\U0001d7d5 iron", "Wedge \u0665\u0666", "Pitching\u200aWedge"]
+               "\U0001d7d5 iron", "Wedge \u0665\u0666", "Pitching\u200aWedge",
+               # Utility and driving irons are the iron of their number; fairway woods are woods.
+               "4U", "U4", "Utility 4", "4 Utility", "UT 3", "3 DI", "Driving Iron 2", "2 Utility Iron",
+               "3 FW", "FW3", "Fairway 5", "5 Fairway Wood", "3 Fwy", "4 Hyb",
+               # A wedge's name alone or with a letter; a wedge with its loft in the name is the loft.
+               "Sand", "Pitching", "Lob", "Gap", "Approach", "S Wedge", "P-Wedge", "UW", "SW 56", "56 SW",
+               "56° Sand Wedge", "LW60", "50 Gap Wedge", "Approach 52", "SW 12",
+               # A maker's or a player's own name stays as it came: the target asks what it is.
+               "Stealth 7i", "TSR3", "Mein 7er", "Vokey"]
     norm = [{"raw": r, "code": clubs.normalize_club(r)} for r in generic]
     return doc("Club names -> canonical codes. camel: a provider's CamelCase names (Trackman); normalize: names "
                "as other monitors and people write them.", [{"rule": "camel", **c} for c in camel] +
