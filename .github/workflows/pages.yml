@@ -2,6 +2,10 @@
 # Copyright (c) 2026 Reginald Stadlbauer
 # The web app (apps/web) on GitHub Pages: built and published from main, once its tests are green.
 # Needs Settings › Pages › Source: "GitHub Actions" (once, by an owner).
+#
+# The site also carries Firefox's update list and the newest signed add-on (tools/firefox-updates.mjs). When a
+# maintainer attaches a signed .xpi to an extension release (editing it), this runs again - on main: the
+# github-pages environment takes deployments from main only, so the release event just starts a run there.
 name: Pages
 
 on:
@@ -15,6 +19,8 @@ on:
       - pnpm-lock.yaml
       - .github/workflows/pages.yml
   workflow_dispatch:
+  release:
+    types: [published, edited]
 
 permissions:
   contents: read
@@ -24,7 +30,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # A signed Firefox package attached to `extension-v…`: publish the site again from main.
+  refresh:
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'extension-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main --repo "$GITHUB_REPOSITORY"
+
   build:
+    if: github.event_name != 'release'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -40,6 +59,10 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm --filter @glmsync/web build
+      - name: Firefox's updates (from the releases with a signed .xpi)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/firefox-updates.mjs apps/web/dist
       - uses: actions/upload-pages-artifact@v4
         with:
           path: apps/web/dist

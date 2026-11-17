@@ -26,6 +26,12 @@ export const PAIR_MATCHES = [
 /** Targets: any https address, and this machine for development - each only once the player allows it. */
 export const TARGET_MATCHES = ['https://*/*', 'http://localhost/*', 'http://127.0.0.1/*'];
 export const GECKO_ID = 'sync@golf-launch-monitor-sync.github.io';
+/**
+ * Where a self-distributed Firefox build asks for its updates (the web app's site; tools/firefox-updates.mjs writes
+ * it from the releases that carry a signed .xpi). The Chrome Web Store and Edge Add-ons update their own; Firefox,
+ * signed by Mozilla but not listed, updates only through this. It must be in the manifest before Mozilla signs it.
+ */
+export const FIREFOX_UPDATE_URL = 'https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/firefox/updates.json';
 
 /** Content security policy of the extension's own pages: its own scripts only, no eval. */
 export const CSP = "script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
@@ -69,6 +75,7 @@ export function manifest(browser: Browser, version: string, testHosts: string[] 
     m.browser_specific_settings = {
       gecko: {
         id: GECKO_ID,
+        update_url: FIREFOX_UPDATE_URL,
         // Content scripts in the page's world (128), the data consent below (140, an ESR).
         strict_min_version: '140.0',
         // What leaves the browser: launch monitor data the player fetches from their own account,

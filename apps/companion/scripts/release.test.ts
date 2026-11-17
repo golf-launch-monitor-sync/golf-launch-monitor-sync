@@ -28,6 +28,12 @@ interface Opts {
   failBuild?: boolean;
   /** A waited-for build that ended otherwise than FINISHED. */
   buildStatus?: string;
+  /** The runtime Expo names for a build (else the script works it out itself). */
+  runtimeVersion?: string;
+  /** latest.json already in the pre-release. */
+  previousLatest?: unknown;
+  /** The pre-release can't take a file (none yet). */
+  failUpload?: boolean;
 }
 
 function run(args: string[], o: Opts = {}) {
@@ -46,17 +52,29 @@ function run(args: string[], o: Opts = {}) {
     `echo "$*" >> ${JSON.stringify(log)}
 case "$1" in
   build:list) echo '${builds}' ;;
-  build) ${o.failBuild ? "echo 'This account has used its Android builds from the Free plan this month.' >&2; exit 1" : `if [[ "$*" == *--wait* ]]; then echo '[{"id":"new-build","status":"${o.buildStatus ?? 'FINISHED'}","artifacts":{"buildUrl":"https://expo.example/artifacts/app.apk"},"app":{"slug":"golf-launch-monitor-sync","ownerAccount":{"name":"example-org"}}}]'; else echo '[{"id":"new-build","app":{"slug":"golf-launch-monitor-sync","ownerAccount":{"name":"example-org"}}}]'; fi`} ;;
+  build) ${o.failBuild ? "echo 'This account has used its Android builds from the Free plan this month.' >&2; exit 1" : `if [[ "$*" == *--wait* ]]; then echo '[{"id":"new-build","status":"${o.buildStatus ?? 'FINISHED'}",${o.runtimeVersion ? `"runtimeVersion":"${o.runtimeVersion}",` : ''}"artifacts":{"buildUrl":"https://expo.example/artifacts/app.apk"},"app":{"slug":"golf-launch-monitor-sync","ownerAccount":{"name":"example-org"}}}]'; else echo '[{"id":"new-build","app":{"slug":"golf-launch-monitor-sync","ownerAccount":{"name":"example-org"}}}]'; fi`} ;;
   update) ${o.failUpdate ? 'exit 3' : 'echo published'} ;;
 esac`,
   );
-  const config = stub('config', `echo '${JSON.stringify(o.projectId === null ? {} : { extra: { eas: { projectId: o.projectId ?? '0b1d2c3e-0000-4000-8000-000000000001' } } })}'`);
+  const config = stub('config', `echo '${JSON.stringify(o.projectId === null ? {} : { version: '0.1.0', extra: { eas: { projectId: o.projectId ?? '0b1d2c3e-0000-4000-8000-000000000001' } } })}'`);
   const runtime = stub('runtime', 'echo "{\\"runtimeVersion\\":\\"fp-$2-1234567890abcdef\\"}"');
   const easJson = join(dir, 'eas.json');
   writeFileSync(easJson, JSON.stringify({ submit: { testflight: { ios: o.ascAppId ? { ascAppId: o.ascAppId } : {} } } }));
   const summary = join(dir, 'summary.md');
   const ghLog = join(dir, 'gh.log');
-  const gh = stub('gh', `echo "$*" >> ${JSON.stringify(ghLog)}`);
+  // The latest.json it hands to GitHub is kept for the test; `release download` writes the previous one, if any.
+  const uploaded = join(dir, 'uploaded-latest.json');
+  const gh = stub(
+    'gh',
+    `echo "$*" >> ${JSON.stringify(ghLog)}
+if [ "$1 $2" = "release download" ]; then
+  out=""; prev=""
+  for a in "$@"; do if [ "$prev" = "--output" ]; then out="$a"; fi; prev="$a"; done
+  ${o.previousLatest === undefined ? 'exit 1' : `printf '%s' '${JSON.stringify(o.previousLatest)}' > "$out"`}
+fi
+if [ "$1 $2" = "release upload" ] && ${o.failUpload ? 'true' : 'false'}; then exit 1; fi
+for a in "$@"; do case "$a" in *latest.json) if [ -f "$a" ]; then cp "$a" ${JSON.stringify(uploaded)}; fi ;; esac; done`,
+  );
   // The download: the address it was asked for, as the file's content.
   const download = stub('download', 'printf "APK from %s" "$2" > "$1"');
   const env: Record<string, string> = {
@@ -80,7 +98,15 @@ esac`,
       return '';
     }
   };
-  return { status: r.status, out: r.stdout + r.stderr, eas: read(log), summary: read(summary), gh: read(ghLog) };
+  const latest = read(uploaded);
+  return {
+    status: r.status,
+    out: r.stdout + r.stderr,
+    eas: read(log),
+    summary: read(summary),
+    gh: read(ghLog),
+    latest: latest ? (JSON.parse(latest) as Record<string, any>) : null,
+  };
 }
 
 describe('release.sh update', () => {
@@ -154,17 +180,62 @@ describe('release.sh build', () => {
     expect(r.status).toBe(0);
     expect(r.eas).toMatch(/^build --platform android --profile preview --non-interactive --wait --json /m);
     const lines = r.gh.trim().split('\n');
-    expect(lines[0]).toBe('release delete companion-android --cleanup-tag --yes');
-    expect(lines[1]).toMatch(/^release create companion-android \S+\/golf-launch-monitor-sync-companion\.apk --prerelease --target abc1234 /);
+    expect(lines[0]).toMatch(/^release download companion-android --pattern latest\.json --output /);
+    expect(lines[1]).toBe('release delete companion-android --cleanup-tag --yes');
+    expect(lines[2]).toMatch(
+      /^release create companion-android \S+\/golf-launch-monitor-sync-companion\.apk \S+\/latest\.json --prerelease --target abc1234 /,
+    );
     expect(r.summary).toMatch(/on GitHub as the pre-release companion-android/);
   });
 
-  it('with --apk-release and iOS too: the iPhone build starts first, without waiting for the APK', () => {
-    const r = run(['build', '--platform', 'all', '--apk-release'], { ascAppId: '1234567890' });
+  // LMS-W3-N-b (17 Nov): the app tells a new build from latest.json (src/lib/newBuild.ts).
+  it("with the APK goes latest.json: the build's runtime, as Expo names it, else as worked out here", () => {
+    const named = run(['build', '--platform', 'android', '--apk-release'], { runtimeVersion: 'fp-from-expo' });
+    expect(named.latest).toMatchObject({ format: 'glmsync-companion/1', android: { runtime: 'fp-from-expo', version: '0.1.0' } });
+    expect(named.latest?.android.built_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    const worked = run(['build', '--platform', 'android', '--apk-release']);
+    expect(worked.latest?.android.runtime).toBe('fp-android-1234567890abcdef');
+  });
+
+  it("an Android build keeps what latest.json said about the iPhone, and drops junk", () => {
+    const r = run(['build', '--platform', 'android', '--apk-release'], {
+      runtimeVersion: 'fp-a2',
+      previousLatest: { android: { runtime: 'fp-a1' }, ios: { runtime: 'fp-i1', version: '0.1.0' }, evil: { url: 'x' } },
+    });
+    expect(r.latest).toEqual({
+      format: 'glmsync-companion/1',
+      android: expect.objectContaining({ runtime: 'fp-a2' }),
+      ios: { runtime: 'fp-i1', version: '0.1.0' },
+    });
+  });
+
+  it('with --apk-release and iOS too: both are waited for, the finished iPhone build goes into latest.json', () => {
+    const r = run(['build', '--platform', 'all', '--apk-release'], { ascAppId: '1234567890', runtimeVersion: 'fp-x' });
     expect(r.status).toBe(0);
     const builds = r.eas.split('\n').filter((l) => l.startsWith('build '));
-    expect(builds[0]).toMatch(/--platform ios .*--no-wait/);
+    expect(builds[0]).toMatch(/--platform ios .*--wait .*--auto-submit/);
     expect(builds[1]).toMatch(/--platform android .*--wait/);
+    expect(r.gh).toMatch(/^release upload companion-android \S+\/latest\.json --clobber$/m);
+    expect(r.summary).toMatch(/latest\.json names the new iOS build/);
+  });
+
+  it("an iPhone build without the pre-release yet: says latest.json wasn't updated, and still succeeds", () => {
+    const r = run(['build', '--platform', 'ios', '--apk-release'], { ascAppId: '1234567890', failUpload: true });
+    expect(r.status).toBe(0);
+    expect(r.summary).toMatch(/latest\.json was not updated/);
+  });
+
+  it('an iPhone build that did not finish writes nothing and fails the run', () => {
+    const r = run(['build', '--platform', 'ios', '--apk-release'], { ascAppId: '1234567890', buildStatus: 'ERRORED' });
+    expect(r.status).toBe(1);
+    expect(r.gh).toBe('');
+    expect(r.summary).toMatch(/iOS build did not finish/);
+  });
+
+  it('without --apk-release an iPhone build is only started, and latest.json stays as it is', () => {
+    const r = run(['build', '--platform', 'ios'], { ascAppId: '1234567890' });
+    expect(r.eas).toMatch(/--platform ios .*--no-wait/);
+    expect(r.gh).toBe('');
   });
 
   it('a build that did not finish puts nothing on GitHub and fails the run', () => {

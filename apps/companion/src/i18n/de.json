@@ -101,5 +101,12 @@
   "error.authRejected": "Der Anbieter hat die Anmeldung nicht angenommen. Melde dich neu an.",
   "error.providerBlocked": "Der Anbieter ist von hier nicht erreichbar. Prüf die Verbindung.",
   "error.providerUnavailable": "Der Anbieter antwortet gerade nicht richtig. Versuch es später noch einmal.",
-  "error.generic": "Etwas ist schiefgegangen. Versuch es noch einmal."
+  "error.generic": "Etwas ist schiefgegangen. Versuch es noch einmal.",
+  "newBuild.title": "Eine neue Version dieser App ist da",
+  "newBuild.android": "Sie braucht eine neue Installation: herunterladen und die Datei öffnen. Android fragt einmal, ob dein Browser Apps installieren darf – „Zulassen“. Deine Anmeldung und Verbindungen bleiben.",
+  "newBuild.ios": "Sie kommt über TestFlight: mit automatischen Updates dort von selbst, sonst in TestFlight aktualisieren. Deine Anmeldung und Verbindungen bleiben.",
+  "newBuild.download": "Neue Version herunterladen",
+  "newBuild.testflight": "TestFlight öffnen",
+  "newBuild.later": "Später",
+  "newBuild.failed": "Das ließ sich nicht öffnen. Versuch es später noch einmal."
 }

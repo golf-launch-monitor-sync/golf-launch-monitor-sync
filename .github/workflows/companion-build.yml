@@ -5,7 +5,9 @@
 # the iOS build, which goes to TestFlight by itself (internal testers, no review). Needed once at the
 # start and whenever the native part changes (companion-update.yml says when). The run waits for the
 # APK and puts it into the GitHub pre-release `companion-android` (replacing the one before), so a
-# phone gets it with one tap from a fixed address until the app is in Google Play.
+# phone gets it with one tap from a fixed address until the app is in Google Play; beside it
+# `latest.json`, from which an installed app tells that a new build is out (an iOS build is waited for
+# too and only then written there).
 #
 # Only from main, after the tests of that commit passed. The Expo token is a secret of the
 # environment "release", which only main may use.
@@ -31,8 +33,8 @@ jobs:
   build:
     if: github.repository == 'golf-launch-monitor-sync/golf-launch-monitor-sync' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    # Waiting for Expo's Android build (15–25 minutes, longer in its queue).
-    timeout-minutes: 75
+    # Waiting for Expo's builds (15–25 minutes each, longer in its queue; `all` waits for both in turn).
+    timeout-minutes: 120
     environment: release
     permissions:
       contents: write # the APK's pre-release

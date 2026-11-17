@@ -101,5 +101,12 @@
   "error.authRejected": "The provider didn't accept the sign-in. Sign in again.",
   "error.providerBlocked": "The provider can't be reached from here. Check the connection.",
   "error.providerUnavailable": "The provider isn't answering properly right now. Try again later.",
-  "error.generic": "Something went wrong. Try again."
+  "error.generic": "Something went wrong. Try again.",
+  "newBuild.title": "A new version of this app is out",
+  "newBuild.android": "It needs a new install: download it and open the file. Android asks once whether your browser may install apps – allow it. Your sign-in and connections stay.",
+  "newBuild.ios": "It comes through TestFlight: with automatic updates there it arrives by itself, otherwise update it in TestFlight. Your sign-in and connections stay.",
+  "newBuild.download": "Download new version",
+  "newBuild.testflight": "Open TestFlight",
+  "newBuild.later": "Later",
+  "newBuild.failed": "That couldn’t be opened. Try again later."
 }

@@ -55,8 +55,9 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm --filter @glmsync/extension package
       - run: pnpm e2e
+      # Self-hosted: signed by Mozilla but not listed, it names its own update_url (src/manifest.ts).
       - name: Mozilla's linter on the Firefox build
-        run: npx --yes web-ext@8 lint --source-dir apps/extension/dist/firefox --warnings-as-errors
+        run: npx --yes web-ext@8 lint --source-dir apps/extension/dist/firefox --warnings-as-errors --self-hosted
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -65,4 +66,4 @@ jobs:
           # By hand the tag doesn't exist yet: the release makes it, at this commit.
           gh release create "$TAG" apps/extension/dist/*.zip --target "$GITHUB_SHA" \
             --repo "$GITHUB_REPOSITORY" --title "Browser extension ${TAG#extension-v}" \
-            --notes "Packages for the Chrome Web Store (also Edge Add-ons) and Firefox Add-ons. Unsigned: install from the stores, or load unpacked for testing (apps/extension/README.md)."
+            --notes "Packages for the Chrome Web Store (also Edge Add-ons) and Firefox Add-ons. Unsigned: install from the stores, or load unpacked for testing (apps/extension/README.md). The Firefox package signed by Mozilla is attached here as an .xpi once it is; Firefox then updates from the web app's site."

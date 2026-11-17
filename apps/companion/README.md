@@ -68,7 +68,7 @@ index.ts            entry: the background task and the Android sync task first, 
 app.config.ts       ids (from the environment for forks), scheme glmsync, EAS project and updates
 src/lib/            everything without a screen, tested with vitest: secrets, sign-ins, pairings,
                     links, the runner (pair, sync, history, file, "Is this you?"), the Android sync
-                    service's rules (nudge), the wording
+                    service's rules (nudge), whether a new build is out (newBuild), the wording
 src/ui/             the screens: App (links, opening, quiet renewal), Home, PairView, SignInView,
                     SyncView, Licenses, TrackmanLoginView
 src/platform.ts     the phone's parts: secure store, storage, share sheet
@@ -103,10 +103,23 @@ The published app is built by regsta Consulting GmbH, under its Expo organisatio
   (replacing the one before), at a fixed address a target app can link to until the app is in
   Google Play:
   `https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/companion-android/golf-launch-monitor-sync-companion.apk`.
+  Beside it goes **`latest.json`**: the runtime (fingerprint of the native part) of the newest build per platform.
+  With `all`, the iOS build is waited for too, and only a finished one is written there.
 - **Companion update** (`.github/workflows/companion-update.yml`, every push to `main` that changes
   the app or a package it uses): after this commit's tests pass, an over-the-air update (EAS Update,
   channel `preview`) to every build that can run it. Where none can (the native part changed), it
   publishes nothing and says to start a build by hand.
+
+**Nobody has to say there is a new version.** The JavaScript part comes over the air. A new build (its native part
+changed) can't: when the app starts it reads `latest.json` and, if it names another runtime than its own, says a new
+version is out - on Android with *Download new version* (the APK above), on the iPhone pointing to TestFlight, which
+updates by itself where automatic updates are on (`src/lib/newBuild.ts`). Only the runtime is read from the file; the
+address is the app's own. The request goes to GitHub and carries nothing of the player's. A development build has no
+runtime and asks nothing.
+
+**The version a target sees** is `version` in `app.config.ts` (sent at pairing and with every batch as `generator`).
+It doesn't count towards the runtime, so raising it goes out over the air; raise it when a target should be able to
+ask for what this version brings.
 
 Both need the secret `EXPO_TOKEN` in the GitHub environment **`release`**, which only `main` may use
 (Settings › Environments › release › Deployment branches: `main`): pull requests, forks and other

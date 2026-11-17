@@ -8,11 +8,13 @@
 
 import type { GuardCounts } from '@glmsync/core';
 import * as Linking from 'expo-linking';
+import * as Updates from 'expo-updates';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { lang, t } from '../i18n';
 import type { KeyedPairing } from '../lib/pairings';
 import { hostOf } from '../lib/links';
+import { checkNewBuild, type NewBuild } from '../lib/newBuild';
 import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
 import { countsText, errorText, runText, when } from '../lib/text';
 import { shareFile, version } from '../platform';
@@ -37,6 +39,7 @@ export function Home({
   const [counts, setCounts] = useState<Partial<Record<ProviderId, GuardCounts | null>>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [build, setBuild] = useState<NewBuild | null>(null);
   const pairings = svc.pairings.list();
   const now = Date.now();
 
@@ -54,6 +57,17 @@ export function Home({
       for (const off of offs) off();
     };
   }, [svc, refreshCounts]);
+
+  // A new build (its native part changed, so no update can bring it): said once, when the app starts.
+  useEffect(() => {
+    let live = true;
+    void checkNewBuild(Platform.OS, Updates.runtimeVersion).then((b) => {
+      if (live) setBuild(b);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   async function act(name: string, fn: () => Promise<unknown>) {
     setBusy(name);
@@ -109,6 +123,19 @@ export function Home({
       {note && (
         <Card>
           <Body warn>{note}</Body>
+        </Card>
+      )}
+      {build && (
+        <Card>
+          <Title>{t('newBuild.title')}</Title>
+          <Body>{t(build.platform === 'android' ? 'newBuild.android' : 'newBuild.ios')}</Body>
+          <View style={s.row}>
+            <Button
+              label={t(build.platform === 'android' ? 'newBuild.download' : 'newBuild.testflight')}
+              onPress={() => void Linking.openURL(build.url).catch(() => setNote(t('newBuild.failed')))}
+            />
+            <Button label={t('newBuild.later')} kind="secondary" onPress={() => setBuild(null)} />
+          </View>
         </Card>
       )}
 

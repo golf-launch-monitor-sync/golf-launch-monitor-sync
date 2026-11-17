@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { manifest, packageName, PAIR_MATCHES } from './manifest.ts';
+import { FIREFOX_UPDATE_URL, GECKO_ID, manifest, packageName, PAIR_MATCHES } from './manifest.ts';
 
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version as string;
 
@@ -33,6 +33,15 @@ describe('the manifest', () => {
     expect(ff.background).toEqual({ scripts: ['background.js'] });
     expect(ff.browser_specific_settings.gecko).toMatchObject({ id: expect.stringContaining('@'), strict_min_version: '140.0' });
     expect(ff.browser_specific_settings.gecko.data_collection_permissions.required.length).toBeGreaterThan(0);
+  });
+
+  // 17 Nov (LMS-W3-N-b): loaded by hand nothing updates itself; signed by Mozilla, Firefox asks this address.
+  it("Firefox asks the web app's site for its updates, over https; Chrome has no such field", () => {
+    const ff = manifest('firefox', '1.0.0') as any;
+    expect(ff.browser_specific_settings.gecko.id).toBe(GECKO_ID);
+    expect(ff.browser_specific_settings.gecko.update_url).toBe(FIREFOX_UPDATE_URL);
+    expect(FIREFOX_UPDATE_URL).toMatch(/^https:\/\/golf-launch-monitor-sync\.github\.io\/golf-launch-monitor-sync\/firefox\/updates\.json$/);
+    expect(JSON.stringify(manifest('chrome', '1.0.0'))).not.toContain('update_url');
   });
 });
 

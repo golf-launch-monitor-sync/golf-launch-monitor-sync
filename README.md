@@ -89,7 +89,7 @@ The click checks need Playwright's full Chromium once: `pnpm exec playwright ins
 
 Contributions are welcome — please read [`CLAUDE.md`](CLAUDE.md) (the house rules, for humans
 too) first. Test data is **synthetic only**: never commit data from a real account, yours included.
-Security issues: see [`SECURITY.md`](SECURITY.md).
+Security issues: see [`SECURITY.md`](SECURITY.md). What the tools do with your data: [`PRIVACY.md`](PRIVACY.md).
 
 ## License
 
