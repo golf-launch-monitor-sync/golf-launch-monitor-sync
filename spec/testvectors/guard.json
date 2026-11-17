@@ -1,6 +1,6 @@
 {
   "$comment": "The load guard (spec/guard.md). Replay the steps in order with a fresh guard per scenario: run = begin a sync run, start/finish = a request (status 0: no answer), check = must answer `expected` ({ok: true} or {ok: false, reasons sorted, until: seconds or null}).",
-  "spec_version": "1.1.0",
+  "spec_version": "1.2.0",
   "generated_by": "spec/reference/generate.py",
   "limits": {
     "$comment": "The load guard's limits (spec/guard.md). Normative: a client of this project never exceeds them, whatever a target's plan says. Counted per provider account, across restarts.",

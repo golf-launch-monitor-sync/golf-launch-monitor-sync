@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Reginald Stadlbauer
 """The deep links and the pairing fragment (spec/deep-links.md).
 
-    glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>]
+    glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&return=<URL to go back to>]
     glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
     Android: a bound service with the action glmsync.intent.action.SYNC, data glmsync://sync?target=…,
              extra glmsync.extra.REASON = open | manual
@@ -83,7 +83,9 @@ def _pair(p: dict[str, str]) -> dict[str, Any]:
         return {"ok": False, "error": "invalid:code"}
     if "provider" in p and not PROVIDER.fullmatch(p["provider"]):
         return {"ok": False, "error": "invalid:provider"}
-    return {"ok": True, "action": "pair", **{k: p[k] for k in ("target", "code", "provider") if k in p}}
+    if "return" in p and not valid_return(p["return"]):
+        return {"ok": False, "error": "invalid:return"}
+    return {"ok": True, "action": "pair", **{k: p[k] for k in ("target", "code", "provider", "return") if k in p}}
 
 
 def parse_link(url: str) -> dict[str, Any]:
@@ -94,7 +96,9 @@ def parse_link(url: str) -> dict[str, Any]:
         return {"ok": False, "error": "invalid:link"}
     action, query = m.group(1), m.group(2) or ""
     if action == "pair":
-        p = _params(query, {"target", "code", "provider"})
+        # `return` (1.2.0): where to jump back once paired - checked against the target's return_prefixes only after
+        # POST /pair, like a sync's (return_allowed).
+        p = _params(query, {"target", "code", "provider", "return"})
         return p_error(p) or _pair(p)  # type: ignore[arg-type]
     p = _params(query, {"target", "return"})
     if isinstance(p, str):
@@ -111,7 +115,7 @@ def p_error(p: dict[str, str] | str) -> dict[str, Any] | None:
 
 
 def parse_pair_fragment(fragment: str) -> dict[str, Any]:
-    """The web app's pairing page: the part after '#' (it reaches no server)."""
+    """The web app's pairing page: the part after '#' (it reaches no server). No `return`: the page stays where it is."""
     if not isinstance(fragment, str) or len(fragment) > MAX_LEN:
         return {"ok": False, "error": "invalid:link"}
     p = _params(fragment[1:] if fragment.startswith("#") else fragment, {"target", "code", "provider"})

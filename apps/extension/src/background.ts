@@ -15,6 +15,7 @@ import { PORTAL_URL } from '@glmsync/provider-trackman/portal';
 import type { Message, Pending, Reply } from './messages.ts';
 import { accept, sourceOf } from './senders.ts';
 import { ExtensionStorage } from './storage.ts';
+import { nearOf, openTab, showTab, type Near, type TabsApi } from './tabs.ts';
 
 declare const __VERSION__: string;
 declare const __BROWSER__: 'chrome' | 'firefox';
@@ -143,42 +144,22 @@ async function setPending(p: Pending | null): Promise<void> {
   else await chrome.storage.session.remove(PENDING_KEY);
 }
 
-const WINDOW_KEY = 'glmsync/connect-window';
-
-/** The connect window: brought to the front if it is open, else opened (a small window of its own). */
-async function openConnectWindow(): Promise<void> {
-  const got = await chrome.storage.session.get(WINDOW_KEY);
-  const id = got[WINDOW_KEY];
-  if (typeof id === 'number') {
-    try {
-      await chrome.windows.update(id, { focused: true });
-      return;
-    } catch {
-      // closed meanwhile
-    }
-  }
-  const url = chrome.runtime.getURL('connect.html');
-  try {
-    const w = await chrome.windows.create({ url, type: 'popup', width: 460, height: 660, focused: true });
-    if (w?.id !== undefined) await chrome.storage.session.set({ [WINDOW_KEY]: w.id });
-  } catch {
-    await chrome.tabs.create({ url }); // a browser without popup windows
-  }
-}
+const CONNECT_TAB_KEY = 'glmsync/connect-tab';
+const tabsApi = chrome as unknown as TabsApi;
 
 /**
- * A tab with `url`. With no ordinary browser window open (a Mac keeps Chrome running without one, and
- * the connect window is a popup, which takes no tabs) a new window instead.
+ * The connect window: brought to the front if it is open, else opened as a tab beside the page that asked (the
+ * pairing page, the portal) - never a popup window of its own (tabs.ts says why).
  */
-async function openTab(url: string): Promise<void> {
-  try {
-    await chrome.tabs.create({ url });
-  } catch {
-    await chrome.windows.create({ url, type: 'normal', focused: true });
-  }
+async function openConnectWindow(near: Near | null): Promise<void> {
+  const got = await chrome.storage.session.get(CONNECT_TAB_KEY);
+  const id = got[CONNECT_TAB_KEY];
+  if (typeof id === 'number' && (await showTab(tabsApi, id))) return;
+  const tab = await openTab(tabsApi, chrome.runtime.getURL('connect.html'), near);
+  if (tab?.id !== undefined) await chrome.storage.session.set({ [CONNECT_TAB_KEY]: tab.id });
 }
 
-async function offer(fragment: string): Promise<Reply> {
+async function offer(fragment: string, near: Near | null): Promise<Reply> {
   const read = BrowserClient.readFragment(fragment);
   if (!read) return { ok: false, error: 'link' };
   const now = Date.now();
@@ -189,7 +170,7 @@ async function offer(fragment: string): Promise<Reply> {
     if (read.provider) p.provider = read.provider;
     await setPending(p);
   }
-  await openConnectWindow();
+  await openConnectWindow(near);
   return { ok: true };
 }
 
@@ -217,7 +198,8 @@ async function confirmPairing(): Promise<Reply> {
 // Messages
 // ---------------------------------------------------------------------------
 
-async function handle(m: Message): Promise<Reply> {
+/** `near`: the tab the message came from (the pairing page, the portal, the connect window), if any. */
+async function handle(m: Message, near: Near | null): Promise<Reply> {
   switch (m.type) {
     case 'portal-key': {
       const before = await client.status();
@@ -228,13 +210,13 @@ async function handle(m: Message): Promise<Reply> {
           await refreshIcon();
           // A first key of an account, and an app is waiting for it: ask "Is this you?" right away.
           const s = await client.status();
-          if (s.key.state === 'confirm' && s.pairings.length && before.key.state !== 'confirm') await openConnectWindow();
+          if (s.key.state === 'confirm' && s.pairings.length && before.key.state !== 'confirm') await openConnectWindow(near);
         }
       }
       return { ok: true };
     }
     case 'pair-offer':
-      return offer(m.fragment);
+      return offer(m.fragment, near);
     case 'pair-status':
       return { ok: true, pending: await pending() };
     case 'pending':
@@ -275,7 +257,8 @@ async function handle(m: Message): Promise<Reply> {
       await refreshIcon();
       return { ok: true, status: await client.status() };
     case 'open-portal':
-      await openTab(PORTAL_URL);
+      // Beside the connect window, in its browser window, in front.
+      await openTab(tabsApi, PORTAL_URL, near);
       return { ok: true };
   }
 }
@@ -284,7 +267,7 @@ chrome.runtime.onMessage.addListener((raw, sender, reply) => {
   const source = sourceOf(sender, chrome.runtime.id, chrome.runtime.getURL(''));
   const m = accept(raw, source);
   if (!m) return false; // not ours to answer
-  handle(m).then(reply, (e: unknown) => reply({ ok: false, error: e instanceof Error ? e.message : String(e) } satisfies Reply));
+  handle(m, nearOf(sender.tab)).then(reply, (e: unknown) => reply({ ok: false, error: e instanceof Error ? e.message : String(e) } satisfies Reply));
   return true; // answered asynchronously
 });
 

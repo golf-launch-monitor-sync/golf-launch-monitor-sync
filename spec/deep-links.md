@@ -12,7 +12,7 @@ The scheme is open: any app may implement the receiving side. Reference:
 ## Links
 
 ```
-glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>]
+glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&return=<URL to go back to>]
 glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
 https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>]
 ```
@@ -20,7 +20,12 @@ https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<i
 - **pair** opens the companion app (on a phone) with what it needs to call `POST /pair`. On a
   computer the target opens the web app's pairing page instead; the code travels in the
   **fragment** (after `#`), which a browser sends to no server — the extension picks it up from the
-  page.
+  page. Since 1.2.0 a pair link may carry `return`: once `POST /pair` succeeded (and, if the player
+  still has to sign in at the provider, once they did), the companion app jumps there - by the same
+  rule as a sync ([below](#where-a-sync-may-jump-back-to)), against the `return_prefixes` the target
+  has just named. Not before: until the pairing stands, nothing says the address is the target's own.
+  The fragment of the pairing page takes no `return` (the page stays where it is); a client older than
+  1.2.0 ignores it, so a target says where to go back to in its own words as well.
 - **sync** asks the companion app to fetch now (it still asks the target's plan first) and then to
   jump back to `return`. `target` picks the pairing when there are several.
 
@@ -36,13 +41,13 @@ A link comes from outside and is read strictly; anything unexpected makes it inv
   (development); no user info, no query, no fragment;
 - `code`: 6–64 of `0-9 A-Z a-z -`;
 - `provider`: a lower-case id (`^[a-z][a-z0-9_-]{1,39}$`);
-- `return`: an absolute URL — `https://host/…`, `http://` to this machine, or an app's own scheme
+- `return` (sync, and pair since 1.2.0): an absolute URL — `https://host/…`, `http://` to this machine, or an app's own scheme
   written `scheme://…`; never `javascript:`, `data:`, `file:`, `vbscript:`, `about:`, `blob:` or
   `glmsync:`. At most 2048 characters for every link.
 
 ## Where a sync may jump back to
 
-Only to a URL that starts with one of the `return_prefixes` the target named at pairing
+The same holds for a pair link's `return`. Only to a URL that starts with one of the `return_prefixes` the target named at pairing
 (`POST /pair`). A prefix ends with `/` or `://`, so that `https://app.example` can't be stretched to
 `https://app.example.evil.test`. Otherwise the companion app stays where it is.
 

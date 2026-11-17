@@ -7,13 +7,16 @@
 #
 #   bash apps/companion/scripts/release.sh update                    # an over-the-air update where a build can run it
 #   bash apps/companion/scripts/release.sh build --platform android  # a new build: android, ios or all
+#   bash apps/companion/scripts/release.sh build --platform android --apk-release
+#        # and, once the APK is built, it replaces the one of the GitHub pre-release `companion-android`
+#        # (a fixed address a target app can link to until the app is in Google Play)
 #
 # An update reaches only builds of the same runtime (the fingerprint of the native part). Where none
 # exists - a new native module, an SDK upgrade - `update` says so and leaves the build to a person:
 # builds start only by hand. Needs EXPO_TOKEN (a robot of the Expo organisation that owns the project)
 # and the project id in app.config.ts; without them nothing happens, and the run's summary says why.
 #
-# EAS_CLI, EXPO_CONFIG, RESOLVE_RUNTIME and EAS_JSON can be swapped for stubs (scripts/release.test.ts).
+# EAS_CLI, EXPO_CONFIG, RESOLVE_RUNTIME, EAS_JSON, GH_CLI and DOWNLOAD can be swapped for stubs (scripts/release.test.ts).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -24,6 +27,14 @@ eas() { ${EAS_CLI:-npx --yes eas-cli@27} "$@"; }
 expo_config() { ${EXPO_CONFIG:-npx expo config --type public --json}; }
 # shellcheck disable=SC2086
 resolve_runtime() { ${RESOLVE_RUNTIME:-npx expo-updates runtimeversion:resolve --workflow managed} --platform "$1"; }
+# shellcheck disable=SC2086
+gh_cli() { ${GH_CLI:-gh} "$@"; }
+# shellcheck disable=SC2086
+download() { ${DOWNLOAD:-curl -fsSL --retry 3 -o} "$1" "$2"; }
+
+# The APK's pre-release: one tag, moved to each new Android build, so its address stays the same.
+APK_TAG=companion-android
+APK_NAME=golf-launch-monitor-sync-companion.apk
 
 say() {
   printf '%s\n' "$*"
@@ -47,19 +58,22 @@ profile_of() { if [ "$1" = ios ]; then echo testflight; else echo preview; fi; }
 command="${1:-}"
 if [ $# -gt 0 ]; then shift; fi
 want=all
+apk_release=false
 while [ $# -gt 0 ]; do
   case "$1" in
+    --apk-release) apk_release=true ;;
     --platform)
       [ $# -ge 2 ] || fail "--platform needs android, ios or all."
       want="$2"
       shift
       ;;
-    *) fail "Unknown option: $1 (allowed: --platform android|ios|all)." ;;
+    *) fail "Unknown option: $1 (allowed: --platform android|ios|all, --apk-release)." ;;
   esac
   shift
 done
 case "$command" in update | build) ;; *) fail "Usage: release.sh update | build [--platform android|ios|all]" ;; esac
 case "$want" in android | ios | all) ;; *) fail "--platform needs android, ios or all (not $want)." ;; esac
+if [ "$apk_release" = true ] && [ "$command" != build ]; then fail "--apk-release goes with build only."; fi
 
 if [ -z "${EXPO_TOKEN:-}" ]; then
   warn "No EXPO_TOKEN (the release environment's secret): nothing built or published. apps/companion/README.md, \"Builds and updates\"."
@@ -79,7 +93,7 @@ if EAS_JSON_PATH="$(cd "$(dirname "${EAS_JSON:-eas.json}")" && pwd)/$(basename "
   ios_ready=true
 fi
 platforms=()
-if [ "$want" != ios ]; then platforms+=(android); fi
+# iOS first: an APK for the release is waited for, and the iPhone's build needn't wait behind it.
 if [ "$want" != android ]; then
   if [ "$ios_ready" = true ]; then
     platforms+=(ios)
@@ -89,22 +103,46 @@ if [ "$want" != android ]; then
     say "iOS: not set up yet (no ascAppId in eas.json), Android only."
   fi
 fi
+if [ "$want" != ios ]; then platforms+=(android); fi
 
 message="$(git log -1 --format=%s 2>/dev/null || true)"
 message="${message:-Companion app}"
+
+# The finished APK into the pre-release (replacing the one before), for a phone to install with one tap.
+apk_to_release() {
+  local url="$1" dir file
+  dir="$(mktemp -d)"
+  file="$dir/$APK_NAME"
+  download "$file" "$url" || fail "The APK could not be downloaded from Expo ($url)."
+  [ -s "$file" ] || fail "Expo's APK was empty ($url)."
+  gh_cli release delete "$APK_TAG" --cleanup-tag --yes >/dev/null 2>&1 || true
+  gh_cli release create "$APK_TAG" "$file" --prerelease --target "${GITHUB_SHA:-main}" \
+    --title "Companion app for Android (testing)" \
+    --notes "The newest Android build of the companion app, for testers until it is in Google Play: $(git log -1 --format=%h 2>/dev/null || echo main). Install: open this file on the phone and allow installing from this source. Unofficial; not affiliated with any launch monitor maker." \
+    || fail "The GitHub release $APK_TAG could not be made (log above)."
+  rm -rf "$dir"
+}
 
 if [ "$command" = build ]; then
   for p in "${platforms[@]}"; do
     extra=()
     # The iPhone build goes to App Store Connect by itself, and from there to the internal testers.
     if [ "$p" = ios ]; then extra=(--auto-submit); fi
+    wait_for=--no-wait
+    if [ "$p" = android ] && [ "$apk_release" = true ]; then wait_for=--wait; fi
     # shellcheck disable=SC2016 # a JavaScript template, not the shell's
-    link="$(eas build --platform "$p" --profile "$(profile_of "$p")" --non-interactive --no-wait --json \
-      ${extra[@]+"${extra[@]}"} --message "$message" \
-      | json '`https://expo.dev/accounts/${j[0].app.ownerAccount.name}/projects/${j[0].app.slug}/builds/${j[0].id}`')" \
+    out="$(eas build --platform "$p" --profile "$(profile_of "$p")" --non-interactive "$wait_for" --json \
+      ${extra[@]+"${extra[@]}"} --message "$message")" || fail "The $p build could not be started (log above)."
+    # shellcheck disable=SC2016
+    link="$(printf '%s' "$out" | json '`https://expo.dev/accounts/${j[0].app.ownerAccount.name}/projects/${j[0].app.slug}/builds/${j[0].id}`')" \
       || fail "The $p build could not be started (log above)."
     if [ "$p" = ios ]; then
       say "iOS build started; it goes to TestFlight by itself when done: $link"
+    elif [ "$wait_for" = --wait ]; then
+      apk="$(printf '%s' "$out" | json 'j[0].status === "FINISHED" ? j[0].artifacts && j[0].artifacts.buildUrl : ""')" \
+        || fail "The Android build did not finish ($link)."
+      apk_to_release "$apk"
+      say "Android build (APK) done: $link - and on GitHub as the pre-release $APK_TAG ($APK_NAME)."
     else
       say "Android build (APK) started, ready in about 15–25 minutes: $link"
     fi

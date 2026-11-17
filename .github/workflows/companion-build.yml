@@ -3,7 +3,9 @@
 #
 # A new build of the companion app at Expo, by hand only: the Android APK (internal distribution) or
 # the iOS build, which goes to TestFlight by itself (internal testers, no review). Needed once at the
-# start and whenever the native part changes (companion-update.yml says when).
+# start and whenever the native part changes (companion-update.yml says when). The run waits for the
+# APK and puts it into the GitHub pre-release `companion-android` (replacing the one before), so a
+# phone gets it with one tap from a fixed address until the app is in Google Play.
 #
 # Only from main, after the tests of that commit passed. The Expo token is a secret of the
 # environment "release", which only main may use.
@@ -29,8 +31,11 @@ jobs:
   build:
     if: github.repository == 'golf-launch-monitor-sync/golf-launch-monitor-sync' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Waiting for Expo's Android build (15–25 minutes, longer in its queue).
+    timeout-minutes: 75
     environment: release
+    permissions:
+      contents: write # the APK's pre-release
     steps:
       - uses: actions/checkout@v7
         with:
@@ -43,7 +48,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
-      - run: bash apps/companion/scripts/release.sh build --platform "$PLATFORM"
+      - run: bash apps/companion/scripts/release.sh build --platform "$PLATFORM" --apk-release
         env:
           PLATFORM: ${{ inputs.platform }}
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}

@@ -26,6 +26,8 @@ interface Opts {
   failUpdate?: boolean;
   /** Expo refuses the build (a plan's limit, say): a message, nothing on stdout. */
   failBuild?: boolean;
+  /** A waited-for build that ended otherwise than FINISHED. */
+  buildStatus?: string;
 }
 
 function run(args: string[], o: Opts = {}) {
@@ -44,7 +46,7 @@ function run(args: string[], o: Opts = {}) {
     `echo "$*" >> ${JSON.stringify(log)}
 case "$1" in
   build:list) echo '${builds}' ;;
-  build) ${o.failBuild ? "echo 'This account has used its Android builds from the Free plan this month.' >&2; exit 1" : `echo '[{"id":"new-build","app":{"slug":"golf-launch-monitor-sync","ownerAccount":{"name":"example-org"}}}]'`} ;;
+  build) ${o.failBuild ? "echo 'This account has used its Android builds from the Free plan this month.' >&2; exit 1" : `if [[ "$*" == *--wait* ]]; then echo '[{"id":"new-build","status":"${o.buildStatus ?? 'FINISHED'}","artifacts":{"buildUrl":"https://expo.example/artifacts/app.apk"},"app":{"slug":"golf-launch-monitor-sync","ownerAccount":{"name":"example-org"}}}]'; else echo '[{"id":"new-build","app":{"slug":"golf-launch-monitor-sync","ownerAccount":{"name":"example-org"}}}]'; fi`} ;;
   update) ${o.failUpdate ? 'exit 3' : 'echo published'} ;;
 esac`,
   );
@@ -53,6 +55,10 @@ esac`,
   const easJson = join(dir, 'eas.json');
   writeFileSync(easJson, JSON.stringify({ submit: { testflight: { ios: o.ascAppId ? { ascAppId: o.ascAppId } : {} } } }));
   const summary = join(dir, 'summary.md');
+  const ghLog = join(dir, 'gh.log');
+  const gh = stub('gh', `echo "$*" >> ${JSON.stringify(ghLog)}`);
+  // The download: the address it was asked for, as the file's content.
+  const download = stub('download', 'printf "APK from %s" "$2" > "$1"');
   const env: Record<string, string> = {
     PATH: process.env.PATH ?? '',
     HOME: dir,
@@ -61,6 +67,9 @@ esac`,
     RESOLVE_RUNTIME: runtime,
     EAS_JSON: easJson,
     GITHUB_STEP_SUMMARY: summary,
+    GH_CLI: gh,
+    DOWNLOAD: download,
+    GITHUB_SHA: 'abc1234',
   };
   if (o.token !== '') env.EXPO_TOKEN = o.token ?? 'robot-token-for-tests';
   const r = spawnSync('bash', [SCRIPT, ...args], { env, encoding: 'utf8' });
@@ -71,7 +80,7 @@ esac`,
       return '';
     }
   };
-  return { status: r.status, out: r.stdout + r.stderr, eas: read(log), summary: read(summary) };
+  return { status: r.status, out: r.stdout + r.stderr, eas: read(log), summary: read(summary), gh: read(ghLog) };
 }
 
 describe('release.sh update', () => {
@@ -138,6 +147,35 @@ describe('release.sh build', () => {
     expect(no.status).toBe(1);
     expect(no.eas).toBe('');
     expect(no.out).toMatch(/iOS isn't set up yet/);
+  });
+
+  it('with --apk-release: waits for the APK and puts it into the pre-release companion-android, replacing the last', () => {
+    const r = run(['build', '--platform', 'android', '--apk-release']);
+    expect(r.status).toBe(0);
+    expect(r.eas).toMatch(/^build --platform android --profile preview --non-interactive --wait --json /m);
+    const lines = r.gh.trim().split('\n');
+    expect(lines[0]).toBe('release delete companion-android --cleanup-tag --yes');
+    expect(lines[1]).toMatch(/^release create companion-android \S+\/golf-launch-monitor-sync-companion\.apk --prerelease --target abc1234 /);
+    expect(r.summary).toMatch(/on GitHub as the pre-release companion-android/);
+  });
+
+  it('with --apk-release and iOS too: the iPhone build starts first, without waiting for the APK', () => {
+    const r = run(['build', '--platform', 'all', '--apk-release'], { ascAppId: '1234567890' });
+    expect(r.status).toBe(0);
+    const builds = r.eas.split('\n').filter((l) => l.startsWith('build '));
+    expect(builds[0]).toMatch(/--platform ios .*--no-wait/);
+    expect(builds[1]).toMatch(/--platform android .*--wait/);
+  });
+
+  it('a build that did not finish puts nothing on GitHub and fails the run', () => {
+    const r = run(['build', '--platform', 'android', '--apk-release'], { buildStatus: 'ERRORED' });
+    expect(r.status).toBe(1);
+    expect(r.gh).toBe('');
+    expect(r.summary).toMatch(/did not finish/);
+  });
+
+  it('--apk-release only with build', () => {
+    expect(run(['update', '--apk-release'], { builds: ['FINISHED'] }).status).toBe(1);
   });
 
   it('refuses what it does not know', () => {

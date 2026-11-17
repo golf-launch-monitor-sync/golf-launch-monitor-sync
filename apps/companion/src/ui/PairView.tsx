@@ -4,12 +4,16 @@
  * "Pair with <host>?" - a pair link only ever asks. Any app or web page can open such a link, and a
  * pairing sends this player's launch monitor data to that address: so the address is shown plainly
  * and nothing happens without the player's yes.
+ *
+ * Once paired the app jumps back to the link's `return` (spec 1.2.0) - right away when it is signed in
+ * already, else after the sign-in - but only to an address the target named as its own in its answer.
  */
 
+import * as Linking from 'expo-linking';
 import { useState } from 'react';
 import { ScrollView } from 'react-native';
 import { lang, t } from '../i18n';
-import type { Incoming } from '../lib/links';
+import { backAfterPairing, type Incoming } from '../lib/links';
 import type { Services } from '../lib/services';
 import { errorText } from '../lib/text';
 import type { Screen } from './App';
@@ -25,12 +29,14 @@ export function PairView({ svc, link, go }: { svc: Services; link: Extract<Incom
     setError(null);
     try {
       const p = await svc.runner.pair(link);
+      const back = backAfterPairing(link, p);
       if (svc.signIns.credential(p.provider)) {
         // Signed in already: the first sync right away (the target's plan decides what it brings).
         void svc.runner.syncAll('connect', { target: p.base }).catch(() => undefined);
         go({ name: 'home' });
+        if (back) await Linking.openURL(back).catch(() => undefined); // the app to go back to is gone: stay
       } else {
-        go({ name: 'signin', provider: p.provider as 'trackman' | 'demo' });
+        go({ name: 'signin', provider: p.provider as 'trackman' | 'demo', ...(back ? { back: { url: back, name: p.target.name } } : {}) });
       }
     } catch (e) {
       setError(errorText(e, Date.now(), lang, t));

@@ -31,6 +31,11 @@ describe('a pairing link', () => {
     expect(parseLink(link)).toEqual({ ok: true, action: 'pair', target: 'https://app.example.org/lm/v1', code: 'K7M2-PQ9X', provider: 'trackman' });
   });
 
+  it('carries where to jump back to once paired (1.2.0)', () => {
+    const link = pairLink('https://app.example.org/lm/v1', 'K7M2-PQ9X', undefined, 'exampleapp://profile?focus=lm');
+    expect(parseLink(link)).toEqual({ ok: true, action: 'pair', target: 'https://app.example.org/lm/v1', code: 'K7M2-PQ9X', return: 'exampleapp://profile?focus=lm' });
+  });
+
   it('is refused for anything that is no string', () => {
     expect(parseLink(undefined)).toEqual({ ok: false, error: 'invalid:link' });
     expect(parsePairFragment(42)).toEqual({ ok: false, error: 'invalid:link' });

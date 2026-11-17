@@ -31,7 +31,9 @@ portal in a sign-in window - so that window lives here, in a small app that does
   [load guard](../../spec/guard.md), whose counts outlive restarts. The older history comes a chunk at
   a time while the app is open (and one chunk per background wake), spaced as the target says.
 - **Jumps back** after `glmsync://sync?return=…` - only to an address that starts with a prefix the
-  paired target named as its own at pairing; otherwise it stays and says what it did.
+  paired target named as its own at pairing; otherwise it stays and says what it did. A pair link's
+  `return` (spec 1.2.0) the same way, once paired: right away when signed in already, else after the
+  sign-in ("Then back to *name*"), and only to a prefix the target named in its answer to the pairing.
 - **Fetches without a switch on Android**: a target app in front binds to the sync service
   (`glmsync.intent.action.SYNC`, [spec](../../spec/deep-links.md#android)); every bind runs a sync of
   that target's pairings as a headless JavaScript task (`modules/glmsync-sync`, `src/nudge.ts`), in
@@ -97,7 +99,10 @@ The published app is built by regsta Consulting GmbH, under its Expo organisatio
 
 - **Companion build** (`.github/workflows/companion-build.yml`, by hand on `main`): an Android APK
   (internal distribution) or an iOS build that goes to TestFlight by itself (internal testers, no
-  review).
+  review). The run waits for the APK and puts it into the GitHub pre-release **`companion-android`**
+  (replacing the one before), at a fixed address a target app can link to until the app is in
+  Google Play:
+  `https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/companion-android/golf-launch-monitor-sync-companion.apk`.
 - **Companion update** (`.github/workflows/companion-update.yml`, every push to `main` that changes
   the app or a package it uses): after this commit's tests pass, an over-the-air update (EAS Update,
   channel `preview`) to every build that can run it. Where none can (the native part changed), it

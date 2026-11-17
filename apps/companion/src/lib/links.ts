@@ -6,7 +6,8 @@
  * open one - so it is read strictly (@glmsync/spec), and it can never make the app do more than the
  * player would by hand:
  *
- * - a pair link only opens a question ("Pair with <host>?"); the player says yes or no;
+ * - a pair link only opens a question ("Pair with <host>?"); the player says yes or no. Its `return`
+ *   (spec 1.2.0) is followed only once paired, and only to an address that target then named as its own;
  * - a sync link asks the targets' plans like any other run (manual), and jumps back only to an
  *   address the paired target named as its own at pairing.
  */
@@ -15,7 +16,7 @@ import { parseLink, returnAllowed } from '@glmsync/spec';
 import type { KeyedPairing } from './pairings.ts';
 
 export type Incoming =
-  | { kind: 'pair'; target: string; code: string; provider: string; host: string; replaces: boolean }
+  | { kind: 'pair'; target: string; code: string; provider: string; host: string; replaces: boolean; return?: string }
   | { kind: 'sync'; target?: string; return?: string }
   | { kind: 'invalid'; error: string };
 
@@ -34,7 +35,15 @@ export function readIncoming(url: unknown, providers: readonly string[], pairing
     if (!providers.includes(provider)) return { kind: 'invalid', error: 'unknown:provider' };
     const base = link.target.replace(/\/+$/, '');
     const replaces = pairings.some((p) => p.provider === provider && p.base.replace(/\/+$/, '') === base);
-    return { kind: 'pair', target: link.target, code: link.code, provider, host: hostOf(link.target), replaces };
+    return {
+      kind: 'pair',
+      target: link.target,
+      code: link.code,
+      provider,
+      host: hostOf(link.target),
+      replaces,
+      ...(link.return ? { return: link.return } : {}),
+    };
   }
   return { kind: 'sync', ...(link.target ? { target: link.target } : {}), ...(link.return ? { return: link.return } : {}) };
 }
@@ -49,6 +58,16 @@ export function backTo(link: { target?: string; return?: string }, pairings: rea
   const of = base ? pairings.filter((p) => p.base.replace(/\/+$/, '') === base) : pairings;
   const prefixes = of.flatMap((p) => p.target.return_prefixes);
   return returnAllowed(link.return, prefixes) ? link.return : null;
+}
+
+/**
+ * Where a pair link jumps back to once paired: only an address that starts with a prefix the target named in
+ * its answer to this pairing. Decided after `POST /pair` - before it, nothing says the address is the target's.
+ * null: stay here.
+ */
+export function backAfterPairing(link: { return?: string }, paired: Pick<KeyedPairing, 'target'>): string | null {
+  if (!link.return) return null;
+  return returnAllowed(link.return, paired.target.return_prefixes ?? []) ? link.return : null;
 }
 
 /**

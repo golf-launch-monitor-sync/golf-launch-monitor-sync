@@ -26,3 +26,15 @@ export function storeFor(userAgent: string): string | null {
   if (/Edg\//.test(userAgent)) return STORES.edge ?? STORES.chrome;
   return STORES.chrome;
 }
+
+/**
+ * Whether this browser can run the extension at all: Chrome, Edge (and the other Chromium browsers) and Firefox on a
+ * computer, Firefox on Android. Safari has no build of it (a Safari extension needs an app of its own), and neither
+ * has any browser on an iPhone or iPad, nor Chrome on Android: there the pairing page offers only the way by hand.
+ */
+export function canHaveExtension(userAgent: string): boolean {
+  if (/iPhone|iPad|iPod/.test(userAgent)) return false;
+  if (/Firefox\//.test(userAgent)) return true;
+  if (/Android/.test(userAgent)) return false;
+  return /Chrome\/|Chromium\/|Edg\//.test(userAgent);
+}

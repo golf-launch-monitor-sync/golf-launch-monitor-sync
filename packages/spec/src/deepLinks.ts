@@ -9,7 +9,7 @@
  */
 
 export type LinkResult =
-  | { ok: true; action: 'pair'; target: string; code: string; provider?: string }
+  | { ok: true; action: 'pair'; target: string; code: string; provider?: string; return?: string }
   | { ok: true; action: 'sync'; target?: string; return?: string }
   | { ok: false; error: string };
 
@@ -71,6 +71,8 @@ export function validReturn(url: string): boolean {
 }
 
 const PAIR_KEYS = new Set(['target', 'code', 'provider']);
+// A pair link may name where to jump back to once paired (1.2.0); the pairing page's fragment may not.
+const PAIR_LINK_KEYS = new Set(['target', 'code', 'provider', 'return']);
 const SYNC_KEYS = new Set(['target', 'return']);
 
 function pair(p: Map<string, string>): LinkResult {
@@ -82,7 +84,16 @@ function pair(p: Map<string, string>): LinkResult {
   if (!CODE.test(code)) return { ok: false, error: 'invalid:code' };
   const provider = p.get('provider');
   if (provider !== undefined && !PROVIDER.test(provider)) return { ok: false, error: 'invalid:provider' };
-  return provider === undefined ? { ok: true, action: 'pair', target, code } : { ok: true, action: 'pair', target, code, provider };
+  const back = p.get('return');
+  if (back !== undefined && !validReturn(back)) return { ok: false, error: 'invalid:return' };
+  return {
+    ok: true,
+    action: 'pair',
+    target,
+    code,
+    ...(provider === undefined ? {} : { provider }),
+    ...(back === undefined ? {} : { return: back }),
+  };
 }
 
 /** `glmsync://pair?…` or `glmsync://sync?…`. */
@@ -92,7 +103,7 @@ export function parseLink(url: unknown): LinkResult {
   if (!m) return { ok: false, error: 'invalid:link' };
   const query = m[2] ?? '';
   if (m[1] === 'pair') {
-    const p = params(query, PAIR_KEYS);
+    const p = params(query, PAIR_LINK_KEYS);
     return typeof p === 'string' ? { ok: false, error: p } : pair(p);
   }
   const p = params(query, SYNC_KEYS);
@@ -125,10 +136,14 @@ export function returnAllowed(url: string, prefixes: readonly string[]): boolean
   return prefixes.some((p) => (p.endsWith('/') || p.endsWith('://')) && url.startsWith(p));
 }
 
-/** A pairing link for the companion app. */
-export function pairLink(target: string, code: string, provider?: string): string {
+/**
+ * A pairing link for the companion app; `back`: where it jumps once paired (checked there against the target's
+ * return_prefixes, like a sync link's `return`).
+ */
+export function pairLink(target: string, code: string, provider?: string, back?: string): string {
   const q = [`target=${encodeURIComponent(target)}`, `code=${encodeURIComponent(code)}`];
   if (provider) q.push(`provider=${encodeURIComponent(provider)}`);
+  if (back) q.push(`return=${encodeURIComponent(back)}`);
   return `glmsync://pair?${q.join('&')}`;
 }
 

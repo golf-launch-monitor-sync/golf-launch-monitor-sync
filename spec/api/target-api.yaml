@@ -241,7 +241,7 @@ components:
             return_prefixes:
               type: array
               maxItems: 10
-              description: "Where `glmsync://sync?return=` may jump back to (spec/deep-links.md). Each ends with '/' or '://'."
+              description: "Where `glmsync://sync?return=` (and, since 1.2.0, a pair link's `return`) may jump back to (spec/deep-links.md). Each ends with '/' or '://'."
               items: { type: string, minLength: 4, maxLength: 200 }
         account_salt:
           type: string

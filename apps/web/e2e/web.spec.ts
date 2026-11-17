@@ -25,6 +25,7 @@ test('pairs this page when there is no extension, then fetches by hand', async (
   await expect(page.getByTestId('pair-status')).toHaveText('The browser extension isn’t installed in this browser.');
   await expect(page.getByTestId('install')).toHaveAttribute('href', /apps\/extension\/README\.md#install$/);
   await expect(page.locator('#install')).toContainText('Not in the browser stores yet');
+  await expect(page.getByTestId('waiting')).toHaveText(/leave this page open: it connects by itself/);
   await expect(page.locator('main')).not.toContainText('null');
   await page.getByTestId('use-web').click();
   await expect(page).toHaveURL(`${WEB}/app.html`);
@@ -62,6 +63,42 @@ test('pairs this page when there is no extension, then fetches by hand', async (
   await page.reload();
   await expect(page.getByTestId('key-ready')).toBeVisible();
   await expect(page.getByTestId('pairing')).toContainText('Connected with Example App');
+});
+
+test('waits for the extension: installed while the page is open, it takes over; after five minutes it stops', async ({ page }) => {
+  await page.clock.install();
+  await page.goto(pairUrl());
+  await page.clock.runFor(2_000);
+  await expect(page.getByTestId('waiting')).toBeVisible();
+  // Four minutes later the extension arrives (it marks the page, as it does one open when it is installed).
+  await page.clock.runFor(4 * 60_000);
+  await page.evaluate(() => document.documentElement.setAttribute('data-glmsync-extension', '0.1.0'));
+  await page.clock.runFor(2_000);
+  await expect(page.getByTestId('pair-status')).toHaveText(/The extension takes over/);
+  await expect(page.locator('#install')).toBeHidden();
+
+  // Without it: after five minutes the page stops looking and says to reload. (A fresh load: the same address
+  // again would only move to its fragment.)
+  await page.goto('about:blank');
+  await page.goto(pairUrl());
+  await page.clock.runFor(5 * 60_000 + 2_000);
+  await expect(page.getByTestId('waiting')).toHaveText('This page stopped waiting. Installed it meanwhile? Reload this page.');
+  await page.evaluate(() => document.documentElement.setAttribute('data-glmsync-extension', '0.1.0'));
+  await page.clock.runFor(10_000);
+  await expect(page.getByTestId('pair-status')).toHaveText('The browser extension isn’t installed in this browser.');
+});
+
+test.describe('in Safari', () => {
+  test.use({
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/19.1 Safari/605.1.15',
+  });
+
+  test('offers no extension, only this page by hand', async ({ page }) => {
+    await page.goto(pairUrl());
+    await expect(page.getByTestId('pair-status')).toHaveText(/This browser can’t run the extension \(Safari/);
+    await expect(page.getByTestId('install')).toHaveCount(0);
+    await expect(page.getByTestId('use-web')).toBeVisible();
+  });
 });
 
 test('says so when the link is no pairing link', async ({ page }) => {

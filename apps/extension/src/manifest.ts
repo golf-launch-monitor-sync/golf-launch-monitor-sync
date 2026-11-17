@@ -81,3 +81,11 @@ export function manifest(browser: Browser, version: string, testHosts: string[] 
   }
   return m;
 }
+
+/**
+ * The store package's file name. The Chrome build is the same package for Chrome and Edge (Edge Add-ons takes the
+ * Chrome Web Store's package), and its name says so: on 17 Nov a tester with Edge looked for an Edge file.
+ */
+export function packageName(browser: Browser, version: string): string {
+  return `golf-launch-monitor-sync-${browser === 'chrome' ? 'chrome-edge' : browser}-${version}.zip`;
+}

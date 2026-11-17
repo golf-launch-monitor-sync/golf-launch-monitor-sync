@@ -12,7 +12,7 @@ background, while your browser is open. Manifest V3; Chrome, Edge and Firefox.
 
 1. In the app that wants the data (a *target*), choose to connect Launch Monitor Sync. It opens the
    web app's pairing page (`…/pair#target=…&code=…`; the part after `#` reaches no server).
-2. The extension picks the code up and opens a small window: **which address** the data would go to.
+2. The extension picks the code up and opens its connect page in a tab beside it: **which address** the data would go to.
    *Allow and connect* — the browser asks once for that one address — and it is connected.
 3. Open the Trackman portal (`portal.trackmangolf.com`) and sign in, or just open it if you are. The
    extension takes your sign-in from there and asks **"Is this your Trackman account?"** (name,
@@ -60,7 +60,7 @@ the app you connect. Nothing goes to this project or anyone else.
 
 Until it is in the stores, testers load it by hand:
 
-1. Download the newest `golf-launch-monitor-sync-chrome-<version>.zip` (Chrome, Edge) or
+1. Download the newest `golf-launch-monitor-sync-chrome-edge-<version>.zip` (Chrome and Edge: one package) or
    `…-firefox-<version>.zip` from the [releases](https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases)
    (between releases: *Actions › CI*, the newest run on `main`, artifact *extension-packages*) and
    unpack it — or build it yourself (below; `apps/extension/dist/chrome`).
@@ -78,7 +78,9 @@ pnpm --filter @glmsync/extension package    # and the store zips in dist/
 pnpm e2e                                    # click checks (from the repository root)
 ```
 
-- `src/background.ts` the background (alarms, messages, the icon); `src/senders.ts` who may send it
+- `src/background.ts` the background (alarms, messages, the icon); `src/tabs.ts` where its pages open (a tab
+  beside the page that led there, in that window, in front - never a popup window, which a Mac in full
+  screen made a full-screen window of its own); `src/senders.ts` who may send it
   what (the key only from the portal, a pairing code only from the pairing page, everything else
   only from the extension's own pages); `src/manifest.ts` the manifest for both browsers.
 - `src/portal-main.ts`, `portal-relay.ts` the portal tab; `pair-content.ts` the pairing page;

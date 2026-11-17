@@ -16,6 +16,23 @@ test('pairs from the app’s page, takes the sign-in from the portal, asks, and 
   await expect(pairPage.getByTestId('pair-status')).toHaveText(/The extension takes over/);
   const connect = await windowOpens;
   await expect(connect.getByText('The app at app.example.org asks for your Trackman data.')).toBeVisible();
+  // The connect window is a tab right beside the pairing page, in the same browser window, in front - not a
+  // window of its own, which went full screen on a Mac (17 Nov).
+  // Without the `tabs` permission the browser shows the extension no tab's address it has no host permission for,
+  // its own pages included: the connect window is found by the id the background keeps.
+  const tabs = () =>
+    background.evaluate(async () => {
+      const own = (await chrome.storage.session.get('glmsync/connect-tab'))['glmsync/connect-tab'];
+      return (await chrome.tabs.query({})).map((t) => ({ url: t.id === own ? 'connect.html' : (t.pendingUrl ?? t.url ?? ''), windowId: t.windowId, index: t.index, active: t.active }));
+    });
+  const placed = async () => {
+    const all = await tabs();
+    const pair = all.find((t) => t.url.includes('/pair'));
+    const win = all.find((t) => t.url === 'connect.html');
+    return pair && win ? { same: pair.windowId === win.windowId, beside: win.index === pair.index + 1, active: win.active } : null;
+  };
+  await expect.poll(placed).toEqual({ same: true, beside: true, active: true });
+  expect(await background.evaluate(async () => (await chrome.windows.getAll({ windowTypes: ['popup'] })).length)).toBe(0);
   await connect.getByTestId('allow').click();
   await expect(connect.getByTestId('paired')).toHaveText('Connected with Example App.');
   await expect(pairPage.getByTestId('pair-status')).toHaveText('Connected with Example App. You can close this page.');
@@ -31,6 +48,14 @@ test('pairs from the app’s page, takes the sign-in from the portal, asks, and 
   await connect.getByTestId('open-portal').click();
   // Asked of the browser itself: a tab the extension opened may reach the test late or not at all.
   await expect.poll(() => background.evaluate(async (url) => (await chrome.tabs.query({})).some((t) => (t.pendingUrl ?? t.url ?? '').startsWith(url)), PORTAL)).toBe(true);
+  // In the connect window's browser window, beside it and in front (17 Nov: it opened unseen in another window).
+  const portalPlaced = async () => {
+    const all = await tabs();
+    const win = all.find((t) => t.url === 'connect.html');
+    const portal = all.find((t) => t.url.startsWith(PORTAL));
+    return win && portal ? { same: win.windowId === portal.windowId, beside: portal.index === win.index + 1, active: portal.active } : null;
+  };
+  await expect.poll(portalPlaced).toEqual({ same: true, beside: true, active: true });
   // The tab the extension opened may be attached to the test a moment late; the player's own tab is certain.
   await (await context.newPage()).goto(PORTAL);
   await expect(connect.getByTestId('confirm')).toContainText('Is this your Trackman account?');

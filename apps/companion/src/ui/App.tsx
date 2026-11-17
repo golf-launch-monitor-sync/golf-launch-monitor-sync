@@ -27,7 +27,7 @@ import { TrackmanLoginView } from './TrackmanLoginView';
 export type Screen =
   | { name: 'home' }
   | { name: 'pair'; link: Extract<Incoming, { kind: 'pair' }> }
-  | { name: 'signin'; provider: ProviderId }
+  | { name: 'signin'; provider: ProviderId; back?: { url: string; name: string } }
   | { name: 'sync'; link: { target?: string; return?: string } }
   | { name: 'licenses' };
 
@@ -218,9 +218,12 @@ function Main() {
       <SignInView
         svc={svc}
         provider={screen.provider}
-        done={() => {
+        {...(screen.back ? { backTo: screen.back.name } : {})}
+        done={(signedIn) => {
           renewal.allowAgain();
           home();
+          // Paired from a link with a return: back to the target app once signed in (spec 1.2.0).
+          if (signedIn && screen.back) void Linking.openURL(screen.back.url).catch(() => undefined);
         }}
       />
     );

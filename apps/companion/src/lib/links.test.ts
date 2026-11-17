@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import type { Pairing } from '@glmsync/core';
 import { describe, expect, it } from 'vitest';
-import { backTo, hostOf, Once, readIncoming } from './links.ts';
+import { backAfterPairing, backTo, hostOf, Once, readIncoming } from './links.ts';
 import type { KeyedPairing } from './pairings.ts';
 
 const PROVIDERS = ['trackman', 'demo'];
@@ -37,6 +37,30 @@ describe('a pair link', () => {
     expect(readIncoming('glmsync://pair?target=https://a.example&code=K7M2PQ9X#x', PROVIDERS, []).kind).toBe('invalid');
     expect(readIncoming('https://a.example/pair', PROVIDERS, []).kind).toBe('invalid');
     expect(readIncoming(undefined, PROVIDERS, []).kind).toBe('invalid');
+  });
+});
+
+describe('where a pair link jumps back to once paired (spec 1.2.0)', () => {
+  const link = 'glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&return=exampleapp%3A%2F%2Fprofile%3Ffocus%3Dlm';
+
+  it('the link carries its return into the question', () => {
+    const r = readIncoming(link, PROVIDERS, []);
+    expect(r.kind === 'pair' && r.return).toBe('exampleapp://profile?focus=lm');
+  });
+
+  it('only to a prefix the target named in its answer to the pairing', () => {
+    const r = readIncoming(link, PROVIDERS, []);
+    if (r.kind !== 'pair') throw new Error(r.kind);
+    expect(backAfterPairing(r, pairing('https://app.example.org/lm/v1', ['exampleapp://']))).toBe('exampleapp://profile?focus=lm');
+    expect(backAfterPairing(r, pairing('https://app.example.org/lm/v1', ['https://app.example.org/']))).toBeNull();
+    expect(backAfterPairing(r, pairing('https://app.example.org/lm/v1', []))).toBeNull();
+    // A prefix without its closing '/' or '://' stretches to nothing.
+    expect(backAfterPairing(r, pairing('https://app.example.org/lm/v1', ['exampleapp']))).toBeNull();
+  });
+
+  it('nowhere without a return, and a bad one makes the whole link invalid', () => {
+    expect(backAfterPairing({}, pairing('https://app.example.org/lm/v1', ['exampleapp://']))).toBeNull();
+    expect(readIncoming(link.replace('exampleapp%3A%2F%2Fprofile%3Ffocus%3Dlm', 'javascript%3Aalert(1)'), PROVIDERS, []).kind).toBe('invalid');
   });
 });
 

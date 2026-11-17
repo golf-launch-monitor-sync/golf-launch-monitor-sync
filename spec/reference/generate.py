@@ -277,10 +277,18 @@ def deep_link_vectors() -> dict[str, Any]:
              "glmsync://sync?return=glmsync%3A%2F%2Fsync", "glmsync://sync?return=https%3A%2F%2Fa.example%2F%20x",
              "glmsync://sync?target=ftp%3A%2F%2Fx&return=exampleapp%3A%2F%2Fsynced", "glmsync://sync?return=%2Frelative",
              f"glmsync://pair?target={t}%0A&code=K7M2PQ9X", f"glmsync://pair?target={t}&code=K7M2PQ9X\n",
-             "glmsync://sync?return=https%3A%2F%2Fapp.example.org", "glmsync://sync?return=http%3A%2F%2Flocalhost%3A8081"]
+             "glmsync://sync?return=https%3A%2F%2Fapp.example.org", "glmsync://sync?return=http%3A%2F%2Flocalhost%3A8081",
+             # 1.2.0: a pair link may name where to jump back to once paired
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&return=exampleapp%3A%2F%2Fprofile%3Ffocus%3Dlm",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=trackman&return=https%3A%2F%2Fapp.example.org%2Fprofile",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&return=javascript%3Aalert(1)",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&return=glmsync%3A%2F%2Fsync",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&return=",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&return=exampleapp%3A%2F%2Fa&return=exampleapp%3A%2F%2Fb"]
     cases: list[dict[str, Any]] = [{"rule": "parse_link", "input": u, "expected": deeplinks.parse_link(u)} for u in links]
     frags = [f"#target={t}&code=K7M2PQ9X", f"target={t}&code=K7M2PQ9X&provider=demo", "#code=K7M2PQ9X", "#",
-             f"#target={t}&code=K7M2PQ9X&target={t}"]
+             f"#target={t}&code=K7M2PQ9X&target={t}",
+             f"#target={t}&code=K7M2PQ9X&return=exampleapp%3A%2F%2Fprofile"]
     cases += [{"rule": "parse_pair_fragment", "input": f, "expected": deeplinks.parse_pair_fragment(f)} for f in frags]
     prefixes = ["https://app.example.org/", "exampleapp://", "https://app.example.net"]
     for u in ["https://app.example.org/profile", "https://app.example.org.evil.test/", "exampleapp://synced",

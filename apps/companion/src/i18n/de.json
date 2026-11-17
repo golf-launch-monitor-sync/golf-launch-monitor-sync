@@ -15,6 +15,7 @@
   "pair.yes": "Verbinden",
   "pair.no": "Jetzt nicht",
   "signin.title": "Bei {provider} anmelden",
+  "signin.thenBack": "Danach geht es zurück zu {name}.",
   "signin.checking": "Konto wird geprüft …",
   "signin.checkingWhy": "Bevor etwas gespeichert oder irgendwohin geschickt wird, siehst du, wessen Konto das ist.",
   "signin.isThisYou": "Ist das dein Konto?",

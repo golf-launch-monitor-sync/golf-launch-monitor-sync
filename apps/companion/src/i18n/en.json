@@ -15,6 +15,7 @@
   "pair.yes": "Connect",
   "pair.no": "Not now",
   "signin.title": "Sign in to {provider}",
+  "signin.thenBack": "Then back to {name}.",
   "signin.checking": "Checking the account …",
   "signin.checkingWhy": "Before anything is kept or sent anywhere, you see whose account this is.",
   "signin.isThisYou": "Is this your account?",

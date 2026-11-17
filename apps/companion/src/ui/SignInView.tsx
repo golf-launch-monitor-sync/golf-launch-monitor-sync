@@ -24,7 +24,19 @@ type Step =
   | { name: 'confirm'; token: string; who: WhoAnswer; others: string[] }
   | { name: 'error'; text: string; token: string | null };
 
-export function SignInView({ svc, provider, done }: { svc: Services; provider: ProviderId; done: () => void }) {
+/** `done(true)`: signed in and kept; `done(false)`: cancelled. `backTo`: the app it jumps back to then. */
+export function SignInView({
+  svc,
+  provider,
+  done,
+  backTo,
+}: {
+  svc: Services;
+  provider: ProviderId;
+  done: (signedIn: boolean) => void;
+  backTo?: string;
+}) {
+  const cancel = () => done(false);
   const [step, setStep] = useState<Step>(provider === 'demo' ? { name: 'checking' } : { name: 'window', fresh: false, key: 0 });
   const [saving, setSaving] = useState(false);
   const p = svc.providers[provider];
@@ -57,7 +69,7 @@ export function SignInView({ svc, provider, done }: { svc: Services; provider: P
     }
     // The first sync with this sign-in: each paired target's plan says what it wants.
     void svc.runner.syncAll('connect').catch(() => undefined);
-    done();
+    done(true);
   }
 
   const again = (fresh: boolean) => setStep({ name: 'window', fresh, key: Date.now() });
@@ -69,8 +81,9 @@ export function SignInView({ svc, provider, done }: { svc: Services; provider: P
           <View style={{ flex: 1, minWidth: 200 }}>
             <Title>{t('signin.title', { provider: p.name })}</Title>
             <Small>{t('provider.trackman.unofficial')}</Small>
+            {backTo && <Small>{t('signin.thenBack', { name: backTo })}</Small>}
           </View>
-          <Button label={t('action.cancel')} kind="secondary" onPress={done} />
+          <Button label={t('action.cancel')} kind="secondary" onPress={cancel} />
         </View>
         <TrackmanLoginView key={step.key} fresh={step.fresh} onToken={(token) => void check(token)} />
       </View>
@@ -91,6 +104,7 @@ export function SignInView({ svc, provider, done }: { svc: Services; provider: P
     content = (
       <Card>
         <Title>{t('signin.isThisYou')}</Title>
+        {backTo && <Body muted>{t('signin.thenBack', { name: backTo })}</Body>}
         <Body>{step.who.player ?? t('signin.noName')}</Body>
         {a && (
           <Body muted>
@@ -103,7 +117,7 @@ export function SignInView({ svc, provider, done }: { svc: Services; provider: P
         {step.others.length > 0 && <Body warn>{t('signin.otherAccount', { targets: step.others.join(', ') })}</Body>}
         <Button label={t('signin.yes')} onPress={() => void yes(step.token, step.who)} busy={saving} />
         {provider !== 'demo' && <Button label={t('signin.no')} kind="secondary" onPress={() => again(true)} disabled={saving} />}
-        <Button label={t('action.cancel')} kind="secondary" onPress={done} disabled={saving} />
+        <Button label={t('action.cancel')} kind="secondary" onPress={cancel} disabled={saving} />
       </Card>
     );
   } else {
@@ -113,7 +127,7 @@ export function SignInView({ svc, provider, done }: { svc: Services; provider: P
         <Body warn>{step.text}</Body>
         {step.token && <Button label={t('action.retry')} onPress={() => void check(step.token as string)} />}
         {provider !== 'demo' && <Button label={t('signin.again')} kind="secondary" onPress={() => again(false)} />}
-        <Button label={t('action.cancel')} kind="secondary" onPress={done} />
+        <Button label={t('action.cancel')} kind="secondary" onPress={cancel} />
       </Card>
     );
   }

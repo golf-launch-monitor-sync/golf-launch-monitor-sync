@@ -3,7 +3,8 @@
 /**
  * Builds the extension into dist/chrome (Chrome and Edge) and dist/firefox: the bundles, the pages,
  * the icons, the locales and the manifest. `--zip` also packs each for its store
- * (dist/golf-launch-monitor-sync-<browser>-<version>.zip); submitting them is done by hand.
+ * (dist/golf-launch-monitor-sync-chrome-edge-<version>.zip, …-firefox-<version>.zip: `packageName`);
+ * submitting them is done by hand.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -13,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { bundle, EVAL, ROOT } from '../../tools/browser-build.mjs';
 import { icon } from '../../tools/icon.mjs';
 import { de, en } from '../../packages/browser/src/messages.ts';
-import { manifest } from './src/manifest.ts';
+import { manifest, packageName } from './src/manifest.ts';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const { version } = JSON.parse(readFileSync(join(HERE, 'package.json'), 'utf8'));
@@ -47,7 +48,7 @@ export async function buildFor(browser, { e2e = false } = {}) {
   }
   writeFileSync(join(out, 'manifest.json'), `${JSON.stringify(manifest(browser, version, e2e ? E2E_HOSTS : []), null, 2)}\n`);
   if (zip && !e2e) {
-    const name = join(DIST, `golf-launch-monitor-sync-${browser}-${version}.zip`);
+    const name = join(DIST, packageName(browser, version));
     rmSync(name, { force: true });
     execFileSync('zip', ['-q', '-r', '-X', name, '.'], { cwd: out });
   }

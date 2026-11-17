@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { manifest, PAIR_MATCHES } from './manifest.ts';
+import { manifest, packageName, PAIR_MATCHES } from './manifest.ts';
 
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version as string;
 
@@ -33,5 +33,12 @@ describe('the manifest', () => {
     expect(ff.background).toEqual({ scripts: ['background.js'] });
     expect(ff.browser_specific_settings.gecko).toMatchObject({ id: expect.stringContaining('@'), strict_min_version: '140.0' });
     expect(ff.browser_specific_settings.gecko.data_collection_permissions.required.length).toBeGreaterThan(0);
+  });
+});
+
+describe('the store packages', () => {
+  it('say which browsers they are for: one for Chrome and Edge, one for Firefox', () => {
+    expect(packageName('chrome', '0.1.0')).toBe('golf-launch-monitor-sync-chrome-edge-0.1.0.zip');
+    expect(packageName('firefox', '0.1.0')).toBe('golf-launch-monitor-sync-firefox-0.1.0.zip');
   });
 });
