@@ -1,20 +1,23 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Reginald Stadlbauer
 # The browser extension's store packages, on a tag `extension-v<version>` (the version in
-# apps/extension/package.json): tests, click checks, Mozilla's linter, then a GitHub release with
-# one zip for Chrome and Edge and one for Firefox. Submitting them to the stores is done by hand;
-# no store credentials are kept here.
+# apps/extension/package.json) - or by hand on main (Actions › Release extension › Run workflow), which
+# makes that tag itself: tests, click checks, Mozilla's linter, then a GitHub release with one zip for
+# Chrome and Edge and one for Firefox. Submitting them to the stores is done by hand; no store
+# credentials are kept here.
 name: Release extension
 
 on:
   push:
     tags: ['extension-v*']
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   package:
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -30,11 +33,23 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: The tag names the package's version
+        id: tag
         env:
-          TAG: ${{ github.ref_name }}
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           version=$(node -p "require('./apps/extension/package.json').version")
-          test "$TAG" = "extension-v$version" || { echo "Tag $TAG, but apps/extension/package.json says $version"; exit 1; }
+          if [ "$EVENT" = push ]; then
+            test "$REF" = "extension-v$version" || { echo "Tag $REF, but apps/extension/package.json says $version"; exit 1; }
+            echo "tag=$REF" >> "$GITHUB_OUTPUT"
+          else
+            # By hand: this version must not be released yet (raise it in package.json first).
+            if gh release view "extension-v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "extension-v$version is released already: raise the version in apps/extension/package.json."; exit 1
+            fi
+            echo "tag=extension-v$version" >> "$GITHUB_OUTPUT"
+          fi
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm exec playwright install --with-deps chromium
@@ -45,8 +60,9 @@ jobs:
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          gh release create "$TAG" apps/extension/dist/*.zip \
+          # By hand the tag doesn't exist yet: the release makes it, at this commit.
+          gh release create "$TAG" apps/extension/dist/*.zip --target "$GITHUB_SHA" \
             --repo "$GITHUB_REPOSITORY" --title "Browser extension ${TAG#extension-v}" \
             --notes "Packages for the Chrome Web Store (also Edge Add-ons) and Firefox Add-ons. Unsigned: install from the stores, or load unpacked for testing (apps/extension/README.md)."

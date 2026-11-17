@@ -90,7 +90,8 @@ pnpm e2e                                    # click checks (from the repository 
 - **Click checks** (`e2e/`): Chromium with the extension loaded; the pairing page, the portal, Trackman's
   API and a target app are answered in the test (`tools/e2e/world.ts`). The test build grants the
   made-up target at install (`dist-e2e/`), since no one can click the browser's own prompt there.
-- **Release**: raise `version` in `package.json`, push a tag `extension-v<version>`; `release.yml`
+- **Release**: raise `version` in `package.json`, then push a tag `extension-v<version>` or run *Actions ›
+  Release extension* on `main` (it makes the tag at that commit); `release.yml`
   tests, lints the Firefox build with Mozilla's `web-ext lint` and attaches both zips to a GitHub
   release. Submitting to the Chrome Web Store (also used for Edge Add-ons) and Firefox Add-ons is done
   by hand; no store credentials live in this repository.

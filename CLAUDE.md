@@ -82,7 +82,8 @@ fake that answers in its shapes. The browser clients also have click checks (`pn
 `apps/*/e2e/`, with `tools/e2e/world.ts` answering every request in the test); run them when you
 change a client. Browser bundles may not evaluate code (Manifest V3, the web app's CSP): the schema
 check is compiled ahead of time there (`tools/browser-build.mjs`). Extension releases: a tag
-`extension-v<version>` builds the store packages (`release.yml`); submitting them is done by hand.
+`extension-v<version>`, or *Release extension* run by hand on `main` (it makes the tag), builds the
+store packages (`release.yml`); submitting them is done by hand.
 
 ## 5. Working agreements
 
