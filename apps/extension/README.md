@@ -165,8 +165,9 @@ for purposes unrelated to the single purpose; not used or transferred to determi
 **Homepage and support URL**: https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync (support: its
 issues).
 
-**Screenshots**: the popup and the connect page, 1280×800 (Chrome needs at least one), with a made-up account (the
-click checks' world), never a real one.
+**Screenshots**: `apps/extension/store/*.png` (1280×800; Chrome needs at least one), made from the click checks'
+made-up world, never a real account: `STORE_SCREENSHOTS=1 pnpm e2e apps/extension/e2e/store-screenshots.spec.ts`
+writes them again after the pages change.
 
 **Mozilla only**:
 - *How to distribute*: **On your own** (not listed on the site).
