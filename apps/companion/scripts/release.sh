@@ -37,8 +37,9 @@ fail() {
   say "$*"
   exit 1
 }
-# Reads JSON from stdin and prints what the expression makes of `j`; fails on nothing or junk.
-json() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let v;try{const j=JSON.parse(s.trim()||"null");v=('"$1"')}catch(e){console.error(String(e));process.exit(1)}if(v===undefined||v===null||v==="")process.exit(1);console.log(v)})'; }
+# Reads JSON from stdin and prints what the expression makes of `j`; fails on nothing or junk. Nothing at all
+# (a refused command printed only its reason) fails quietly, so the reason stays the last word of the log.
+json() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{if(!s.trim())process.exit(1);let v;try{const j=JSON.parse(s.trim());v=('"$1"')}catch(e){console.error(String(e));process.exit(1)}if(v===undefined||v===null||v==="")process.exit(1);console.log(v)})'; }
 
 channel=preview
 profile_of() { if [ "$1" = ios ]; then echo testflight; else echo preview; fi; }

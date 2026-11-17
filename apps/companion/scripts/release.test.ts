@@ -24,6 +24,8 @@ interface Opts {
   builds?: string[];
   ascAppId?: string | null;
   failUpdate?: boolean;
+  /** Expo refuses the build (a plan's limit, say): a message, nothing on stdout. */
+  failBuild?: boolean;
 }
 
 function run(args: string[], o: Opts = {}) {
@@ -42,7 +44,7 @@ function run(args: string[], o: Opts = {}) {
     `echo "$*" >> ${JSON.stringify(log)}
 case "$1" in
   build:list) echo '${builds}' ;;
-  build) echo '[{"id":"new-build","app":{"slug":"golf-launch-monitor-sync","ownerAccount":{"name":"example-org"}}}]' ;;
+  build) ${o.failBuild ? "echo 'This account has used its Android builds from the Free plan this month.' >&2; exit 1" : `echo '[{"id":"new-build","app":{"slug":"golf-launch-monitor-sync","ownerAccount":{"name":"example-org"}}}]'`} ;;
   update) ${o.failUpdate ? 'exit 3' : 'echo published'} ;;
 esac`,
   );
@@ -119,6 +121,14 @@ describe('release.sh build', () => {
     expect(r.status).toBe(0);
     expect(r.eas).toMatch(/^build --platform android --profile preview --non-interactive --no-wait --json --message /m);
     expect(r.summary).toMatch(/https:\/\/expo\.dev\/accounts\/example-org\/projects\/golf-launch-monitor-sync\/builds\/new-build/);
+  });
+
+  it('a build Expo refuses fails the run with its reason, not a script error', () => {
+    const r = run(['build', '--platform', 'android'], { failBuild: true });
+    expect(r.status).toBe(1);
+    expect(r.out).toMatch(/Free plan/);
+    expect(r.summary).toMatch(/android build could not be started/);
+    expect(r.out).not.toMatch(/TypeError/);
   });
 
   it('iOS goes to TestFlight by itself, and only once it is set up', () => {
