@@ -72,7 +72,18 @@ def club_vectors() -> dict[str, Any]:
                "56° Sand Wedge", "LW60", "50 Gap Wedge", "Approach 52", "SW 12",
                # A maker's or a player's own name stays as it came: the target asks what it is.
                "Stealth 7i", "TSR3", "Mein 7er", "Vokey"]
-    norm = [{"raw": r, "code": clubs.normalize_club(r)} for r in generic]
+    # A grid of numbers and kinds in both orders, so a rule that reads one spelling differently in one language (or
+    # newly reads a name an older rule read as something else) shows beyond the hand-picked names above.
+    grid_kinds = ["", "u", "ut", "utility", "di", "driving iron", "fw", "fwy", "fairway", "fairway wood", "hyb",
+                  "h", "hybrid", "w", "wood", "i", "iron", "er", "deg", "°", "wedge", "sw", "pw", "gw", "lw", "aw",
+                  "sand", "lob", "gap", "approach", "pitching", "s wedge", "sand wedge", "d", "dr", "pt"]
+    grid: list[str] = []
+    for n in ("3", "7", "12", "56"):
+        for k in grid_kinds:
+            for name in (f"{n} {k}".strip(), f"{k}{n}".upper()):
+                if name not in generic and name not in grid:
+                    grid.append(name)
+    norm = [{"raw": r, "code": clubs.normalize_club(r)} for r in generic + grid]
     return doc("Club names -> canonical codes. camel: a provider's CamelCase names (Trackman); normalize: names "
                "as other monitors and people write them.", [{"rule": "camel", **c} for c in camel] +
                [{"rule": "normalize", **c} for c in norm])

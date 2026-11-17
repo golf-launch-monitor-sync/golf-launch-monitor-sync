@@ -1,6 +1,6 @@
 {
   "$comment": "Club names -> canonical codes. camel: a provider's CamelCase names (Trackman); normalize: names as other monitors and people write them.",
-  "spec_version": "1.3.0",
+  "spec_version": "1.3.1",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {
@@ -634,6 +634,1391 @@
       "rule": "normalize",
       "raw": "Vokey",
       "code": "Vokey"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3",
+      "code": "3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 u",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "U3",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 ut",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "UT3",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 utility",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "UTILITY3",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 di",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DI3",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 driving iron",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DRIVING IRON3",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 fw",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 fwy",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FWY3",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 fairway",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FAIRWAY3",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 fairway wood",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FAIRWAY WOOD3",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 hyb",
+      "code": "3H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "HYB3",
+      "code": "3H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 h",
+      "code": "3H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "H3",
+      "code": "3H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 hybrid",
+      "code": "3H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "HYBRID3",
+      "code": "3H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 w",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "WOOD3",
+      "code": "3W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 i",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "I3",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 iron",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "IRON3",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 er",
+      "code": "3i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "ER3",
+      "code": "ER3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 deg",
+      "code": "3 deg"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DEG3",
+      "code": "DEG3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 °",
+      "code": "3 °"
+    },
+    {
+      "rule": "normalize",
+      "raw": "°3",
+      "code": "°3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 wedge",
+      "code": "3 wedge"
+    },
+    {
+      "rule": "normalize",
+      "raw": "WEDGE3",
+      "code": "WEDGE3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 sw",
+      "code": "3 sw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "SW3",
+      "code": "SW3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 pw",
+      "code": "3 pw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "PW3",
+      "code": "PW3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 gw",
+      "code": "3 gw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "GW3",
+      "code": "GW3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 lw",
+      "code": "3 lw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "LW3",
+      "code": "LW3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 aw",
+      "code": "3 aw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "AW3",
+      "code": "AW3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 sand",
+      "code": "3 sand"
+    },
+    {
+      "rule": "normalize",
+      "raw": "SAND3",
+      "code": "SAND3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 lob",
+      "code": "3 lob"
+    },
+    {
+      "rule": "normalize",
+      "raw": "LOB3",
+      "code": "LOB3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 gap",
+      "code": "3 gap"
+    },
+    {
+      "rule": "normalize",
+      "raw": "GAP3",
+      "code": "GAP3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 approach",
+      "code": "3 approach"
+    },
+    {
+      "rule": "normalize",
+      "raw": "APPROACH3",
+      "code": "APPROACH3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 pitching",
+      "code": "3 pitching"
+    },
+    {
+      "rule": "normalize",
+      "raw": "PITCHING3",
+      "code": "PITCHING3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 s wedge",
+      "code": "3 s wedge"
+    },
+    {
+      "rule": "normalize",
+      "raw": "S WEDGE3",
+      "code": "S WEDGE3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 sand wedge",
+      "code": "3 sand wedge"
+    },
+    {
+      "rule": "normalize",
+      "raw": "SAND WEDGE3",
+      "code": "SAND WEDGE3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 d",
+      "code": "3 d"
+    },
+    {
+      "rule": "normalize",
+      "raw": "D3",
+      "code": "D3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 dr",
+      "code": "3 dr"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DR3",
+      "code": "DR3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "3 pt",
+      "code": "3 pt"
+    },
+    {
+      "rule": "normalize",
+      "raw": "PT3",
+      "code": "PT3"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7",
+      "code": "7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 u",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "U7",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 ut",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "UT7",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 utility",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "UTILITY7",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 di",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DI7",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 driving iron",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DRIVING IRON7",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 fw",
+      "code": "7W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FW7",
+      "code": "7W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 fwy",
+      "code": "7W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FWY7",
+      "code": "7W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 fairway",
+      "code": "7W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FAIRWAY7",
+      "code": "7W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 fairway wood",
+      "code": "7W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FAIRWAY WOOD7",
+      "code": "7W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 hyb",
+      "code": "7H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "HYB7",
+      "code": "7H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 h",
+      "code": "7H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "H7",
+      "code": "7H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 hybrid",
+      "code": "7H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "HYBRID7",
+      "code": "7H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 w",
+      "code": "7W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "W7",
+      "code": "7W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 wood",
+      "code": "7W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "WOOD7",
+      "code": "7W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 i",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 iron",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "IRON7",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 er",
+      "code": "7i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "ER7",
+      "code": "ER7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 deg",
+      "code": "7 deg"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DEG7",
+      "code": "DEG7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 °",
+      "code": "7 °"
+    },
+    {
+      "rule": "normalize",
+      "raw": "°7",
+      "code": "°7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 wedge",
+      "code": "7 wedge"
+    },
+    {
+      "rule": "normalize",
+      "raw": "WEDGE7",
+      "code": "WEDGE7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 sw",
+      "code": "7 sw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "SW7",
+      "code": "SW7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 pw",
+      "code": "7 pw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "PW7",
+      "code": "PW7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 gw",
+      "code": "7 gw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "GW7",
+      "code": "GW7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 lw",
+      "code": "7 lw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "LW7",
+      "code": "LW7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 aw",
+      "code": "7 aw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "AW7",
+      "code": "AW7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 sand",
+      "code": "7 sand"
+    },
+    {
+      "rule": "normalize",
+      "raw": "SAND7",
+      "code": "SAND7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 lob",
+      "code": "7 lob"
+    },
+    {
+      "rule": "normalize",
+      "raw": "LOB7",
+      "code": "LOB7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 gap",
+      "code": "7 gap"
+    },
+    {
+      "rule": "normalize",
+      "raw": "GAP7",
+      "code": "GAP7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 approach",
+      "code": "7 approach"
+    },
+    {
+      "rule": "normalize",
+      "raw": "APPROACH7",
+      "code": "APPROACH7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 pitching",
+      "code": "7 pitching"
+    },
+    {
+      "rule": "normalize",
+      "raw": "PITCHING7",
+      "code": "PITCHING7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 s wedge",
+      "code": "7 s wedge"
+    },
+    {
+      "rule": "normalize",
+      "raw": "S WEDGE7",
+      "code": "S WEDGE7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 sand wedge",
+      "code": "7 sand wedge"
+    },
+    {
+      "rule": "normalize",
+      "raw": "SAND WEDGE7",
+      "code": "SAND WEDGE7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 d",
+      "code": "7 d"
+    },
+    {
+      "rule": "normalize",
+      "raw": "D7",
+      "code": "D7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 dr",
+      "code": "7 dr"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DR7",
+      "code": "DR7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "7 pt",
+      "code": "7 pt"
+    },
+    {
+      "rule": "normalize",
+      "raw": "PT7",
+      "code": "PT7"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 u",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "U12",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 ut",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "UT12",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 utility",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "UTILITY12",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 di",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DI12",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 driving iron",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DRIVING IRON12",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 fw",
+      "code": "12W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FW12",
+      "code": "12W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 fwy",
+      "code": "12W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FWY12",
+      "code": "12W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 fairway",
+      "code": "12W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FAIRWAY12",
+      "code": "12W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 fairway wood",
+      "code": "12W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FAIRWAY WOOD12",
+      "code": "12W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 hyb",
+      "code": "12H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "HYB12",
+      "code": "12H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 h",
+      "code": "12H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "H12",
+      "code": "12H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 hybrid",
+      "code": "12H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "HYBRID12",
+      "code": "12H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 w",
+      "code": "12W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "W12",
+      "code": "12W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 wood",
+      "code": "12W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "WOOD12",
+      "code": "12W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 i",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "I12",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 iron",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "IRON12",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 er",
+      "code": "12i"
+    },
+    {
+      "rule": "normalize",
+      "raw": "ER12",
+      "code": "ER12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 deg",
+      "code": "12 deg"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DEG12",
+      "code": "DEG12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 °",
+      "code": "12 °"
+    },
+    {
+      "rule": "normalize",
+      "raw": "°12",
+      "code": "°12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 wedge",
+      "code": "12 wedge"
+    },
+    {
+      "rule": "normalize",
+      "raw": "WEDGE12",
+      "code": "WEDGE12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 sw",
+      "code": "12 sw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "SW12",
+      "code": "SW12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 pw",
+      "code": "12 pw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "PW12",
+      "code": "PW12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 gw",
+      "code": "12 gw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "GW12",
+      "code": "GW12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 lw",
+      "code": "12 lw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "LW12",
+      "code": "LW12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 aw",
+      "code": "12 aw"
+    },
+    {
+      "rule": "normalize",
+      "raw": "AW12",
+      "code": "AW12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 sand",
+      "code": "12 sand"
+    },
+    {
+      "rule": "normalize",
+      "raw": "SAND12",
+      "code": "SAND12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 lob",
+      "code": "12 lob"
+    },
+    {
+      "rule": "normalize",
+      "raw": "LOB12",
+      "code": "LOB12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 gap",
+      "code": "12 gap"
+    },
+    {
+      "rule": "normalize",
+      "raw": "GAP12",
+      "code": "GAP12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 approach",
+      "code": "12 approach"
+    },
+    {
+      "rule": "normalize",
+      "raw": "APPROACH12",
+      "code": "APPROACH12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 pitching",
+      "code": "12 pitching"
+    },
+    {
+      "rule": "normalize",
+      "raw": "PITCHING12",
+      "code": "PITCHING12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 s wedge",
+      "code": "12 s wedge"
+    },
+    {
+      "rule": "normalize",
+      "raw": "S WEDGE12",
+      "code": "S WEDGE12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 sand wedge",
+      "code": "12 sand wedge"
+    },
+    {
+      "rule": "normalize",
+      "raw": "SAND WEDGE12",
+      "code": "SAND WEDGE12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 d",
+      "code": "12 d"
+    },
+    {
+      "rule": "normalize",
+      "raw": "D12",
+      "code": "D12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 dr",
+      "code": "12 dr"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DR12",
+      "code": "DR12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "12 pt",
+      "code": "12 pt"
+    },
+    {
+      "rule": "normalize",
+      "raw": "PT12",
+      "code": "PT12"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 u",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "U56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 ut",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "UT56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 utility",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "UTILITY56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 di",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DI56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 driving iron",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DRIVING IRON56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 fw",
+      "code": "56W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FW56",
+      "code": "56W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 fwy",
+      "code": "56W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FWY56",
+      "code": "56W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 fairway",
+      "code": "56W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FAIRWAY56",
+      "code": "56W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 fairway wood",
+      "code": "56W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "FAIRWAY WOOD56",
+      "code": "56W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 hyb",
+      "code": "56H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "HYB56",
+      "code": "56H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 h",
+      "code": "56H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "H56",
+      "code": "56H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 hybrid",
+      "code": "56H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "HYBRID56",
+      "code": "56H"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 w",
+      "code": "56W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "W56",
+      "code": "56W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 wood",
+      "code": "56W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "WOOD56",
+      "code": "56W"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 i",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "I56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 iron",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "IRON56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 er",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "ER56",
+      "code": "ER56"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DEG56",
+      "code": "DEG56"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 °",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "°56",
+      "code": "°56"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 wedge",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "WEDGE56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 sw",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "SW56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 pw",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "PW56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 gw",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "GW56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 lw",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "LW56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 aw",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "AW56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 sand",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "SAND56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 lob",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "LOB56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 gap",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "GAP56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 approach",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "APPROACH56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 pitching",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "PITCHING56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 s wedge",
+      "code": "56 s wedge"
+    },
+    {
+      "rule": "normalize",
+      "raw": "S WEDGE56",
+      "code": "S WEDGE56"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 sand wedge",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "SAND WEDGE56",
+      "code": "56°"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 d",
+      "code": "56 d"
+    },
+    {
+      "rule": "normalize",
+      "raw": "D56",
+      "code": "D56"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 dr",
+      "code": "56 dr"
+    },
+    {
+      "rule": "normalize",
+      "raw": "DR56",
+      "code": "DR56"
+    },
+    {
+      "rule": "normalize",
+      "raw": "56 pt",
+      "code": "56 pt"
+    },
+    {
+      "rule": "normalize",
+      "raw": "PT56",
+      "code": "PT56"
     }
   ]
 }
