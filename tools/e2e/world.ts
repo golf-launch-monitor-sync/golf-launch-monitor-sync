@@ -19,8 +19,6 @@ export const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 export const WEB_DIST = join(ROOT, 'apps', 'web', 'dist');
 export const WEB = 'https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync';
 export const PORTAL = 'https://portal.trackmangolf.com/';
-/** Trackman's sign-out (made up here: a page that says the player is signed out). */
-export const SIGN_OUT = 'https://login.trackmangolf.com/connect/endsession';
 /** The made-up target app's own page (its web app), on the target's origin. */
 export const APP_PAGE = 'https://app.example.org/profile';
 export const TARGET = 'https://app.example.org/lm/v1';
@@ -120,6 +118,7 @@ export class World {
       return route.fulfill({ status: 200, body: readFileSync(full), headers: { 'content-type': TYPES[extname(full)] ?? 'application/octet-stream' } });
     });
     await context.route('https://portal.trackmangolf.com/**', (route) => route.fulfill({ status: 200, body: this.portalPage(), headers: { 'content-type': 'text/html' } }));
+    // Trackman's sign-out (made up: a page that says the player is signed out).
     await context.route('https://login.trackmangolf.com/**', (route) => {
       this.signOuts += 1;
       return route.fulfill({ status: 200, body: '<!doctype html><title>Signed out</title><p>You are signed out.</p>', headers: { 'content-type': 'text/html' } });

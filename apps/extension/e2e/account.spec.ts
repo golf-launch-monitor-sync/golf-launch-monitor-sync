@@ -7,7 +7,7 @@
  */
 
 import type { BrowserContext, Page } from '@playwright/test';
-import { APP_PAGE, pairUrl, PORTAL, SIGN_OUT } from '../../../tools/e2e/world.ts';
+import { APP_PAGE, pairUrl, PORTAL } from '../../../tools/e2e/world.ts';
 import { connectWindow, expect, test } from './fixture.ts';
 
 /** The app opens the pairing page by script (as the target app does), from a click. */
@@ -47,9 +47,10 @@ test('another account in the portal: no, sign out, sign in with your own in the 
   await expect.poll(() => world.target.signins.at(-1)).toEqual({ via: 'status', signin: 'none' });
 
   // The way to another account: Trackman's sign-out, beside the connect window.
+  // (Its tab is seen by the made-up sign-out answering it: a tab the extension opens may reach the test late or
+  // not at all, and without the `tabs` permission the browser shows the extension no address of it.)
   await connect.getByTestId('switch-account').click();
   await expect.poll(() => world.signOuts).toBeGreaterThan(0);
-  await expect.poll(() => context.pages().some((p) => p.url().startsWith(SIGN_OUT))).toBe(true);
 
   // Signed in with their own account in the same portal tab: coming back from the sign-in, the portal stores
   // the new key only seconds after loading (later than the look 3 s after load), with no call the hooks see.
