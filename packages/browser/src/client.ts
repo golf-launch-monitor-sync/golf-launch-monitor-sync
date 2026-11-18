@@ -43,7 +43,7 @@ import {
   type Storage,
   type SyncOutcome,
 } from '@glmsync/core';
-import { FORMAT, parsePairFragment, type Batch, type Reason } from '@glmsync/spec';
+import { FORMAT, parsePairFragment, type Batch, type Reason, type SignIn } from '@glmsync/spec';
 import { subjectOf, trackman, type TrackmanProvider, type Who } from '@glmsync/provider-trackman';
 import { liveUntil } from '@glmsync/provider-trackman/portal';
 
@@ -112,7 +112,11 @@ export interface ClientStatus {
   kind: ClientKind;
   provider: { id: string; name: string; notice?: string };
   key: KeyState;
-  pairings: (Entry & { host: string })[];
+  /** The player said no to "Is this you?" for an account here (another may be signed in to the portal). */
+  rejected: boolean;
+  pairings: (Entry & { host: string; signin: SignIn })[];
+  /** Pairings a sync runs for right now. */
+  running: string[];
   /** Connections the target app ended since the player last looked. */
   ended: Farewell[];
   counts: GuardCounts | null;
@@ -127,8 +131,11 @@ export type PairOutcome =
 export type KeyOutcome =
   /** Not a key that can be used (unreadable, or ran out already). */
   | { ok: false; error: 'invalid' | 'expired' | 'rejected' }
-  /** `changed`: a new key; `ready`: syncs may run with it (start one with reason `connect`). */
-  | { ok: true; changed: boolean; ready: boolean };
+  /**
+   * `changed`: a new key; `ready`: syncs may run with it (start one with reason `connect`); `asking`: "Is
+   * this you?" is now open for an account it wasn't open for before - also when it was open for another.
+   */
+  | { ok: true; changed: boolean; ready: boolean; asking: boolean };
 
 export interface RunReport {
   outcomes: { id: string; name: string; outcome: SyncOutcome | { status: 'skipped'; why: string } | { status: 'told_expired' } }[];
@@ -176,6 +183,8 @@ export class BrowserClient {
   readonly provider: TrackmanProvider;
   private readonly now: () => number;
   private queue: Promise<unknown> = Promise.resolve();
+  /** Pairings a sync runs for right now (in memory: a run ends with the background that ran it). */
+  private readonly active = new Set<string>();
 
   constructor(private readonly opts: ClientOptions) {
     this.now = opts.now ?? Date.now;
@@ -330,9 +339,10 @@ export class BrowserClient {
       if (had?.refused && had.hash === fingerprint(t)) return { ok: false, error: 'expired' } as const;
       if (had?.token === t && !had.refused) {
         const s = await this.keyState();
-        return { ok: true, changed: false, ready: s.state === 'ready' } as const;
+        return { ok: true, changed: false, ready: s.state === 'ready', asking: false } as const;
       }
       const before = had ? subjectOf(had.token) : null;
+      const wasAsking = (await this.keyState()).state === 'confirm';
       await this.opts.vault.set(KEY + this.provider.id, JSON.stringify({ token: t, at: new Date(this.now()).toISOString() }));
       let s = await this.keyState();
       if (s.state === 'confirm' && (before !== subject || !s.who)) {
@@ -344,7 +354,10 @@ export class BrowserClient {
         }
         s = await this.keyState();
       }
-      return { ok: true, changed: true, ready: s.state === 'ready' } as const;
+      // A second account signed in while the first one's question was still open (the player switched
+      // accounts in the portal tab): the question is a new one, and is put to the player again.
+      const asking = s.state === 'confirm' && (!wasAsking || before !== subject);
+      return { ok: true, changed: true, ready: s.state === 'ready', asking } as const;
     });
   }
 
@@ -495,22 +508,91 @@ export class BrowserClient {
     const key = await this.key();
     const state = await this.keyState();
     if (state.state === 'expired' && key) return this.tellExpired(p, entry, key.token, reason);
-    if (state.state !== 'ready' || !key) return { status: 'skipped', why: state.state };
+    if (state.state !== 'ready' || !key) {
+      // Nothing to fetch with: no plan (it would take the lease from another device of the player),
+      // but the target hears where the sign-in stands.
+      if (reason !== 'backfill') {
+        const gone = await this.tellSignIn(p, entry, reason, state.state);
+        if (gone) return gone;
+      }
+      return { status: 'skipped', why: state.state };
+    }
 
-    const outcome = await sync({
-      target: new HttpTarget(p, this.targetOpts()),
-      provider: this.provider,
-      credential: key.token,
-      reason,
-      client: this.opts.kind,
-      guard: this.guard,
-      ...(this.opts.fetch ? { fetch: this.opts.fetch } : {}),
-      ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}),
-      now: this.now,
-      generator: { name: this.opts.name, version: this.opts.version },
+    this.active.add(entry.id);
+    try {
+      const outcome = await sync({
+        target: new HttpTarget(p, this.targetOpts()),
+        provider: this.provider,
+        credential: key.token,
+        reason,
+        client: this.opts.kind,
+        signin: 'ready',
+        guard: this.guard,
+        ...(this.opts.fetch ? { fetch: this.opts.fetch } : {}),
+        ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}),
+        now: this.now,
+        generator: { name: this.opts.name, version: this.opts.version },
+      });
+      await this.record(p, entry, reason, outcome, key.token);
+      // Signed in, but with another account than the target's: it heard "ready" with the plan, so it hears this too.
+      if (outcome.status === 'other_account') await this.tellSignIn(p, entry, reason, 'other');
+      return outcome;
+    } finally {
+      this.active.delete(entry.id);
+    }
+  }
+
+  /**
+   * GET /status with the client's sign-in (spec 1.5.0): a target hears where it stands without a plan, so no
+   * lease is taken. Also how a client that can't fetch notices the player ended the connection in the app.
+   * Answers the outcome when the pairing is gone, else null (a target that can't be reached is asked again later).
+   */
+  private async tellSignIn(p: Pairing, entry: Entry, reason: Reason, signin: SignIn): Promise<{ status: 'disconnected' } | { status: 'failed'; error: TargetError } | null> {
+    try {
+      const st = await new HttpTarget(p, this.targetOpts()).status(signin);
+      if (!st.connected) {
+        await this.record(p, entry, reason, { status: 'disconnected' }, '');
+        return { status: 'disconnected' };
+      }
+    } catch (e) {
+      if (e instanceof TargetError && e.code === 'token_invalid') {
+        await this.record(p, entry, reason, { status: 'failed', error: e }, '');
+        return { status: 'failed', error: e };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Every target hears where the sign-in stands now, when it can't fetch with it (the player hasn't answered
+   * "Is this you?", said no, or signed in with another account). With a sign-in that can fetch, the sync that
+   * follows tells it with its plan.
+   */
+  report(): Promise<void> {
+    return this.serial(async () => {
+      const state = await this.keyState();
+      if (state.state === 'ready') return;
+      for (const p of await this.pairings()) {
+        const entry = (await this.entries()).find((e) => e.id === pairingId(p.base));
+        if (entry) await this.tellSignIn(p, entry, 'timer', state.state);
+      }
     });
-    await this.record(p, entry, reason, outcome, key.token);
-    return outcome;
+  }
+
+  /**
+   * When the guard lets the next request to the provider go, if it holds for longer than its pauses between
+   * requests (an hour's or a day's requests used up, or backing off after errors); else null.
+   */
+  async guardHold(): Promise<number | null> {
+    const key = await this.key();
+    const subject = key ? subjectOf(key.token) : null;
+    try {
+      const c = await this.guard.check(guardAccount(this.provider.id, subject));
+      if (c.ok || c.until === null) return null;
+      return c.reasons.some((r) => r === 'backoff' || r === 'per_hour' || r === 'per_day') ? c.until : null;
+    } catch {
+      return null; // the guard says it itself when the sync asks it
+    }
   }
 
   private async record(p: Pairing, entry: Entry, reason: Reason, outcome: SyncOutcome, token: string): Promise<void> {
@@ -595,7 +677,7 @@ export class BrowserClient {
       // Told already. Whether the app still wants this connection is asked without taking a plan's
       // lease (another device of the player may still be signed in and fetch).
       try {
-        const st = await target.status();
+        const st = await target.status('expired');
         if (!st.connected) {
           await this.record(p, entry, reason, { status: 'disconnected' }, token);
           return { status: 'disconnected' };
@@ -609,7 +691,7 @@ export class BrowserClient {
       return { status: 'skipped', why: 'expired' };
     }
     try {
-      const plan = await target.plan(this.provider.id, reason, this.opts.kind);
+      const plan = await target.plan(this.provider.id, reason, this.opts.kind, 'expired');
       if (plan.disconnected) {
         await this.record(p, entry, reason, { status: 'disconnected' }, token);
         return { status: 'disconnected' };
@@ -673,34 +755,38 @@ export class BrowserClient {
   // What a client shows
   // -------------------------------------------------------------------------
 
-  status(): Promise<ClientStatus> {
-    return this.serial(async () => {
-      const key = await this.keyState();
-      const entries = await this.entries();
-      const stored = await this.key();
-      const subject = stored ? subjectOf(stored.token) : null;
-      let counts: GuardCounts | null = null;
-      if (subject) {
-        try {
-          counts = await this.guard.counts(guardAccount(this.provider.id, subject));
-        } catch {
-          counts = null;
-        }
+  /**
+   * Not in the queue: it only reads what is kept, and the popup must not wait for a sync to end before it can
+   * show that one runs (a "Yes, that's me" seemed to do nothing for seconds, 18 Nov).
+   */
+  async status(): Promise<ClientStatus> {
+    const key = await this.keyState();
+    const entries = await this.entries();
+    const stored = await this.key();
+    const subject = stored ? subjectOf(stored.token) : null;
+    let counts: GuardCounts | null = null;
+    if (subject) {
+      try {
+        counts = await this.guard.counts(guardAccount(this.provider.id, subject));
+      } catch {
+        counts = null;
       }
-      let attention: ClientStatus['attention'] = null;
-      if (key.state === 'confirm') attention = 'confirm';
-      else if (key.state === 'other' || entries.some((e) => e.other_account)) attention = 'other_account';
-      else if (entries.length && (key.state === 'none' || key.state === 'expired')) attention = 'sign_in';
-      return {
-        kind: this.opts.kind,
-        provider: { id: this.provider.id, name: this.provider.name, ...(this.provider.notice ? { notice: this.provider.notice } : {}) },
-        key,
-        pairings: entries.map((e) => ({ ...e, host: hostOf(e.base) })),
-        ended: await readList<Farewell>(this.opts.storage, ENDED),
-        counts,
-        attention,
-      };
-    });
+    }
+    let attention: ClientStatus['attention'] = null;
+    if (key.state === 'confirm') attention = 'confirm';
+    else if (key.state === 'other' || entries.some((e) => e.other_account)) attention = 'other_account';
+    else if (entries.length && (key.state === 'none' || key.state === 'expired')) attention = 'sign_in';
+    return {
+      kind: this.opts.kind,
+      provider: { id: this.provider.id, name: this.provider.name, ...(this.provider.notice ? { notice: this.provider.notice } : {}) },
+      key,
+      rejected: (await this.accounts(REJECTED)).length > 0,
+      pairings: entries.map((e) => ({ ...e, host: hostOf(e.base), signin: signinOf(key, e) })),
+      running: [...this.active],
+      ended: await readList<Farewell>(this.opts.storage, ENDED),
+      counts,
+      attention,
+    };
   }
 
   /** The player saw that a target ended the connection. */
@@ -712,6 +798,11 @@ export class BrowserClient {
   exportLog(): Promise<GuardLogExport> {
     return this.serial(() => this.guard.exportLog());
   }
+}
+
+/** Where the sign-in stands for one target (spec 1.5.0): "other" also when only this target knows another account. */
+export function signinOf(key: KeyState, entry: Pick<Entry, 'other_account'>): SignIn {
+  return key.state === 'ready' && entry.other_account ? 'other' : key.state;
 }
 
 /**

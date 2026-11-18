@@ -13,12 +13,18 @@ background, while your browser is open. Manifest V3; Chrome, Edge and Firefox.
 1. In the app that wants the data (a *target*), choose to connect Launch Monitor Sync. It opens the
    web app's pairing page (`…/pair#target=…&code=…`; the part after `#` reaches no server).
 2. The extension picks the code up and opens its connect page in a tab beside it: **which address** the data would go to.
-   *Allow and connect* — the browser asks once for that one address — and it is connected.
+   *Allow and connect* — the browser asks once for that one address — and it is connected. The pairing page closes
+   itself once the extension took over (when the app opened it; otherwise it says it may be closed).
 3. Open the Trackman portal (`portal.trackmangolf.com`) and sign in, or just open it if you are. The
    extension takes your sign-in from there and asks **"Is this your Trackman account?"** (name,
-   number of activities, the newest) before anything is fetched.
+   number of activities, the newest) before anything is fetched. *Yes* says *Checking …* at once, then
+   *Connected*; once all is done the connect page says so and offers to close its tab. *No* offers **Sign in
+   with another Trackman account**: Trackman's own sign-out, then the portal to sign in with your own (in the
+   same tab is fine: the extension keeps looking for the new sign-in for a while after the portal loads).
 4. From then on it runs by itself. About once a week Trackman's sign-in runs out: the icon shows
    **!**, the app is told too, and opening the portal again is enough.
+5. The app's own page in this browser can ask the extension to **fetch now** and show where its sign-in stands
+   ([the bridge](#the-bridge-on-the-apps-page)).
 
 The popup shows the sign-in, the connected apps with what they last got, *Fetch now*, *Disconnect*,
 and the requests to Trackman ("last hour 3 of 60 · last 24 hours 14 of 300") with the log to export.
@@ -39,7 +45,22 @@ and the requests to Trackman ("last hour 3 of 60 · last 24 hours 14 of 300") wi
 - **Reading the sign-in** (`portal-main.ts`, in the portal's own page): a key Trackman's sign-in issued,
   from the portal's storage or cookies, or the `Authorization` of the portal's own calls to
   Trackman's API. It only reads; the portal's requests go out unchanged. Nothing is disguised: the
-  extension's own requests carry the sign-in and nothing copied from the portal.
+  extension's own requests carry the sign-in and nothing copied from the portal. It looks when the page
+  loads, when the tab comes back, and every few seconds for two minutes after loading (then every half
+  minute): coming back from Trackman's sign-in, the portal stores the new key on its own time.
+- **The app hears where the sign-in stands** (spec 1.5.0, `signin`): with every plan, and - while there is
+  no sign-in it can fetch with - with a status (`GET /status`, no lease), at its regular look and when the
+  sign-in changes. The five words `none`, `confirm`, `ready`, `expired`, `other`; nothing more.
+
+## The bridge on the app's page
+
+[spec/page-bridge.md](../../spec/page-bridge.md). A small content script (`bridge-content.ts`) goes on the pages
+of each connected app's address - the address you allowed when connecting, so no new permission - registered at
+run time for those addresses only, top frame only, and removed with the connection. The app's page can ask where
+the extension stands (`state`: the sign-in, whether it is fetching) and to **fetch now** (`fetch`): a manual sync of
+that app's connection, the plan first and the guard as always, not again within 10 s, answered `started` and then
+`finished` - or `signin`, `guard` (until when), `busy`, `unpaired`. The page never gets your sign-in, the import
+token, a name or an account. `bridge.ts` holds the logic (tested without a browser).
 
 ## Permissions
 
@@ -51,7 +72,7 @@ and the requests to Trackman ("last hour 3 of 60 · last 24 hours 14 of 300") wi
 | a target's address (asked when you connect it) | To send it your data. Never all sites at once. |
 | `storage` | The sign-in, the connections, the guard's counts and log. |
 | `alarms` | To ask the plan every few minutes. |
-| `scripting` | Only to reach a pairing page that was already open when the extension was installed. |
+| `scripting` | To reach a pairing page that was already open when the extension was installed, and to put the bridge on the pages of the apps you connected (their addresses only, which you allowed). |
 
 Firefox lists one kind of data leaving the browser (`websiteContent`): your launch monitor data, to
 the app you connect. Nothing goes to this project or anyone else.
@@ -99,15 +120,18 @@ pnpm e2e                                    # click checks (from the repository 
   what (the key only from the portal, a pairing code only from the pairing page, everything else
   only from the extension's own pages); `src/manifest.ts` the manifest for both browsers.
 - `src/portal-main.ts`, `portal-relay.ts` the portal tab; `pair-content.ts` the pairing page;
-  `popup.ts`, `connect.ts` the extension's pages.
+  `bridge-content.ts` (with `bridge.ts`) a connected app's page; `popup.ts`, `connect.ts` the extension's pages.
 - The bundles hold no `eval` (Manifest V3 forbids it): the olmd/1 schema check is compiled ahead of
   time (`tools/browser-build.mjs`). The build fails if one does.
 - **Click checks** (`e2e/`): Chromium with the extension loaded; the pairing page, the portal, Trackman's
   API and a target app are answered in the test (`tools/e2e/world.ts`). The test build grants the
   made-up target at install (`dist-e2e/`), since no one can click the browser's own prompt there.
-- **Release**: raise `version` in `package.json`, then push a tag `extension-v<version>` or run *Actions ›
-  Release extension* on `main` (it makes the tag at that commit); `release.yml`
-  tests, lints the Firefox build with Mozilla's `web-ext lint` (`--self-hosted`: it names its own `update_url`) and
+- **Release**: raise `version` in `package.json` and push to `main`: once all of CI's checks of that commit are
+  green, CI releases it by itself (`ci.yml` › *release-extension*, `tools/release-check.mjs`; since 18 Nov).
+  Raising the version stays the deliberate step: when what goes into the extension changed since the last
+  release without a new version, CI's run says so (a notice, no failure). A tag `extension-v<version>`, or
+  *Actions › Release extension* on `main`, still works by hand. `release.yml`
+  tests (unless CI just did), lints the Firefox build with Mozilla's `web-ext lint` (`--self-hosted`: it names its own `update_url`) and
   attaches both zips to a GitHub release. Submitting to the Chrome Web Store, Edge Add-ons and Mozilla is done
   by hand (below); no store credentials live in this repository.
 
@@ -144,11 +168,11 @@ same GitHub release (edit the release, attach the file, *Update release*; the we
 | --- | --- |
 | `storage` | Keeps the user's Trackman sign-in (until it expires), the connected apps with their import tokens, and the load guard's counts and log - on the device only. |
 | `alarms` | Asks each connected app every few minutes whether data is due; only then does it fetch. |
-| `scripting` | Only to reach the web app's pairing page when it was already open before the extension was installed, to pick up the pairing code. |
+| `scripting` | To reach the web app's pairing page when it was already open before the extension was installed, to pick up the pairing code; and to let the page of an app the user connected (only that app's address, which the user allowed when connecting) ask the extension to fetch now, as the popup's *Fetch now* does. |
 | Host `portal.trackmangolf.com` | Reads the user's own sign-in where Trackman's web portal keeps it, so the user doesn't type a password into the extension. |
 | Host `api.trackmangolf.com` | Fetches the user's own sessions, shots and rounds with that sign-in. |
 | Host `golf-launch-monitor-sync.github.io` (pairing page) | Picks up the pairing code the user's app put into the page's address. |
-| Optional hosts (`https://*/*`) | The address of an app the user connects, asked for at that moment and only for that one address, to send it the data. Never all sites. |
+| Optional hosts (`https://*/*`) | The address of an app the user connects, asked for at that moment and only for that one address, to send it the data - and for that app's own page to ask the extension to fetch now. Never all sites. |
 
 **Remote code**: *No, I am not using remote code.* All code is in the package; the data check is compiled ahead of
 time, nothing is evaluated.

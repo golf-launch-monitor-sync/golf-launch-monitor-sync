@@ -2,7 +2,9 @@
 # Copyright (c) 2026 Reginald Stadlbauer
 # Every push to main and every pull request: types, tests, whether the vectors are what the
 # reference writes, and the click checks of the extension and the web app (with the store packages
-# built on the way). Read-only; no secrets; nothing is published from here.
+# built on the way); whether the extension's version is new, or should be (a hint, no failure). No
+# secrets. The one thing published from here: a push to main that raises the extension's version is
+# released once all of the above is green (release.yml, with the workflow's own token).
 name: CI
 
 on:
@@ -91,3 +93,35 @@ jobs:
           name: e2e-results
           path: test-results/
           retention-days: 7
+
+  # Whether this commit's extension version is a new release - or should be one: a hint in the run when what
+  # goes into the extension changed since its last release without a new version (tools/release-check.mjs).
+  extension-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      release: ${{ steps.check.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          # The tags and the history since the last release.
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - id: check
+        run: node tools/release-check.mjs
+
+  # A new extension version on main goes out by itself, after every check above is green on this very commit.
+  release-extension:
+    needs: [test, companion-bundle, vectors, e2e, extension-version]
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      github.repository == 'golf-launch-monitor-sync/golf-launch-monitor-sync' &&
+      needs.extension-version.outputs.release == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      checked: true

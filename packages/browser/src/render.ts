@@ -45,6 +45,8 @@ export interface Actions {
   forgetKey(): void;
   /** Opens the provider's portal (a new tab). */
   openPortal(): void;
+  /** Opens the provider's sign-out (a new tab), for signing in with another account. Extension only. */
+  switchAccount?(): void;
 }
 
 export interface RenderContext {
@@ -57,6 +59,10 @@ export interface RenderContext {
   client: 'extension' | 'web';
   /** The pairing whose disconnecting is being asked about. */
   asking?: string | null;
+  /** The player's answer to "Is this you?" is on its way (its buttons wait, it says so). */
+  confirming?: boolean;
+  /** The player just said yes: the panel says the connection stands and the data is on its way. */
+  confirmed?: boolean;
 }
 
 export function renderStatus(root: HTMLElement, s: ClientStatus, c: RenderContext, a: Actions): void {
@@ -102,19 +108,35 @@ export function renderStatus(root: HTMLElement, s: ClientStatus, c: RenderContex
         k.error ? h('p', { class: 'note warn' }, t(k.error === 'guard' ? 'confirm.guard' : 'confirm.unavailable')) : null,
         h('p', { class: 'muted small' }, t('confirm.why')),
         w
-          ? h('div', { class: 'row' }, button(t('confirm.yes'), () => a.confirm(true), { class: 'primary', 'data-test': 'confirm-yes' }), button(t('confirm.no'), () => a.confirm(false), { 'data-test': 'confirm-no' }))
+          ? h(
+              'div',
+              { class: 'row' },
+              button(t('confirm.yes'), () => a.confirm(true), { class: 'primary', 'data-test': 'confirm-yes', ...(c.confirming ? { disabled: '' } : {}) }),
+              button(t('confirm.no'), () => a.confirm(false), { 'data-test': 'confirm-no', ...(c.confirming ? { disabled: '' } : {}) }),
+            )
           : h('div', { class: 'row' }, button(t('confirm.retry'), a.retryWho, { 'data-test': 'confirm-retry' }), button(t('confirm.no'), () => a.confirm(false))),
+        c.confirming ? h('p', { class: 'muted', 'data-test': 'confirm-checking', role: 'status' }, t('confirm.checking')) : null,
       ),
     );
   } else if (k.state === 'ready') {
+    if (c.confirmed) key.push(h('p', { class: 'note', 'data-test': 'confirmed', role: 'status' }, t('confirm.done')));
     key.push(h('p', { 'data-test': 'key-ready' }, t('key.ready', { date: formatDateTime(k.until, lang) })));
     key.push(h('div', { class: 'row' }, button(t('key.forget'), a.forgetKey, { class: 'link' })));
   } else {
     const [line, hint] =
       k.state === 'expired' ? (['key.expired', 'key.expiredHint'] as const) : k.state === 'other' ? (['key.other', 'key.otherHint'] as const) : (['key.none', 'key.noneHint'] as const);
+    // The player said no to the account signed in to the portal here, or the target has another one: the way
+    // to their own goes through Trackman's sign-out first (18 Nov: the portal opened with someone else's).
+    const switching = c.client === 'extension' && !!a.switchAccount && (k.state === 'other' || (k.state === 'none' && s.rejected));
     key.push(h('p', { class: k.state === 'none' ? '' : 'note warn', 'data-test': `key-${k.state}` }, t(line)));
+    if (switching && k.state === 'none') key.push(h('p', { class: 'note', 'data-test': 'rejected' }, t('confirm.rejected')));
     if (c.client === 'extension' || k.state === 'other') key.push(h('p', { class: 'muted' }, t(hint)));
-    if (c.client === 'extension') key.push(h('div', { class: 'row' }, button(t('key.openPortal'), a.openPortal, { class: 'primary', 'data-test': 'open-portal' })));
+    if (switching) {
+      key.push(h('div', { class: 'row' }, button(t('key.switch'), () => a.switchAccount?.(), { class: 'primary', 'data-test': 'switch-account' }), button(t('key.openPortal'), a.openPortal, { 'data-test': 'open-portal' })));
+      key.push(h('p', { class: 'muted small' }, t('key.switchHint')));
+    } else if (c.client === 'extension') {
+      key.push(h('div', { class: 'row' }, button(t('key.openPortal'), a.openPortal, { class: 'primary', 'data-test': 'open-portal' })));
+    }
     if (k.state === 'other') key.push(h('div', { class: 'row' }, button(t('key.forget'), a.forgetKey, { class: 'link' })));
   }
   parts.push(h('section', { class: 'key' }, ...key));
@@ -123,7 +145,7 @@ export function renderStatus(root: HTMLElement, s: ClientStatus, c: RenderContex
   const targets: Child[] = [h('h2', {}, t('pairings.title'))];
   if (!s.pairings.length) targets.push(h('p', { class: 'muted', 'data-test': 'no-pairings' }, t('pairings.none')));
   for (const p of s.pairings) {
-    const fetching = c.busy.has(p.id);
+    const fetching = c.busy.has(p.id) || s.running.includes(p.id);
     const last = lastText(p, t, lang, now);
     const notice = p.last?.notice ? noticeText(p.last.notice, t, lang) : null;
     const history = historyText(p, t);

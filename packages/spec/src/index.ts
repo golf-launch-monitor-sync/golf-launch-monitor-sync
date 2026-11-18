@@ -2,7 +2,8 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
  * The spec (spec/ at the repository's root) for TypeScript: the olmd/1 types and schema check,
- * the load guard's limits, the reference planning rules and the deep links. The JSON files under
+ * the load guard's limits, the reference planning rules, the deep links, the client's sign-in and the
+ * extension's bridge on a target's page. The JSON files under
  * spec/ are the authority; this package only reads them.
  */
 
@@ -13,6 +14,7 @@ export * from './olmd.ts';
 export * from './validate.ts';
 export * from './deepLinks.ts';
 export * from './accountRef.ts';
+export * from './bridge.ts';
 
 /** The load guard's limits (spec/guard.md). Normative. */
 export const GUARD_LIMITS = limits;

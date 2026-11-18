@@ -18,6 +18,7 @@ monitor data from your own account at the maker of your launch monitor (today Tr
 | Your sign-in at the provider (e.g. Trackman's), read from its own web portal or its sign-in page | on your device only: the extension's own storage, the phone's secure store | only to the provider's own API, to fetch your data; never to a target, this project or anyone else |
 | Your launch monitor data (practice sessions, shots, rounds) | only while it is being passed on; a file only if you save one | to the target app you connected, when its plan asks for it - and nowhere else |
 | A connection: the target's address and name, its import token | on your device | the token goes to that target only |
+| Where your sign-in stands (one of: none, waiting for your yes, signed in, run out, another account) | on your device | to the targets you connected, so their app can show you the next step; to the connected app's own page in this browser if it asks the extension (the extension's bridge) |
 | The tool's own counts and log (times, kinds of request, statuses - never content) | on your device, the last 14 days | nowhere, unless you export the log yourself |
 
 The target you connect gets your data and an `account_ref`, a hash that tells your accounts apart without naming you.
@@ -36,7 +37,9 @@ GitHub), under their own terms.
 - Nothing is sold or shared, and nothing is used for any purpose other than moving your data to the targets you
   connected.
 - The extension reads only the provider's portal and API and the pairing page of the web app; a target's address only
-  once you allowed it, one at a time.
+  once you allowed it, one at a time. On a connected app's own pages it adds a small bridge (only those addresses)
+  through which that page can ask it to fetch now - it hands the page nothing of yours but whether you are signed in
+  and whether it is fetching.
 
 ## Removing it
 

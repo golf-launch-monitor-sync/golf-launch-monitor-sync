@@ -4,7 +4,7 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import schema from '../../../spec/olmd/olmd-1.schema.json' with { type: 'json' };
-import { GUARD_LIMITS, PLAN_RULES, REASONS, validateBatch } from './index.ts';
+import { GUARD_LIMITS, PLAN_RULES, REASONS, SIGN_IN_STATES, validateBatch } from './index.ts';
 import { SPEC_DIR, readVectors, specVersion } from './vectors.ts';
 
 describe('the vectors', () => {
@@ -84,6 +84,13 @@ describe('the target API', () => {
         expect([ref, existsSync(new URL(ref, `file://${SPEC_DIR}api/`))]).toEqual([ref, true]);
       }
     }
+  });
+
+  it('knows the same sign-in states as the types, on the plan and the status (1.5.0)', () => {
+    expect(api.components.schemas.SignIn.enum).toEqual([...SIGN_IN_STATES]);
+    const takes = (op: { parameters?: { $ref?: string }[] }) => (op.parameters ?? []).some((p) => p.$ref === '#/components/parameters/SignIn');
+    expect(takes(api.paths['/plan'].get)).toBe(true);
+    expect(takes(api.paths['/status'].get)).toBe(true);
   });
 
   it('asks for the import token everywhere but at pairing', () => {

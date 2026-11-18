@@ -1,0 +1,143 @@
+{
+  "$comment": "The client's sign-in as a target reads it (spec/target-api.md, *The client's sign-in*; 1.5.0): input is the list of the values the query parameter `signin` has in the request (a string or null: not a list); expected the sign-in, or null for no answer.",
+  "spec_version": "1.5.0",
+  "generated_by": "spec/reference/generate.py",
+  "cases": [
+    {
+      "rule": "read_signin",
+      "input": [
+        "none"
+      ],
+      "expected": "none"
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        "confirm"
+      ],
+      "expected": "confirm"
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        "ready"
+      ],
+      "expected": "ready"
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        "expired"
+      ],
+      "expected": "expired"
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        "other"
+      ],
+      "expected": "other"
+    },
+    {
+      "rule": "read_signin",
+      "input": [],
+      "expected": null
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        "ready",
+        "ready"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        "ready",
+        "none"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        "Ready"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        "READY"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        ""
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        " ready"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        "ready "
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        "signed_in"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        "expired\n"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        "ready\u0000"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        1
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_signin",
+      "input": [
+        null
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_signin",
+      "input": "ready",
+      "expected": null
+    },
+    {
+      "rule": "read_signin",
+      "input": null,
+      "expected": null
+    }
+  ]
+}

@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Reginald Stadlbauer
 # The browser extension's store packages, on a tag `extension-v<version>` (the version in
-# apps/extension/package.json) - or by hand on main (Actions › Release extension › Run workflow), which
-# makes that tag itself: tests, click checks, Mozilla's linter, then a GitHub release with one zip for
-# Chrome and Edge and one for Firefox. Submitting them to the stores is done by hand; no store
+# apps/extension/package.json), by hand on main (Actions › Release extension › Run workflow), or - since
+# 18 Nov - by itself: CI calls it on a push to main whose extension version isn't released yet, once all
+# of CI's checks of that commit are green (ci.yml, tools/release-check.mjs). By hand and by itself it makes
+# the tag: tests and click checks (unless CI just ran them), Mozilla's linter, then a GitHub release with
+# one zip for Chrome and Edge and one for Firefox. Submitting them to the stores is done by hand; no store
 # credentials are kept here.
 name: Release extension
 
@@ -11,6 +13,12 @@ on:
   push:
     tags: ['extension-v*']
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      checked:
+        description: CI has just run the tests and the click checks on this very commit.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -35,30 +43,40 @@ jobs:
       - name: The tag names the package's version
         id: tag
         env:
-          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
           REF: ${{ github.ref_name }}
+          AUTO: ${{ inputs.checked == true }}
           GH_TOKEN: ${{ github.token }}
         run: |
           version=$(node -p "require('./apps/extension/package.json').version")
-          if [ "$EVENT" = push ]; then
+          if [ "$REF_TYPE" = tag ]; then
             test "$REF" = "extension-v$version" || { echo "Tag $REF, but apps/extension/package.json says $version"; exit 1; }
             echo "tag=$REF" >> "$GITHUB_OUTPUT"
-          else
+          elif gh release view "extension-v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # By itself: released meanwhile (a run of an earlier push got there first) - nothing to do.
+            if [ "$AUTO" = true ]; then echo "extension-v$version is released already." | tee -a "$GITHUB_STEP_SUMMARY"; echo "go=false" >> "$GITHUB_OUTPUT"; exit 0; fi
             # By hand: this version must not be released yet (raise it in package.json first).
-            if gh release view "extension-v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-              echo "extension-v$version is released already: raise the version in apps/extension/package.json."; exit 1
-            fi
+            echo "extension-v$version is released already: raise the version in apps/extension/package.json."; exit 1
+          else
             echo "tag=extension-v$version" >> "$GITHUB_OUTPUT"
           fi
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm --filter @glmsync/extension package
-      - run: pnpm e2e
+          echo "go=true" >> "$GITHUB_OUTPUT"
+      - if: steps.tag.outputs.go == 'true' && !inputs.checked
+        run: pnpm typecheck
+      - if: steps.tag.outputs.go == 'true' && !inputs.checked
+        run: pnpm test
+      - if: steps.tag.outputs.go == 'true' && !inputs.checked
+        run: pnpm exec playwright install --with-deps chromium
+      - if: steps.tag.outputs.go == 'true'
+        run: pnpm --filter @glmsync/extension package
+      - if: steps.tag.outputs.go == 'true' && !inputs.checked
+        run: pnpm e2e
       # Self-hosted: signed by Mozilla but not listed, it names its own update_url (src/manifest.ts).
       - name: Mozilla's linter on the Firefox build
+        if: steps.tag.outputs.go == 'true'
         run: npx --yes web-ext@8 lint --source-dir apps/extension/dist/firefox --warnings-as-errors --self-hosted
       - name: GitHub release
+        if: steps.tag.outputs.go == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.tag.outputs.tag }}

@@ -87,12 +87,12 @@ describe('the key and "Is this you?"', () => {
     const w = world();
     await paired(w);
     const t = w.token();
-    expect(await w.client.setKey(t)).toEqual({ ok: true, changed: true, ready: false });
+    expect(await w.client.setKey(t)).toEqual({ ok: true, changed: true, ready: false, asking: true });
     const s = await w.client.status();
     expect(s.key).toMatchObject({ state: 'confirm', who: { player: 'Alex Example', activities: { count: 2, place: 'Example Range' } } });
     expect(s.attention).toBe('confirm');
     expect(w.tm.count('Who')).toBe(1);
-    expect(await w.client.setKey(t)).toEqual({ ok: true, changed: false, ready: false });
+    expect(await w.client.setKey(t)).toEqual({ ok: true, changed: false, ready: false, asking: false });
     expect(w.tm.count()).toBe(1);
     expect(s.counts?.day).toBe(1);
   });
@@ -132,7 +132,7 @@ describe('the key and "Is this you?"', () => {
     const w = world();
     w.target.accountRef = accountRefOf(w.target.salt, 'trackman', SUB);
     await paired(w);
-    expect(await w.client.setKey(w.token())).toEqual({ ok: true, changed: true, ready: true });
+    expect(await w.client.setKey(w.token())).toEqual({ ok: true, changed: true, ready: true, asking: false });
     expect(w.tm.count()).toBe(0);
   });
 
@@ -140,12 +140,33 @@ describe('the key and "Is this you?"', () => {
     const w = world();
     w.target.accountRef = accountRefOf(w.target.salt, 'trackman', 'somebody-else');
     await paired(w);
-    expect(await w.client.setKey(w.token())).toEqual({ ok: true, changed: true, ready: false });
+    expect(await w.client.setKey(w.token())).toEqual({ ok: true, changed: true, ready: false, asking: false });
     const s = await w.client.status();
     expect(s.key.state).toBe('other');
     expect(s.attention).toBe('other_account');
     await w.client.run('manual');
     expect(w.tm.count()).toBe(0);
+  });
+
+  it('asks again when another account signs in while the first one’s question is still open (18 Nov)', async () => {
+    // The portal tab showed someone else's account; the player signed out and in with theirs in the same tab
+    // before answering. The question is a new one: the extension must put it to the player again.
+    const w = world();
+    await paired(w);
+    expect(await w.client.setKey(w.token('someone-else'))).toMatchObject({ ok: true, asking: true });
+    expect(await w.client.setKey(w.token())).toEqual({ ok: true, changed: true, ready: false, asking: true });
+    // A new key of the account already being asked about is no new question.
+    w.clock.advance(60_000);
+    expect(await w.client.setKey(w.token())).toEqual({ ok: true, changed: true, ready: false, asking: false });
+  });
+
+  it('says the player said no to an account here, for the way to another one', async () => {
+    const w = world();
+    await paired(w);
+    expect((await w.client.status()).rejected).toBe(false);
+    await w.client.setKey(w.token('someone-else'));
+    await w.client.confirm(false);
+    expect((await w.client.status()).rejected).toBe(true);
   });
 
   it('refuses what is no key, or one that ran out', async () => {
@@ -164,6 +185,82 @@ describe('the key and "Is this you?"', () => {
     delete w.tm.override;
     w.clock.advance(3_600_000); // past the guard's backoff after a request without an answer
     expect(await w.client.retryWho()).toMatchObject({ state: 'confirm', who: { player: 'Alex Example' } });
+  });
+});
+
+describe('where the sign-in stands, for the target (spec 1.5.0)', () => {
+  it('tells it with every plan while it can fetch, and by a status (no lease) while it can’t', async () => {
+    const w = world();
+    await paired(w);
+    // Not signed in yet: no plan, a status.
+    await w.client.run('timer');
+    expect(w.target.asked).toHaveLength(0);
+    expect(w.target.signins).toEqual([{ via: 'status', signin: 'none' }]);
+    // Signed in, waiting for "Is this you?": the target hears it as soon as the extension reports.
+    await w.client.setKey(w.token());
+    await w.client.report();
+    expect(w.target.signins.at(-1)).toEqual({ via: 'status', signin: 'confirm' });
+    await w.client.confirm(true);
+    // Ready: nothing to report by a status; the plan carries it.
+    const told = w.target.signins.length;
+    await w.client.report();
+    expect(w.target.signins).toHaveLength(told);
+    await w.client.run('connect');
+    expect(w.target.asked.at(-1)).toMatchObject({ reason: 'connect', signin: 'ready' });
+    expect((await w.client.status()).pairings[0]?.signin).toBe('ready');
+  });
+
+  it('says "other" when the target has another account connected', async () => {
+    const w = world();
+    w.target.accountRef = accountRefOf(w.target.salt, 'trackman', 'somebody-else');
+    await paired(w);
+    await w.client.setKey(w.token());
+    await w.client.run('manual');
+    expect(w.target.signins.at(-1)).toEqual({ via: 'status', signin: 'other' });
+    expect((await w.client.status()).pairings[0]?.signin).toBe('other');
+  });
+
+  it('says "expired" with the plan that tells the target, and with the statuses after it', async () => {
+    const w = world();
+    await paired(w);
+    await w.client.setKey(w.token(SUB, 1));
+    await w.client.confirm(true);
+    w.clock.advance(2 * 3_600_000);
+    await w.client.run('timer');
+    expect(w.target.asked.at(-1)?.signin).toBe('expired');
+    await w.client.run('timer');
+    expect(w.target.signins.at(-1)).toEqual({ via: 'status', signin: 'expired' });
+  });
+
+  it('learns from the status that the app ended the connection, also before a sign-in', async () => {
+    const w = world();
+    const id = await paired(w);
+    w.target.disconnected = true;
+    expect((await w.client.run('timer', id)).outcomes[0]?.outcome).toEqual({ status: 'disconnected' });
+    expect((await w.client.status()).pairings).toHaveLength(0);
+  });
+});
+
+describe('the status while a sync runs', () => {
+  it('answers at once and says which pairing is fetching (a yes seemed to do nothing, 18 Nov)', async () => {
+    const w = world();
+    const id = await paired(w);
+    await w.client.setKey(w.token());
+    await w.client.confirm(true);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((done) => (release = done));
+    const tmFetch = w.tm.fetch;
+    w.tm.fetch = async (url, init) => {
+      await held;
+      return tmFetch(url, init);
+    };
+    const running = w.client.run('connect');
+    await new Promise((done) => setTimeout(done, 0));
+    const s = await w.client.status();
+    expect(s.running).toEqual([id]);
+    release();
+    await running;
+    expect((await w.client.status()).running).toEqual([]);
   });
 });
 
@@ -189,7 +286,7 @@ describe('a sign-in that runs out', () => {
     const s = await w.client.status();
     expect(s.attention).toBe('sign_in');
     // Signed in again (the same account): no question, syncing goes on.
-    expect(await w.client.setKey(w.token())).toEqual({ ok: true, changed: true, ready: true });
+    expect(await w.client.setKey(w.token())).toEqual({ ok: true, changed: true, ready: true, asking: false });
   });
 
   it('learns from the status, not a plan, that the app ended the connection meanwhile', async () => {

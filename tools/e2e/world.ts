@@ -19,6 +19,10 @@ export const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 export const WEB_DIST = join(ROOT, 'apps', 'web', 'dist');
 export const WEB = 'https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync';
 export const PORTAL = 'https://portal.trackmangolf.com/';
+/** Trackman's sign-out (made up here: a page that says the player is signed out). */
+export const SIGN_OUT = 'https://login.trackmangolf.com/connect/endsession';
+/** The made-up target app's own page (its web app), on the target's origin. */
+export const APP_PAGE = 'https://app.example.org/profile';
 export const TARGET = 'https://app.example.org/lm/v1';
 export const CODE = 'K7M2PQ9X';
 
@@ -57,14 +61,21 @@ async function answer(route: Route, fetchImpl: FetchLike): Promise<void> {
 export interface Portal {
   /** The key the made-up portal holds (null: signed out). */
   token: string | null;
-  /** Where it keeps it: in storage, or only in its calls to the API. */
-  mode: 'storage' | 'fetch';
+  /**
+   * Where it keeps it: in storage, only in its calls to the API, or - `late` - in storage only `lateMs` after the
+   * page loaded, with no call the extension's hooks see (coming back from the sign-in, the portal exchanges its
+   * code on its own time: 18 Nov).
+   */
+  mode: 'storage' | 'fetch' | 'late';
+  lateMs?: number;
 }
 
 export class World {
   readonly tm = new FakeTrackman();
   readonly target = new FakeTarget({ base: TARGET });
   readonly portal: Portal = { token: null, mode: 'storage' };
+  /** How often Trackman's sign-out page was opened. */
+  signOuts = 0;
 
   constructor() {
     this.tm.profile = { fullName: 'Alex Example' };
@@ -87,10 +98,13 @@ export class World {
   /** The made-up portal: a page that keeps its key in storage, or sends it with its first call. */
   private portalPage(): string {
     const token = JSON.stringify(this.portal.token);
+    const store = `localStorage.setItem('session', JSON.stringify({ user: { access_token: ${token} } }))`;
     const script =
       this.portal.mode === 'storage'
-        ? `if (${token}) localStorage.setItem('session', JSON.stringify({ user: { access_token: ${token} } })); else localStorage.clear();`
-        : `localStorage.clear(); if (${token}) fetch('https://api.trackmangolf.com/graphql', { method: 'POST', headers: { Authorization: 'Bearer ' + ${token}, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: 'query Profile { me { profile { fullName } } }' }) });`;
+        ? `if (${token}) ${store}; else localStorage.clear();`
+        : this.portal.mode === 'late'
+          ? `localStorage.clear(); if (${token}) setTimeout(() => ${store}, ${this.portal.lateMs ?? 6000});`
+          : `localStorage.clear(); if (${token}) fetch('https://api.trackmangolf.com/graphql', { method: 'POST', headers: { Authorization: 'Bearer ' + ${token}, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: 'query Profile { me { profile { fullName } } }' }) });`;
     return `<!doctype html><html><head><title>Portal</title></head><body><h1>Made-up portal</h1><script>${script}</script></body></html>`;
   }
 
@@ -106,8 +120,16 @@ export class World {
       return route.fulfill({ status: 200, body: readFileSync(full), headers: { 'content-type': TYPES[extname(full)] ?? 'application/octet-stream' } });
     });
     await context.route('https://portal.trackmangolf.com/**', (route) => route.fulfill({ status: 200, body: this.portalPage(), headers: { 'content-type': 'text/html' } }));
+    await context.route('https://login.trackmangolf.com/**', (route) => {
+      this.signOuts += 1;
+      return route.fulfill({ status: 200, body: '<!doctype html><title>Signed out</title><p>You are signed out.</p>', headers: { 'content-type': 'text/html' } });
+    });
     await context.route(`${GRAPHQL_URL}*`, (route) => answer(route, this.tm.fetch));
-    await context.route('https://app.example.org/**', (route) => answer(route, this.target.fetch));
+    await context.route('https://app.example.org/**', (route) =>
+      new URL(route.request().url()).pathname.startsWith('/lm/v1')
+        ? answer(route, this.target.fetch)
+        : route.fulfill({ status: 200, body: '<!doctype html><html><head><title>Example App</title></head><body><h1>Example App</h1></body></html>', headers: { 'content-type': 'text/html' } }),
+    );
   }
 
   /** Every request that reached the made-up target, as text: a Trackman key must never be in it. */

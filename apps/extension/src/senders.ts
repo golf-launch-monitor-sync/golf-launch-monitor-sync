@@ -3,20 +3,23 @@
 /**
  * Who may tell the background what. A message carries no proof of its own, so the background goes by
  * where it came from (`sender.url`, which the browser sets): the Trackman key only from the portal,
- * a pairing code only from the web app's pairing page, and the rest only from the extension's own
- * pages. Pure, so it is tested without a browser.
+ * a pairing code only from the web app's pairing page, a bridge request only from a page's top frame
+ * (the background then checks its origin is a paired target's: bridge.ts), and the rest only from the
+ * extension's own pages. Pure, so it is tested without a browser.
  */
 
 import { PORTAL_ORIGIN } from '@glmsync/provider-trackman/portal';
 import { PAIR_PATH, WEB_APP_ORIGIN } from '@glmsync/browser';
+import { readBridgeRequest } from '@glmsync/spec';
 import type { Message } from './messages.ts';
 
-export type Source = 'portal' | 'pair-page' | 'extension' | 'other';
+export type Source = 'portal' | 'pair-page' | 'target-page' | 'extension' | 'other';
 
 export interface SenderLike {
   id?: string | undefined;
   url?: string | undefined;
   tab?: { id?: number | undefined } | undefined;
+  frameId?: number | undefined;
 }
 
 function parse(url: string | undefined): URL | null {
@@ -35,6 +38,8 @@ export function sourceOf(sender: SenderLike, extensionId: string, extensionOrigi
   if (u.origin === PORTAL_ORIGIN && sender.tab) return 'portal';
   if (u.origin === WEB_APP_ORIGIN && sender.tab && /^\/golf-launch-monitor-sync\/pair(?:\.html|\/(?:index\.html)?)?$/.test(u.pathname)) return 'pair-page';
   if (`${u.protocol}//${u.host}` === extensionOrigin.replace(/\/$/, '')) return 'extension';
+  // The bridge's content script, on some site's page: only its top frame, never the project's own site.
+  if ((u.protocol === 'https:' || u.protocol === 'http:') && sender.tab && sender.frameId === 0 && u.origin !== WEB_APP_ORIGIN) return 'target-page';
   return 'other';
 }
 
@@ -51,6 +56,8 @@ const FROM: Record<Message['type'], Source> = {
   'clear-ended': 'extension',
   'forget-key': 'extension',
   'open-portal': 'extension',
+  'switch-account': 'extension',
+  bridge: 'target-page',
   pending: 'extension',
   'pair-confirm': 'extension',
   'pair-cancel': 'extension',
@@ -73,6 +80,11 @@ export function accept(raw: unknown, source: Source): Message | null {
       return typeof m.yes === 'boolean' ? { type, yes: m.yes } : null;
     case 'unpair':
       return typeof m.id === 'string' ? { type, id: m.id } : null;
+    case 'bridge': {
+      // Read again here, as strictly as on the page: the content script runs where the page can reach.
+      const request = readBridgeRequest(m.request);
+      return request ? { type, request } : null;
+    }
     default:
       return { type } as Message;
   }

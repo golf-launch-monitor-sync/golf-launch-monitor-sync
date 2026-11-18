@@ -10,8 +10,9 @@
  */
 
 import { badge, BrowserClient, pickLang, translator } from '@glmsync/browser';
-import type { Reason } from '@glmsync/spec';
-import { PORTAL_URL } from '@glmsync/provider-trackman/portal';
+import { bridgeMessage, type BridgeReply, type Reason } from '@glmsync/spec';
+import { PORTAL_URL, SIGN_OUT_URL } from '@glmsync/provider-trackman/portal';
+import { answer, bridgeMatches, originOf } from './bridge.ts';
 import type { Message, Pending, Reply } from './messages.ts';
 import { accept, sourceOf } from './senders.ts';
 import { ExtensionStorage } from './storage.ts';
@@ -87,7 +88,14 @@ async function run(reason: Reason, id?: string) {
   } finally {
     await scheduleBackfill().catch(() => undefined);
     await refreshIcon();
+    // A run may have learnt that a target ended the connection: its bridge goes with it.
+    await syncBridges();
   }
+}
+
+/** The targets hear where the sign-in stands when it changed to one they can't fetch with (spec 1.5.0). */
+function report(): void {
+  void client.report().catch(() => undefined);
 }
 
 async function ensureTimer(): Promise<void> {
@@ -109,7 +117,72 @@ chrome.runtime.onInstalled.addListener(() => {
   void ensureTimer();
   void refreshIcon();
   void reachOpenPairPages();
+  void syncBridges();
 });
+
+// ---------------------------------------------------------------------------
+// The bridge on a paired target's page (spec/page-bridge.md)
+// ---------------------------------------------------------------------------
+
+const BRIDGE_ID = 'glmsync-bridge';
+const BRIDGE_STARTED = 'glmsync/bridge-started';
+
+/**
+ * The bridge's content script goes on the pages of every paired target's origin the browser lets the extension
+ * talk to (the player allowed it at pairing) - registered at run time, since the origins are the player's - and
+ * comes off when no pairing has that origin any more. Pages of a new origin already open get it at once.
+ */
+async function syncBridges(): Promise<void> {
+  try {
+    const s = await client.status();
+    const allowed: string[] = [];
+    for (const m of bridgeMatches(s.pairings)) {
+      if (await chrome.permissions.contains({ origins: [m] })) allowed.push(m);
+    }
+    const had = await chrome.scripting.getRegisteredContentScripts({ ids: [BRIDGE_ID] });
+    const before = [...(had[0]?.matches ?? [])].sort();
+    if (had.length && before.join(' ') === allowed.join(' ')) return;
+    if (had.length) await chrome.scripting.unregisterContentScripts({ ids: [BRIDGE_ID] });
+    if (!allowed.length) return;
+    await chrome.scripting.registerContentScripts([{ id: BRIDGE_ID, matches: allowed, js: ['bridge-content.js'], runAt: 'document_start', allFrames: false }]);
+    const fresh = allowed.filter((m) => !before.includes(m));
+    if (!fresh.length) return;
+    for (const tab of await chrome.tabs.query({ url: fresh })) {
+      if (tab.id !== undefined) await chrome.scripting.executeScript({ target: { tabId: tab.id, frameIds: [0] }, files: ['bridge-content.js'] }).catch(() => undefined);
+    }
+  } catch {
+    // Asked again at the next start, pairing or run; without it the popup's "Fetch now" still works.
+  }
+}
+
+async function bridgeStarted(): Promise<Record<string, number>> {
+  const got = await chrome.storage.session.get(BRIDGE_STARTED);
+  const v = got[BRIDGE_STARTED] as Record<string, number> | undefined;
+  return v && typeof v === 'object' ? v : {};
+}
+
+async function bridge(m: Extract<Message, { type: 'bridge' }>, url: string | undefined, tabId: number | undefined): Promise<Reply> {
+  const origin = originOf(url);
+  if (!origin) return { ok: false, error: 'origin' };
+  const out = await answer(
+    {
+      status: () => client.status(),
+      guardHold: () => client.guardHold(),
+      run: (id) => run('manual', id),
+      now: Date.now,
+      lastStarted: async (id) => (await bridgeStarted())[id] ?? null,
+      started: async (id, at) => chrome.storage.session.set({ [BRIDGE_STARTED]: { ...(await bridgeStarted()), [id]: at } }),
+    },
+    m.request,
+    origin,
+  );
+  if (out.finish) {
+    void out.finish().then((finished: BridgeReply) =>
+      tabId === undefined ? undefined : chrome.tabs.sendMessage(tabId, { glmsyncBridge: bridgeMessage(finished) }, { frameId: 0 }).catch(() => undefined),
+    );
+  }
+  return { ok: true, bridge: out.reply };
+}
 
 /**
  * A pairing page that was already open when the extension was installed (the player came from it to
@@ -189,8 +262,10 @@ async function confirmPairing(): Promise<Reply> {
   const out = await client.offerPairing({ target: p.target, code: p.code, ...(p.provider ? { provider: p.provider } : {}) });
   const next: Pending = out.ok ? { ...p, state: 'paired', name: out.name, code: '' } : { ...p, state: 'failed', error: out.error, code: '' };
   await setPending(next);
-  if (out.ok) void run('connect', out.id);
-  else await refreshIcon();
+  if (out.ok) {
+    void run('connect', out.id);
+    await syncBridges();
+  } else await refreshIcon();
   return { ok: true, pending: next };
 }
 
@@ -198,23 +273,28 @@ async function confirmPairing(): Promise<Reply> {
 // Messages
 // ---------------------------------------------------------------------------
 
-/** `near`: the tab the message came from (the pairing page, the portal, the connect window), if any. */
-async function handle(m: Message, near: Near | null): Promise<Reply> {
+/**
+ * `near`: the tab the message came from (the pairing page, the portal, the connect window), if any; `from`:
+ * where it came from (a bridge request's page).
+ */
+async function handle(m: Message, near: Near | null, from: { url?: string | undefined; tabId?: number | undefined }): Promise<Reply> {
   switch (m.type) {
     case 'portal-key': {
-      const before = await client.status();
       const r = await client.setKey(m.token);
       if (r.ok && r.changed) {
         if (r.ready) void run('connect');
         else {
           await refreshIcon();
-          // A first key of an account, and an app is waiting for it: ask "Is this you?" right away.
-          const s = await client.status();
-          if (s.key.state === 'confirm' && s.pairings.length && before.key.state !== 'confirm') await openConnectWindow(near);
+          report();
+          // A key of an account to ask about, and an app is waiting for it: ask "Is this you?" right away - also
+          // when another account's question was still open (the player switched accounts in the portal tab).
+          if (r.asking && (await client.status()).pairings.length) await openConnectWindow(near);
         }
       }
       return { ok: true };
     }
+    case 'bridge':
+      return bridge(m, from.url, from.tabId);
     case 'pair-offer':
       return offer(m.fragment, near);
     case 'pair-status':
@@ -235,9 +315,15 @@ async function handle(m: Message, near: Near | null): Promise<Reply> {
       return { ok: true, status: await client.status() };
     case 'confirm': {
       const state = await client.confirm(m.yes);
+      // The answer goes back before the sync starts: the page says "connected" at once (18 Nov: a yes seemed
+      // to do nothing for seconds while the reply waited for the whole first sync).
+      const status = await client.status();
       if (state.state === 'ready') void run('connect');
-      else await refreshIcon();
-      return { ok: true, status: await client.status() };
+      else {
+        await refreshIcon();
+        report();
+      }
+      return { ok: true, status };
     }
     case 'retry-who':
       await client.retryWho();
@@ -246,6 +332,7 @@ async function handle(m: Message, near: Near | null): Promise<Reply> {
     case 'unpair':
       await client.removePairing(m.id);
       await refreshIcon();
+      await syncBridges();
       return { ok: true, status: await client.status() };
     case 'export-log':
       return { ok: true, log: await client.exportLog() };
@@ -255,10 +342,16 @@ async function handle(m: Message, near: Near | null): Promise<Reply> {
     case 'forget-key':
       await client.dropKey();
       await refreshIcon();
+      report();
       return { ok: true, status: await client.status() };
     case 'open-portal':
       // Beside the connect window, in its browser window, in front.
       await openTab(tabsApi, PORTAL_URL, near);
+      return { ok: true };
+    case 'switch-account':
+      // Someone else's account is signed in to the portal here: Trackman's own sign-out, as a page the player
+      // sees; then the portal, to sign in with their own (the extension picks the new key up from there).
+      await openTab(tabsApi, SIGN_OUT_URL, near);
       return { ok: true };
   }
 }
@@ -267,10 +360,12 @@ chrome.runtime.onMessage.addListener((raw, sender, reply) => {
   const source = sourceOf(sender, chrome.runtime.id, chrome.runtime.getURL(''));
   const m = accept(raw, source);
   if (!m) return false; // not ours to answer
-  handle(m, nearOf(sender.tab)).then(reply, (e: unknown) => reply({ ok: false, error: e instanceof Error ? e.message : String(e) } satisfies Reply));
+  handle(m, nearOf(sender.tab), { url: sender.url, tabId: sender.tab?.id }).then(reply, (e: unknown) => reply({ ok: false, error: e instanceof Error ? e.message : String(e) } satisfies Reply));
   return true; // answered asynchronously
 });
 
 void ensureTimer();
 void refreshIcon();
+// Firefox may forget registered content scripts when it restarts: the bridge is put back on every wake.
+void syncBridges();
 

@@ -8,7 +8,7 @@
  * is an outcome the client can show.
  */
 
-import { FORMAT, type Batch, type Reason } from '@glmsync/spec';
+import { FORMAT, type Batch, type Reason, type SignIn } from '@glmsync/spec';
 import { addResults, emptyResult, type ClientKind, type ImportResult, type Plan } from './api.ts';
 import { clean, split } from './batch.ts';
 import { Cancelled, GlmsError, noticeFor, TargetError, type Notice } from './errors.ts';
@@ -24,6 +24,8 @@ export interface SyncOptions<C> {
   credential: C;
   reason: Reason;
   client: ClientKind;
+  /** Where the client's sign-in stands, told with the plan (1.5.0); a client syncs only when it is `ready`. */
+  signin?: SignIn;
   guard: Guard;
   /** For the provider's requests (the target brings its own). */
   fetch?: FetchLike;
@@ -64,7 +66,7 @@ export async function sync<C>(opts: SyncOptions<C>): Promise<SyncOutcome> {
   const { target, provider, reason } = opts;
   try {
     // 1. The plan, always first: a request to the target, not to the provider.
-    const plan = await target.plan(provider.id, reason, opts.client);
+    const plan = await target.plan(provider.id, reason, opts.client, opts.signin);
     if (plan.disconnected) return { status: 'disconnected' };
     if (plan.busy) return { status: 'busy', plan };
     if (!plan.due) return { status: 'not_due', plan };

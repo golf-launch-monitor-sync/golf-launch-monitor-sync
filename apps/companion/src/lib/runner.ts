@@ -266,6 +266,8 @@ export class Runner {
       credential,
       reason,
       client: CLIENT,
+      // A sign-in is kept here only once the player said it is theirs: it can fetch (spec 1.5.0).
+      signin: 'ready',
       guard: this.opts.guard,
       ...(this.opts.fetch ? { fetch: this.opts.fetch } : {}),
       signal: this.signal,
@@ -274,6 +276,8 @@ export class Runner {
       generator: this.generator,
     });
     const run: LastRun = { at: this.now(), reason, status: outcome.status };
+    // The target heard "ready" with the plan; its account is another one, which it hears too (no lease taken).
+    if (outcome.status === 'other_account') await this.target(p).status('other').catch(() => undefined);
     if (outcome.status === 'synced') {
       run.result = outcome.result;
       run.more = outcome.more;
@@ -309,7 +313,8 @@ export class Runner {
     const run: LastRun = { at: this.now(), reason, status: 'signed_out', notice: 'auth_expired' };
     try {
       const target = this.target(p);
-      const plan = await target.plan(p.provider, reason, CLIENT);
+      // Where the sign-in stands (spec 1.5.0): ran out here, or never made on this phone.
+      const plan = await target.plan(p.provider, reason, CLIENT, this.opts.signIns.had(p.provider) ? 'expired' : 'none');
       if (plan.disconnected) {
         await this.dropped(p);
         return { at: this.now(), reason, status: 'disconnected' };
@@ -359,6 +364,7 @@ export class Runner {
           credential,
           reason: 'backfill',
           client: CLIENT,
+          signin: 'ready',
           guard: this.opts.guard,
           ...(this.opts.fetch ? { fetch: this.opts.fetch } : {}),
           signal: this.signal,

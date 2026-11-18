@@ -6,7 +6,7 @@
  * here reaches a network.
  */
 
-import { validateBatch, type Batch, type Reason } from '@glmsync/spec';
+import { readSignIn, validateBatch, type Batch, type Reason, type SignIn } from '@glmsync/spec';
 import type { ImportLimits } from '../api.ts';
 import type { FetchLike, ResponseLike } from '../http.ts';
 
@@ -39,6 +39,14 @@ export interface PlanAsked {
   provider: string;
   reason: Reason;
   client: string | null;
+  /** The client's sign-in as it said it (1.5.0), read as a target reads it. */
+  signin: SignIn | null;
+}
+
+/** A sign-in a client told, with the plan or a status (1.5.0). */
+export interface SignInTold {
+  via: 'plan' | 'status';
+  signin: SignIn;
 }
 
 export interface FakeTargetOptions {
@@ -61,6 +69,8 @@ export class FakeTarget {
   readonly received: Received[] = [];
   readonly imports: Batch[] = [];
   readonly asked: PlanAsked[] = [];
+  /** Every sign-in a client told, in order. */
+  readonly signins: SignInTold[] = [];
   /** What it stores: external id -> the item. */
   readonly sessions = new Map<string, Batch['sessions'][number]>();
   readonly rounds = new Map<string, Batch['rounds'][number]>();
@@ -111,8 +121,10 @@ export class FakeTarget {
         provider: u.searchParams.get('provider') ?? '',
         reason: (u.searchParams.get('reason') ?? 'timer') as Reason,
         client: u.searchParams.get('client'),
+        signin: readSignIn(u.searchParams.getAll('signin')),
       };
       this.asked.push(ask);
+      if (ask.signin) this.signins.push({ via: 'plan', signin: ask.signin });
       if (this.disconnected) return response(200, { due: false, disconnected: true });
       const plan = this.opts.plan
         ? this.opts.plan(ask, this)
@@ -164,6 +176,8 @@ export class FakeTarget {
     }
     if (path === '/known' && init.method === 'GET') return response(200, { external_ids: this.known() });
     if (path === '/status' && init.method === 'GET') {
+      const signin = readSignIn(u.searchParams.getAll('signin'));
+      if (signin) this.signins.push({ via: 'status', signin });
       return response(200, { target: { name: this.name }, connected: !this.disconnected, provider: 'demo' });
     }
     if (path === '/token' && init.method === 'DELETE') {

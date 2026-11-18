@@ -9,7 +9,7 @@
  * target - no request here carries it.
  */
 
-import { validTarget, type Batch, type Reason } from '@glmsync/spec';
+import { validTarget, type Batch, type Reason, type SignIn } from '@glmsync/spec';
 import {
   CLIENT_KINDS,
   PROVIDER_ID,
@@ -35,8 +35,11 @@ export interface Target {
   /** The salt of `account_ref` (spec/olmd.md). */
   readonly salt: string;
   readonly limits: ImportLimits;
-  /** Whether to fetch now, and what. Asked before anything is asked of a provider. */
-  plan(provider: string, reason: Reason, client: ClientKind): Promise<Plan>;
+  /**
+   * Whether to fetch now, and what. Asked before anything is asked of a provider. `signin` (1.5.0): where
+   * the client's provider sign-in stands, for the target app to show; it changes no plan.
+   */
+  plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn): Promise<Plan>;
   /** One batch, within `limits`. */
   import(batch: Batch): Promise<ImportResult>;
 }
@@ -153,8 +156,9 @@ export class HttpTarget implements Target {
     return call(this.fetchImpl, `${trimBase(this.pairing.base)}${path}`, init, { signal: this.signal, now: this.now });
   }
 
-  async plan(provider: string, reason: Reason, client: ClientKind): Promise<Plan> {
+  async plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn): Promise<Plan> {
     const q = new URLSearchParams({ provider, reason, client });
+    if (signin) q.set('signin', signin);
     const x = await this.send('GET', `/plan?${q.toString()}`);
     if (x.status !== 200) throw errorOf(x);
     const body = parseJson(x.body);
@@ -180,8 +184,9 @@ export class HttpTarget implements Target {
     return body.external_ids.map((v) => (typeof v === 'string' ? externalId(v) : null)).filter((v): v is string => !!v);
   }
 
-  async status(): Promise<TargetStatus> {
-    const x = await this.send('GET', '/status');
+  /** GET /status; `signin` (1.5.0) tells the target where this client's sign-in stands, taking no lease. */
+  async status(signin?: SignIn): Promise<TargetStatus> {
+    const x = await this.send('GET', signin ? `/status?${new URLSearchParams({ signin }).toString()}` : '/status');
     if (x.status !== 200) throw errorOf(x);
     const status = readStatus(parseJson(x.body));
     if (!status) throw new TargetError('bad_answer', 'The target answered the status with something else.');

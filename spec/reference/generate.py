@@ -21,6 +21,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import account  # noqa: E402
+import bridge  # noqa: E402
 import cases_trackman  # noqa: E402
 import clubs  # noqa: E402
 import deeplinks  # noqa: E402
@@ -330,6 +331,55 @@ def deep_link_vectors() -> dict[str, Any]:
                "{ok: true, target, reason} or {ok: false, error}.", cases)
 
 
+def signin_vectors() -> dict[str, Any]:
+    values: list[Any] = [[s] for s in bridge.SIGN_IN] + [
+        [], ["ready", "ready"], ["ready", "none"], ["Ready"], ["READY"], [""], [" ready"], ["ready "], ["signed_in"],
+        ["expired\n"], ["ready\u0000"], [1], [None], "ready", None]
+    cases = [{"rule": "read_signin", "input": v, "expected": bridge.read_signin(v)} for v in values]
+    return doc("The client's sign-in as a target reads it (spec/target-api.md, *The client's sign-in*; 1.5.0): input is "
+               "the list of the values the query parameter `signin` has in the request (a string or null: not a "
+               "list); expected the sign-in, or null for no answer.", cases)
+
+
+def bridge_vectors() -> dict[str, Any]:
+    req = {"glmsync": "request", "v": 1, "id": "r-1", "ask": "fetch"}
+    requests: list[Any] = [
+        req, {**req, "ask": "state"}, {**req, "v": 1.0}, {**req, "extra": {"x": 1}},
+        {**req, "v": 2}, {**req, "v": "1"}, {**req, "v": True}, {**req, "glmsync": "reply"}, {**req, "ask": "sync"},
+        {**req, "ask": "Fetch"}, {**req, "id": ""}, {**req, "id": "x" * 64}, {**req, "id": "x" * 65},
+        {**req, "id": "r 1"}, {**req, "id": "r-1\n"}, {**req, "id": 7}, {k: v for k, v in req.items() if k != "id"},
+        {k: v for k, v in req.items() if k != "ask"}, {k: v for k, v in req.items() if k != "v"},
+        ["glmsync", "request"], "fetch", None, {"glmsync-extension": req}]
+    cases: list[dict[str, Any]] = [{"rule": "read_request", "input": r, "expected": bridge.read_request(r)}
+                                   for r in requests]
+    rep = {"glmsync": "reply", "v": 1, "id": "r-1"}
+    replies: list[Any] = [
+        {**rep, "answer": "state", "signin": "ready", "fetching": False},
+        {**rep, "answer": "state", "signin": "confirm", "fetching": True},
+        {**rep, "answer": "state", "signin": "ready"}, {**rep, "answer": "state", "signin": "Ready", "fetching": False},
+        {**rep, "answer": "state", "signin": "ready", "fetching": "no"},
+        {**rep, "answer": "started"}, {**rep, "answer": "busy", "extra": 1}, {**rep, "answer": "unpaired"},
+        {**rep, "answer": "signin", "signin": "expired"}, {**rep, "answer": "signin", "signin": "none"},
+        {**rep, "answer": "signin", "signin": "ready"}, {**rep, "answer": "signin"},
+        {**rep, "answer": "guard", "until": "2026-11-18T22:30:00Z"},
+        {**rep, "answer": "guard", "until": "2026-11-18T23:30:00.250+01:00"},
+        {**rep, "answer": "guard"}, {**rep, "answer": "guard", "until": "2026-11-18"},
+        {**rep, "answer": "guard", "until": "tomorrow"}, {**rep, "answer": "guard", "until": 1763505000},
+        {**rep, "answer": "finished", "outcome": "synced"}, {**rep, "answer": "finished", "outcome": "not_due"},
+        {**rep, "answer": "finished", "outcome": "guard", "until": "2026-11-18T22:30:00Z"},
+        {**rep, "answer": "finished", "outcome": "guard", "until": "soon"},
+        {**rep, "answer": "finished", "outcome": "signin"}, {**rep, "answer": "finished", "outcome": "done"},
+        {**rep, "answer": "finished"}, {**rep, "answer": "later"}, {**rep, "answer": 1},
+        {**rep, "v": 2, "answer": "started"}, {**rep, "glmsync": "request", "answer": "started"},
+        {"glmsync": "reply", "v": 1, "answer": "started"}, {**rep, "id": "", "answer": "started"}, None, []]
+    cases += [{"rule": "read_reply", "input": r, "expected": bridge.read_reply(r)} for r in replies]
+    return doc("The browser extension's bridge on a paired target's page (spec/page-bridge.md; 1.5.0): read_request "
+               "(what the extension takes from the page) and read_reply (what the page takes from the extension) -> "
+               "the message read, or null when it is none of this protocol's.", cases,
+               protocol={"version": bridge.VERSION, "fetch_gap_s": bridge.FETCH_GAP_S, "sign_in": list(bridge.SIGN_IN),
+                         "outcomes": list(bridge.OUTCOMES)})
+
+
 def olmd_examples() -> dict[str, Any]:
     good = trackman.batch({"sessions": [{"activity": cases_trackman._act("ACT-1", "SIMULATOR"),
                                          "node": {"strokes": cases_trackman.SIM_STROKES[:1]}}]},
@@ -399,6 +449,8 @@ FILES = {
     "plan.json": plan_vectors,
     "guard.json": guard_vectors,
     "deep-links.json": deep_link_vectors,
+    "signin.json": signin_vectors,
+    "page-bridge.json": bridge_vectors,
     "olmd-examples.json": olmd_examples,
 }
 

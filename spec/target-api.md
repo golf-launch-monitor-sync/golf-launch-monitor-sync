@@ -47,6 +47,36 @@ out.
 Independently of any plan, the client's **load guard** ([guard.md](guard.md)) caps what it asks of a
 provider: a faulty or hostile target can't make it hammer anyone.
 
+## The client's sign-in
+
+Since 1.5.0 a client says where its provider sign-in stands, so the target app can show the player the
+next step on that device ("not signed in yet – open the extension", "waiting for *Is this your
+account?*", "signed in"): the query parameter `signin` on `GET /plan`, and on `GET /status` for a client
+that won't ask for a plan because it has no sign-in it could fetch with (a status takes no lease, so it
+never keeps another device of the player from fetching).
+
+| `signin` | The client … |
+| --- | --- |
+| `none` | isn't signed in to the provider on this device yet |
+| `confirm` | is signed in, but the player hasn't answered *Is this your account?* yet |
+| `ready` | is signed in and confirmed: it can fetch |
+| `expired` | had a sign-in that ran out, or the provider refused it |
+| `other` | is signed in with another provider account than the one the target has connected |
+
+- The client sends it with every plan and, while it can't fetch, with a status now and then (at its
+  regular look, and when its sign-in changed). A target keeps the latest per import token, i.e. per
+  client, with when it heard it.
+- It is informative: it changes no plan, and a target never fetches, waits or refuses because of it.
+  It says nothing about who the player is (`account_ref` does that).
+- Read strictly: exactly one value, one of the five ([`reference/bridge.py`](reference/bridge.py),
+  vectors in [`testvectors/signin.json`](testvectors/signin.json)); anything else is no answer. A client
+  older than 1.5.0 sends none.
+
+## Fetch now from the target's page
+
+A target app running in a browser where the extension is paired with it can ask the extension to fetch
+now, without a switch to another page or app: [page-bridge.md](page-bridge.md).
+
 ## Importing
 
 - `POST /import` takes one batch, at most the `limits` handed out at pairing (bytes, sessions,

@@ -1,0 +1,658 @@
+{
+  "$comment": "The browser extension's bridge on a paired target's page (spec/page-bridge.md; 1.5.0): read_request (what the extension takes from the page) and read_reply (what the page takes from the extension) -> the message read, or null when it is none of this protocol's.",
+  "spec_version": "1.5.0",
+  "generated_by": "spec/reference/generate.py",
+  "protocol": {
+    "version": 1,
+    "fetch_gap_s": 10,
+    "sign_in": [
+      "none",
+      "confirm",
+      "ready",
+      "expired",
+      "other"
+    ],
+    "outcomes": [
+      "synced",
+      "not_due",
+      "other_account",
+      "failed",
+      "guard",
+      "signin"
+    ]
+  },
+  "cases": [
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1",
+        "ask": "fetch"
+      },
+      "expected": {
+        "id": "r-1",
+        "ask": "fetch"
+      }
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1",
+        "ask": "state"
+      },
+      "expected": {
+        "id": "r-1",
+        "ask": "state"
+      }
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1.0,
+        "id": "r-1",
+        "ask": "fetch"
+      },
+      "expected": {
+        "id": "r-1",
+        "ask": "fetch"
+      }
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1",
+        "ask": "fetch",
+        "extra": {
+          "x": 1
+        }
+      },
+      "expected": {
+        "id": "r-1",
+        "ask": "fetch"
+      }
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 2,
+        "id": "r-1",
+        "ask": "fetch"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": "1",
+        "id": "r-1",
+        "ask": "fetch"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": true,
+        "id": "r-1",
+        "ask": "fetch"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "ask": "fetch"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1",
+        "ask": "sync"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1",
+        "ask": "Fetch"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "",
+        "ask": "fetch"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "ask": "fetch"
+      },
+      "expected": {
+        "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "ask": "fetch"
+      }
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "ask": "fetch"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r 1",
+        "ask": "fetch"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1\n",
+        "ask": "fetch"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": 7,
+        "ask": "fetch"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "ask": "fetch"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "id": "r-1",
+        "ask": "fetch"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": [
+        "glmsync",
+        "request"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": "fetch",
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": null,
+      "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync-extension": {
+          "glmsync": "request",
+          "v": 1,
+          "id": "r-1",
+          "ask": "fetch"
+        }
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "state",
+        "signin": "ready",
+        "fetching": false
+      },
+      "expected": {
+        "id": "r-1",
+        "answer": "state",
+        "signin": "ready",
+        "fetching": false
+      }
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "state",
+        "signin": "confirm",
+        "fetching": true
+      },
+      "expected": {
+        "id": "r-1",
+        "answer": "state",
+        "signin": "confirm",
+        "fetching": true
+      }
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "state",
+        "signin": "ready"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "state",
+        "signin": "Ready",
+        "fetching": false
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "state",
+        "signin": "ready",
+        "fetching": "no"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "started"
+      },
+      "expected": {
+        "id": "r-1",
+        "answer": "started"
+      }
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "busy",
+        "extra": 1
+      },
+      "expected": {
+        "id": "r-1",
+        "answer": "busy"
+      }
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "unpaired"
+      },
+      "expected": {
+        "id": "r-1",
+        "answer": "unpaired"
+      }
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "signin",
+        "signin": "expired"
+      },
+      "expected": {
+        "id": "r-1",
+        "answer": "signin",
+        "signin": "expired"
+      }
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "signin",
+        "signin": "none"
+      },
+      "expected": {
+        "id": "r-1",
+        "answer": "signin",
+        "signin": "none"
+      }
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "signin",
+        "signin": "ready"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "signin"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "guard",
+        "until": "2026-11-18T22:30:00Z"
+      },
+      "expected": {
+        "id": "r-1",
+        "answer": "guard",
+        "until": "2026-11-18T22:30:00Z"
+      }
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "guard",
+        "until": "2026-11-18T23:30:00.250+01:00"
+      },
+      "expected": {
+        "id": "r-1",
+        "answer": "guard",
+        "until": "2026-11-18T23:30:00.250+01:00"
+      }
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "guard"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "guard",
+        "until": "2026-11-18"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "guard",
+        "until": "tomorrow"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "guard",
+        "until": 1763505000
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "finished",
+        "outcome": "synced"
+      },
+      "expected": {
+        "id": "r-1",
+        "answer": "finished",
+        "outcome": "synced"
+      }
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "finished",
+        "outcome": "not_due"
+      },
+      "expected": {
+        "id": "r-1",
+        "answer": "finished",
+        "outcome": "not_due"
+      }
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "finished",
+        "outcome": "guard",
+        "until": "2026-11-18T22:30:00Z"
+      },
+      "expected": {
+        "id": "r-1",
+        "answer": "finished",
+        "outcome": "guard",
+        "until": "2026-11-18T22:30:00Z"
+      }
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "finished",
+        "outcome": "guard",
+        "until": "soon"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "finished",
+        "outcome": "signin"
+      },
+      "expected": {
+        "id": "r-1",
+        "answer": "finished",
+        "outcome": "signin"
+      }
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "finished",
+        "outcome": "done"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "finished"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": "later"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "r-1",
+        "answer": 1
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 2,
+        "id": "r-1",
+        "answer": "started"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1",
+        "answer": "started"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "answer": "started"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": {
+        "glmsync": "reply",
+        "v": 1,
+        "id": "",
+        "answer": "started"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": null,
+      "expected": null
+    },
+    {
+      "rule": "read_reply",
+      "input": [],
+      "expected": null
+    }
+  ]
+}

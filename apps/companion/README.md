@@ -30,6 +30,9 @@ portal in a sign-in window - so that window lives here, in a small app that does
   app). Each asks the plan first; the provider is asked only when it is due, and never past the
   [load guard](../../spec/guard.md), whose counts outlive restarts. The older history comes a chunk at
   a time while the app is open (and one chunk per background wake), spaced as the target says.
+- **Tells the target where its sign-in stands** with every plan (spec 1.5.0, `signin`): `ready` with a
+  sign-in it can fetch with, `expired` when it ran out here, `none` when there never was one on this
+  phone - and `other` (by a status, no lease) when the target has another account connected.
 - **Jumps back** after `glmsync://sync?return=…` - only to an address that starts with a prefix the
   paired target named as its own at pairing; otherwise it stays and says what it did. A pair link's
   `return` (spec 1.2.0) the same way, once paired: right away when signed in already, else after the

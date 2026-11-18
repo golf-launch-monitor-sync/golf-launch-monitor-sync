@@ -135,6 +135,30 @@ describe('a sync', () => {
     expect(s.tm.requests).toHaveLength(0);
   });
 
+  it('tells the target where its sign-in stands with every plan (spec 1.5.0)', async () => {
+    const s = setup({ plan: () => ({ due: false }) });
+    await paired(s);
+    await s.services.runner.syncAll('timer');
+    expect(s.target.asked.at(-1)).toMatchObject({ client: 'companion', signin: 'none' });
+    await s.services.signIns.set('trackman', s.token);
+    await s.services.runner.syncAll('open');
+    expect(s.target.asked.at(-1)).toMatchObject({ reason: 'open', signin: 'ready' });
+    await s.services.signIns.expire('trackman');
+    await s.services.runner.syncAll('timer');
+    expect(s.target.asked.at(-1)).toMatchObject({ signin: 'expired' });
+  });
+
+  it('says "other" when the target has another account connected', async () => {
+    const s = setup();
+    await paired(s);
+    s.target.accountRef = 'c29tZWJvZHktZWxzZS1zb21lYm9keS1lbHNl';
+    await s.services.signIns.set('trackman', s.token);
+    const [report] = await s.services.runner.syncAll('timer');
+    expect(report?.run.status).toBe('other_account');
+    expect(s.target.signins.at(-1)).toEqual({ via: 'status', signin: 'other' });
+    expect(s.tm.requests).toHaveLength(0);
+  });
+
   it('a sign-in Trackman rejects goes, and may be renewed quietly afterwards', async () => {
     const s = setup();
     await paired(s);

@@ -103,3 +103,17 @@ window.addEventListener('load', () => {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') scan();
 });
+window.addEventListener('focus', scan);
+
+// And keep looking now and then (18 Nov: after signing out and in with another account in the same tab, the
+// new key reached the extension only from a freshly opened portal). Coming back from the sign-in, the portal
+// exchanges its code and stores the key on its own time - later than the look 3 s after loading, and with no
+// call the hooks above see on the way. A look reads this page's own storage and sends nothing anywhere
+// unless it finds a key not handed over yet.
+const started = Date.now();
+const again = () =>
+  setTimeout(() => {
+    scan();
+    again();
+  }, Date.now() - started < 2 * 60_000 ? 5_000 : 30_000);
+again();

@@ -78,6 +78,7 @@ paths:
           required: false
           description: Which kind of client asks.
           schema: { $ref: "#/components/schemas/ClientKind" }
+        - $ref: "#/components/parameters/SignIn"
       responses:
         "200":
           description: The plan.
@@ -153,6 +154,11 @@ paths:
     get:
       operationId: status
       summary: The connection as the client shows it ("connected with …").
+      description: |
+        Also how a client that won't ask for a plan (it has no sign-in it can fetch with) still tells
+        the target where its sign-in stands (`signin`, since 1.5.0), without taking a lease.
+      parameters:
+        - $ref: "#/components/parameters/SignIn"
       responses:
         "200":
           description: The status.
@@ -173,6 +179,17 @@ components:
       type: http
       scheme: bearer
       description: The import token from `POST /pair`. Stored by the target only as a hash; revocable in the target app.
+  parameters:
+    SignIn:
+      name: signin
+      in: query
+      required: false
+      description: |
+        Since 1.5.0: where the client's provider sign-in stands right now, so the target app can show the
+        player the next step on this device (spec/target-api.md, *The client's sign-in*). Informative only:
+        it changes no plan. A target reads it strictly (exactly once, one of the values) and ignores anything
+        else; a client older than 1.5.0 sends none.
+      schema: { $ref: "#/components/schemas/SignIn" }
   responses:
     Error:
       description: A request the target can't take.
@@ -207,6 +224,14 @@ components:
     ClientKind:
       type: string
       enum: [extension, web, companion, cli, other]
+    SignIn:
+      type: string
+      enum: [none, confirm, ready, expired, other]
+      description: |
+        none: not signed in to the provider on this device yet; confirm: signed in, but the player hasn't
+        answered "Is this your account?" yet; ready: signed in and confirmed, it can fetch; expired: the
+        sign-in ran out or the provider refused it; other: signed in with another provider account than the
+        one the target has connected.
     Time:
       type: string
       format: date-time

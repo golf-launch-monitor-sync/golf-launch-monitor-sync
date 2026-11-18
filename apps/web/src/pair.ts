@@ -40,6 +40,24 @@ function extensionTakesOver(): void {
   line(t('pair.extension'));
 }
 
+/**
+ * The extension has the offer and its connect tab stands beside this page: this page has done its part and
+ * closes itself (18 Nov: too many tabs) - which the browser allows only when the app opened it by script. Else
+ * it says it may be closed, and goes on showing how the pairing goes.
+ */
+let handedOver = false;
+let paired = false;
+function handOver(): void {
+  if (handedOver) return;
+  handedOver = true;
+  setTimeout(() => {
+    window.close();
+    setTimeout(() => {
+      if (!window.closed && !paired) line(t('pair.handedOver'));
+    }, 300);
+  }, 1500);
+}
+
 window.addEventListener('message', (event: MessageEvent) => {
   if (event.source !== window || event.origin !== location.origin) return;
   const s = (event.data as { glmsyncExtension?: { state?: unknown; name?: unknown; error?: unknown } } | null)?.glmsyncExtension;
@@ -49,13 +67,17 @@ window.addEventListener('message', (event: MessageEvent) => {
   switch (s.state) {
     case 'asking':
       line(t('pair.extension'));
+      handOver();
       break;
     case 'working':
       line(t('connect.working'));
+      handOver();
       break;
     case 'paired':
       forgetCode();
+      paired = true;
       line(t('pair.paired', { name }), 'note');
+      handOver();
       break;
     case 'failed': {
       forgetCode();

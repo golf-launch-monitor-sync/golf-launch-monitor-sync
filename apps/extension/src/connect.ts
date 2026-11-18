@@ -3,16 +3,46 @@
 /**
  * The connect window: opened when the web app's pairing page hands over a code. It shows where the
  * data would go and asks the player; the browser's own prompt for that one address follows from the
- * same click. Afterwards, and when it was opened for "Is this you?", it shows the status panel.
+ * same click. Afterwards, and when it was opened for "Is this you?", it shows the status panel - and,
+ * once all is done (paired, signed in, confirmed), says so with a button that closes this tab.
  */
 
+import type { ClientStatus } from '@glmsync/browser';
 import { button, fill, h } from '@glmsync/browser/render';
+import { finished } from './finished.ts';
 import type { Pending } from './messages.ts';
 import { heading, send, statusPanel, t } from './page.ts';
 
 heading('connect.title');
+const done = document.getElementById('done') as HTMLElement;
 const ask = document.getElementById('ask') as HTMLElement;
 const panel = document.getElementById('status') as HTMLElement;
+
+let pendingNow: Pending | null = null;
+let statusNow: ClientStatus | null = null;
+
+/** This tab, closed: by the browser's tab API (an extension page may close its own tab), else by the window. */
+async function closeTab(): Promise<void> {
+  try {
+    const tab = await chrome.tabs.getCurrent();
+    if (tab?.id !== undefined) {
+      await chrome.tabs.remove(tab.id);
+      return;
+    }
+  } catch {
+    // below
+  }
+  window.close();
+}
+
+let wasDone = false;
+function showDone(): void {
+  const now = finished(pendingNow, statusNow);
+  if (now === wasDone) return;
+  wasDone = now;
+  fill(done, now ? h('div', { class: 'note', 'data-test': 'finished', role: 'status' }, h('p', {}, t('connect.finished')), h('div', { class: 'row' }, button(t('connect.close'), () => void closeTab(), { class: 'primary', 'data-test': 'close' }))) : null);
+  show(pendingNow);
+}
 
 function show(p: Pending | null | undefined): void {
   if (!p) {
@@ -44,7 +74,7 @@ function show(p: Pending | null | undefined): void {
       fill(ask, h('p', { 'data-test': 'working' }, t('connect.working')));
       break;
     case 'paired':
-      fill(ask, h('p', { class: 'note', 'data-test': 'paired' }, t('connect.done', { name: p.name ?? host })), h('p', { class: 'muted' }, t('connect.next')));
+      fill(ask, h('p', { class: 'note', 'data-test': 'paired' }, t('connect.done', { name: p.name ?? host })), wasDone ? null : h('p', { class: 'muted' }, t('connect.next')));
       break;
     case 'failed':
       fill(ask,
@@ -62,12 +92,19 @@ let shown = '';
 const look = async () => {
   const r = await send({ type: 'pending' });
   const p = r.ok ? r.pending : null;
+  pendingNow = p ?? null;
   const said = p ? `${p.target}|${p.at}|${p.state}` : '';
   if (said !== shown) {
     shown = said;
     show(p);
   }
+  showDone();
 };
 void look();
 setInterval(() => void look(), 1000);
-statusPanel(panel);
+statusPanel(panel, {
+  onStatus: (s) => {
+    statusNow = s;
+    showDone();
+  },
+});

@@ -28,22 +28,40 @@ export function heading(key: Parameters<T>[0]): void {
   for (const el of document.querySelectorAll<HTMLElement>('[data-t]')) el.textContent = t(el.dataset.t as Parameters<T>[0]);
 }
 
-/** The status panel, kept current: it re-reads every few seconds while the page is open. */
-export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void } = {}) {
+/**
+ * The status panel, kept current: it re-reads every few seconds while the page is open. `onStatus` hears
+ * every status it shows (the connect window says "done" from it).
+ */
+export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; onStatus?: (s: ClientStatus) => void } = {}) {
   const busy = new Set<string>();
   let asking: string | null = null;
+  let confirming = false;
+  let confirmed = false;
   let last: ClientStatus | null = null;
 
   const draw = (s: ClientStatus) => {
     last = s;
-    renderStatus(root, s, { t, lang, now: Date.now(), busy, client: 'extension', asking }, actions);
+    // "Connected, the data is on its way" while the first sync after the yes runs.
+    if (confirmed && s.key.state === 'ready' && !s.running.length && s.pairings.some((p) => p.last)) confirmed = false;
+    renderStatus(root, s, { t, lang, now: Date.now(), busy, client: 'extension', asking, confirming, confirmed }, actions);
+    opts.onStatus?.(s);
   };
   const refresh = async (got?: Reply) => {
     const r = got ?? (await send({ type: 'status' }));
     if (r.ok && r.status) draw(r.status);
   };
   const actions: Actions = {
-    confirm: (yes) => void send({ type: 'confirm', yes }).then(refresh),
+    confirm: (yes) => {
+      // The answer may take a moment (the extension saves it, then starts the first sync): say so at once.
+      confirming = true;
+      if (last) draw(last);
+      void send({ type: 'confirm', yes }).then(async (r) => {
+        confirming = false;
+        confirmed = yes && r.ok && r.status?.key.state === 'ready';
+        await refresh(r);
+        if (!r.ok && last) draw(last);
+      });
+    },
     retryWho: () => void send({ type: 'retry-who' }).then(refresh),
     fetchNow: (id) => {
       busy.add(id);
@@ -69,6 +87,10 @@ export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void } =
     forgetKey: () => void send({ type: 'forget-key' }).then(refresh),
     openPortal: () => {
       void send({ type: 'open-portal' });
+      opts.onPortal?.();
+    },
+    switchAccount: () => {
+      void send({ type: 'switch-account' });
       opts.onPortal?.();
     },
   };

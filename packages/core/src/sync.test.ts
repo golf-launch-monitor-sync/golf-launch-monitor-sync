@@ -69,7 +69,14 @@ describe('a sync', () => {
     const provider = new Fake();
     expect(await sync({ target, provider, credential: SUB, reason: 'timer', client: 'web', guard })).toMatchObject({ status: 'not_due' });
     expect(provider.asked).toBe(0);
-    expect(fake.asked).toEqual([{ provider: 'demo', reason: 'timer', client: 'web' }]);
+    expect(fake.asked).toEqual([{ provider: 'demo', reason: 'timer', client: 'web', signin: null }]);
+  });
+
+  it('tells the target the client’s sign-in with the plan (1.5.0)', async () => {
+    const { fake, target, guard } = await setup({ plan: () => ({ due: false }) });
+    await sync({ target, provider: new Fake(), credential: SUB, reason: 'timer', client: 'web', signin: 'ready', guard });
+    expect(fake.asked).toEqual([{ provider: 'demo', reason: 'timer', client: 'web', signin: 'ready' }]);
+    expect(fake.received.at(-1)?.url).toBe(`${fake.base}/plan?provider=demo&reason=timer&client=web&signin=ready`);
   });
 
   it.each([

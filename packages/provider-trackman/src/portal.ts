@@ -102,3 +102,10 @@ export function cookieValues(cookie: string): string[] {
 /** Where the portal lives: the clients read keys from pages of this origin only. */
 export const PORTAL_ORIGIN = 'https://portal.trackmangolf.com';
 export const PORTAL_URL = `${PORTAL_ORIGIN}/`;
+/**
+ * Trackman's own sign-out, for a player signed in to the portal with someone else's account: the standard
+ * sign-out of its sign-in service (OpenID Connect's end session), as the portal's own *Sign out* ends there
+ * too. Opened as a page the player sees - no client id, no token, nothing of the portal's sent along; the
+ * service may ask once whether to sign out. Then the player opens the portal and signs in with their own.
+ */
+export const SIGN_OUT_URL = 'https://login.trackmangolf.com/connect/endsession';

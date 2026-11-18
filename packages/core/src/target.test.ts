@@ -80,6 +80,11 @@ describe('the target API with an import token', () => {
     expect(await target.import(BATCH)).toEqual({ sessions: 0, shots: 0, rounds: 0, round_shots: 0, duplicates: 1 });
     expect(await target.known('demo', '2026-01-01T00:00:00Z')).toEqual(['S1']);
     expect(await target.status()).toMatchObject({ target: { name: 'Example App' }, connected: true });
+    expect(fake.received.at(-1)?.url).toBe(`${fake.base}/status`);
+    // 1.5.0: the client's sign-in, without a plan (no lease).
+    expect(await target.status('confirm')).toMatchObject({ connected: true });
+    expect(fake.received.at(-1)?.url).toBe(`${fake.base}/status?signin=confirm`);
+    expect(fake.signins).toEqual([{ via: 'status', signin: 'confirm' }]);
     await target.revoke();
     await target.revoke(); // already gone: fine
     await expect(target.plan('demo', 'timer', 'extension')).rejects.toMatchObject({ code: 'token_invalid' });
