@@ -1,6 +1,6 @@
 {
   "$comment": "Trackman's answers (synthetic) -> olmd/1 batches. input.fetched: {sessions: [{activity, node}], scorecards, round_shots: [{id, holes}], shots_none}. Compare as JSON values; numbers exactly, except in rounds[].shots[] where a number may differ by compare.round_shot_tolerance (rounding to centimetres differs between languages at exact halves).",
-  "spec_version": "1.3.1",
+  "spec_version": "1.4.0",
   "generated_by": "spec/reference/generate.py",
   "compare": {
     "round_shot_tolerance": 0.011
@@ -2897,6 +2897,415 @@
           {
             "external_id": "2300",
             "shots": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "round_shots_measured",
+      "why": "Asked with ball and club data: each shot carries them as a bay stroke does (carry and total stay the shot's own fields), and the round says it was asked (shots_measured). Shots asked without them carry none, and their round says nothing.",
+      "input": {
+        "fetched": {
+          "round_shots": [
+            {
+              "id": "SC-4001",
+              "holes": [
+                {
+                  "holeNumber": 1,
+                  "shots": [
+                    {
+                      "shotNumber": 1,
+                      "club": "Hybrid4",
+                      "launchLie": "Tee",
+                      "finalLie": "Fairway",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": 183.4,
+                        "targetDistance": 380.0,
+                        "distanceFromPinTotal": 150.0,
+                        "total": 201.0,
+                        "ballSpeed": 66.2,
+                        "clubSpeed": 45.1,
+                        "smashFactor": 1.468,
+                        "launchAngle": 11.9,
+                        "spinRate": 2950.0,
+                        "spinAxis": -4.2,
+                        "carrySide": -6.1,
+                        "totalSide": -9.8,
+                        "curve": -5.5,
+                        "clubPath": 1.9,
+                        "faceAngle": -1.2
+                      }
+                    },
+                    {
+                      "shotNumber": 2,
+                      "club": "Hybrid4",
+                      "launchLie": "Fairway",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": 158.0,
+                        "targetDistance": 150.0,
+                        "distanceFromPinTotal": 9.0,
+                        "total": 166.5,
+                        "ballSpeed": 55.9,
+                        "launchAngle": 15.2,
+                        "ballSpin": 4100.0
+                      }
+                    },
+                    {
+                      "shotNumber": 3,
+                      "club": "Putter",
+                      "launchLie": "Green",
+                      "finalLie": "Hole",
+                      "shotsToAdd": 0,
+                      "shotResult": "Holed",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null,
+                        "ballSpeed": null,
+                        "spinRate": "fast"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "measured": true
+            },
+            {
+              "id": "SC-4002",
+              "holes": [
+                {
+                  "holeNumber": 1,
+                  "shots": [
+                    {
+                      "shotNumber": 2,
+                      "club": "Iron8",
+                      "launchLie": "Fairway",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": 139.5,
+                        "targetDistance": 150.0,
+                        "distanceFromPinTotal": 6.4
+                      }
+                    },
+                    {
+                      "shotNumber": 1,
+                      "club": "Driver",
+                      "launchLie": "Tee",
+                      "finalLie": "Fairway",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": 221.0,
+                        "targetDistance": 230.0,
+                        "distanceFromPinTotal": 142.0
+                      }
+                    },
+                    {
+                      "shotNumber": 3,
+                      "club": "Putter",
+                      "launchLie": "Green",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": 0.8
+                      }
+                    },
+                    {
+                      "shotNumber": 4,
+                      "club": "Putter",
+                      "launchLie": "Green",
+                      "finalLie": "Hole",
+                      "shotsToAdd": 0,
+                      "shotResult": "Holed",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null
+                      }
+                    }
+                  ]
+                }
+              ],
+              "measured": false
+            },
+            {
+              "id": "SC-4003",
+              "holes": [
+                {
+                  "holeNumber": 1,
+                  "shots": [
+                    {
+                      "shotNumber": 1,
+                      "club": "Hybrid4",
+                      "launchLie": "Tee",
+                      "finalLie": "Fairway",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": 183.4,
+                        "targetDistance": 380.0,
+                        "distanceFromPinTotal": 150.0,
+                        "total": 201.0,
+                        "ballSpeed": 66.2,
+                        "clubSpeed": 45.1,
+                        "smashFactor": 1.468,
+                        "launchAngle": 11.9,
+                        "spinRate": 2950.0,
+                        "spinAxis": -4.2,
+                        "carrySide": -6.1,
+                        "totalSide": -9.8,
+                        "curve": -5.5,
+                        "clubPath": 1.9,
+                        "faceAngle": -1.2
+                      }
+                    },
+                    {
+                      "shotNumber": 2,
+                      "club": "Hybrid4",
+                      "launchLie": "Fairway",
+                      "finalLie": "Green",
+                      "shotsToAdd": 0,
+                      "shotResult": null,
+                      "measurement": {
+                        "carry": 158.0,
+                        "targetDistance": 150.0,
+                        "distanceFromPinTotal": 9.0,
+                        "total": 166.5,
+                        "ballSpeed": 55.9,
+                        "launchAngle": 15.2,
+                        "ballSpin": 4100.0
+                      }
+                    },
+                    {
+                      "shotNumber": 3,
+                      "club": "Putter",
+                      "launchLie": "Green",
+                      "finalLie": "Hole",
+                      "shotsToAdd": 0,
+                      "shotResult": "Holed",
+                      "measurement": {
+                        "carry": null,
+                        "targetDistance": null,
+                        "distanceFromPinTotal": null,
+                        "ballSpeed": null,
+                        "spinRate": "fast"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "measured": "yes"
+            }
+          ]
+        },
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z"
+      },
+      "expected": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [],
+        "rounds": [
+          {
+            "external_id": "SC-4001",
+            "shots": [
+              {
+                "hole": 1,
+                "number": 1,
+                "club": "4H",
+                "club_raw": "Hybrid4",
+                "lie_before": "Tee",
+                "lie_after": "Fairway",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 380.0,
+                "to_pin_after_m": 150.0,
+                "target_m": 380.0,
+                "carry_m": 183.4,
+                "total_m": 201.0,
+                "ball": {
+                  "speed_mps": 66.2,
+                  "launch_angle_deg": 11.9,
+                  "spin_rpm": 2950.0,
+                  "spin_axis_deg": -4.2
+                },
+                "club_delivery": {
+                  "speed_mps": 45.1,
+                  "path_deg": 1.9,
+                  "face_angle_deg": -1.2,
+                  "smash_factor": 1.468
+                },
+                "flight": {
+                  "side_m": -6.1,
+                  "total_side_m": -9.8,
+                  "curve_m": -5.5
+                }
+              },
+              {
+                "hole": 1,
+                "number": 2,
+                "club": "4H",
+                "club_raw": "Hybrid4",
+                "lie_before": "Fairway",
+                "lie_after": "Green",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 150.0,
+                "to_pin_after_m": 9.0,
+                "target_m": 150.0,
+                "carry_m": 158.0,
+                "total_m": 166.5,
+                "ball": {
+                  "speed_mps": 55.9,
+                  "launch_angle_deg": 15.2,
+                  "spin_rpm": 4100.0
+                }
+              },
+              {
+                "hole": 1,
+                "number": 3,
+                "club": "Putter",
+                "club_raw": "Putter",
+                "lie_before": "Green",
+                "lie_after": "Hole",
+                "result": "Holed",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 9.0,
+                "to_pin_after_m": 0.0
+              }
+            ],
+            "shots_measured": true
+          },
+          {
+            "external_id": "SC-4002",
+            "shots": [
+              {
+                "hole": 1,
+                "number": 1,
+                "club": "Dr",
+                "club_raw": "Driver",
+                "lie_before": "Tee",
+                "lie_after": "Fairway",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 230.0,
+                "to_pin_after_m": 142.0,
+                "target_m": 230.0,
+                "carry_m": 221.0
+              },
+              {
+                "hole": 1,
+                "number": 2,
+                "club": "8i",
+                "club_raw": "Iron8",
+                "lie_before": "Fairway",
+                "lie_after": "Green",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 142.0,
+                "to_pin_after_m": 6.4,
+                "target_m": 150.0,
+                "carry_m": 139.5
+              },
+              {
+                "hole": 1,
+                "number": 3,
+                "club": "Putter",
+                "club_raw": "Putter",
+                "lie_before": "Green",
+                "lie_after": "Green",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 6.4,
+                "to_pin_after_m": 0.8
+              },
+              {
+                "hole": 1,
+                "number": 4,
+                "club": "Putter",
+                "club_raw": "Putter",
+                "lie_before": "Green",
+                "lie_after": "Hole",
+                "result": "Holed",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 0.8,
+                "to_pin_after_m": 0.0
+              }
+            ]
+          },
+          {
+            "external_id": "SC-4003",
+            "shots": [
+              {
+                "hole": 1,
+                "number": 1,
+                "club": "4H",
+                "club_raw": "Hybrid4",
+                "lie_before": "Tee",
+                "lie_after": "Fairway",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 380.0,
+                "to_pin_after_m": 150.0,
+                "target_m": 380.0,
+                "carry_m": 183.4,
+                "total_m": 201.0,
+                "ball": {
+                  "speed_mps": 66.2,
+                  "launch_angle_deg": 11.9,
+                  "spin_rpm": 2950.0,
+                  "spin_axis_deg": -4.2
+                },
+                "club_delivery": {
+                  "speed_mps": 45.1,
+                  "path_deg": 1.9,
+                  "face_angle_deg": -1.2,
+                  "smash_factor": 1.468
+                },
+                "flight": {
+                  "side_m": -6.1,
+                  "total_side_m": -9.8,
+                  "curve_m": -5.5
+                }
+              },
+              {
+                "hole": 1,
+                "number": 2,
+                "club": "4H",
+                "club_raw": "Hybrid4",
+                "lie_before": "Fairway",
+                "lie_after": "Green",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 150.0,
+                "to_pin_after_m": 9.0,
+                "target_m": 150.0,
+                "carry_m": 158.0,
+                "total_m": 166.5,
+                "ball": {
+                  "speed_mps": 55.9,
+                  "launch_angle_deg": 15.2,
+                  "spin_rpm": 4100.0
+                }
+              },
+              {
+                "hole": 1,
+                "number": 3,
+                "club": "Putter",
+                "club_raw": "Putter",
+                "lie_before": "Green",
+                "lie_after": "Hole",
+                "result": "Holed",
+                "penalty_strokes": 0,
+                "to_pin_before_m": 9.0,
+                "to_pin_after_m": 0.0
+              }
+            ]
           }
         ]
       }

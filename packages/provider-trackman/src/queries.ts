@@ -118,7 +118,8 @@ query Rounds($skip: Int, $take: Int) {
 // to the flag empty, so also where each shot was played from and came to rest and where the hole's
 // flag is - x and z only, which lie flat: the mapping works the distances out from them. Nothing of
 // the hole's player. The field names are Trackman's own.
-export const ROUND_SHOTS_QUERY = `
+function roundShotsQuery(measurement: string): string {
+  return `
 query RoundShots($skip: Int, $take: Int) {
   me {
     scorecards(skip: $skip, take: $take, completed: true) {
@@ -131,10 +132,21 @@ query RoundShots($skip: Int, $take: Int) {
           dropPosition { x }
           launchPosition { x z }
           finalPosition { x z }
-          measurement { carry total targetDistance distanceFromPinTotal }
+          measurement { ${measurement} }
         }
       }
     }
   }
 }
 `;
+}
+
+const ROUND_SHOT_DISTANCES = 'carry total targetDistance distanceFromPinTotal';
+export const ROUND_SHOTS_QUERY = roundShotsQuery(ROUND_SHOT_DISTANCES);
+// Since spec 1.4.0 also each shot's ball and club data, as a bay session's strokes have them. Should
+// Trackman refuse these fields for a round's shot, the fetch asks again without them.
+export const ROUND_SHOTS_MEASURED_QUERY = roundShotsQuery(`
+            ${ROUND_SHOT_DISTANCES}
+            clubSpeed clubPath faceAngle ballSpeed smashFactor carrySide totalSide
+            launchAngle spinRate spinAxis curve
+          `);

@@ -52,6 +52,28 @@ def club_of(raw: Any) -> tuple[str | None, str | None]:
 # ---------------------------------------------------------------------------
 # Sessions
 # ---------------------------------------------------------------------------
+def measured(m: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """A measurement's ball, club delivery and flight (without carry and total, which the caller
+    places): the same fields for a session's stroke and a round's shot."""
+    # Range activities name the spin `ballSpin`, bay activities `spinRate`.
+    spin = m.get("spinRate") if m.get("spinRate") is not None else m.get("ballSpin")
+    ball: dict[str, Any] = {}
+    put(ball, "speed_mps", num(m.get("ballSpeed")))
+    put(ball, "launch_angle_deg", num(m.get("launchAngle")))
+    put(ball, "spin_rpm", num(spin))
+    put(ball, "spin_axis_deg", num(m.get("spinAxis")))
+    head: dict[str, Any] = {}
+    put(head, "speed_mps", num(m.get("clubSpeed")))
+    put(head, "path_deg", num(m.get("clubPath")))
+    put(head, "face_angle_deg", num(m.get("faceAngle")))
+    put(head, "smash_factor", num(m.get("smashFactor")))
+    flight: dict[str, Any] = {}
+    put(flight, "side_m", num(m.get("carrySide")))
+    put(flight, "total_side_m", num(m.get("totalSide")))
+    put(flight, "curve_m", num(m.get("curve")))
+    return ball, head, flight
+
+
 def stroke(st: Any) -> dict[str, Any] | None:
     """One stroke as an olmd shot, or None when it has no ball flight at all (a putt, a misread)."""
     if not isinstance(st, dict):
@@ -61,32 +83,18 @@ def stroke(st: Any) -> dict[str, Any] | None:
         return None
     if m.get("carry") is None and m.get("ballSpeed") is None:
         return None
-    # Range activities name the spin `ballSpin`, bay activities `spinRate`.
-    spin = m.get("spinRate") if m.get("spinRate") is not None else m.get("ballSpin")
     club, club_raw = club_of(st.get("club"))
     shot: dict[str, Any] = {}
     put(shot, "played_at", when(st.get("time")))
     put(shot, "club", club)
     put(shot, "club_raw", club_raw)
-    ball: dict[str, Any] = {}
-    put(ball, "speed_mps", num(m.get("ballSpeed")))
-    put(ball, "launch_angle_deg", num(m.get("launchAngle")))
-    put(ball, "spin_rpm", num(spin))
-    put(ball, "spin_axis_deg", num(m.get("spinAxis")))
+    ball, head, rest = measured(m)
     put(shot, "ball", ball)
-    head: dict[str, Any] = {}
-    put(head, "speed_mps", num(m.get("clubSpeed")))
-    put(head, "path_deg", num(m.get("clubPath")))
-    put(head, "face_angle_deg", num(m.get("faceAngle")))
-    put(head, "smash_factor", num(m.get("smashFactor")))
     put(shot, "club_delivery", head)
     flight: dict[str, Any] = {}
     put(flight, "carry_m", num(m.get("carry")))
     put(flight, "total_m", num(m.get("total")))
-    put(flight, "side_m", num(m.get("carrySide")))
-    put(flight, "total_side_m", num(m.get("totalSide")))
-    put(flight, "curve_m", num(m.get("curve")))
-    put(shot, "flight", flight)
+    put(shot, "flight", flight | rest)
     return shot
 
 
@@ -275,6 +283,12 @@ def round_shots(holes: Any) -> list[dict[str, Any]]:
             put(row, "target_m", target)
             put(row, "carry_m", _m(m.get("carry"), 500))
             put(row, "total_m", _m(m.get("total"), 600))
+            # Ball and club data where the shot's measurement has them (asked for since 1.4.0); carry and
+            # total stay the round shot's own fields above.
+            ball, head, flight = measured(m)
+            put(row, "ball", ball)
+            put(row, "club_delivery", head)
+            put(row, "flight", flight)
             rows.append(row)
             # After a penalty or a drop the ball lies somewhere else than where it stopped.
             before = None if penalty or dropped else end
@@ -288,7 +302,8 @@ def batch(fetched: dict[str, Any], *, account_ref: str, generated_at: str) -> di
     """What one fetch brought, as an olmd/1 batch.
 
     `fetched`: {"sessions": [{"activity", "node"}], "scorecards": [...], "round_shots": [{"id",
-    "holes"}], "shots_none": [ids]}. A round's shots may come without its scorecard (a round sent
+    "holes", "measured"}], "shots_none": [ids]}. `measured` true: the shots were asked for with their
+    ball and club data (the round says so: `shots_measured`). A round's shots may come without its scorecard (a round sent
     earlier whose shots are fetched now): then the round carries only its id and its shots. A round
     Trackman has no shots for carries `shots: []`; a round whose shots weren't fetched has no
     `shots` at all."""
@@ -311,6 +326,8 @@ def batch(fetched: dict[str, Any], *, account_ref: str, generated_at: str) -> di
             rounds.append(r)
         if "shots" not in r:
             r["shots"] = round_shots(entry.get("holes"))
+            if entry.get("measured") is True:
+                r["shots_measured"] = True
     for x in fetched.get("shots_none") or []:
         ext = external_id(x)
         if ext is None:

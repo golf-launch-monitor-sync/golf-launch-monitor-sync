@@ -11,7 +11,7 @@ import type { Reason } from '@glmsync/spec';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { subjectOf } from './account.ts';
 import { GRAPHQL_URL } from './client.ts';
-import { fetchForPlan, freshState, MAX_STROKES_PER_SESSION, who, type TrackmanState } from './fetch.ts';
+import { fetchForPlan, freshState, MAX_STROKES_PER_SESSION, MEASURED_OFF_MS, who, type TrackmanState } from './fetch.ts';
 import { FakeTrackman, fakeToken, respond, type Json } from './testing.ts';
 
 const TOKEN = fakeToken('7c1d2e3f-0000-4000-8000-000000000001');
@@ -230,6 +230,59 @@ describe('each shot of a round', () => {
     clock.advance(6 * 3600_000);
     await run({ rounds: true, round_shots: true });
     expect(tm.count('RoundShots')).toBe(2);
+  });
+});
+
+describe("a round's shots with their ball and club data (spec 1.4.0)", () => {
+  const measuredHole = () => ({
+    ...hole(1),
+    shots: [{ ...hole(1).shots[0], measurement: { carry: 141.5, total: 150.2, ballSpeed: 50.3, launchAngle: 17.4, spinRate: 6650, clubSpeed: 36.1 } }],
+  });
+
+  it('asks for them, and the round says it did', async () => {
+    tm.scorecards = [card('R1', '2026-11-12T18:00:00Z')];
+    tm.shotHoles.set('R1', [measuredHole()]);
+    const out = await run({ rounds: true, round_shots: true });
+    const asked = tm.requests.filter((r) => r.name === 'RoundShots');
+    expect(asked).toHaveLength(1);
+    expect(asked[0]?.query).toContain('ballSpeed');
+    expect(out.rounds[0]?.shots_measured).toBe(true);
+    expect(out.rounds[0]?.shots?.[0]).toMatchObject({
+      carry_m: 141.5, total_m: 150.2,
+      ball: { speed_mps: 50.3, launch_angle_deg: 17.4, spin_rpm: 6650 }, club_delivery: { speed_mps: 36.1 },
+    });
+  });
+
+  it('asks again without them where Trackman refuses them, and not with them for a day', async () => {
+    tm.refuseMeasured = true;
+    tm.scorecards = [card('R1', '2026-11-12T18:00:00Z')];
+    tm.shotHoles.set('R1', [measuredHole()]);
+    const out = await run({ rounds: true, round_shots: true });
+    expect(out.notice).toBeUndefined();
+    expect(out.rounds[0]?.shots_measured).toBeUndefined();
+    expect(out.rounds[0]?.shots?.[0]).toMatchObject({ hole: 1, number: 1, carry_m: 141.5 });
+    expect(tm.requests.filter((r) => r.name === 'RoundShots').map((r) => r.query.includes('ballSpeed'))).toEqual([true, false]);
+
+    tm.scorecards = [card('R2', '2026-11-13T18:00:00Z'), ...tm.scorecards];
+    tm.shotHoles.set('R2', [measuredHole()]);
+    await run({ rounds: true, round_shots: true });
+    expect(tm.requests.filter((r) => r.name === 'RoundShots').map((r) => r.query.includes('ballSpeed'))).toEqual([true, false, false]);
+
+    clock.advance(MEASURED_OFF_MS);
+    tm.refuseMeasured = false;
+    tm.scorecards = [card('R3', '2026-11-14T18:00:00Z'), ...tm.scorecards];
+    tm.shotHoles.set('R3', [measuredHole()]);
+    const later = await run({ rounds: true, round_shots: true });
+    expect(tm.requests.filter((r) => r.name === 'RoundShots').map((r) => r.query.includes('ballSpeed'))).toEqual([true, false, false, true]);
+    expect(later.rounds.find((r) => r.external_id === 'R3')?.shots_measured).toBe(true);
+  });
+
+  it('keeps asking with them when the round shots fail either way (trouble with Trackman, not with the fields)', async () => {
+    tm.scorecards = [card('R1', '2026-11-12T18:00:00Z')];
+    tm.override = (r) => (r.name === 'RoundShots' ? respond(200, { errors: [{ message: 'Something went wrong' }] }) : null);
+    const out = await run({ rounds: true, round_shots: true });
+    expect(out.notice).toMatchObject({ code: 'partial' });
+    expect(state.measuredOffUntil).toBe(0);
   });
 });
 

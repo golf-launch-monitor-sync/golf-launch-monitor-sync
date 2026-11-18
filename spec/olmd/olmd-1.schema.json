@@ -128,47 +128,9 @@
         "played_at": { "$ref": "#/$defs/time" },
         "club": { "$ref": "#/$defs/club" },
         "club_raw": { "$ref": "#/$defs/club_raw" },
-        "ball": {
-          "type": "object",
-          "additionalProperties": false,
-          "minProperties": 1,
-          "properties": {
-            "speed_mps": { "$ref": "#/$defs/number" },
-            "launch_angle_deg": { "$ref": "#/$defs/number" },
-            "launch_direction_deg": { "$ref": "#/$defs/number" },
-            "spin_rpm": { "$ref": "#/$defs/number" },
-            "spin_axis_deg": { "$ref": "#/$defs/number" }
-          }
-        },
-        "club_delivery": {
-          "type": "object",
-          "additionalProperties": false,
-          "minProperties": 1,
-          "properties": {
-            "speed_mps": { "$ref": "#/$defs/number" },
-            "attack_angle_deg": { "$ref": "#/$defs/number" },
-            "path_deg": { "$ref": "#/$defs/number" },
-            "face_angle_deg": { "$ref": "#/$defs/number" },
-            "face_to_path_deg": { "$ref": "#/$defs/number" },
-            "dynamic_loft_deg": { "$ref": "#/$defs/number" },
-            "smash_factor": { "$ref": "#/$defs/number" }
-          }
-        },
-        "flight": {
-          "type": "object",
-          "additionalProperties": false,
-          "minProperties": 1,
-          "properties": {
-            "carry_m": { "$ref": "#/$defs/number" },
-            "total_m": { "$ref": "#/$defs/number" },
-            "side_m": { "$ref": "#/$defs/number" },
-            "total_side_m": { "$ref": "#/$defs/number" },
-            "curve_m": { "$ref": "#/$defs/number" },
-            "apex_m": { "$ref": "#/$defs/number" },
-            "landing_angle_deg": { "$ref": "#/$defs/number" },
-            "flight_time_s": { "$ref": "#/$defs/number" }
-          }
-        },
+        "ball": { "$ref": "#/$defs/ball" },
+        "club_delivery": { "$ref": "#/$defs/club_delivery" },
+        "flight": { "$ref": "#/$defs/flight" },
         "target": {
           "type": "object",
           "additionalProperties": false,
@@ -178,6 +140,47 @@
           }
         },
         "extra": { "$ref": "#/$defs/extra" }
+      }
+    },
+    "ball": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "speed_mps": { "$ref": "#/$defs/number" },
+        "launch_angle_deg": { "$ref": "#/$defs/number" },
+        "launch_direction_deg": { "$ref": "#/$defs/number" },
+        "spin_rpm": { "$ref": "#/$defs/number" },
+        "spin_axis_deg": { "$ref": "#/$defs/number" }
+      }
+    },
+    "club_delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "speed_mps": { "$ref": "#/$defs/number" },
+        "attack_angle_deg": { "$ref": "#/$defs/number" },
+        "path_deg": { "$ref": "#/$defs/number" },
+        "face_angle_deg": { "$ref": "#/$defs/number" },
+        "face_to_path_deg": { "$ref": "#/$defs/number" },
+        "dynamic_loft_deg": { "$ref": "#/$defs/number" },
+        "smash_factor": { "$ref": "#/$defs/number" }
+      }
+    },
+    "flight": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "carry_m": { "$ref": "#/$defs/number" },
+        "total_m": { "$ref": "#/$defs/number" },
+        "side_m": { "$ref": "#/$defs/number" },
+        "total_side_m": { "$ref": "#/$defs/number" },
+        "curve_m": { "$ref": "#/$defs/number" },
+        "apex_m": { "$ref": "#/$defs/number" },
+        "landing_angle_deg": { "$ref": "#/$defs/number" },
+        "flight_time_s": { "$ref": "#/$defs/number" }
       }
     },
     "round": {
@@ -237,6 +240,10 @@
           "description": "Each shot of the round. Absent: not fetched (yet). Empty: the provider has none.",
           "items": { "$ref": "#/$defs/round_shot" }
         },
+        "shots_measured": {
+          "const": true,
+          "description": "The shots were asked for with their ball and club data (1.4.0): a shot without them has none at the provider. Absent: they weren't asked for."
+        },
         "extra": { "$ref": "#/$defs/extra" }
       }
     },
@@ -260,6 +267,9 @@
         "target_m": { "$ref": "#/$defs/distance" },
         "carry_m": { "$ref": "#/$defs/distance" },
         "total_m": { "$ref": "#/$defs/distance" },
+        "ball": { "$ref": "#/$defs/ball" },
+        "club_delivery": { "$ref": "#/$defs/club_delivery" },
+        "flight": { "$ref": "#/$defs/flight", "description": "Carry and total stay the round shot's own carry_m and total_m." },
         "extra": { "$ref": "#/$defs/extra" }
       }
     }

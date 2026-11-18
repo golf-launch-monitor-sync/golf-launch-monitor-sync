@@ -27,36 +27,42 @@ export type NoticeCode = 'auth_expired' | 'guard_limit' | 'provider_unavailable'
 export type Time = string;
 export type Extra = Record<string, unknown>;
 
+export interface Ball {
+  speed_mps?: number;
+  launch_angle_deg?: number;
+  launch_direction_deg?: number;
+  spin_rpm?: number;
+  spin_axis_deg?: number;
+}
+
+export interface ClubDelivery {
+  speed_mps?: number;
+  attack_angle_deg?: number;
+  path_deg?: number;
+  face_angle_deg?: number;
+  face_to_path_deg?: number;
+  dynamic_loft_deg?: number;
+  smash_factor?: number;
+}
+
+export interface Flight {
+  carry_m?: number;
+  total_m?: number;
+  side_m?: number;
+  total_side_m?: number;
+  curve_m?: number;
+  apex_m?: number;
+  landing_angle_deg?: number;
+  flight_time_s?: number;
+}
+
 export interface Shot {
   played_at?: Time;
   club?: string;
   club_raw?: string;
-  ball?: {
-    speed_mps?: number;
-    launch_angle_deg?: number;
-    launch_direction_deg?: number;
-    spin_rpm?: number;
-    spin_axis_deg?: number;
-  };
-  club_delivery?: {
-    speed_mps?: number;
-    attack_angle_deg?: number;
-    path_deg?: number;
-    face_angle_deg?: number;
-    face_to_path_deg?: number;
-    dynamic_loft_deg?: number;
-    smash_factor?: number;
-  };
-  flight?: {
-    carry_m?: number;
-    total_m?: number;
-    side_m?: number;
-    total_side_m?: number;
-    curve_m?: number;
-    apex_m?: number;
-    landing_angle_deg?: number;
-    flight_time_s?: number;
-  };
+  ball?: Ball;
+  club_delivery?: ClubDelivery;
+  flight?: Flight;
   target?: { distance_m?: number };
   extra?: Extra;
 }
@@ -88,6 +94,10 @@ export interface RoundShot {
   target_m?: number;
   carry_m?: number;
   total_m?: number;
+  /** Since 1.4.0, where the provider has them; carry and total stay `carry_m` and `total_m`. */
+  ball?: Ball;
+  club_delivery?: ClubDelivery;
+  flight?: Flight;
   extra?: Extra;
 }
 
@@ -112,6 +122,8 @@ export interface Round {
   holes?: { number: number; par?: number; score?: number; putts?: number; gir?: boolean }[];
   /** Absent: not fetched (yet). Empty: the provider has none. */
   shots?: RoundShot[];
+  /** The shots were asked for with their ball and club data (1.4.0); absent: they weren't. */
+  shots_measured?: true;
   extra?: Extra;
 }
 

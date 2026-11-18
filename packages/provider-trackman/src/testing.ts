@@ -45,6 +45,8 @@ export class FakeTrackman {
   profile: Json = { fullName: 'Test Player' };
   tokens = new Set<string>();
   readonly requests: TrackmanRequest[] = [];
+  /** Refuse a round's shots asked for with their ball and club data, as GraphQL refuses a field it doesn't know. */
+  refuseMeasured = false;
   /** Answer a query with something else (a status, a broken body), once per call. */
   override?: (req: TrackmanRequest) => ResponseLike | Error | null;
 
@@ -88,6 +90,9 @@ export class FakeTrackman {
       case 'Rounds':
         return respond(200, { data: { me: { scorecards: this.scorecards.slice(skip, skip + take) } } });
       case 'RoundShots':
+        if (this.refuseMeasured && (body.query ?? '').includes('ballSpeed')) {
+          return respond(200, { errors: [{ message: 'The field `ballSpeed` does not exist on the type `ShotMeasurement`.' }] });
+        }
         return respond(200, {
           data: {
             me: {

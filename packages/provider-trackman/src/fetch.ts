@@ -33,7 +33,7 @@ import {
 import { PLAN_RULES } from '@glmsync/spec';
 import { query } from './client.ts';
 import { GAME_KINDS, toOlmd, type Raw } from './mapping.ts';
-import { ACTIVITIES_QUERY, PROFILE_QUERY, ROUND_SHOTS_QUERY, ROUNDS_QUERY, sessionQuery, WHO_QUERY } from './queries.ts';
+import { ACTIVITIES_QUERY, PROFILE_QUERY, ROUND_SHOTS_MEASURED_QUERY, ROUND_SHOTS_QUERY, ROUNDS_QUERY, sessionQuery, WHO_QUERY } from './queries.ts';
 
 const DAY = 86_400_000;
 const PAGE = 100;
@@ -54,6 +54,10 @@ const SHOT_ROUNDS_NEW = 10;
 /** After the shots couldn't be fetched, none for a while in regular syncs (a changed schema would
  * fail every sync the same way, and each try is a request to Trackman for nothing). */
 export const SHOTS_OFF_MS = 6 * 3600_000;
+/** After Trackman refused a round's shots with their ball and club data but sent them without, the
+ * shots come without those for a while: asking the larger question first would cost a request each
+ * time for nothing. */
+export const MEASURED_OFF_MS = 24 * 3600_000;
 /** How long a history chunk may reuse the activity list of the chunk before: the older history
  * doesn't change, and paging a long list again for every chunk would spend the guard's day on it. */
 const LIST_REUSE_MS = 12 * 3600_000;
@@ -65,11 +69,13 @@ const obj = (v: unknown): Obj | null => (v && typeof v === 'object' && !Array.is
 /** What a provider instance keeps between syncs, in memory only. */
 export interface TrackmanState {
   shotsOffUntil: number;
+  /** Until when a round's shots are asked for without their ball and club data (MEASURED_OFF_MS). */
+  measuredOffUntil: number;
   list: { since: string; items: Activity[]; at: number } | null;
 }
 
 export function freshState(): TrackmanState {
-  return { shotsOffUntil: 0, list: null };
+  return { shotsOffUntil: 0, measuredOffUntil: 0, list: null };
 }
 
 /** The earlier of two times, as RFC 3339 (unreadable ones don't count). */
@@ -185,8 +191,8 @@ type Wanted = { played: string | null; at: number | null };
  * which weren't in it. A round listed without its holes is never one of them, and those not reached
  * come again later.
  */
-async function fetchRoundShots(ctx: ProviderContext, token: string, want: Map<string, Wanted>, pages: number) {
-  const got: { id: string; holes: unknown }[] = [];
+async function fetchRoundShots(ctx: ProviderContext, token: string, want: Map<string, Wanted>, pages: number, state: TrackmanState) {
+  const got: { id: string; holes: unknown; measured: boolean }[] = [];
   const found = new Set<string>();
   const listed = new Set<string>();
   const times = [...want.values()].map((w) => ms(w.played));
@@ -200,9 +206,32 @@ async function fetchRoundShots(ctx: ProviderContext, token: string, want: Map<st
   let seenOldest = Number.POSITIVE_INFINITY;
   let asked = 0;
 
+  // With each shot's ball and club data where Trackman sends them. That answer has to come whole (a
+  // field that failed would leave a shot without its distances, and the round wouldn't be asked for
+  // again); where it doesn't, the same page without them - and if that works, the data itself was
+  // refused, so not again for a while. Trouble with Trackman itself stops as before.
+  let measuredFirst = ctx.now() >= state.measuredOffUntil;
+  const ask = async (page: number) => {
+    const vars = { skip: page * SHOT_PAGE, take: SHOT_PAGE };
+    if (measuredFirst) {
+      try {
+        const data = await query<{ me?: { scorecards?: unknown } }>(ctx, 'round_shots', token, ROUND_SHOTS_MEASURED_QUERY, vars, { partialOk: false });
+        return { data, measured: true };
+      } catch (e) {
+        if (stopsTheFetch(e)) throw e;
+        asked += 1;
+        const data = await query<{ me?: { scorecards?: unknown } }>(ctx, 'round_shots', token, ROUND_SHOTS_QUERY, vars);
+        measuredFirst = false;
+        state.measuredOffUntil = ctx.now() + MEASURED_OFF_MS;
+        return { data, measured: false };
+      }
+    }
+    return { data: await query<{ me?: { scorecards?: unknown } }>(ctx, 'round_shots', token, ROUND_SHOTS_QUERY, vars), measured: false };
+  };
+
   const read = async (page: number) => {
     asked += 1;
-    const data = await query<{ me?: { scorecards?: unknown } }>(ctx, 'round_shots', token, ROUND_SHOTS_QUERY, { skip: page * SHOT_PAGE, take: SHOT_PAGE });
+    const { data, measured } = await ask(page);
     const cards = obj(data.me)?.scorecards;
     const list = Array.isArray(cards) ? cards : [];
     let top = Number.NaN;
@@ -220,7 +249,7 @@ async function fetchRoundShots(ctx: ProviderContext, token: string, want: Map<st
       // A round whose holes Trackman couldn't send now waits for a later sync.
       if (!want.has(id) || found.has(id) || !Array.isArray(sc.holes)) continue;
       found.add(id);
-      got.push({ id, holes: sc.holes });
+      got.push({ id, holes: sc.holes, measured });
     }
     if (!Number.isNaN(top)) {
       seenNewest = Math.max(seenNewest, top);
@@ -342,7 +371,7 @@ export async function fetchForPlan(plan: Plan, token: string, ctx: ProviderConte
     }
     if (want.size) {
       try {
-        const got = await fetchRoundShots(ctx, token, want, backfill ? SHOT_PAGES_HISTORY : SHOT_PAGES);
+        const got = await fetchRoundShots(ctx, token, want, backfill ? SHOT_PAGES_HISTORY : SHOT_PAGES, state);
         raw.round_shots = got.got;
         raw.shots_none = got.none;
       } catch (e) {

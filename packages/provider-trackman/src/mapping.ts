@@ -47,38 +47,48 @@ export function clubOf(raw: unknown): [string | null, string | null] {
 // Sessions
 // ---------------------------------------------------------------------------
 
+/**
+ * A measurement's ball, club delivery and flight (without carry and total, which the caller places):
+ * the same fields for a session's stroke and a round's shot.
+ */
+export function measured(m: Obj): [Obj, Obj, Obj] {
+  // Range activities name the spin `ballSpin`, bay activities `spinRate`.
+  const spin = m.spinRate !== null && m.spinRate !== undefined ? m.spinRate : m.ballSpin;
+  const ball: Obj = {};
+  put(ball, 'speed_mps', num(m.ballSpeed));
+  put(ball, 'launch_angle_deg', num(m.launchAngle));
+  put(ball, 'spin_rpm', num(spin));
+  put(ball, 'spin_axis_deg', num(m.spinAxis));
+  const head: Obj = {};
+  put(head, 'speed_mps', num(m.clubSpeed));
+  put(head, 'path_deg', num(m.clubPath));
+  put(head, 'face_angle_deg', num(m.faceAngle));
+  put(head, 'smash_factor', num(m.smashFactor));
+  const flight: Obj = {};
+  put(flight, 'side_m', num(m.carrySide));
+  put(flight, 'total_side_m', num(m.totalSide));
+  put(flight, 'curve_m', num(m.curve));
+  return [ball, head, flight];
+}
+
 /** One stroke as an olmd shot, or null when it has no ball flight at all (a putt, a misread). */
 export function stroke(st: unknown): Shot | null {
   const s = obj(st);
   const m = obj(s?.measurement);
   if (!s || !m) return null;
   if ((m.carry === null || m.carry === undefined) && (m.ballSpeed === null || m.ballSpeed === undefined)) return null;
-  // Range activities name the spin `ballSpin`, bay activities `spinRate`.
-  const spin = m.spinRate !== null && m.spinRate !== undefined ? m.spinRate : m.ballSpin;
   const [club, clubRaw] = clubOf(s.club);
   const shot: Obj = {};
   put(shot, 'played_at', when(s.time));
   put(shot, 'club', club);
   put(shot, 'club_raw', clubRaw);
-  const ball: Obj = {};
-  put(ball, 'speed_mps', num(m.ballSpeed));
-  put(ball, 'launch_angle_deg', num(m.launchAngle));
-  put(ball, 'spin_rpm', num(spin));
-  put(ball, 'spin_axis_deg', num(m.spinAxis));
+  const [ball, head, rest] = measured(m);
   put(shot, 'ball', ball);
-  const head: Obj = {};
-  put(head, 'speed_mps', num(m.clubSpeed));
-  put(head, 'path_deg', num(m.clubPath));
-  put(head, 'face_angle_deg', num(m.faceAngle));
-  put(head, 'smash_factor', num(m.smashFactor));
   put(shot, 'club_delivery', head);
   const flight: Obj = {};
   put(flight, 'carry_m', num(m.carry));
   put(flight, 'total_m', num(m.total));
-  put(flight, 'side_m', num(m.carrySide));
-  put(flight, 'total_side_m', num(m.totalSide));
-  put(flight, 'curve_m', num(m.curve));
-  put(shot, 'flight', flight);
+  put(shot, 'flight', { ...flight, ...rest });
   return shot as Shot;
 }
 
@@ -268,6 +278,12 @@ export function roundShots(holes: unknown): RoundShot[] {
       put(row, 'target_m', target);
       put(row, 'carry_m', metres(m.carry, 500));
       put(row, 'total_m', metres(m.total, 600));
+      // Ball and club data where the shot's measurement has them (asked for since 1.4.0); carry and
+      // total stay the round shot's own fields above.
+      const [ball, head, flight] = measured(m);
+      put(row, 'ball', ball);
+      put(row, 'club_delivery', head);
+      put(row, 'flight', flight);
       rows.push(row as unknown as RoundShot);
       // After a penalty or a drop the ball lies somewhere else than where it stopped.
       before = penalty || dropped ? null : end;
@@ -284,7 +300,8 @@ export function roundShots(holes: unknown): RoundShot[] {
 export interface Raw {
   sessions?: { activity: unknown; node: unknown }[];
   scorecards?: unknown[];
-  round_shots?: { id: unknown; holes: unknown }[];
+  /** `measured`: asked for with each shot's ball and club data (the round says so: `shots_measured`). */
+  round_shots?: { id: unknown; holes: unknown; measured?: unknown }[];
   shots_none?: unknown[];
 }
 
@@ -324,7 +341,10 @@ export function toOlmd(fetched: Raw): { sessions: Session[]; rounds: Round[] } {
     const ext = entry ? externalId(entry.id) : null;
     if (!entry || ext === null) continue;
     const r = roundOf(ext);
-    if (!('shots' in r)) r.shots = roundShots(entry.holes);
+    if (!('shots' in r)) {
+      r.shots = roundShots(entry.holes);
+      if (entry.measured === true) r.shots_measured = true;
+    }
   }
   for (const x of list(f.shots_none)) {
     const ext = externalId(x);

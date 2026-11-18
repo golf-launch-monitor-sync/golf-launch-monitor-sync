@@ -22,10 +22,11 @@ def _act(id_: Any, kind: Any, time: Any = "2026-11-10T17:05:00Z", place: Any = "
 
 
 def _shot(n: Any, club: Any, launch: Any, final: Any, *, end: Any = None, target: Any = None, carry: Any = None,
-          penalty: Any = 0, result: Any = None, drop: Any = None, **points: Any) -> dict[str, Any]:
+          penalty: Any = 0, result: Any = None, drop: Any = None, flight: Any = None, **points: Any) -> dict[str, Any]:
     s: dict[str, Any] = {"shotNumber": n, "club": club, "launchLie": launch, "finalLie": final,
                          "shotsToAdd": penalty, "shotResult": result,
-                         "measurement": {"carry": carry, "targetDistance": target, "distanceFromPinTotal": end}}
+                         "measurement": {"carry": carry, "targetDistance": target, "distanceFromPinTotal": end,
+                                         **(flight or {})}}
     if drop is not None:
         s["dropPosition"] = drop
     s.update(points)
@@ -131,6 +132,17 @@ POINT_HOLES = [{"holeNumber": 4, "pinPosition": _at(1000.0, 500.0, 57.3), "shots
     _shot(3, "Iron5", "Tee", "Fairway", launchPosition=_at(100.0, 1100.0), finalPosition=_at(2100.0, 100.0)),
 ]}]
 
+# Asked with the ball and club data (1.4.0): each shot's measurement as a bay stroke's, a putt without it.
+MEASURED_HOLES = [{"holeNumber": 1, "shots": [
+    _shot(1, "Hybrid4", "Tee", "Fairway", end=150.0, target=380.0, carry=183.4,
+          flight={"total": 201.0, "ballSpeed": 66.2, "clubSpeed": 45.1, "smashFactor": 1.468, "launchAngle": 11.9,
+                  "spinRate": 2950.0, "spinAxis": -4.2, "carrySide": -6.1, "totalSide": -9.8, "curve": -5.5,
+                  "clubPath": 1.9, "faceAngle": -1.2}),
+    _shot(2, "Hybrid4", "Fairway", "Green", end=9.0, target=150.0, carry=158.0,
+          flight={"total": 166.5, "ballSpeed": 55.9, "launchAngle": 15.2, "ballSpin": 4100.0}),  # range's spin name
+    _shot(3, "Putter", "Green", "Hole", result="Holed", flight={"ballSpeed": None, "spinRate": "fast"}),
+]}]
+
 JUNK_HOLES = [None, "x", {"holeNumber": 99, "shots": [_shot(1, "Iron7", "Tee", "Green")]},
               {"holeNumber": "3", "shots": [None, {"shotNumber": "x"},
                                             _shot(1, None, 5, "Green", end="far", target=-3, carry=1e9),
@@ -189,5 +201,11 @@ def cases() -> list[dict[str, Any]]:
              round_shots=[{"id": "SC-3001", "holes": CHAIN_HOLES[:1]}, {"id": "SC-2500", "holes": CHAIN_HOLES[1:]},
                           {"id": "SC-3001", "holes": POINT_HOLES}],
              shots_none=["SC-3002", "SC-2400", 2300, None, "SC-3001"]),
+        case("round_shots_measured", "Asked with ball and club data: each shot carries them as a bay stroke "
+             "does (carry and total stay the shot's own fields), and the round says it was asked "
+             "(shots_measured). Shots asked without them carry none, and their round says nothing.",
+             round_shots=[{"id": "SC-4001", "holes": MEASURED_HOLES, "measured": True},
+                          {"id": "SC-4002", "holes": CHAIN_HOLES[:1], "measured": False},
+                          {"id": "SC-4003", "holes": MEASURED_HOLES, "measured": "yes"}]),
         case("nothing_new", "A sync that found nothing new is an empty batch, not an error."),
     ]

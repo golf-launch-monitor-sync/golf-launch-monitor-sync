@@ -126,6 +126,13 @@ provider-specific geometry:
   the flag — right (+) or left (−) of it, past (+) or short (−) of the flag;
 - `target_m`, `carry_m`, `total_m`.
 
+Since 1.4.0 a round's shot may also carry the groups `ball`, `club_delivery` and `flight` of a
+practice shot, with the same fields; its carry and total stay `carry_m` and `total_m` (a producer
+doesn't repeat them in `flight`). A round says **`shots_measured: true`** when its shots were asked
+for with these values: a shot without them then has none at the provider (a putt, a pick-up). Without
+`shots_measured` they weren't asked for (an older producer, or the provider refused the question), and
+a reader that wants them may ask for the round again.
+
 How the Trackman provider works them out (from the course's x/z points, with the fallbacks when
 points are missing): [`reference/trackman.py`](reference/trackman.py), vectors in
 [`testvectors/trackman-olmd.json`](testvectors/trackman-olmd.json).

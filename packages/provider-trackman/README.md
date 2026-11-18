@@ -50,5 +50,9 @@ const who = await provider.who(providerContext({ guard, account }), token);
   `Retry-After`), or the guard (`guard_limit`) — ends the fetch; what it has goes on with the notice.
 - The shots of rounds failing cost the shots, not the sync (`partial`), and regular syncs leave them
   alone for six hours.
+- Since spec 1.4.0 a round's shots are asked for with their ball and club data (the fields of a bay
+  session's strokes), and the round says so (`shots_measured`). That answer has to come whole; where
+  Trackman refuses it but sends the same page without those fields, the shots come without them and
+  the larger question waits a day (in memory, `MEASURED_OFF_MS`).
 - A history chunk reuses the activity list of the chunk before for 12 hours; once the older sessions
   are in (`max_sessions: 0`) it lists nothing and asks only for the shots of the rounds it is named.
