@@ -278,6 +278,17 @@ describe("a round's shots with their ball and club data (spec 1.4.0)", () => {
     expect(later.rounds.find((r) => r.external_id === 'R3')?.shots_measured).toBe(true);
   });
 
+  it('asks a round shot\'s spin by its bay name only', async () => {
+    // Trackman's round shot has no `ballSpin` (refused on the first real sync, 19 Nov): asking it cost a request.
+    tm.scorecards = [card('R1', '2026-11-12T18:00:00Z')];
+    tm.shotHoles.set('R1', [measuredHole()]);
+    await run({ rounds: true, round_shots: true });
+    const asked = tm.requests.filter((r) => r.name === 'RoundShots');
+    expect(asked).toHaveLength(1);
+    expect(asked[0]?.query).toMatch(/\bspinRate\b/);
+    expect(asked[0]?.query).not.toMatch(/\bballSpin\b/);
+  });
+
   it('leaves out only the fields Trackman refuses by name, keeps them out, and tells the round', async () => {
     tm.refuseFields = ['spinRate', 'curve'];
     tm.scorecards = [card('R1', '2026-11-12T18:00:00Z')];
@@ -287,7 +298,7 @@ describe("a round's shots with their ball and club data (spec 1.4.0)", () => {
     expect(asked).toHaveLength(2); // both named in the one refusal
     expect(asked[1]?.query).toContain('ballSpeed');
     expect(asked[1]?.query).not.toMatch(/\bspinRate\b|\bcurve\b/);
-    expect(asked[1]?.query).toContain('ballSpin'); // the spin's other name is still asked
+    expect(asked[1]?.query).toContain('spinAxis'); // the rest is still asked
     const r = out.rounds[0];
     expect(r?.shots_measured).toBe(true);
     expect(r?.shots?.[0]).toMatchObject({ ball: { speed_mps: 50.3, launch_angle_deg: 17.4 } });

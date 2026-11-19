@@ -51,7 +51,7 @@ const who = await provider.who(providerContext({ guard, account }), token);
 - The shots of rounds failing cost the shots, not the sync (`partial`), and regular syncs leave them
   alone for six hours.
 - Since spec 1.4.0 a round's shots are asked for with their ball and club data (the fields of a bay
-  session's strokes, the spin under both names), and the round says so (`shots_measured`). That
+  session's strokes; the spin as `spinRate`, the only name a round shot has), and the round says so (`shots_measured`). That
   answer has to come whole. Where Trackman refuses it naming fields of ours, the page is asked again
   without those (at most `MAX_REFUSALS` times a fetch; they stay left out, in memory); where it names
   none, the shots come without the values and the larger question waits a day (`MEASURED_OFF_MS`).

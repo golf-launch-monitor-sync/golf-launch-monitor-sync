@@ -143,12 +143,13 @@ query RoundShots($skip: Int, $take: Int) {
 
 const ROUND_SHOT_DISTANCES = 'carry total targetDistance distanceFromPinTotal';
 export const ROUND_SHOTS_QUERY = roundShotsQuery(ROUND_SHOT_DISTANCES);
-// Since spec 1.4.0 also each shot's ball and club data, as a bay session's strokes have them; the
-// spin under both of Trackman's names (a bay's `spinRate`, a range's `ballSpin`). A field Trackman
-// refuses for a round's shot is left out from then on (fetch.ts): the rest still come.
+// Since spec 1.4.0 also each shot's ball and club data, as a bay session's strokes have them. A field
+// Trackman refuses for a round's shot is left out from then on (fetch.ts): the rest still come.
+// `ballSpin` (a range's name for the spin) is not asked: a round shot's measurement has `spinRate`
+// only - Trackman refused the other on the maintainer's first sync of 19 Nov 2026, costing a request.
 export const MEASURED_FIELDS = [
   'clubSpeed', 'clubPath', 'faceAngle', 'ballSpeed', 'smashFactor', 'carrySide', 'totalSide',
-  'launchAngle', 'spinRate', 'ballSpin', 'spinAxis', 'curve',
+  'launchAngle', 'spinRate', 'spinAxis', 'curve',
 ] as const;
 
 export function roundShotsMeasuredQuery(fields: readonly string[]): string {
