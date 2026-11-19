@@ -130,5 +130,21 @@ branches never reach it. The token is a robot user's of the Expo organisation (r
 Without the token, or without the EAS project id in `app.config.ts`, both workflows do nothing and
 say why. iOS takes part once `eas.json` has the App Store Connect app's id (`submit.testflight.ios.ascAppId`).
 
+**The first iOS build** needs two things a workflow can't do, because both ask for an Apple sign-in. Done once, on a
+Mac, by a member of the Apple team, in `apps/companion` (after `pnpm install` at the root):
+
+1. The signing credentials of the build profile `testflight`:
+   `npx eas-cli@27 credentials:configure-build -p ios -e testflight` (sign in to Apple; reuse an existing
+   distribution certificate if the team has one; let Expo make the App Store provisioning profile; no push key, the
+   app has no push).
+2. The App Store Connect API key that EAS Submit uploads with: `npx eas-cli@27 credentials -p ios`, profile
+   `testflight`, *App Store Connect: Manage your API Key* → *Set up your project to use an API Key for EAS Submit*
+   (an existing team key with the role App Manager, or a new one).
+
+Then **Companion build** with `ios`. The build goes to App Store Connect by itself and on to the internal testers'
+group in TestFlight. Apple asks no export compliance question: `usesNonExemptEncryption: false` in `app.config.ts`
+writes `ITSAppUsesNonExemptEncryption = NO` into the build (the app uses only the system's HTTPS and keychain).
+Until an iOS build exists, **Companion update** says for `ios` that a new build is needed and updates Android only.
+
 **A fork** sets its own ids through the environment (`GLMSYNC_APP_ID`, `GLMSYNC_EXPO_OWNER`,
 `GLMSYNC_EAS_PROJECT_ID`) and its own Expo project and store records.
