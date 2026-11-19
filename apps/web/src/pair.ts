@@ -52,8 +52,10 @@ function handOver(): void {
   handedOver = true;
   setTimeout(() => {
     window.close();
+    // Still running 300 ms later: the page stayed (a browser may say `window.closed` and keep it open), so it says
+    // it may be closed. A page that did close runs nothing more.
     setTimeout(() => {
-      if (!window.closed && !paired) line(t('pair.handedOver'));
+      if (!paired) line(t('pair.handedOver'));
     }, 300);
   }, 1500);
 }

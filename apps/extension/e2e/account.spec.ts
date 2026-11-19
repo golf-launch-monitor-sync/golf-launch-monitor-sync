@@ -75,6 +75,15 @@ test('a pairing page the player opened themselves stays, and says it may be clos
   const windowOpens = connectWindow(context, extensionId);
   await pairPage.goto(pairUrl());
   await windowOpens;
-  // The browser lets a page close itself only when a script opened it; this one says what to do instead.
-  if (!pairPage.isClosed()) await expect(pairPage.getByTestId('pair-status')).toHaveText(/You can close this page/, { timeout: 10_000 });
+  // The browser lets a page close itself only when a script opened it; this one says what to do instead. A page
+  // the test opened may count as opened by script in some browsers and close itself 1.5 s after the hand-over:
+  // that is the page's part done too (checked before, the page could close while the text was awaited).
+  await expect
+    .poll(
+      async () =>
+        pairPage.isClosed() ||
+        /You can close this page/.test((await pairPage.getByTestId('pair-status').textContent({ timeout: 1000 }).catch(() => '')) ?? ''),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
 });
