@@ -28,6 +28,8 @@ interface Opts {
   failBuild?: boolean;
   /** A waited-for build that ended otherwise than FINISHED. */
   buildStatus?: string;
+  /** What `build:view` says of it (else the same as buildStatus). */
+  viewStatus?: string;
   /** The runtime Expo names for a build (else the script works it out itself). */
   runtimeVersion?: string;
   /** latest.json already in the pre-release. */
@@ -53,6 +55,7 @@ function run(args: string[], o: Opts = {}) {
 case "$1" in
   build:list) echo '${builds}' ;;
   build) ${o.failBuild ? "echo 'This account has used its Android builds from the Free plan this month.' >&2; exit 1" : `if [[ "$*" == *--wait* ]]; then echo '[{"id":"new-build","status":"${o.buildStatus ?? 'FINISHED'}",${o.runtimeVersion ? `"runtimeVersion":"${o.runtimeVersion}",` : ''}"artifacts":{"buildUrl":"https://expo.example/artifacts/app.apk"},"app":{"slug":"golf-launch-monitor-sync","ownerAccount":{"name":"example-org"}}}]'; else echo '[{"id":"new-build","app":{"slug":"golf-launch-monitor-sync","ownerAccount":{"name":"example-org"}}}]'; fi`} ;;
+  build:view) echo '{"id":"new-build","status":"${o.viewStatus ?? o.buildStatus ?? 'FINISHED'}","runtimeVersion":"fp-viewed","app":{"slug":"golf-launch-monitor-sync","ownerAccount":{"name":"example-org"}}}' ;;
   update) ${o.failUpdate ? 'exit 3' : 'echo published'} ;;
 esac`,
   );
@@ -230,6 +233,29 @@ describe('release.sh build', () => {
     expect(r.status).toBe(1);
     expect(r.gh).toBe('');
     expect(r.summary).toMatch(/iOS build did not finish/);
+  });
+
+  // 19 Nov: with --auto-submit, eas-cli printed the build as it was when the submission was scheduled
+  // (IN_QUEUE), though it had waited for the build and the upload; the run failed after a good build.
+  it('an iPhone build listed as still queued after the wait is asked for again, and counts once Expo says FINISHED', () => {
+    const r = run(['build', '--platform', 'ios', '--apk-release'], {
+      ascAppId: '1234567890',
+      buildStatus: 'IN_QUEUE',
+      viewStatus: 'FINISHED',
+      previousLatest: { android: { runtime: 'fp-a1' } },
+    });
+    expect(r.status).toBe(0);
+    expect(r.eas).toMatch(/^build:view new-build --json$/m);
+    expect(r.latest?.ios.runtime).toBe('fp-viewed');
+    expect(r.summary).toMatch(/iOS build done/);
+    const failed = run(['build', '--platform', 'ios', '--apk-release'], {
+      ascAppId: '1234567890',
+      buildStatus: 'IN_QUEUE',
+      viewStatus: 'ERRORED',
+    });
+    expect(failed.status).toBe(1);
+    expect(failed.gh).toBe('');
+    expect(failed.summary).toMatch(/iOS build did not finish/);
   });
 
   it('without --apk-release an iPhone build is only started, and latest.json stays as it is', () => {

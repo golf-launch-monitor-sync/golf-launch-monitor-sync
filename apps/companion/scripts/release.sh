@@ -186,6 +186,13 @@ if [ "$command" = build ]; then
     link="$(printf '%s' "$out" | json '`https://expo.dev/accounts/${j[0].app.ownerAccount.name}/projects/${j[0].app.slug}/builds/${j[0].id}`')" \
       || fail "The $p build could not be started (log above)."
     if [ "$p" = ios ] && [ "$wait_for" = --wait ]; then
+      # With --auto-submit, eas-cli prints the build from its cache, as it was when the submission was
+      # scheduled (still queued), though it waited for the build and the upload: ask Expo once more.
+      if ! printf '%s' "$out" | json 'j[0].status === "FINISHED" ? "yes" : ""' >/dev/null; then
+        id="$(printf '%s' "$out" | json 'j[0].id')" || fail "The iOS build did not finish ($link)."
+        out="$(eas build:view "$id" --json | json 'JSON.stringify(Array.isArray(j) ? j : [j])')" \
+          || fail "The iOS build did not finish ($link)."
+      fi
       printf '%s' "$out" | json 'j[0].status === "FINISHED" ? "yes" : ""' >/dev/null \
         || fail "The iOS build did not finish ($link)."
       runtime="$(runtime_of "$out" ios)" || fail "The iOS build's runtime could not be worked out."
