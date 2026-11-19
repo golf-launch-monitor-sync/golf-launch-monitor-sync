@@ -143,10 +143,16 @@ query RoundShots($skip: Int, $take: Int) {
 
 const ROUND_SHOT_DISTANCES = 'carry total targetDistance distanceFromPinTotal';
 export const ROUND_SHOTS_QUERY = roundShotsQuery(ROUND_SHOT_DISTANCES);
-// Since spec 1.4.0 also each shot's ball and club data, as a bay session's strokes have them. Should
-// Trackman refuse these fields for a round's shot, the fetch asks again without them.
-export const ROUND_SHOTS_MEASURED_QUERY = roundShotsQuery(`
-            ${ROUND_SHOT_DISTANCES}
-            clubSpeed clubPath faceAngle ballSpeed smashFactor carrySide totalSide
-            launchAngle spinRate spinAxis curve
-          `);
+// Since spec 1.4.0 also each shot's ball and club data, as a bay session's strokes have them; the
+// spin under both of Trackman's names (a bay's `spinRate`, a range's `ballSpin`). A field Trackman
+// refuses for a round's shot is left out from then on (fetch.ts): the rest still come.
+export const MEASURED_FIELDS = [
+  'clubSpeed', 'clubPath', 'faceAngle', 'ballSpeed', 'smashFactor', 'carrySide', 'totalSide',
+  'launchAngle', 'spinRate', 'ballSpin', 'spinAxis', 'curve',
+] as const;
+
+export function roundShotsMeasuredQuery(fields: readonly string[]): string {
+  return roundShotsQuery([ROUND_SHOT_DISTANCES, ...fields].join(' '));
+}
+
+export const ROUND_SHOTS_MEASURED_QUERY = roundShotsMeasuredQuery(MEASURED_FIELDS);

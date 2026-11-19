@@ -1,6 +1,6 @@
 {
   "name": "@glmsync/extension",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "license": "MIT",
   "description": "Golf Launch Monitor Sync as a browser extension (Manifest V3; Chrome, Edge, Firefox): syncs in the background when a target's plan says so.",

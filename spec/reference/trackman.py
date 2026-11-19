@@ -297,13 +297,29 @@ def round_shots(holes: Any) -> list[dict[str, Any]]:
 
 # ---------------------------------------------------------------------------
 # A batch
+def refusal(entry: dict[str, Any]) -> dict[str, Any] | None:
+    """What Trackman refused when a round's shots were asked for with their values, for the round's `extra`:
+    `round_shot_fields_refused` (the fields it named, left out from then on) and `round_shots_refused` (its words, at
+    most 300 characters). None when it refused nothing."""
+    fields = [f for f in (entry.get("refused") or []) if isinstance(f, str) and re.fullmatch(r"[A-Za-z]{1,40}", f)]
+    said = entry.get("said")
+    said = said.strip()[:300] if isinstance(said, str) and said.strip() else None
+    out: dict[str, Any] = {}
+    if fields:
+        out["round_shot_fields_refused"] = list(dict.fromkeys(fields))
+    if said:
+        out["round_shots_refused"] = said
+    return out or None
+
+
 # ---------------------------------------------------------------------------
 def batch(fetched: dict[str, Any], *, account_ref: str, generated_at: str) -> dict[str, Any]:
     """What one fetch brought, as an olmd/1 batch.
 
     `fetched`: {"sessions": [{"activity", "node"}], "scorecards": [...], "round_shots": [{"id",
-    "holes", "measured"}], "shots_none": [ids]}. `measured` true: the shots were asked for with their
-    ball and club data (the round says so: `shots_measured`). A round's shots may come without its scorecard (a round sent
+    "holes", "measured", "refused", "said"}], "shots_none": [ids]}. `measured` true: the shots were asked for with
+    their ball and club data (the round says so: `shots_measured`); `refused` and `said`: what Trackman refused of that
+    question (the round's `extra`, `refusal`). A round's shots may come without its scorecard (a round sent
     earlier whose shots are fetched now): then the round carries only its id and its shots. A round
     Trackman has no shots for carries `shots: []`; a round whose shots weren't fetched has no
     `shots` at all."""
@@ -328,6 +344,9 @@ def batch(fetched: dict[str, Any], *, account_ref: str, generated_at: str) -> di
             r["shots"] = round_shots(entry.get("holes"))
             if entry.get("measured") is True:
                 r["shots_measured"] = True
+            told = refusal(entry)
+            if told:
+                r["extra"] = {**(r.get("extra") or {}), **told}
     for x in fetched.get("shots_none") or []:
         ext = external_id(x)
         if ext is None:

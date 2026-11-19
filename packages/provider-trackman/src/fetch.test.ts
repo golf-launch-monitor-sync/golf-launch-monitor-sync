@@ -11,7 +11,7 @@ import type { Reason } from '@glmsync/spec';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { subjectOf } from './account.ts';
 import { GRAPHQL_URL } from './client.ts';
-import { fetchForPlan, freshState, MAX_STROKES_PER_SESSION, MEASURED_OFF_MS, who, type TrackmanState } from './fetch.ts';
+import { fetchForPlan, freshState, MAX_REFUSALS, MAX_STROKES_PER_SESSION, MEASURED_OFF_MS, who, type TrackmanState } from './fetch.ts';
 import { FakeTrackman, fakeToken, respond, type Json } from './testing.ts';
 
 const TOKEN = fakeToken('7c1d2e3f-0000-4000-8000-000000000001');
@@ -260,6 +260,7 @@ describe("a round's shots with their ball and club data (spec 1.4.0)", () => {
     const out = await run({ rounds: true, round_shots: true });
     expect(out.notice).toBeUndefined();
     expect(out.rounds[0]?.shots_measured).toBeUndefined();
+    expect(out.rounds[0]?.extra).toEqual({ round_shots_refused: 'Trackman: Unexpected Execution Error' });
     expect(out.rounds[0]?.shots?.[0]).toMatchObject({ hole: 1, number: 1, carry_m: 141.5 });
     expect(tm.requests.filter((r) => r.name === 'RoundShots').map((r) => r.query.includes('ballSpeed'))).toEqual([true, false]);
 
@@ -275,6 +276,48 @@ describe("a round's shots with their ball and club data (spec 1.4.0)", () => {
     const later = await run({ rounds: true, round_shots: true });
     expect(tm.requests.filter((r) => r.name === 'RoundShots').map((r) => r.query.includes('ballSpeed'))).toEqual([true, false, false, true]);
     expect(later.rounds.find((r) => r.external_id === 'R3')?.shots_measured).toBe(true);
+  });
+
+  it('leaves out only the fields Trackman refuses by name, keeps them out, and tells the round', async () => {
+    tm.refuseFields = ['spinRate', 'curve'];
+    tm.scorecards = [card('R1', '2026-11-12T18:00:00Z')];
+    tm.shotHoles.set('R1', [measuredHole()]);
+    const out = await run({ rounds: true, round_shots: true });
+    const asked = tm.requests.filter((r) => r.name === 'RoundShots');
+    expect(asked).toHaveLength(2); // both named in the one refusal
+    expect(asked[1]?.query).toContain('ballSpeed');
+    expect(asked[1]?.query).not.toMatch(/\bspinRate\b|\bcurve\b/);
+    expect(asked[1]?.query).toContain('ballSpin'); // the spin's other name is still asked
+    const r = out.rounds[0];
+    expect(r?.shots_measured).toBe(true);
+    expect(r?.shots?.[0]).toMatchObject({ ball: { speed_mps: 50.3, launch_angle_deg: 17.4 } });
+    expect(r?.extra).toMatchObject({ round_shot_fields_refused: ['spinRate', 'curve'] });
+    expect(String(r?.extra?.round_shots_refused)).toContain('spinRate');
+    expect(state.refused).toEqual(['spinRate', 'curve']);
+
+    // The next fetch leaves them out from the start.
+    tm.scorecards = [card('R2', '2026-11-13T18:00:00Z'), ...tm.scorecards];
+    tm.shotHoles.set('R2', [measuredHole()]);
+    await run({ rounds: true, round_shots: true });
+    expect(tm.requests.filter((r) => r.name === 'RoundShots')).toHaveLength(3);
+  });
+
+  it('gives up on naming after MAX_REFUSALS and asks without the values, as before', async () => {
+    // A fake that refuses one more field each time.
+    const order = ['clubSpeed', 'clubPath', 'faceAngle', 'ballSpeed', 'smashFactor', 'carrySide'];
+    tm.scorecards = [card('R1', '2026-11-12T18:00:00Z')];
+    tm.shotHoles.set('R1', [measuredHole()]);
+    let n = 0;
+    tm.override = (r) => {
+      if (r.name !== 'RoundShots' || !r.query.includes(order[Math.min(n, order.length - 1)] as string)) return null;
+      const f = order[n++] as string;
+      return respond(200, { errors: [{ message: `The field \`${f}\` does not exist on the type \`ShotMeasurement\`.` }] });
+    };
+    const out = await run({ rounds: true, round_shots: true });
+    expect(tm.requests.filter((r) => r.name === 'RoundShots')).toHaveLength(MAX_REFUSALS + 2);
+    expect(out.rounds[0]?.shots_measured).toBeUndefined();
+    expect(out.rounds[0]?.shots?.[0]).toMatchObject({ carry_m: 141.5 });
+    expect(state.measuredOffUntil).toBeGreaterThan(0);
   });
 
   it('keeps asking with them when the round shots fail either way (trouble with Trackman, not with the fields)', async () => {

@@ -45,8 +45,10 @@ export class FakeTrackman {
   profile: Json = { fullName: 'Test Player' };
   tokens = new Set<string>();
   readonly requests: TrackmanRequest[] = [];
-  /** Refuse a round's shots asked for with their ball and club data, as GraphQL refuses a field it doesn't know. */
+  /** Refuse a round's shots asked for with their ball and club data, without naming a field. */
   refuseMeasured = false;
+  /** Fields of a round shot's measurement this fake doesn't know: a query asking any of them is refused, naming each. */
+  refuseFields: string[] = [];
   /** Answer a query with something else (a status, a broken body), once per call. */
   override?: (req: TrackmanRequest) => ResponseLike | Error | null;
 
@@ -91,7 +93,13 @@ export class FakeTrackman {
         return respond(200, { data: { me: { scorecards: this.scorecards.slice(skip, skip + take) } } });
       case 'RoundShots':
         if (this.refuseMeasured && (body.query ?? '').includes('ballSpeed')) {
-          return respond(200, { errors: [{ message: 'The field `ballSpeed` does not exist on the type `ShotMeasurement`.' }] });
+          return respond(200, { errors: [{ message: 'Unexpected Execution Error' }] });
+        }
+        {
+          const unknown = this.refuseFields.filter((f) => new RegExp(`\\b${f}\\b`).test(body.query ?? ''));
+          if (unknown.length) {
+            return respond(200, { errors: unknown.map((f) => ({ message: `The field \`${f}\` does not exist on the type \`ShotMeasurement\`.` })) });
+          }
         }
         return respond(200, {
           data: {

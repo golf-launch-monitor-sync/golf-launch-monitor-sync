@@ -207,5 +207,14 @@ def cases() -> list[dict[str, Any]]:
              round_shots=[{"id": "SC-4001", "holes": MEASURED_HOLES, "measured": True},
                           {"id": "SC-4002", "holes": CHAIN_HOLES[:1], "measured": False},
                           {"id": "SC-4003", "holes": MEASURED_HOLES, "measured": "yes"}]),
+        case("round_shots_refused", "What Trackman refused of the question goes with the round in its extra: the fields "
+             "it named (names only; anything else is dropped) and its words, at most 300 characters. A round "
+             "asked without the values at all carries Trackman's words alone.",
+             round_shots=[{"id": "SC-4101", "holes": MEASURED_HOLES, "measured": True,
+                           "refused": ["spinRate", "curve", 7, "a b", "spinRate"],
+                           "said": "  The field `spinRate` does not exist on the type `ShotMeasurement`. " + "x" * 400},
+                          {"id": "SC-4102", "holes": CHAIN_HOLES[:1], "measured": False,
+                           "said": "Unexpected Execution Error"},
+                          {"id": "SC-4103", "holes": CHAIN_HOLES[:1], "measured": True, "refused": [], "said": "  "}]),
         case("nothing_new", "A sync that found nothing new is an empty batch, not an error."),
     ]

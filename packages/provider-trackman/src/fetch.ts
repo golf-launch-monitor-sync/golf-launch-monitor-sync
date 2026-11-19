@@ -33,7 +33,7 @@ import {
 import { PLAN_RULES } from '@glmsync/spec';
 import { query } from './client.ts';
 import { GAME_KINDS, toOlmd, type Raw } from './mapping.ts';
-import { ACTIVITIES_QUERY, PROFILE_QUERY, ROUND_SHOTS_MEASURED_QUERY, ROUND_SHOTS_QUERY, ROUNDS_QUERY, sessionQuery, WHO_QUERY } from './queries.ts';
+import { ACTIVITIES_QUERY, MEASURED_FIELDS, PROFILE_QUERY, ROUND_SHOTS_QUERY, ROUNDS_QUERY, roundShotsMeasuredQuery, sessionQuery, WHO_QUERY } from './queries.ts';
 
 const DAY = 86_400_000;
 const PAGE = 100;
@@ -58,6 +58,8 @@ export const SHOTS_OFF_MS = 6 * 3600_000;
  * shots come without those for a while: asking the larger question first would cost a request each
  * time for nothing. */
 export const MEASURED_OFF_MS = 24 * 3600_000;
+/** How many times one fetch asks again with fewer fields after Trackman named the ones it refused. */
+export const MAX_REFUSALS = 4;
 /** How long a history chunk may reuse the activity list of the chunk before: the older history
  * doesn't change, and paging a long list again for every chunk would spend the guard's day on it. */
 const LIST_REUSE_MS = 12 * 3600_000;
@@ -71,11 +73,15 @@ export interface TrackmanState {
   shotsOffUntil: number;
   /** Until when a round's shots are asked for without their ball and club data (MEASURED_OFF_MS). */
   measuredOffUntil: number;
+  /** The fields of a round shot's measurement Trackman refused by name: left out from then on. */
+  refused: string[];
+  /** What Trackman said when it last refused the question (its own words, at most 300 characters). */
+  refusedSaid: string | null;
   list: { since: string; items: Activity[]; at: number } | null;
 }
 
 export function freshState(): TrackmanState {
-  return { shotsOffUntil: 0, measuredOffUntil: 0, list: null };
+  return { shotsOffUntil: 0, measuredOffUntil: 0, refused: [], refusedSaid: null, list: null };
 }
 
 /** The earlier of two times, as RFC 3339 (unreadable ones don't count). */
@@ -192,7 +198,7 @@ type Wanted = { played: string | null; at: number | null };
  * come again later.
  */
 async function fetchRoundShots(ctx: ProviderContext, token: string, want: Map<string, Wanted>, pages: number, state: TrackmanState) {
-  const got: { id: string; holes: unknown; measured: boolean }[] = [];
+  const got: { id: string; holes: unknown; measured: boolean; refused?: string[]; said?: string }[] = [];
   const found = new Set<string>();
   const listed = new Set<string>();
   const times = [...want.values()].map((w) => ms(w.played));
@@ -208,18 +214,29 @@ async function fetchRoundShots(ctx: ProviderContext, token: string, want: Map<st
 
   // With each shot's ball and club data where Trackman sends them. That answer has to come whole (a
   // field that failed would leave a shot without its distances, and the round wouldn't be asked for
-  // again); where it doesn't, the same page without them - and if that works, the data itself was
-  // refused, so not again for a while. Trouble with Trackman itself stops as before.
+  // again). Where Trackman refuses it naming fields of ours, the same page again without those (at
+  // most MAX_REFUSALS times a fetch; they stay left out). Where it names none, the page without any
+  // of them - and if that works, not again for a while. Trouble with Trackman itself stops as before.
   let measuredFirst = ctx.now() >= state.measuredOffUntil;
+  let refusals = 0;
   const ask = async (page: number) => {
     const vars = { skip: page * SHOT_PAGE, take: SHOT_PAGE };
-    if (measuredFirst) {
+    while (measuredFirst) {
+      const fields = MEASURED_FIELDS.filter((f) => !state.refused.includes(f));
       try {
-        const data = await query<{ me?: { scorecards?: unknown } }>(ctx, 'round_shots', token, ROUND_SHOTS_MEASURED_QUERY, vars, { partialOk: false });
+        const data = await query<{ me?: { scorecards?: unknown } }>(ctx, 'round_shots', token, roundShotsMeasuredQuery(fields), vars, { partialOk: false });
         return { data, measured: true };
       } catch (e) {
         if (stopsTheFetch(e)) throw e;
+        const said = (e instanceof Error ? e.message : String(e)).slice(0, 300);
+        state.refusedSaid = said;
+        const named = fields.filter((f) => new RegExp(`\\b${f}\\b`).test(said));
         asked += 1;
+        if (named.length && refusals < MAX_REFUSALS) {
+          refusals += 1;
+          state.refused.push(...named);
+          continue;
+        }
         const data = await query<{ me?: { scorecards?: unknown } }>(ctx, 'round_shots', token, ROUND_SHOTS_QUERY, vars);
         measuredFirst = false;
         state.measuredOffUntil = ctx.now() + MEASURED_OFF_MS;
@@ -249,7 +266,9 @@ async function fetchRoundShots(ctx: ProviderContext, token: string, want: Map<st
       // A round whose holes Trackman couldn't send now waits for a later sync.
       if (!want.has(id) || found.has(id) || !Array.isArray(sc.holes)) continue;
       found.add(id);
-      got.push({ id, holes: sc.holes, measured });
+      // What Trackman refused goes along with the round (its `extra`), so a target can see why values are missing.
+      const told = { ...(state.refused.length ? { refused: [...state.refused] } : {}), ...(state.refusedSaid ? { said: state.refusedSaid } : {}) };
+      got.push({ id, holes: sc.holes, measured, ...told });
     }
     if (!Number.isNaN(top)) {
       seenNewest = Math.max(seenNewest, top);

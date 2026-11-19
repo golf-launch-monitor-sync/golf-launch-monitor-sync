@@ -51,8 +51,12 @@ const who = await provider.who(providerContext({ guard, account }), token);
 - The shots of rounds failing cost the shots, not the sync (`partial`), and regular syncs leave them
   alone for six hours.
 - Since spec 1.4.0 a round's shots are asked for with their ball and club data (the fields of a bay
-  session's strokes), and the round says so (`shots_measured`). That answer has to come whole; where
-  Trackman refuses it but sends the same page without those fields, the shots come without them and
-  the larger question waits a day (in memory, `MEASURED_OFF_MS`).
+  session's strokes, the spin under both names), and the round says so (`shots_measured`). That
+  answer has to come whole. Where Trackman refuses it naming fields of ours, the page is asked again
+  without those (at most `MAX_REFUSALS` times a fetch; they stay left out, in memory); where it names
+  none, the shots come without the values and the larger question waits a day (`MEASURED_OFF_MS`).
+  What Trackman refused goes with the round in its `extra` (spec 1.5.1): `round_shot_fields_refused`
+  (the fields) and `round_shots_refused` (Trackman's words, at most 300 characters), so a target can
+  see why values are missing.
 - A history chunk reuses the activity list of the chunk before for 12 hours; once the older sessions
   are in (`max_sessions: 0`) it lists nothing and asks only for the shots of the rounds it is named.

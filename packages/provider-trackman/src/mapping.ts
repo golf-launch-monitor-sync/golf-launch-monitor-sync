@@ -300,8 +300,11 @@ export function roundShots(holes: unknown): RoundShot[] {
 export interface Raw {
   sessions?: { activity: unknown; node: unknown }[];
   scorecards?: unknown[];
-  /** `measured`: asked for with each shot's ball and club data (the round says so: `shots_measured`). */
-  round_shots?: { id: unknown; holes: unknown; measured?: unknown }[];
+  /**
+   * `measured`: asked for with each shot's ball and club data (the round says so: `shots_measured`);
+   * `refused`, `said`: the fields Trackman refused by name and its words (the round's `extra`).
+   */
+  round_shots?: { id: unknown; holes: unknown; measured?: unknown; refused?: unknown; said?: unknown }[];
   shots_none?: unknown[];
 }
 
@@ -344,6 +347,8 @@ export function toOlmd(fetched: Raw): { sessions: Session[]; rounds: Round[] } {
     if (!('shots' in r)) {
       r.shots = roundShots(entry.holes);
       if (entry.measured === true) r.shots_measured = true;
+      const told = refusal(entry);
+      if (told) r.extra = { ...(r.extra ?? {}), ...told };
     }
   }
   for (const x of list(f.shots_none)) {
@@ -353,6 +358,20 @@ export function toOlmd(fetched: Raw): { sessions: Session[]; rounds: Round[] } {
     if (!('shots' in r)) r.shots = [];
   }
   return { sessions, rounds };
+}
+
+/**
+ * What Trackman refused when the round's shots were asked for with their values, for the round's
+ * `extra`: `round_shot_fields_refused` (the fields it named, left out) and `round_shots_refused` (its
+ * words, at most 300 characters). Nothing when it refused nothing.
+ */
+export function refusal(entry: Obj): Obj | null {
+  const fields = list(entry.refused).filter((f): f is string => typeof f === 'string' && /^[A-Za-z]{1,40}$/.test(f));
+  const said = typeof entry.said === 'string' && entry.said.trim() ? entry.said.trim().slice(0, 300) : null;
+  const out: Obj = {};
+  if (fields.length) out.round_shot_fields_refused = [...new Set(fields)];
+  if (said) out.round_shots_refused = said;
+  return Object.keys(out).length ? out : null;
 }
 
 /** The reference's `batch`: what one fetch brought as an olmd/1 batch (the vectors' shape). */
