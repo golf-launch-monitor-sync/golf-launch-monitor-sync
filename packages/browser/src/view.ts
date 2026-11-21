@@ -24,7 +24,7 @@ export function noticeText(n: Notice, t: T, lang: Lang): string {
   return t(key);
 }
 
-const ERRORS = new Set(['unreachable', 'unavailable', 'rate_limited', 'too_large', 'invalid_batch', 'bad_answer', 'provider_unknown']);
+const ERRORS = new Set(['unreachable', 'unavailable', 'rate_limited', 'too_large', 'invalid_batch', 'bad_answer', 'provider_unknown', 'test_data']);
 
 export function errorText(code: string | undefined, t: T): string {
   return t(`error.${code && ERRORS.has(code) ? code : 'error'}` as MessageKey);

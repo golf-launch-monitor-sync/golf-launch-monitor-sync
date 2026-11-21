@@ -9,10 +9,11 @@ No server of its own; everything runs in your browser and stays there.
 | --- | --- |
 | `index.html` | What this is; the extension; the way by hand. |
 | `pair.html` (also `pair/`) | **The pairing page.** A target app sends the player to `…/pair#target=<its address>&code=<code>`. The part after `#` reaches no server. With the [extension](../extension/README.md) installed, it takes over and this page says how it went; without it, the page offers the extension (and connects by itself once it is installed, within the code's ten minutes) or to connect this page instead. The code is taken out of the address once used. |
-| `app.html` | **By hand, without the extension**: paste your Trackman key (a bookmark copies it from the signed-in portal), answer "Is this you?", *Fetch now* to a connected app (still only when its plan says so), or *download* what is new as an olmd/1 file, and the older history a part at a time. The same client, load guard and rules as the extension; nothing runs when the page is closed. |
+| `app.html` | **By hand, without the extension**: paste your Trackman key (a bookmark copies it from the signed-in portal), answer "Is this you?", *Fetch now* to a connected app (still only when its plan says so), or *download* what is new as an olmd/1 file, and the older history a part at a time. While the page is open, a connected app's older history comes a chunk at a time when its plan says it may. The same client, load guard and rules as the extension; nothing runs when the page is closed. **Test mode** ([spec/test-mode.md](../../spec/test-mode.md)): *Enter a test code* at the bottom, as in the extension. |
 
 - The pages keep what the extension keeps in its storage (the key until it runs out, the pairings,
-  the guard's counts) in this browser's `localStorage` for the project's own address.
+  the guard's counts) in this browser's `localStorage` for the project's own address; a test scenario (test mode,
+  made up, up to 64 MiB) in its IndexedDB, until the test ends.
 - A content security policy without `unsafe-eval` and without inline scripts; the bookmark is the
   only `javascript:` there is, built from `src/bookmarklet.ts` into one line.
 - English and German, by the browser's language.

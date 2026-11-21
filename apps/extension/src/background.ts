@@ -9,7 +9,7 @@
  * Manifest V3 background may be stopped between events): everything is in chrome.storage.
  */
 
-import { badge, BrowserClient, pickLang, translator } from '@glmsync/browser';
+import { badge, BrowserClient, IdbBlobs, pickLang, translator } from '@glmsync/browser';
 import { bridgeMessage, type BridgeReply, type Reason } from '@glmsync/spec';
 import { PORTAL_URL, SIGN_OUT_URL } from '@glmsync/provider-trackman/portal';
 import { answer, bridgeMatches, originOf } from './bridge.ts';
@@ -37,6 +37,8 @@ const client = new BrowserClient({
   kind: 'extension',
   name: __BROWSER__ === 'firefox' ? 'Golf Launch Monitor Sync for Firefox' : 'Golf Launch Monitor Sync for Chrome and Edge',
   version: VERSION,
+  // A test scenario (test mode) can be far larger than the extension's storage takes.
+  blobs: new IdbBlobs(),
 });
 const t = () => translator(pickLang(navigator.languages));
 
@@ -343,6 +345,26 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
       await client.dropKey();
       await refreshIcon();
       report();
+      return { ok: true, status: await client.status() };
+    case 'test-fetch': {
+      const test = await client.fetchTest(m.code, m.id);
+      // A pairing the app ended on the way is gone: icon and bridge follow.
+      await refreshIcon();
+      if (!test.ok && test.error === 'revoked') await syncBridges();
+      return { ok: true, test, status: await client.status() };
+    }
+    case 'test-confirm': {
+      const test = await client.confirmTest(m.yes);
+      const status = await client.status();
+      // The answer goes back first; the first sync from the scenario follows, as after a sign-in's yes.
+      if (m.yes && test.ok) void run('connect', test.id);
+      else await refreshIcon();
+      return { ok: true, test, status };
+    }
+    case 'test-end':
+      await client.endTest(m.id);
+      await refreshIcon();
+      await scheduleBackfill().catch(() => undefined);
       return { ok: true, status: await client.status() };
     case 'open-portal':
       // Beside the connect window, in its browser window, in front.

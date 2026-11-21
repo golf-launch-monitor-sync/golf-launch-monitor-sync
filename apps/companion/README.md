@@ -75,7 +75,7 @@ portal in a sign-in window - so that window lives here, in a small app that does
   while the app is in front, then the history a chunk at a time, in the background too. Nothing is asked of Trackman;
   a real sign-in and other pairings go on as before. A *test mode – made-up data* card on the page shows it, with
   *End test mode*; the scenario goes with that, with its pairing, or when its `valid_until` has passed
-  (`src/lib/tests.ts`). Each way it can fail has its sentence in German and English (wrong or expired code, no test
+  (`Tests` of `@glmsync/provider-trackman`, shared with the browser clients). Each way it can fail has its sentence in German and English (wrong or expired code, no test
   account, an app without test mode, a provider this app lacks, no network, a real account refusing test data).
 - **Demo**: a made-up player (`@glmsync/provider-demo`) for trying the app without an account, and
   for app reviews. Its "requests" go through the guard too, so counters and log behave as for real.

@@ -82,6 +82,10 @@ content) gives measured ones:
 node --experimental-strip-types packages/provider-trackman/scripts/latency-from-log.ts glmsync-requests-2026-11-21.json
 ```
 
+`Tests` (`testMode.ts`) keeps a pairing's test for every client: the scenario in `Blobs` (a file of the companion
+app's own, IndexedDB in a browser), what a screen shows in storage, until the tester ends it, the pairing ends or
+`valid_until` passes; one playback per test and runtime, so the history's list is kept between chunks.
+
 `replay.test.ts` plays a long history back in time-lapse against a made-up target and checks it against the real
 provider with the same answers: the same batches chunk for chunk, `test` on each, never past the guard's limits, no
 request to any network.

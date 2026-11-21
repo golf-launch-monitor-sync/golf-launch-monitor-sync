@@ -4,7 +4,7 @@
 
 import { pickLang, translator, type ClientStatus, type Lang, type T } from '@glmsync/browser';
 import { download, logName } from '@glmsync/browser/download';
-import { renderStatus, type Actions } from '@glmsync/browser/render';
+import { renderStatus, testEntry, type Actions } from '@glmsync/browser/render';
 import type { FromPage, Reply } from './messages.ts';
 
 export const lang: Lang = pickLang(navigator.languages);
@@ -37,13 +37,24 @@ export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; on
   let asking: string | null = null;
   let confirming = false;
   let confirmed = false;
+  let askingEnd: string | null = null;
+  let testConfirming = false;
   let last: ClientStatus | null = null;
+  // *Enter a test code* below the panel (test mode): drawn apart, so typing survives the panel's redraws.
+  const entryRoot = document.createElement('div');
+  root.after(entryRoot);
+  const entry = testEntry(entryRoot, t, async (code, id) => {
+    const r = await send(id ? { type: 'test-fetch', code, id } : { type: 'test-fetch', code });
+    if (r.ok && r.status) draw(r.status);
+    return r.ok && r.test ? r.test : { ok: false, error: 'unreachable' };
+  });
 
   const draw = (s: ClientStatus) => {
     last = s;
     // "Connected, the data is on its way" while the first sync after the yes runs.
     if (confirmed && s.key.state === 'ready' && !s.running.length && s.pairings.some((p) => p.last)) confirmed = false;
-    renderStatus(root, s, { t, lang, now: Date.now(), busy, client: 'extension', asking, confirming, confirmed }, actions);
+    renderStatus(root, s, { t, lang, now: Date.now(), busy, client: 'extension', asking, confirming, confirmed, askingEnd, testConfirming }, actions);
+    entry.update(s);
     opts.onStatus?.(s);
   };
   const refresh = async (got?: Reply) => {
@@ -92,6 +103,24 @@ export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; on
     switchAccount: () => {
       void send({ type: 'switch-account' });
       opts.onPortal?.();
+    },
+    confirmTest: (yes) => {
+      testConfirming = true;
+      if (last) draw(last);
+      void send({ type: 'test-confirm', yes }).then(async (r) => {
+        testConfirming = false;
+        await refresh(r);
+        if (!r.ok && last) draw(last);
+        if (yes && (!r.ok || (r.test && !r.test.ok))) entry.fail(r.ok && r.test && !r.test.ok ? r.test.error : 'not_kept');
+      });
+    },
+    askEndTest: (id) => {
+      askingEnd = id;
+      if (last) draw(last);
+    },
+    endTest: (id) => {
+      askingEnd = null;
+      void send({ type: 'test-end', id }).then(refresh);
     },
   };
   void refresh();

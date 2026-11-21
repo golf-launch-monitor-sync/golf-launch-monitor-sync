@@ -7,7 +7,7 @@
  * own pages.
  */
 
-import type { ClientStatus, PairOutcome } from '@glmsync/browser';
+import type { ClientStatus, PairOutcome, TestOutcome } from '@glmsync/browser';
 import type { GuardLogExport } from '@glmsync/core';
 import type { BridgeReply, BridgeRequest } from '@glmsync/spec';
 
@@ -28,7 +28,11 @@ export type FromPage =
   | { type: 'switch-account' }
   | { type: 'pending' }
   | { type: 'pair-confirm' }
-  | { type: 'pair-cancel' };
+  | { type: 'pair-cancel' }
+  /** Test mode (spec/test-mode.md): a test code typed for a pairing, the answer to its question, its end. */
+  | { type: 'test-fetch'; code: string; id?: string }
+  | { type: 'test-confirm'; yes: boolean }
+  | { type: 'test-end'; id: string };
 
 export type Message = FromPortal | FromPairPage | FromTargetPage | FromPage;
 
@@ -45,7 +49,7 @@ export interface Pending {
 }
 
 export type Reply =
-  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply }
+  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome }
   | { ok: false; error: string };
 
 /** What the pairing page's content script hands on to the page (no code, nothing secret). */

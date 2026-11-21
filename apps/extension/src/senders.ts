@@ -61,6 +61,9 @@ const FROM: Record<Message['type'], Source> = {
   pending: 'extension',
   'pair-confirm': 'extension',
   'pair-cancel': 'extension',
+  'test-fetch': 'extension',
+  'test-confirm': 'extension',
+  'test-end': 'extension',
 };
 
 /** A message of a known kind, with fields of the right type, from where that kind may come; else null. */
@@ -80,6 +83,15 @@ export function accept(raw: unknown, source: Source): Message | null {
       return typeof m.yes === 'boolean' ? { type, yes: m.yes } : null;
     case 'unpair':
       return typeof m.id === 'string' ? { type, id: m.id } : null;
+    case 'test-fetch':
+      // A code, or the test link a tester pasted (deep links are at most 2048 long); `id` a pairing's (16 characters).
+      if (typeof m.code !== 'string' || m.code.length > 2048) return null;
+      if (m.id === undefined) return { type, code: m.code };
+      return typeof m.id === 'string' && m.id.length <= 64 ? { type, code: m.code, id: m.id } : null;
+    case 'test-confirm':
+      return typeof m.yes === 'boolean' ? { type, yes: m.yes } : null;
+    case 'test-end':
+      return typeof m.id === 'string' && m.id.length <= 64 ? { type, id: m.id } : null;
     case 'bridge': {
       // Read again here, as strictly as on the page: the content script runs where the page can reach.
       const request = readBridgeRequest(m.request);

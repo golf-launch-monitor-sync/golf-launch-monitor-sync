@@ -11,7 +11,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FetchLike } from '../../packages/core/src/http.ts';
-import { FakeTarget } from '../../packages/core/src/testing/index.ts';
+import { FakeTarget, type PlanAsked } from '../../packages/core/src/testing/index.ts';
 import { GRAPHQL_URL } from '../../packages/provider-trackman/src/client.ts';
 import { FakeTrackman, fakeToken } from '../../packages/provider-trackman/src/testing.ts';
 
@@ -23,6 +23,10 @@ export const PORTAL = 'https://portal.trackmangolf.com/';
 export const APP_PAGE = 'https://app.example.org/profile';
 export const TARGET = 'https://app.example.org/lm/v1';
 export const CODE = 'K7M2PQ9X';
+/** A test code of the made-up target's test account (test mode, spec/test-mode.md). */
+export const TEST_CODE = 'T17K2M9Q';
+export const TEST_SUBJECT = 'example-test-T17-neu-leon';
+const DAY = 86_400_000;
 
 export function pairUrl(target = TARGET, code = CODE): string {
   return `${WEB}/pair#target=${encodeURIComponent(target)}&code=${code}`;
@@ -38,7 +42,8 @@ function canonical(headers: Record<string, string>): Record<string, string> {
 
 const CORS = {
   'access-control-allow-origin': '*',
-  'access-control-allow-headers': 'Authorization, Content-Type',
+  // As a target that offers test scenarios to browser clients allows it (spec/test-mode.md).
+  'access-control-allow-headers': 'Authorization, Content-Type, X-Test-Code',
   'access-control-allow-methods': 'GET, POST, DELETE, OPTIONS',
 };
 
@@ -129,6 +134,41 @@ export class World {
         ? answer(route, this.target.fetch)
         : route.fulfill({ status: 200, body: '<!doctype html><html><head><title>Example App</title></head><body><h1>Example App</h1></body></html>', headers: { 'content-type': 'text/html' } }),
     );
+  }
+
+  /**
+   * The made-up target's account becomes a test account with a scenario for `TEST_CODE` (made up: `sessions`
+   * sessions every three days back from yesterday, one round), and the target plans as a real one does: the
+   * regular sync over the last three days, the older history in chunks of `chunk` sessions.
+   */
+  testAccount(sessions = 7, chunk = 2): Record<string, unknown> {
+    const now = Date.now();
+    const activities = Array.from({ length: sessions }, (_, i) => ({
+      __typename: i % 2 ? 'SimulatorSessionActivity' : 'RangePracticeActivity',
+      id: `L${i}`,
+      time: new Date(now - DAY - i * 3 * DAY).toISOString(),
+      kind: i % 2 ? 'SIMULATOR' : 'RANGE_PRACTICE',
+    }));
+    const nodes = Object.fromEntries(activities.map((a, i) => [a.id, { strokes: [{ club: 'Driver', time: a.time, measurement: { carry: 240 + i, ballSpeed: 74 } }] }]));
+    const hole = { holeNumber: 1, pinPosition: { x: 10, z: 20 }, shots: [{ shotNumber: 1, club: 'Driver', launchLie: 'Tee', finalLie: 'Fairway', launchPosition: { x: 10, z: 400 }, finalPosition: { x: 12, z: 160 } }] };
+    const scenario = {
+      name: 'Leon, never switched',
+      provider: 'trackman',
+      subject: TEST_SUBJECT,
+      profile: { fullName: 'Leon (Test T17)' },
+      data: { activities, nodes, scorecards: [{ id: 'R1', startedAt: new Date(now - 2 * DAY).toISOString(), course: { displayName: 'Example Links' }, par: 72, grossScore: 80 }], shotHoles: { R1: [hole] } },
+      latency: { default: { median_s: 0, spread_s: 0 }, queries: {} },
+      valid_until: new Date(now + 7 * DAY).toISOString(),
+    };
+    this.target.testAccount = true;
+    this.target.scenarios.set(TEST_CODE, scenario);
+    (this.target.opts as { plan?: (ask: PlanAsked, t: FakeTarget) => Record<string, unknown> }).plan = (ask, t) => {
+      const done = t.imports.some((b) => b.sync?.reason === 'backfill' && b.progress?.more_available === false);
+      const base = { plan_id: `pl_${t.imports.length}_${ask.reason}`, known_ids: t.known() };
+      if (ask.reason === 'backfill') return done ? { due: false, history: { done: true } } : { ...base, due: true, since: '2011-01-01T00:00:00Z', max_sessions: chunk, rounds: true, round_shots: false, history: { done: false } };
+      return { ...base, due: true, since: new Date(Date.now() - 3 * DAY).toISOString(), max_sessions: 40, rounds: true, round_shots: true, history: { done } };
+    };
+    return scenario;
   }
 
   /** Every request that reached the made-up target, as text: a Trackman key must never be in it. */

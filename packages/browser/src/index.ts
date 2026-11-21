@@ -14,3 +14,4 @@ export * from './config.ts';
 export * from './i18n.ts';
 export * from './messages.ts';
 export * from './view.ts';
+export * from './blobs.ts';

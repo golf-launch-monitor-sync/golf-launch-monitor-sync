@@ -73,4 +73,20 @@ describe('which messages are taken', () => {
     expect(accept(null, 'extension')).toBeNull();
     expect(accept({ type: 'toString' }, 'extension')).toBeNull();
   });
+
+  it('test mode only from the extension’s own pages, with a code and a pairing of sane size', () => {
+    expect(accept({ type: 'test-fetch', code: 'T17K2M9Q' }, 'extension')).toEqual({ type: 'test-fetch', code: 'T17K2M9Q' });
+    expect(accept({ type: 'test-fetch', code: 'T17K2M9Q', id: 'abc' }, 'extension')).toEqual({ type: 'test-fetch', code: 'T17K2M9Q', id: 'abc' });
+    expect(accept({ type: 'test-fetch', code: 'x'.repeat(3000) }, 'extension')).toBeNull();
+    expect(accept({ type: 'test-fetch', code: 7 }, 'extension')).toBeNull();
+    expect(accept({ type: 'test-fetch', code: 'T17K2M9Q', id: 'x'.repeat(65) }, 'extension')).toBeNull();
+    expect(accept({ type: 'test-confirm', yes: true }, 'extension')).toEqual({ type: 'test-confirm', yes: true });
+    expect(accept({ type: 'test-confirm', yes: 1 }, 'extension')).toBeNull();
+    expect(accept({ type: 'test-end', id: 'abc' }, 'extension')).toEqual({ type: 'test-end', id: 'abc' });
+    expect(accept({ type: 'test-end' }, 'extension')).toBeNull();
+    // A page, the portal or the pairing page can't start, confirm or end a test.
+    for (const source of ['target-page', 'portal', 'pair-page', 'other'] as const) {
+      for (const type of ['test-fetch', 'test-confirm', 'test-end']) expect(accept({ type, code: 'T17K2M9Q', yes: true, id: 'abc' }, source)).toBeNull();
+    }
+  });
 });

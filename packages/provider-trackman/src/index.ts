@@ -32,6 +32,7 @@ export * as queries from './queries.ts';
 export * as portal from './portal.ts';
 export { DEFAULT_LATENCY, KIND_QUERY, latencyFromLog, latencyOf, sampleMs, type LatencyProfile } from './latency.ts';
 export { NotTrackmanScenario, replay, TEST_NOTICE, type Replay, type ReplayOptions } from './replay.ts';
+export { blobName, MemoryBlobs, Tests, type Blobs, type TestMode, type TestsOptions } from './testMode.ts';
 
 export const UNOFFICIAL =
   'Unofficial. Golf Launch Monitor Sync is not affiliated with, endorsed by or supported by Trackman. It reads your own account with your own sign-in, the way Trackman’s web portal does.';

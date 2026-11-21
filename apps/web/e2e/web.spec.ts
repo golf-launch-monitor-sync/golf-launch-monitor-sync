@@ -45,7 +45,8 @@ test('pairs this page when there is no extension, then fetches by hand', async (
   await page.getByTestId('fetch-now').click();
   await expect(page.getByTestId('last')).toContainText('2 new sessions, 4 shots', { timeout: 60_000 });
   expect(world.targetSaw()).not.toContain(key);
-  expect(world.target.asked.map((a) => [a.reason, a.client])).toEqual([['manual', 'web']]);
+  // While the page is open the older history may follow on its own (backfill); by hand it was "manual" from "web".
+  expect(world.target.asked.filter((a) => a.reason !== 'backfill').map((a) => [a.reason, a.client])).toEqual([['manual', 'web']]);
 
   // A file of what is new; the next one has nothing new, so none is saved.
   const download = page.waitForEvent('download');

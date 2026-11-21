@@ -25,6 +25,14 @@ background, while your browser is open. Manifest V3; Chrome, Edge and Firefox.
    **!**, the app is told too, and opening the portal again is enough.
 5. The app's own page in this browser can ask the extension to **fetch now** and show where its sign-in stands
    ([the bridge](#the-bridge-on-the-apps-page)).
+6. **Test mode** (for testing a connected app by hand, [spec/test-mode.md](../../spec/test-mode.md)): *Enter a test
+   code* at the bottom of the popup or the connect page, for a connected app's test account - the code its test page
+   shows, or its test link (`glmsync://test?…`, which a browser can't open: copy it in). The scenario comes from that
+   app with the connection's token; **"Is this your account?"** about its made-up account; then that connection syncs
+   from it exactly as from Trackman (the plan, the guard under the scenario's own account, the first sync, the older
+   history a chunk per alarm), every batch marked `test: true`, Trackman never asked and no Trackman sign-in needed.
+   A card *Test mode – made-up data* with *End test mode*; the scenario lies in the extension's IndexedDB until then,
+   until the connection ends or its end date passes. The sign-in and other connections go on as before.
 
 The popup shows the sign-in, the connected apps with what they last got, *Fetch now*, *Disconnect*,
 and the requests to Trackman ("last hour 3 of 60 · last 24 hours 14 of 300") with the log to export.

@@ -3,12 +3,16 @@
 /**
  * The web app by hand: no extension, so the player brings the Trackman key (the bookmark copies it
  * from the portal) and fetches while the page is open - to a connected app (*Fetch now*, still only
- * when its plan says so) or into a file. The same client, guard and rules as the extension.
+ * when its plan says so) or into a file. The same client, guard and rules as the extension. While the
+ * page is open, a connected app's older history comes a chunk at a time, when its plan says it may.
+ *
+ * Test mode (spec/test-mode.md): *Enter a test code* at the bottom, for testing a connected app with
+ * its made-up scenario instead of a Trackman account.
  */
 
-import { type ClientStatus, type KeyOutcome } from '@glmsync/browser';
+import { type ClientStatus, type KeyOutcome, type TestOutcome } from '@glmsync/browser';
 import { download, logName } from '@glmsync/browser/download';
-import { button, fill, h, PORTAL_URL, renderStatus, type Actions } from '@glmsync/browser/render';
+import { button, fill, h, PORTAL_URL, renderStatus, testEntry, type Actions } from '@glmsync/browser/render';
 import { $, client, lang, t, texts } from './common.ts';
 
 declare const __BOOKMARKLET__: string;
@@ -19,19 +23,71 @@ const keyBox = $('key');
 const fileBox = $('file');
 const busy = new Set<string>();
 let asking: string | null = null;
+let askingEnd: string | null = null;
+let testConfirming = false;
 let last: ClientStatus | null = null;
 let keyMessage: { text: string; undo?: boolean } | null = null;
 let fileMessage = '';
 
+// *Enter a test code* below the panel, drawn apart from it (typing survives a redraw).
+const testRoot = h('div', {});
+panel.after(testRoot);
+const entry = testEntry(testRoot, t, async (code, id) => {
+  const out = await client.fetchTest(code, id);
+  await refresh();
+  return out;
+});
+
 async function refresh(): Promise<void> {
-  last = await client.status();
+  try {
+    last = await client.status();
+  } catch {
+    return; // the storage couldn't be read this once: the page keeps what it shows, the next refresh tries again
+  }
   draw(last);
 }
 
 function draw(s: ClientStatus): void {
-  renderStatus(panel, s, { t, lang, now: Date.now(), busy, client: 'web', asking }, actions);
+  renderStatus(panel, s, { t, lang, now: Date.now(), busy, client: 'web', asking, askingEnd, testConfirming }, actions);
   drawKey(s);
   drawFile(s);
+  entry.update(s);
+}
+
+// ---------------------------------------------------------------------------
+// While the page is open: the older history, a chunk when it is due (the extension's alarm, for a page)
+// ---------------------------------------------------------------------------
+
+/** How long the page waits at most before it looks again whether a chunk is due. */
+const LOOK_MS = 5 * 60_000;
+let historyTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function planHistory(): Promise<void> {
+  if (historyTimer !== null) clearTimeout(historyTimer);
+  historyTimer = null;
+  let at: number | null = null;
+  try {
+    at = await client.nextBackfill();
+  } catch {
+    at = null;
+  }
+  if (at === null) return; // no app's history waits; a sync that brings `more` plans again
+  const wait = Math.min(LOOK_MS, Math.max(1_000, at - Date.now()));
+  historyTimer = setTimeout(() => void history(), wait);
+}
+
+async function history(): Promise<void> {
+  historyTimer = null;
+  try {
+    const running = client.run('backfill');
+    void refresh(); // says "fetching" while it runs
+    await running;
+  } catch {
+    // What went wrong is the pairing's line; the next look tries again.
+  } finally {
+    await refresh();
+    void planHistory();
+  }
 }
 
 function drawKey(s: ClientStatus): void {
@@ -103,10 +159,14 @@ const actions: Actions = {
   fetchNow: (id) => {
     busy.add(id);
     if (last) draw(last);
-    void client.run('manual', id).finally(() => {
-      busy.delete(id);
-      void refresh();
-    });
+    void client
+      .run('manual', id)
+      .catch(() => undefined)
+      .finally(() => {
+        busy.delete(id);
+        void refresh();
+        void planHistory();
+      });
   },
   askDisconnect: (id) => {
     asking = id;
@@ -120,6 +180,35 @@ const actions: Actions = {
   clearEnded: () => void client.clearEnded().then(refresh),
   forgetKey: () => void client.dropKey().then(refresh),
   openPortal: () => window.open(PORTAL_URL, '_blank', 'noopener'),
+  confirmTest: (yes) => {
+    testConfirming = true;
+    if (last) draw(last);
+    void client.confirmTest(yes).catch((): TestOutcome => ({ ok: false, error: 'not_kept' })).then(async (out) => {
+      testConfirming = false;
+      await refresh();
+      if (!yes) return;
+      if (!out.ok) {
+        entry.fail(out.error);
+        return;
+      }
+      // The first sync from the scenario now, as after a sign-in's yes; then the history while the page is open.
+      busy.add(out.id);
+      if (last) draw(last);
+      await client.run('connect', out.id).catch(() => undefined);
+      busy.delete(out.id);
+      await refresh();
+      void planHistory();
+    });
+  },
+  askEndTest: (id) => {
+    askingEnd = id;
+    if (last) draw(last);
+  },
+  endTest: (id) => {
+    askingEnd = null;
+    // Ending can't fail for the tester: what couldn't be removed is never read again without its listing.
+    void client.endTest(id).catch(() => undefined).then(refresh).then(planHistory);
+  },
 };
 
-void refresh();
+void refresh().then(planHistory);

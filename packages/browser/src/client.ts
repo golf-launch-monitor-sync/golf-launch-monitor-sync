@@ -12,6 +12,8 @@
  *   that, and their tests check it).
  * - in **storage**: the guard's counts and log, what each target last answered, which provider
  *   accounts the player said were theirs - nothing of the key, nothing of the data.
+ * - in **blobs** (IndexedDB): a test scenario of a paired app while its test lasts (test mode, spec/test-mode.md):
+ *   made up, and for that pairing only - the provider key and the other pairings go on as before.
  *
  * Every method is serialised: an alarm, a click and a key from the portal never run into each other.
  * Nothing here throws at the caller for something that can happen (a target down, a key run out);
@@ -43,8 +45,8 @@ import {
   type Storage,
   type SyncOutcome,
 } from '@glmsync/core';
-import { FORMAT, parsePairFragment, type Batch, type Reason, type SignIn } from '@glmsync/spec';
-import { subjectOf, trackman, type TrackmanProvider, type Who } from '@glmsync/provider-trackman';
+import { FORMAT, parseLink, parsePairFragment, readTestScenario, TEST_CODE, type Batch, type Reason, type SignIn, type TestScenario } from '@glmsync/spec';
+import { MemoryBlobs, replay, subjectOf, Tests, trackman, type Blobs, type Replay, type TrackmanProvider, type Who } from '@glmsync/provider-trackman';
 import { liveUntil } from '@glmsync/provider-trackman/portal';
 
 export type ClientKind = 'extension' | 'web';
@@ -61,6 +63,8 @@ export interface ClientOptions {
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
   random?: () => number;
   provider?: TrackmanProvider;
+  /** Where a test scenario is kept (IndexedDB in the browser; memory when none is given). */
+  blobs?: Blobs;
 }
 
 /** What a target last answered, kept per pairing (no token here). */
@@ -102,6 +106,52 @@ export type KeyState =
   | { state: 'other'; until: number }
   | { state: 'ready'; until: number };
 
+/** A pairing's test while it lasts (spec/test-mode.md): what its card shows. */
+export interface TestState {
+  /** The scenario's name. */
+  name: string;
+  /** Whose made-up account "Is this your account?" showed. */
+  player: string | null;
+  valid_until: string;
+  /** When the tester said yes (ms). */
+  at: number;
+  /** The guard's counts under the scenario's own account (each code a fresh guard). */
+  counts: GuardCounts | null;
+}
+
+/** A test code fetched for a pairing, waiting for "Is this your account?"; nothing synced before the yes. */
+export interface TestAsking {
+  id: string;
+  /** The target app's name. */
+  target: string;
+  /** The scenario's name. */
+  name: string;
+  who: Who;
+  valid_until: string;
+  at: number;
+}
+
+/**
+ * What a test code brought: `code` not one / not the app's; `unpaired` no pairing (for that target); `which` several
+ * pairings and none picked; then the target's answers (spec/test-mode.md) and the client's own trouble.
+ */
+export type TestError =
+  | 'code'
+  | 'unpaired'
+  | 'which'
+  | 'unavailable'
+  | 'not_test_account'
+  | 'expired'
+  | 'rate_limited'
+  | 'unreachable'
+  | 'revoked'
+  | 'provider'
+  | 'answer'
+  | 'not_kept'
+  | 'gone';
+
+export type TestOutcome = { ok: true; id: string } | { ok: false; error: TestError };
+
 export interface Farewell {
   name: string;
   at: string;
@@ -114,7 +164,9 @@ export interface ClientStatus {
   key: KeyState;
   /** The player said no to "Is this you?" for an account here (another may be signed in to the portal). */
   rejected: boolean;
-  pairings: (Entry & { host: string; signin: SignIn })[];
+  pairings: (Entry & { host: string; signin: SignIn; test?: TestState })[];
+  /** A test code fetched, waiting for the tester's yes. */
+  testAsking: TestAsking | null;
   /** Pairings a sync runs for right now. */
   running: string[];
   /** Connections the target app ended since the player last looked. */
@@ -148,6 +200,10 @@ const KEY = 'glmsync/key/';
 const CONFIRMED = 'glmsync/confirmed/';
 const REJECTED = 'glmsync/rejected/';
 const WHO = 'glmsync/who/';
+const TESTS = 'glmsync/tests';
+const TEST_ASKING = 'glmsync/test-asking';
+/** Pairing ids are 16 base64url characters: this never names a pairing's own file. */
+const TEST_ASKING_BLOB = 'glmsync-test-asking.json';
 
 /** A history chunk that brought something: the next one is asked about after this long. */
 const BACKFILL_STEP_MS = 60_000;
@@ -173,6 +229,22 @@ const hostOf = (base: string) => {
   }
 };
 
+/**
+ * What the tester typed into *Enter a test code*: the code (spaces taken out), or the test link the app's page shows
+ * (`glmsync://test?…`, which a browser can't open but a tester can copy) - its target then picks the pairing.
+ */
+export function readTestInput(typed: unknown): { code: string; target?: string } | null {
+  if (typeof typed !== 'string') return null;
+  const s = typed.trim();
+  if (/^glmsync:/i.test(s)) {
+    const r = parseLink(s);
+    if (!r.ok || r.action !== 'test') return null;
+    return r.target ? { code: r.code, target: r.target } : { code: r.code };
+  }
+  const code = s.replace(/\s+/g, '');
+  return TEST_CODE.test(code) ? { code } : null;
+}
+
 /** A pairing's id: stable per target address, so pairing again replaces it. */
 export function pairingId(base: string): string {
   return base64url(sha256(utf8(`glmsync-pairing|${base.replace(/\/+$/, '')}`))).slice(0, 16);
@@ -181,6 +253,10 @@ export function pairingId(base: string): string {
 export class BrowserClient {
   readonly guard: Guard;
   readonly provider: TrackmanProvider;
+  /** Test mode's scenarios, per pairing (spec/test-mode.md). */
+  readonly tests: Tests;
+  private readonly blobs: Blobs;
+  private testsLoaded: Promise<void> | null = null;
   private readonly now: () => number;
   private queue: Promise<unknown> = Promise.resolve();
   /** Pairings a sync runs for right now (in memory: a run ends with the background that ran it). */
@@ -195,6 +271,20 @@ export class BrowserClient {
       ...(opts.sleep ? { sleep: opts.sleep } : {}),
       ...(opts.random ? { random: opts.random } : {}),
     });
+    this.blobs = opts.blobs ?? new MemoryBlobs();
+    this.tests = new Tests(opts.storage, this.blobs, { now: this.now, index: TESTS, ...(opts.sleep ? { sleep: opts.sleep } : {}) });
+  }
+
+  /** The tests kept here, read once per runtime (a test that is over goes then). */
+  private async testsReady(): Promise<void> {
+    this.testsLoaded ??= this.tests.load();
+    await this.testsLoaded;
+  }
+
+  /** The ids of the pairings in test mode now. */
+  private async testing(): Promise<Set<string>> {
+    await this.testsReady();
+    return new Set(this.tests.list().map((m) => m.key));
   }
 
   /** One at a time: whatever comes in while something runs waits its turn. */
@@ -254,6 +344,10 @@ export class BrowserClient {
   private async forget(id: string): Promise<void> {
     await this.opts.vault.set(PAIRINGS, JSON.stringify((await this.pairings()).filter((p) => pairingId(p.base) !== id)));
     await this.saveEntries((await this.entries()).filter((e) => e.id !== id));
+    // A test lasts only as long as its pairing.
+    await this.testsReady();
+    await this.tests.end(id);
+    if ((await this.asking())?.id === id) await this.dropAsking();
   }
 
   // -------------------------------------------------------------------------
@@ -271,7 +365,9 @@ export class BrowserClient {
     const until = liveUntil(key.token, this.now());
     if (!subject || until === null || key.refused) return { state: 'expired', until: null };
     const account = guardAccount(this.provider.id, subject);
-    const [pairings, entries] = [await this.pairings(), await this.entries()];
+    // A pairing in test mode syncs from its scenario: what it has connected says nothing about this key.
+    const testing = await this.testing();
+    const [pairings, entries] = [await this.pairings(), (await this.entries()).filter((e) => !testing.has(e.id))];
     const refs = this.refs(subject, pairings);
     const known = entries.filter((e) => e.account_ref);
     // The target has this account connected already: it is theirs, no need to ask.
@@ -505,6 +601,8 @@ export class BrowserClient {
   private async runOne(p: Pairing, entry: Entry, reason: Reason): Promise<RunReport['outcomes'][number]['outcome']> {
     const now = this.now();
     if (reason === 'backfill' && (entry.history?.done || (entry.history?.next_at ?? 0) > now)) return { status: 'skipped', why: 'history' };
+    const test = await this.testOf(entry.id);
+    if (test) return this.runTest(p, entry, reason, test);
     const key = await this.key();
     const state = await this.keyState();
     if (state.state === 'expired' && key) return this.tellExpired(p, entry, key.token, reason);
@@ -542,6 +640,40 @@ export class BrowserClient {
     }
   }
 
+  /** The pairing's test, while it lasts: the scenario played back (null: none, or none any more). */
+  private async testOf(id: string): Promise<Replay | null> {
+    await this.testsReady();
+    const r = await this.tests.provider(id);
+    return r && r.id === this.provider.id ? r : null;
+  }
+
+  /**
+   * A sync of a pairing in test mode: exactly what a sync with Trackman runs (the plan first, the guard, the chunks),
+   * with the scenario's made-up Trackman answering and its made-up sign-in; every batch says `test: true`.
+   */
+  private async runTest(p: Pairing, entry: Entry, reason: Reason, test: Replay): Promise<SyncOutcome> {
+    this.active.add(entry.id);
+    try {
+      const outcome = await sync({
+        target: new HttpTarget(p, this.targetOpts()),
+        provider: test,
+        credential: test.credential,
+        reason,
+        client: this.opts.kind,
+        signin: 'ready',
+        guard: this.guard,
+        ...(this.opts.fetch ? { fetch: this.opts.fetch } : {}),
+        ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}),
+        now: this.now,
+        generator: { name: this.opts.name, version: this.opts.version },
+      });
+      await this.record(p, entry, reason, outcome, test.credential, true);
+      return outcome;
+    } finally {
+      this.active.delete(entry.id);
+    }
+  }
+
   /**
    * GET /status with the client's sign-in (spec 1.5.0): a target hears where it stands without a plan, so no
    * lease is taken. Also how a client that can't fetch notices the player ended the connection in the app.
@@ -572,7 +704,10 @@ export class BrowserClient {
     return this.serial(async () => {
       const state = await this.keyState();
       if (state.state === 'ready') return;
+      const testing = await this.testing();
       for (const p of await this.pairings()) {
+        // A pairing in test mode is signed in with its scenario: the provider's sign-in isn't its business.
+        if (testing.has(pairingId(p.base))) continue;
         const entry = (await this.entries()).find((e) => e.id === pairingId(p.base));
         if (entry) await this.tellSignIn(p, entry, 'timer', state.state);
       }
@@ -595,7 +730,7 @@ export class BrowserClient {
     }
   }
 
-  private async record(p: Pairing, entry: Entry, reason: Reason, outcome: SyncOutcome, token: string): Promise<void> {
+  private async record(p: Pairing, entry: Entry, reason: Reason, outcome: SyncOutcome, token: string, test = false): Promise<void> {
     const id = entry.id;
     const now = this.now();
     const at = new Date(now).toISOString();
@@ -641,8 +776,8 @@ export class BrowserClient {
         } else if (history.done === undefined || outcome.more) {
           history.done = false;
         }
-        if (outcome.notice?.code === 'auth_expired') {
-          // Trackman refused the sign-in: the target has been told with this batch.
+        if (outcome.notice?.code === 'auth_expired' && !test) {
+          // Trackman refused the sign-in: the target has been told with this batch (a test's is made up: never).
           toldExpired = (liveUntil(token, 0) ?? 0) || now;
           await this.markRefused(token);
         }
@@ -762,6 +897,20 @@ export class BrowserClient {
   async status(): Promise<ClientStatus> {
     const key = await this.keyState();
     const entries = await this.entries();
+    await this.testsReady();
+    const tests = new Map(this.tests.list().map((m) => [m.key, m]));
+    const testStates = new Map<string, TestState>();
+    for (const [id, m] of tests) {
+      let tc: GuardCounts | null = null;
+      try {
+        tc = await this.guard.counts(guardAccount(this.provider.id, m.subject));
+      } catch {
+        tc = null;
+      }
+      testStates.set(id, { name: m.name, player: m.player, valid_until: m.valid_until, at: m.at, counts: tc });
+    }
+    // What needs the player's attention is about the provider's sign-in: pairings in test mode don't need it.
+    const real = entries.filter((e) => !tests.has(e.id));
     const stored = await this.key();
     const subject = stored ? subjectOf(stored.token) : null;
     let counts: GuardCounts | null = null;
@@ -774,19 +923,157 @@ export class BrowserClient {
     }
     let attention: ClientStatus['attention'] = null;
     if (key.state === 'confirm') attention = 'confirm';
-    else if (key.state === 'other' || entries.some((e) => e.other_account)) attention = 'other_account';
-    else if (entries.length && (key.state === 'none' || key.state === 'expired')) attention = 'sign_in';
+    else if (key.state === 'other' || real.some((e) => e.other_account)) attention = 'other_account';
+    else if (real.length && (key.state === 'none' || key.state === 'expired')) attention = 'sign_in';
+    const asking = await this.asking();
     return {
       kind: this.opts.kind,
       provider: { id: this.provider.id, name: this.provider.name, ...(this.provider.notice ? { notice: this.provider.notice } : {}) },
       key,
       rejected: (await this.accounts(REJECTED)).length > 0,
-      pairings: entries.map((e) => ({ ...e, host: hostOf(e.base), signin: signinOf(key, e) })),
+      pairings: entries.map((e) => {
+        const test = testStates.get(e.id);
+        // In test mode the pairing is signed in with its scenario.
+        return { ...e, host: hostOf(e.base), signin: test ? 'ready' : signinOf(key, e), ...(test ? { test } : {}) };
+      }),
+      testAsking: asking && entries.some((e) => e.id === asking.id) && !over(asking.valid_until, this.now()) ? asking : null,
       running: [...this.active],
       ended: await readList<Farewell>(this.opts.storage, ENDED),
       counts,
       attention,
     };
+  }
+
+  // -------------------------------------------------------------------------
+  // Test mode (spec/test-mode.md)
+  // -------------------------------------------------------------------------
+
+  private async asking(): Promise<TestAsking | null> {
+    try {
+      const raw = await this.opts.storage.get(TEST_ASKING);
+      const v = raw ? (JSON.parse(raw) as Partial<TestAsking>) : null;
+      if (!v || typeof v.id !== 'string' || typeof v.name !== 'string' || typeof v.target !== 'string' || typeof v.valid_until !== 'string' || typeof v.at !== 'number' || !v.who) return null;
+      return v as TestAsking;
+    } catch {
+      return null;
+    }
+  }
+
+  private async dropAsking(): Promise<void> {
+    await this.opts.storage.remove(TEST_ASKING);
+    await this.blobs.remove(TEST_ASKING_BLOB).catch(() => undefined);
+  }
+
+  /**
+   * A test code (or the test link) for one of this client's pairings: the scenario comes from that app with the
+   * pairing's import token, and "Is this your account?" is asked about it through the guard, under the scenario's own
+   * account - nothing synced, nothing changed for the pairing before the yes (`confirmTest`). `id` picks the pairing
+   * when there are several and the link names none. Never throws for what can happen: a reason to show.
+   */
+  fetchTest(typed: string, id?: string): Promise<TestOutcome> {
+    return this.serial(async () => {
+      const input = readTestInput(typed);
+      if (!input) return { ok: false, error: 'code' } as const;
+      const pairings = await this.pairings();
+      if (!pairings.length) return { ok: false, error: 'unpaired' } as const;
+      let p: Pairing | undefined;
+      if (input.target) p = pairings.find((x) => pairingId(x.base) === pairingId(input.target as string));
+      else if (id) p = pairings.find((x) => pairingId(x.base) === id);
+      else if (pairings.length === 1) p = pairings[0];
+      else return { ok: false, error: 'which' } as const;
+      if (!p) return { ok: false, error: 'unpaired' } as const;
+      const pid = pairingId(p.base);
+      const entry = (await this.entries()).find((e) => e.id === pid);
+      if (!entry) return { ok: false, error: 'unpaired' } as const;
+      let scenario: TestScenario;
+      try {
+        scenario = await new HttpTarget(p, this.targetOpts()).testScenario(input.code);
+      } catch (e) {
+        if (!(e instanceof TargetError)) return { ok: false, error: 'unreachable' } as const;
+        if (e.code === 'token_invalid') {
+          // The app no longer knows this pairing: it goes here too, as after a sync.
+          await this.record(p, entry, 'manual', { status: 'failed', error: e }, '');
+          return { ok: false, error: 'revoked' } as const;
+        }
+        const map: Partial<Record<TargetError['code'], TestError>> = {
+          bad_request: 'code',
+          code_invalid: 'code',
+          test_unavailable: 'unavailable',
+          not_test_account: 'not_test_account',
+          code_expired: 'expired',
+          rate_limited: 'rate_limited',
+          unreachable: 'unreachable',
+          unavailable: 'unreachable',
+          bad_answer: 'answer',
+        };
+        return { ok: false, error: map[e.code] ?? 'unreachable' } as const;
+      }
+      if (scenario.provider !== this.provider.id || entry.provider !== this.provider.id) return { ok: false, error: 'provider' } as const;
+      let who: Who;
+      try {
+        const r = replay(scenario, { now: this.now, ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}) });
+        const account = guardAccount(r.id, r.subject(r.credential));
+        await this.guard.beginRun(account);
+        const ctx = providerContext({ guard: this.guard, account, reason: 'connect', now: this.now });
+        who = await r.who(ctx, r.credential);
+      } catch {
+        return { ok: false, error: 'answer' } as const;
+      }
+      try {
+        await this.blobs.set(TEST_ASKING_BLOB, JSON.stringify(scenario));
+        const asking: TestAsking = { id: pid, target: entry.name, name: scenario.name, who, valid_until: scenario.valid_until, at: this.now() };
+        await this.opts.storage.set(TEST_ASKING, JSON.stringify(asking));
+      } catch {
+        await this.dropAsking().catch(() => undefined);
+        return { ok: false, error: 'not_kept' } as const;
+      }
+      return { ok: true, id: pid } as const;
+    });
+  }
+
+  /**
+   * The tester's answer to "Is this your account?" for a test. Yes: the pairing syncs from the scenario from now on
+   * (start one with `connect`), until `endTest`, the pairing ends or the scenario's `valid_until`. No: it is dropped.
+   */
+  confirmTest(yes: boolean): Promise<TestOutcome> {
+    return this.serial(async () => {
+      const asking = await this.asking();
+      if (!asking) return { ok: false, error: 'gone' } as const;
+      try {
+        if (!yes) return { ok: true, id: asking.id } as const;
+        if (!(await this.pairings()).some((p) => pairingId(p.base) === asking.id)) return { ok: false, error: 'unpaired' } as const;
+        let text: string | null;
+        try {
+          text = await this.blobs.get(TEST_ASKING_BLOB);
+        } catch {
+          text = null;
+        }
+        let read: ReturnType<typeof readTestScenario> | null = null;
+        try {
+          read = text === null ? null : readTestScenario(JSON.parse(text), new Date(this.now()).toISOString());
+        } catch {
+          read = null;
+        }
+        if (!read?.ok) return { ok: false, error: read?.error === 'expired' ? 'expired' : 'not_kept' } as const;
+        try {
+          await this.testsReady();
+          await this.tests.start(asking.id, read.scenario, asking.who.player);
+        } catch {
+          return { ok: false, error: 'not_kept' } as const;
+        }
+        return { ok: true, id: asking.id } as const;
+      } finally {
+        await this.dropAsking().catch(() => undefined);
+      }
+    });
+  }
+
+  /** The tester ends a pairing's test: the scenario leaves this browser; the pairing stays. */
+  endTest(id: string): Promise<void> {
+    return this.serial(async () => {
+      await this.testsReady();
+      await this.tests.end(id);
+    });
   }
 
   /** The player saw that a target ended the connection. */
@@ -798,6 +1085,11 @@ export class BrowserClient {
   exportLog(): Promise<GuardLogExport> {
     return this.serial(() => this.guard.exportLog());
   }
+}
+
+function over(validUntil: string, now: number): boolean {
+  const t = Date.parse(validUntil);
+  return !Number.isFinite(t) || now >= t;
 }
 
 /** Where the sign-in stands for one target (spec 1.5.0): "other" also when only this target knows another account. */
