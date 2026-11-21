@@ -13,6 +13,7 @@ Everything another implementation needs, in one place, independent of this proje
 | The **load guard** every client keeps | [guard.md](guard.md) | [guard/limits.json](guard/limits.json) |
 | **Deep links**, the pairing page and the Android sync service | [deep-links.md](deep-links.md) | — |
 | The extension's **bridge** on a target's page (*fetch now*, the sign-in) | [page-bridge.md](page-bridge.md) | — |
+| The player's **handicap record** (dgvhcp/1) and its target API (since 1.6.0) | [hcp.md](hcp.md) | [hcp/dgvhcp-1.schema.json](hcp/dgvhcp-1.schema.json), [api/hcp-api.yaml](api/hcp-api.yaml), [hcp/rules.json](hcp/rules.json) |
 | **Test vectors** for all of the above | [testvectors/README.md](testvectors/README.md) | [testvectors/](testvectors/) |
 | The **reference** that writes the vectors | [reference/README.md](reference/README.md) | [reference/](reference/) |
 

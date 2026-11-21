@@ -26,6 +26,7 @@ import cases_trackman  # noqa: E402
 import clubs  # noqa: E402
 import deeplinks  # noqa: E402
 import guard  # noqa: E402
+import hcp  # noqa: E402
 import plan  # noqa: E402
 import trackman  # noqa: E402
 import values  # noqa: E402
@@ -441,6 +442,116 @@ def olmd_examples() -> dict[str, Any]:
                cases)
 
 
+# ---------------------------------------------------------------------------
+# The handicap record (spec/hcp.md)
+def hcp_plan_vectors() -> dict[str, Any]:
+    last = "2026-11-20T08:00:00Z"
+    cases: list[dict[str, Any]] = []
+    for reason in (*hcp.REASONS, "backfill", ""):
+        for now in ["2026-11-20T08:01:59Z", "2026-11-20T08:02:00Z", "2026-11-21T07:59:59Z", "2026-11-21T08:00:00Z",
+                    "2026-11-21T08:00:00+01:00", "2026-11-25T12:00:00Z", "not a time"]:
+            cases.append({"rule": "is_due", "input": {"last_sync_at": last, "reason": reason, "now": now},
+                          "expected": hcp.is_due(last, reason, now)})
+        for lst in [None, "2026-11-20T08:00:00", "garbage"]:
+            cases.append({"rule": "is_due", "input": {"last_sync_at": lst, "reason": reason,
+                                                     "now": "2026-11-20T09:00:00Z"},
+                          "expected": hcp.is_due(lst, reason, "2026-11-20T09:00:00Z")})
+    for lease, reason, now in [(None, "timer", 100.0), ({"until": 200}, "timer", 100.0), ({"until": 200}, "open", 200.0),
+                               ({"until": 200}, "manual", 100.0), ({"until": True}, "timer", 0.0),
+                               ({"until": "200"}, "connect", 100.0), ({}, "timer", 100.0)]:
+        cases.append({"rule": "busy", "input": {"lease": lease, "reason": reason, "now_s": now},
+                      "expected": hcp.busy(lease, reason, now)})
+    seen = [{"played_on": "2026-05-01", "ref": "T-1"}, {"played_on": "2026-08-14", "ref": "T-2"},
+            {"played_on": "2026-08-14", "ref": "T-3"}, {"played_on": "2026-09-30", "ref": "T-4", "status": "NA"},
+            {"played_on": "2026-10-02"}, {"played_on": "2026-10-03", "ref": ""}, {"played_on": "2026-07-07", "ref": "T-2"},
+            {"ref": "T-5"}, "junk", {"played_on": "2026-10-10", "ref": "T-6"}]
+    for have, most in [([], None), (["T-6", "T-2"], None), ([], 2), (["T-1", "T-2", "T-3", "T-6"], 5), ("junk", 1),
+                       ([], 0)]:
+        cases.append({"rule": "cards_to_read", "input": {"results": seen, "cards_have": have, "most": most},
+                      "expected": hcp.cards_to_read(seen, have, most)})
+    many = [{"played_on": f"2026-{1 + i % 12:02d}-{1 + i % 28:02d}", "ref": f"C{i:02d}"} for i in range(30)]
+    cases.append({"rule": "cards_to_read", "input": {"results": many, "cards_have": [], "most": None},
+                  "expected": hcp.cards_to_read(many, [], None)})
+    return doc("The rules of a handicap target and its clients (spec/hcp.md): is_due, busy, cards_to_read. "
+               "`most: null` means the rules' max_cards. Exact.", cases, rules=hcp.RULES)
+
+
+def dgvhcp_examples() -> dict[str, Any]:
+    ref = cases_trackman.REF
+    card = [{"hole": h, "par": p, "si": si, "score": sc, "gbe": sc, "given": 1, "points": pt, "points_gross": pg,
+             "length_m": ln}
+            for h, (p, si, sc, pt, pg, ln) in enumerate([(4, 5, 5, 2, 1, 352), (3, 9, 3, 3, 2, 151), (5, 1, 6, 2, 1, 470),
+                                                         (4, 3, 4, 3, 2, 365), (4, 7, 5, 2, 1, 330), (3, 8, 4, 2, 1, 160),
+                                                         (4, 2, 6, 1, 0, 401), (5, 6, 5, 3, 2, 488),
+                                                         (4, 4, 4, 3, 2, 344)], start=1)]
+    nine = {"played_on": "2026-08-14", "ref": "T-2041", "name": "Monatspreis August", "club_name": "Golfclub Beispiel",
+            "club_no": "9999", "course_no": "1", "country": "49", "round_no": 1, "holes_read": 9, "kind": "tournament",
+            "hcp_relevant": True, "format": "single", "art": "S", "tee": "Gelb", "par": 36, "cr": 35.9, "slope": 127,
+            "hcp_index": 9.0, "ch": 6, "ph": 6, "gbe": 42, "place": 3, "field": 27, "holes": card}
+    eighteen = {"played_on": "2026-06-20", "name": "Clubmeisterschaft", "club_name": "Golfclub Beispiel",
+                "club_no": "9999", "round_no": 2, "holes_read": 18, "hcp_relevant": True, "format": "single", "art": "Z",
+                "tee": "Weiß", "par": 72, "cr": 72.4, "slope": 133, "hcp_index": 8.6, "ch": 10, "gbe": 84, "sd": 9.9,
+                "pcc": 0, "counting": True, "gross": 84}
+    good = {"format": "dgvhcp/1", "provider": "golfde", "account_ref": ref, "generated_at": "2026-11-21T12:00:00Z",
+            "sheet": "mixed", "index": {"value": 8.1, "as_of": "2026-11-21", "low": 7.4}, "results": [nine, eighteen]}
+    full = {**copy.deepcopy(good), "generator": {"name": "golf-launch-monitor-sync", "version": "0.4.0"},
+            "sync": {"plan_id": "hp_31c2", "reason": "manual"},
+            "notice": {"code": "partial", "message": "Three scorecards come with the next read."},
+            "extra": {"anything": ["is", "kept"]}}
+    full["results"] += [
+        {"played_on": "2026-04-11", "format": "rpr", "kind": "private", "holes_read": 18, "hcp_relevant": True,
+         "par": 70, "cr": 69.8, "slope": 125, "gbe": 88, "art": "Z"},
+        {"played_on": "2025-09-01", "status": "NA", "holes_read": 18, "par": 36, "cr": 35.5, "slope": 120, "gbe": 0,
+         "hcp_relevant": True, "name": "Herbstpreis"},
+        {"played_on": "2019-05-12", "holes_read": 18, "stableford_net": 34, "hcp_index": 12.4, "hcp_relevant": True,
+         "name": "Frühjahrspreis"},
+        {"played_on": "2024-03-03", "kind": "adjustment", "cr": 70.1, "exceptional": -1}]
+
+    def bad(name: str, why: str, change: Any) -> dict[str, Any]:
+        b = copy.deepcopy(good)
+        change(b)
+        return {"name": name, "why": why, "valid": False, "batch": b}
+
+    def on_first(**kw: Any) -> Any:
+        return lambda b: b["results"][0].update(kw)
+
+    cases = [{"name": "minimal", "why": "Nothing read yet (an empty record).", "valid": True,
+              "batch": {"format": "dgvhcp/1", "provider": "golfde", "account_ref": ref,
+                        "generated_at": "2026-11-21T12:00:00Z", "sheet": "history", "results": []}},
+             {"name": "two_results", "why": "A nine-hole tournament with its card and own place, an 18-hole one.",
+              "valid": True, "batch": good},
+             {"name": "everything", "why": "Every optional part, a private round without a name, a no-show, a result "
+                                           "before the WHS (points), an adjustment.", "valid": True, "batch": full},
+             bad("wrong_format", "Another format version.", lambda b: b.update(format="dgvhcp/2")),
+             bad("no_account_ref", "account_ref is required.", lambda b: b.pop("account_ref")),
+             bad("no_sheet", "sheet is required.", lambda b: b.pop("sheet")),
+             bad("sheet_unknown", "sheet is a closed list.", lambda b: b.update(sheet="card")),
+             bad("local_time", "Times carry their zone.", lambda b: b.update(generated_at="2026-11-21T12:00:00")),
+             bad("day_as_german", "Days are YYYY-MM-DD.", on_first(played_on="14.08.2026")),
+             bad("no_day", "A result has its day.", lambda b: b["results"][0].pop("played_on")),
+             bad("nothing_tells_the_holes", "holes_read, par or cr: one of them.",
+                 lambda b: [b["results"][0].pop(k) for k in ("holes_read", "par", "cr")]),
+             bad("marker_name", "A registered private round never carries a name (it is the marker's).",
+                 on_first(format="rpr", name="RPR: Someone")),
+             bad("other_players", "No room for other players: only the own place and field.",
+                 on_first(others=[{"rank": 1, "name": "Someone"}])),
+             bad("null_value", "Unknown values are left out, not null.", on_first(sd=None)),
+             bad("sd_as_text", "Numbers are JSON numbers (the record's commas are the client's to read).",
+                 on_first(sd="8,6")),
+             bad("index_out_of_range", "An index is between -10 and 54.",
+                 lambda b: b["index"].update(value=60)),
+             bad("index_without_day", "An index says the day it is for.", lambda b: b["index"].pop("as_of")),
+             bad("card_of_ten", "A scorecard has 9 or 18 holes.",
+                 lambda b: b["results"][0]["holes"].append({"hole": 10, "par": 4})),
+             bad("hole_without_par", "Every hole has its par.", lambda b: b["results"][0]["holes"][0].pop("par")),
+             bad("too_many", "At most 500 results in a batch.",
+                 lambda b: b.update(results=[copy.deepcopy(eighteen) for _ in range(501)])),
+             bad("unknown_top_level", "Extensions go into extra.", lambda b: b.update(player="Someone")),
+             bad("notice_code", "Notice codes are a closed list.", lambda b: b.update(notice={"code": "hello"}))]
+    return doc("dgvhcp/1 batches that must (valid: true) or must not validate against spec/hcp/dgvhcp-1.schema.json.",
+               cases)
+
+
 FILES = {
     "trackman-olmd.json": trackman_vectors,
     "clubs.json": club_vectors,
@@ -452,6 +563,8 @@ FILES = {
     "signin.json": signin_vectors,
     "page-bridge.json": bridge_vectors,
     "olmd-examples.json": olmd_examples,
+    "hcp-plan.json": hcp_plan_vectors,
+    "dgvhcp-examples.json": dgvhcp_examples,
 }
 
 

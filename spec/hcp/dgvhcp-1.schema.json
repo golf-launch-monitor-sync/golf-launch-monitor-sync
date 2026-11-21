@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://golf-launch-monitor-sync.github.io/schemas/dgvhcp-1.schema.json",
+  "title": "A player's handicap record from the German Golf Association, version 1 (dgvhcp/1)",
+  "description": "A batch of the player's own handicap record as the DGV keeps it (History Sheet, Scoring Record, a tournament's scorecard, the player's own line of a result list), read from the player's own account. Days as YYYY-MM-DD, times RFC 3339 with zone. Unknown values are left out, never null. Never another person's name. See spec/hcp.md. SPDX-License-Identifier: MIT. Copyright (c) 2026 Reginald Stadlbauer.",
+  "type": "object",
+  "required": ["format", "provider", "account_ref", "generated_at", "sheet", "results"],
+  "additionalProperties": false,
+  "properties": {
+    "format": { "const": "dgvhcp/1" },
+    "provider": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{1,39}$",
+      "description": "Where the record was read, e.g. 'golfde'."
+    },
+    "account_ref": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{16,128}$",
+      "description": "Which account, without naming it: the account_ref rule of spec/olmd.md with the target's account_salt."
+    },
+    "generated_at": { "$ref": "#/$defs/time" },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "version": { "type": "string", "minLength": 1, "maxLength": 50 }
+      }
+    },
+    "sync": {
+      "type": "object",
+      "description": "The plan this batch answers (absent in a file export).",
+      "additionalProperties": false,
+      "properties": {
+        "plan_id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "reason": { "enum": ["connect", "open", "timer", "manual"] }
+      }
+    },
+    "sheet": {
+      "enum": ["history", "scoring", "mixed"],
+      "description": "What the results were read from: the History Sheet, the Scoring Record, or both (and scorecards)."
+    },
+    "index": {
+      "type": "object",
+      "description": "The Handicap Index the record names now.",
+      "additionalProperties": false,
+      "required": ["value", "as_of"],
+      "properties": {
+        "value": { "$ref": "#/$defs/hcp" },
+        "as_of": { "$ref": "#/$defs/day", "description": "The day the record says it for (its print date, else the day it was read)." },
+        "low": { "$ref": "#/$defs/hcp", "description": "The Low Handicap Index, where the record names one." }
+      }
+    },
+    "results": {
+      "type": "array",
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/result" }
+    },
+    "notice": {
+      "type": "object",
+      "description": "Something for the target to show the player.",
+      "additionalProperties": false,
+      "required": ["code"],
+      "properties": {
+        "code": { "enum": ["signed_out", "guard_limit", "partial", "changed_page"] },
+        "message": { "type": "string", "maxLength": 500 }
+      }
+    },
+    "extra": { "type": "object", "description": "Anything else; a target may ignore it." }
+  },
+  "$defs": {
+    "time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "day": { "type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "hcp": { "type": "number", "minimum": -10, "maximum": 54 },
+    "text": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["played_on"],
+      "anyOf": [
+        { "properties": { "holes_read": true }, "required": ["holes_read"] },
+        { "properties": { "par": true }, "required": ["par"] },
+        { "properties": { "cr": true }, "required": ["cr"] }
+      ],
+      "properties": {
+        "played_on": { "$ref": "#/$defs/day" },
+        "ref": { "type": "string", "minLength": 1, "maxLength": 100, "description": "The provider's own id of this result, where it has one (a tournament's or a scorecard's)." },
+        "name": { "$ref": "#/$defs/text", "description": "The tournament's name. Never for a registered private round (its 'name' is the marker's)." },
+        "club_name": { "$ref": "#/$defs/text" },
+        "club_no": { "type": "string", "pattern": "^[0-9]{1,6}$" },
+        "course_no": { "type": "string", "minLength": 1, "maxLength": 10 },
+        "country": { "type": "string", "pattern": "^[0-9]{1,4}$", "description": "The country's calling code, as the record gives it (49)." },
+        "round_no": { "type": "integer", "minimum": 0, "maximum": 8 },
+        "holes_read": { "enum": [9, 18], "description": "The holes the record says (it may say 9 for a result already on 18: par and rating tell)." },
+        "kind": { "enum": ["tournament", "private", "foreign", "adjustment"] },
+        "hcp_relevant": { "type": "boolean" },
+        "status": { "enum": ["TA", "NA", "NRA", "NRO", "DQA", "DQO"] },
+        "format": { "enum": ["single", "rpr"] },
+        "art": { "enum": ["Z", "S", "H", "P", "G"] },
+        "tee": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "par": { "type": "integer", "minimum": 27, "maximum": 80 },
+        "cr": { "type": "number", "minimum": 20, "maximum": 90 },
+        "slope": { "type": "integer", "minimum": 55, "maximum": 155 },
+        "hcp_index": { "$ref": "#/$defs/hcp", "description": "The index at the time of the round." },
+        "ch": { "type": "integer", "minimum": -20, "maximum": 80 },
+        "ph": { "type": "integer", "minimum": -20, "maximum": 80 },
+        "gbe": { "type": "integer", "minimum": 0, "maximum": 200, "description": "The adjusted gross score." },
+        "stableford_net": { "type": "integer", "minimum": 0, "maximum": 99, "description": "Before the WHS: Stableford net points instead of an adjusted gross score." },
+        "gross": { "type": "integer", "minimum": 9, "maximum": 250 },
+        "net": { "type": "integer", "minimum": -30, "maximum": 250 },
+        "stableford": { "type": "integer", "minimum": 0, "maximum": 99 },
+        "sd": { "type": "number", "minimum": -20, "maximum": 80, "description": "The Score Differential as the record gives it: read, never worked out." },
+        "pcc": { "type": "integer", "minimum": -1, "maximum": 3 },
+        "exceptional": { "type": "integer", "minimum": -3, "maximum": 3 },
+        "counting": { "type": "boolean", "description": "One of the best eight of the Scoring Record." },
+        "place": { "type": "integer", "minimum": 1, "maximum": 999, "description": "The player's own place in the result list." },
+        "field": { "type": "integer", "minimum": 1, "maximum": 999, "description": "How many are in the player's own division." },
+        "holes": {
+          "type": "array",
+          "description": "The tournament's scorecard, hole by hole: 9 or 18 holes, each once (a target checks the once).",
+          "anyOf": [{ "minItems": 9, "maxItems": 9 }, { "minItems": 18, "maxItems": 18 }],
+          "items": { "$ref": "#/$defs/hole" }
+        }
+      },
+      "if": { "properties": { "format": { "const": "rpr" } }, "required": ["format"] },
+      "then": { "not": { "properties": { "name": true }, "required": ["name"] } }
+    },
+    "hole": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hole", "par"],
+      "properties": {
+        "hole": { "type": "integer", "minimum": 1, "maximum": 18 },
+        "par": { "type": "integer", "minimum": 3, "maximum": 6 },
+        "si": { "type": "integer", "minimum": 1, "maximum": 18, "description": "The stroke index." },
+        "score": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "gbe": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "given": { "type": "integer", "minimum": -2, "maximum": 4, "description": "Strokes received on the hole." },
+        "points": { "type": "integer", "minimum": 0, "maximum": 10, "description": "Stableford net points." },
+        "points_gross": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "length_m": { "type": "integer", "minimum": 1, "maximum": 800 }
+      }
+    }
+  }
+}

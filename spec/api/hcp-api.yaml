@@ -1,0 +1,295 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Reginald Stadlbauer
+openapi: 3.1.0
+info:
+  title: Golf Launch Monitor Sync — handicap target API
+  version: 1.0.0
+  license:
+    name: MIT
+    identifier: MIT
+  description: |
+    What an app implements to receive the player's own handicap record (dgvhcp/1) from this
+    project's clients. As with launch monitor data, the app — the *target* — decides **when** a
+    client reads (`GET /plan`); the client reads the record with the player's own sign-in, which
+    stays in the client and never reaches the target, and sends it in dgvhcp/1 (`POST /import`).
+
+    The base URL is the target's own, conventionally ending in `/hcp/v1`
+    (`https://app.example.org/api/hcp/v1`); every path below is relative to it. All requests but
+    `POST /pair` carry `Authorization: Bearer <import token>`. An import token here can only write
+    the player's handicap record and read which scorecards the target has: nothing else of the
+    player, and nothing of the launch monitor API.
+
+    See spec/hcp.md for the rules behind each endpoint.
+servers:
+  - url: "{base}"
+    variables:
+      base:
+        default: https://app.example.org/hcp/v1
+        description: The target's base URL, as handed to the client in the pairing link.
+security:
+  - importToken: []
+paths:
+  /pair:
+    post:
+      operationId: pairHcp
+      summary: Exchange a pairing code for an import token.
+      description: |
+        The player gets a code in the target app (valid ten minutes, usable once) and hands it to a
+        client through the pairing page (spec/hcp.md, *Pairing*).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PairRequest" }
+      responses:
+        "200":
+          description: Paired.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PairResponse" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404":
+          description: "Unknown, expired or already used code (`code_invalid`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooMany" }
+  /plan:
+    get:
+      operationId: planHcp
+      summary: Whether to read the record now, and which scorecards the target has.
+      description: |
+        Every client asks this before it asks the provider anything; `due: false` means: don't read.
+        A due plan holds a lease (`lease_until`); another client of the same player asking meanwhile
+        gets `busy: true` (never for `manual`). The import with the plan's `plan_id` releases it.
+      parameters:
+        - name: reason
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/Reason" }
+        - name: client
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/ClientKind" }
+      responses:
+        "200":
+          description: The plan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Plan" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooMany" }
+  /import:
+    post:
+      operationId: importHcp
+      summary: Hand over a dgvhcp/1 batch.
+      description: |
+        Idempotent: a result the target has is the same result again (it may add a card or a place
+        to it). A batch of another account than the connected one is refused (`other_account`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "../hcp/dgvhcp-1.schema.json" }
+      responses:
+        "200":
+          description: Stored (as far as it was new).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImportResult" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409":
+          description: "`other_account`: another account than the connected one; `disconnected`: the player ended the connection."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413":
+          description: "`too_large`: more than the limits handed out at pairing."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/TooMany" }
+  /status:
+    get:
+      operationId: statusHcp
+      summary: The connection as the client shows it.
+      responses:
+        "200":
+          description: The status.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Status" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /token:
+    delete:
+      operationId: revokeHcpToken
+      summary: The client disconnects itself; the token stops working.
+      responses:
+        "204": { description: Revoked. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+components:
+  securitySchemes:
+    importToken:
+      type: http
+      scheme: bearer
+      description: The import token from `POST /pair`. Stored by the target only as a hash; revocable in the target app.
+  responses:
+    Error:
+      description: A request the target can't take.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: "`token_invalid`: no token, an unknown one, one the player revoked, or an account that is no longer active. Pair again."
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooMany:
+      description: Too many requests; wait at least `Retry-After` seconds.
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Provider:
+      type: string
+      pattern: "^[a-z][a-z0-9_-]{1,39}$"
+      examples: [golfde]
+    Reason:
+      type: string
+      enum: [connect, open, timer, manual]
+      description: |
+        connect: the player just paired or signed in again; open: the target app was opened; timer:
+        the client's regular look; manual: the player asked for it.
+    ClientKind:
+      type: string
+      enum: [extension, web, companion, cli, other]
+    Time:
+      type: string
+      format: date-time
+      pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    Day:
+      type: string
+      format: date
+      pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    PairRequest:
+      type: object
+      additionalProperties: false
+      required: [code, provider, client]
+      properties:
+        code: { type: string, pattern: "^[0-9A-Za-z-]{6,64}$" }
+        provider: { $ref: "#/components/schemas/Provider" }
+        client:
+          type: object
+          additionalProperties: false
+          required: [kind, name]
+          properties:
+            kind: { $ref: "#/components/schemas/ClientKind" }
+            name: { type: string, minLength: 1, maxLength: 100 }
+            version: { type: string, maxLength: 50 }
+    PairResponse:
+      type: object
+      additionalProperties: false
+      required: [token, target, account_salt, limits]
+      properties:
+        token: { type: string, minLength: 32, maxLength: 256, description: "Shown once; the target keeps only its hash." }
+        target:
+          type: object
+          additionalProperties: false
+          required: [name]
+          properties:
+            name: { type: string, minLength: 1, maxLength: 100 }
+        account_salt: { type: string, minLength: 16, maxLength: 128, description: "The salt of `account_ref` (spec/olmd.md), fixed per player and target." }
+        account_ref:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{16,128}$"
+          description: "The account already connected, if any: a client refuses another one before it reads anything."
+        limits: { $ref: "#/components/schemas/Limits" }
+    Limits:
+      type: object
+      additionalProperties: false
+      required: [max_bytes, max_results]
+      properties:
+        max_bytes: { type: integer, minimum: 1 }
+        max_results: { type: integer, minimum: 1, maximum: 500 }
+    Plan:
+      type: object
+      additionalProperties: false
+      required: [due]
+      properties:
+        due: { type: boolean }
+        busy: { type: boolean, description: Another client of the player holds the lease; ask again later. }
+        disconnected: { type: boolean, description: The player ended the connection in the target app; stop. }
+        account_ref: { type: string, pattern: "^[A-Za-z0-9_-]{16,128}$" }
+        plan_id: { type: string, minLength: 1, maxLength: 200 }
+        lease_until: { $ref: "#/components/schemas/Time" }
+        cards_have:
+          type: array
+          maxItems: 5000
+          description: The `ref`s of results the target has a scorecard for — not to be read again.
+          items: { type: string, minLength: 1, maxLength: 100 }
+        max_cards: { type: integer, minimum: 0, description: "Scorecards to read at most this time (spec/hcp.md, cards_to_read)." }
+        last_import_at: { $ref: "#/components/schemas/Time" }
+    ImportResult:
+      type: object
+      additionalProperties: false
+      required: [read, new, changed, same, skipped, failed]
+      properties:
+        read: { type: integer, minimum: 0, description: Results in the batch. }
+        new: { type: integer, minimum: 0 }
+        changed: { type: integer, minimum: 0, description: Results the target had, now with more (a card, a place). }
+        same: { type: integer, minimum: 0 }
+        skipped: { type: integer, minimum: 0, description: Lines that are no result. }
+        failed: { type: integer, minimum: 0, description: Results the target could not keep. }
+        errors:
+          type: array
+          maxItems: 200
+          items:
+            type: object
+            additionalProperties: false
+            required: [row, code]
+            properties:
+              row: { type: integer, minimum: 1, description: "The result's place in `results`, from 1." }
+              code: { type: string, minLength: 1, maxLength: 40 }
+        index:
+          type: object
+          additionalProperties: false
+          required: [value, as_of]
+          properties:
+            value: { type: number }
+            as_of: { $ref: "#/components/schemas/Day" }
+    Status:
+      type: object
+      additionalProperties: false
+      required: [target, connected]
+      properties:
+        target:
+          type: object
+          additionalProperties: false
+          required: [name]
+          properties:
+            name: { type: string, minLength: 1, maxLength: 100 }
+        connected: { type: boolean }
+        provider: { $ref: "#/components/schemas/Provider" }
+        account_ref: { type: string, pattern: "^[A-Za-z0-9_-]{16,128}$" }
+        last_import_at: { $ref: "#/components/schemas/Time" }
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code]
+          properties:
+            code:
+              type: string
+              enum: [bad_request, code_invalid, token_invalid, other_account, disconnected, too_large, invalid_batch, rate_limited, provider_unknown]
+            message: { type: string, maxLength: 500 }

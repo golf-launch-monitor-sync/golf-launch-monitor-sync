@@ -4,6 +4,9 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import schema from '../../../spec/olmd/olmd-1.schema.json' with { type: 'json' };
+import hcpSchema from '../../../spec/hcp/dgvhcp-1.schema.json' with { type: 'json' };
+import hcpRules from '../../../spec/hcp/rules.json' with { type: 'json' };
+import { makeAjv } from './check.ts';
 import { GUARD_LIMITS, PLAN_RULES, REASONS, SIGN_IN_STATES, validateBatch } from './index.ts';
 import { SPEC_DIR, readVectors, specVersion } from './vectors.ts';
 
@@ -114,5 +117,53 @@ describe('the guard limits', () => {
       day_window_s: 86400,
       backoff: { first_s: 60, factor: 2, max_s: 3600 },
     });
+  });
+});
+
+describe('the handicap record (1.6.0)', () => {
+  type Example = { name: string; valid: boolean; batch: unknown };
+  const hcp = parse(readFileSync(`${SPEC_DIR}api/hcp-api.yaml`, 'utf8'));
+  // Compiled here only: the browser bundles carry no runtime schema compiler (check.ts).
+  const checkHcp = makeAjv().compile(hcpSchema);
+
+  it.each(readVectors<Example>('dgvhcp-examples.json').cases.map((c) => [c.name, c] as const))('%s', (_, c) => {
+    expect([c.name, checkHcp(c.batch)]).toEqual([c.name, c.valid]);
+  });
+
+  it('were written with the rules that are in force', () => {
+    expect(readVectors('hcp-plan.json').rules).toEqual(hcpRules);
+  });
+
+  it('has a target API of five endpoints, apart from the launch monitor one', () => {
+    expect(hcp.openapi).toMatch(/^3\.1\./);
+    expect(Object.keys(hcp.paths).sort()).toEqual(['/import', '/pair', '/plan', '/status', '/token']);
+    expect(hcp.security).toEqual([{ importToken: [] }]);
+    expect(hcp.paths['/pair'].post.security).toEqual([]);
+    expect(hcp.paths['/import'].post.requestBody.content['application/json'].schema.$ref).toBe('../hcp/dgvhcp-1.schema.json');
+    expect(hcp.components.schemas.Reason.enum).toEqual(hcpSchema.properties.sync.properties.reason.enum);
+    expect(hcp.components.schemas.Limits.properties.max_results.maximum).toBe(hcpSchema.properties.results.maxItems);
+    expect(hcpRules.max_results).toBe(hcpSchema.properties.results.maxItems);
+  });
+
+  it('has every reference resolve', () => {
+    const refs: string[] = [];
+    const walk = (v: unknown) => {
+      if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) (k === '$ref' && typeof x === 'string' ? refs.push(x) : walk(x));
+    };
+    walk(hcp);
+    for (const ref of refs) {
+      if (ref.startsWith('#/')) {
+        let at: unknown = hcp;
+        for (const part of ref.slice(2).split('/')) at = (at as Record<string, unknown> | undefined)?.[part];
+        expect([ref, at !== undefined]).toEqual([ref, true]);
+      } else expect([ref, existsSync(new URL(ref, `file://${SPEC_DIR}api/`))]).toEqual([ref, true]);
+    }
+  });
+
+  it('keeps the error codes of the launch monitor API', () => {
+    const lm = parse(readFileSync(`${SPEC_DIR}api/target-api.yaml`, 'utf8'));
+    expect(hcp.components.schemas.Error.properties.error.properties.code.enum)
+      .toEqual(lm.components.schemas.Error.properties.error.properties.code.enum);
   });
 });

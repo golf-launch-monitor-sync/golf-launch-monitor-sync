@@ -1,0 +1,1078 @@
+{
+  "$comment": "The rules of a handicap target and its clients (spec/hcp.md): is_due, busy, cards_to_read. `most: null` means the rules' max_cards. Exact.",
+  "spec_version": "1.6.0",
+  "generated_by": "spec/reference/generate.py",
+  "rules": {
+    "$comment": "The planning rules of a handicap target (spec/hcp.md). Informative: a target may plan more gently; a client's load guard holds regardless.",
+    "version": 1,
+    "daily_gap_h": 24,
+    "connect_gap_s": 120,
+    "lease_s": 300,
+    "max_cards": 20,
+    "max_results": 500,
+    "max_bytes": 2097152
+  },
+  "cases": [
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "connect",
+        "now": "2026-11-20T08:01:59Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "connect",
+        "now": "2026-11-20T08:02:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "connect",
+        "now": "2026-11-21T07:59:59Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "connect",
+        "now": "2026-11-21T08:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "connect",
+        "now": "2026-11-21T08:00:00+01:00"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "connect",
+        "now": "2026-11-25T12:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "connect",
+        "now": "not a time"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": null,
+        "reason": "connect",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00",
+        "reason": "connect",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "garbage",
+        "reason": "connect",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "open",
+        "now": "2026-11-20T08:01:59Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "open",
+        "now": "2026-11-20T08:02:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "open",
+        "now": "2026-11-21T07:59:59Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "open",
+        "now": "2026-11-21T08:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "open",
+        "now": "2026-11-21T08:00:00+01:00"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "open",
+        "now": "2026-11-25T12:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "open",
+        "now": "not a time"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": null,
+        "reason": "open",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00",
+        "reason": "open",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "garbage",
+        "reason": "open",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "timer",
+        "now": "2026-11-20T08:01:59Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "timer",
+        "now": "2026-11-20T08:02:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "timer",
+        "now": "2026-11-21T07:59:59Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "timer",
+        "now": "2026-11-21T08:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "timer",
+        "now": "2026-11-21T08:00:00+01:00"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "timer",
+        "now": "2026-11-25T12:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "timer",
+        "now": "not a time"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": null,
+        "reason": "timer",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00",
+        "reason": "timer",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "garbage",
+        "reason": "timer",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "manual",
+        "now": "2026-11-20T08:01:59Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "manual",
+        "now": "2026-11-20T08:02:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "manual",
+        "now": "2026-11-21T07:59:59Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "manual",
+        "now": "2026-11-21T08:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "manual",
+        "now": "2026-11-21T08:00:00+01:00"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "manual",
+        "now": "2026-11-25T12:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "manual",
+        "now": "not a time"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": null,
+        "reason": "manual",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00",
+        "reason": "manual",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "garbage",
+        "reason": "manual",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "backfill",
+        "now": "2026-11-20T08:01:59Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "backfill",
+        "now": "2026-11-20T08:02:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "backfill",
+        "now": "2026-11-21T07:59:59Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "backfill",
+        "now": "2026-11-21T08:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "backfill",
+        "now": "2026-11-21T08:00:00+01:00"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "backfill",
+        "now": "2026-11-25T12:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "backfill",
+        "now": "not a time"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": null,
+        "reason": "backfill",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00",
+        "reason": "backfill",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "garbage",
+        "reason": "backfill",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "",
+        "now": "2026-11-20T08:01:59Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "",
+        "now": "2026-11-20T08:02:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "",
+        "now": "2026-11-21T07:59:59Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "",
+        "now": "2026-11-21T08:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "",
+        "now": "2026-11-21T08:00:00+01:00"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "",
+        "now": "2026-11-25T12:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00Z",
+        "reason": "",
+        "now": "not a time"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": null,
+        "reason": "",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-20T08:00:00",
+        "reason": "",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "garbage",
+        "reason": "",
+        "now": "2026-11-20T09:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "busy",
+      "input": {
+        "lease": null,
+        "reason": "timer",
+        "now_s": 100.0
+      },
+      "expected": false
+    },
+    {
+      "rule": "busy",
+      "input": {
+        "lease": {
+          "until": 200
+        },
+        "reason": "timer",
+        "now_s": 100.0
+      },
+      "expected": true
+    },
+    {
+      "rule": "busy",
+      "input": {
+        "lease": {
+          "until": 200
+        },
+        "reason": "open",
+        "now_s": 200.0
+      },
+      "expected": false
+    },
+    {
+      "rule": "busy",
+      "input": {
+        "lease": {
+          "until": 200
+        },
+        "reason": "manual",
+        "now_s": 100.0
+      },
+      "expected": false
+    },
+    {
+      "rule": "busy",
+      "input": {
+        "lease": {
+          "until": true
+        },
+        "reason": "timer",
+        "now_s": 0.0
+      },
+      "expected": false
+    },
+    {
+      "rule": "busy",
+      "input": {
+        "lease": {
+          "until": "200"
+        },
+        "reason": "connect",
+        "now_s": 100.0
+      },
+      "expected": false
+    },
+    {
+      "rule": "busy",
+      "input": {
+        "lease": {},
+        "reason": "timer",
+        "now_s": 100.0
+      },
+      "expected": false
+    },
+    {
+      "rule": "cards_to_read",
+      "input": {
+        "results": [
+          {
+            "played_on": "2026-05-01",
+            "ref": "T-1"
+          },
+          {
+            "played_on": "2026-08-14",
+            "ref": "T-2"
+          },
+          {
+            "played_on": "2026-08-14",
+            "ref": "T-3"
+          },
+          {
+            "played_on": "2026-09-30",
+            "ref": "T-4",
+            "status": "NA"
+          },
+          {
+            "played_on": "2026-10-02"
+          },
+          {
+            "played_on": "2026-10-03",
+            "ref": ""
+          },
+          {
+            "played_on": "2026-07-07",
+            "ref": "T-2"
+          },
+          {
+            "ref": "T-5"
+          },
+          "junk",
+          {
+            "played_on": "2026-10-10",
+            "ref": "T-6"
+          }
+        ],
+        "cards_have": [],
+        "most": null
+      },
+      "expected": [
+        "T-6",
+        "T-2",
+        "T-3",
+        "T-1"
+      ]
+    },
+    {
+      "rule": "cards_to_read",
+      "input": {
+        "results": [
+          {
+            "played_on": "2026-05-01",
+            "ref": "T-1"
+          },
+          {
+            "played_on": "2026-08-14",
+            "ref": "T-2"
+          },
+          {
+            "played_on": "2026-08-14",
+            "ref": "T-3"
+          },
+          {
+            "played_on": "2026-09-30",
+            "ref": "T-4",
+            "status": "NA"
+          },
+          {
+            "played_on": "2026-10-02"
+          },
+          {
+            "played_on": "2026-10-03",
+            "ref": ""
+          },
+          {
+            "played_on": "2026-07-07",
+            "ref": "T-2"
+          },
+          {
+            "ref": "T-5"
+          },
+          "junk",
+          {
+            "played_on": "2026-10-10",
+            "ref": "T-6"
+          }
+        ],
+        "cards_have": [
+          "T-6",
+          "T-2"
+        ],
+        "most": null
+      },
+      "expected": [
+        "T-3",
+        "T-1"
+      ]
+    },
+    {
+      "rule": "cards_to_read",
+      "input": {
+        "results": [
+          {
+            "played_on": "2026-05-01",
+            "ref": "T-1"
+          },
+          {
+            "played_on": "2026-08-14",
+            "ref": "T-2"
+          },
+          {
+            "played_on": "2026-08-14",
+            "ref": "T-3"
+          },
+          {
+            "played_on": "2026-09-30",
+            "ref": "T-4",
+            "status": "NA"
+          },
+          {
+            "played_on": "2026-10-02"
+          },
+          {
+            "played_on": "2026-10-03",
+            "ref": ""
+          },
+          {
+            "played_on": "2026-07-07",
+            "ref": "T-2"
+          },
+          {
+            "ref": "T-5"
+          },
+          "junk",
+          {
+            "played_on": "2026-10-10",
+            "ref": "T-6"
+          }
+        ],
+        "cards_have": [],
+        "most": 2
+      },
+      "expected": [
+        "T-6",
+        "T-2"
+      ]
+    },
+    {
+      "rule": "cards_to_read",
+      "input": {
+        "results": [
+          {
+            "played_on": "2026-05-01",
+            "ref": "T-1"
+          },
+          {
+            "played_on": "2026-08-14",
+            "ref": "T-2"
+          },
+          {
+            "played_on": "2026-08-14",
+            "ref": "T-3"
+          },
+          {
+            "played_on": "2026-09-30",
+            "ref": "T-4",
+            "status": "NA"
+          },
+          {
+            "played_on": "2026-10-02"
+          },
+          {
+            "played_on": "2026-10-03",
+            "ref": ""
+          },
+          {
+            "played_on": "2026-07-07",
+            "ref": "T-2"
+          },
+          {
+            "ref": "T-5"
+          },
+          "junk",
+          {
+            "played_on": "2026-10-10",
+            "ref": "T-6"
+          }
+        ],
+        "cards_have": [
+          "T-1",
+          "T-2",
+          "T-3",
+          "T-6"
+        ],
+        "most": 5
+      },
+      "expected": []
+    },
+    {
+      "rule": "cards_to_read",
+      "input": {
+        "results": [
+          {
+            "played_on": "2026-05-01",
+            "ref": "T-1"
+          },
+          {
+            "played_on": "2026-08-14",
+            "ref": "T-2"
+          },
+          {
+            "played_on": "2026-08-14",
+            "ref": "T-3"
+          },
+          {
+            "played_on": "2026-09-30",
+            "ref": "T-4",
+            "status": "NA"
+          },
+          {
+            "played_on": "2026-10-02"
+          },
+          {
+            "played_on": "2026-10-03",
+            "ref": ""
+          },
+          {
+            "played_on": "2026-07-07",
+            "ref": "T-2"
+          },
+          {
+            "ref": "T-5"
+          },
+          "junk",
+          {
+            "played_on": "2026-10-10",
+            "ref": "T-6"
+          }
+        ],
+        "cards_have": "junk",
+        "most": 1
+      },
+      "expected": [
+        "T-6"
+      ]
+    },
+    {
+      "rule": "cards_to_read",
+      "input": {
+        "results": [
+          {
+            "played_on": "2026-05-01",
+            "ref": "T-1"
+          },
+          {
+            "played_on": "2026-08-14",
+            "ref": "T-2"
+          },
+          {
+            "played_on": "2026-08-14",
+            "ref": "T-3"
+          },
+          {
+            "played_on": "2026-09-30",
+            "ref": "T-4",
+            "status": "NA"
+          },
+          {
+            "played_on": "2026-10-02"
+          },
+          {
+            "played_on": "2026-10-03",
+            "ref": ""
+          },
+          {
+            "played_on": "2026-07-07",
+            "ref": "T-2"
+          },
+          {
+            "ref": "T-5"
+          },
+          "junk",
+          {
+            "played_on": "2026-10-10",
+            "ref": "T-6"
+          }
+        ],
+        "cards_have": [],
+        "most": 0
+      },
+      "expected": []
+    },
+    {
+      "rule": "cards_to_read",
+      "input": {
+        "results": [
+          {
+            "played_on": "2026-01-01",
+            "ref": "C00"
+          },
+          {
+            "played_on": "2026-02-02",
+            "ref": "C01"
+          },
+          {
+            "played_on": "2026-03-03",
+            "ref": "C02"
+          },
+          {
+            "played_on": "2026-04-04",
+            "ref": "C03"
+          },
+          {
+            "played_on": "2026-05-05",
+            "ref": "C04"
+          },
+          {
+            "played_on": "2026-06-06",
+            "ref": "C05"
+          },
+          {
+            "played_on": "2026-07-07",
+            "ref": "C06"
+          },
+          {
+            "played_on": "2026-08-08",
+            "ref": "C07"
+          },
+          {
+            "played_on": "2026-09-09",
+            "ref": "C08"
+          },
+          {
+            "played_on": "2026-10-10",
+            "ref": "C09"
+          },
+          {
+            "played_on": "2026-11-11",
+            "ref": "C10"
+          },
+          {
+            "played_on": "2026-12-12",
+            "ref": "C11"
+          },
+          {
+            "played_on": "2026-01-13",
+            "ref": "C12"
+          },
+          {
+            "played_on": "2026-02-14",
+            "ref": "C13"
+          },
+          {
+            "played_on": "2026-03-15",
+            "ref": "C14"
+          },
+          {
+            "played_on": "2026-04-16",
+            "ref": "C15"
+          },
+          {
+            "played_on": "2026-05-17",
+            "ref": "C16"
+          },
+          {
+            "played_on": "2026-06-18",
+            "ref": "C17"
+          },
+          {
+            "played_on": "2026-07-19",
+            "ref": "C18"
+          },
+          {
+            "played_on": "2026-08-20",
+            "ref": "C19"
+          },
+          {
+            "played_on": "2026-09-21",
+            "ref": "C20"
+          },
+          {
+            "played_on": "2026-10-22",
+            "ref": "C21"
+          },
+          {
+            "played_on": "2026-11-23",
+            "ref": "C22"
+          },
+          {
+            "played_on": "2026-12-24",
+            "ref": "C23"
+          },
+          {
+            "played_on": "2026-01-25",
+            "ref": "C24"
+          },
+          {
+            "played_on": "2026-02-26",
+            "ref": "C25"
+          },
+          {
+            "played_on": "2026-03-27",
+            "ref": "C26"
+          },
+          {
+            "played_on": "2026-04-28",
+            "ref": "C27"
+          },
+          {
+            "played_on": "2026-05-01",
+            "ref": "C28"
+          },
+          {
+            "played_on": "2026-06-02",
+            "ref": "C29"
+          }
+        ],
+        "cards_have": [],
+        "most": null
+      },
+      "expected": [
+        "C23",
+        "C11",
+        "C22",
+        "C10",
+        "C21",
+        "C09",
+        "C20",
+        "C08",
+        "C19",
+        "C07",
+        "C18",
+        "C06",
+        "C17",
+        "C05",
+        "C29",
+        "C16",
+        "C04",
+        "C28",
+        "C27",
+        "C15"
+      ]
+    }
+  ]
+}

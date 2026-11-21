@@ -1,6 +1,6 @@
 {
   "$comment": "The browser extension's bridge on a paired target's page (spec/page-bridge.md; 1.5.0): read_request (what the extension takes from the page) and read_reply (what the page takes from the extension) -> the message read, or null when it is none of this protocol's.",
-  "spec_version": "1.5.1",
+  "spec_version": "1.6.0",
   "generated_by": "spec/reference/generate.py",
   "protocol": {
     "version": 1,

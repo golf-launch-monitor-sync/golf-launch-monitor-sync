@@ -1,0 +1,10 @@
+{
+  "$comment": "The planning rules of a handicap target (spec/hcp.md). Informative: a target may plan more gently; a client's load guard holds regardless.",
+  "version": 1,
+  "daily_gap_h": 24,
+  "connect_gap_s": 120,
+  "lease_s": 300,
+  "max_cards": 20,
+  "max_results": 500,
+  "max_bytes": 2097152
+}
