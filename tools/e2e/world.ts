@@ -2,8 +2,8 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
  * The click checks' world: everything the browser would reach on the network, answered in the test
- * instead - the web app from its build, a made-up Trackman portal and API, and a made-up target app.
- * Nothing leaves the machine; all data is synthetic.
+ * instead - the web app from its build, a made-up Trackman portal and API, a made-up golf.de (its pages make their
+ * own requests, as golf.de's do), and a made-up target app. Nothing leaves the machine; all data is synthetic.
  */
 
 import type { BrowserContext, Route } from '@playwright/test';
@@ -11,7 +11,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FetchLike } from '../../packages/core/src/http.ts';
-import { FakeTarget, type PlanAsked } from '../../packages/core/src/testing/index.ts';
+import { FakeHcpTarget, FakeTarget, type PlanAsked } from '../../packages/core/src/testing/index.ts';
+import { entry, historyAnswer, memberAnswer, resultsAnswer, scoringAnswer } from '../../packages/provider-golfde/src/testing.ts';
 import { GRAPHQL_URL } from '../../packages/provider-trackman/src/client.ts';
 import { FakeTrackman, fakeToken } from '../../packages/provider-trackman/src/testing.ts';
 
@@ -27,6 +28,13 @@ export const CODE = 'K7M2PQ9X';
 export const TEST_CODE = 'T17K2M9Q';
 export const TEST_SUBJECT = 'example-test-T17-neu-leon';
 const DAY = 86_400_000;
+/** The made-up target app's handicap API (spec/hcp.md) and its pairing code. */
+export const HCP_TARGET = 'https://app.example.org/hcp/v1';
+export const HCP_CODE = 'H7M2PQ9X';
+export const GOLFDE_HISTORY = 'https://www.golf.de/mein-bereich/handicap-history-sheet.html';
+export const GOLFDE_RESULTS = 'https://www.golf.de/sport/turnierkalender/clubturniere.html#/5001/ergebnisse';
+/** A header the made-up golf.de page puts on its own requests: one without it would not be golf.de's page's. */
+export const GOLFDE_PAGE_HEADER = 'x-made-up-golfde-page';
 
 export function pairUrl(target = TARGET, code = CODE): string {
   return `${WEB}/pair#target=${encodeURIComponent(target)}&code=${code}`;
@@ -73,9 +81,40 @@ export interface Portal {
   lateMs?: number;
 }
 
+/** The made-up golf.de: the player's record (made-up, with made-up names), and every request that reached its API. */
+export class GolfDe {
+  signedIn = true;
+  readonly own = entry({ resultGuid: 'c0ffee00-0000-4000-8000-0000000e2e01' });
+  readonly nodes = [this.own, entry({ tournamentDate: '2026-09-12T10:00:00+02:00', ratedGrossResult: 88 }), entry({ tournamentType: 8, tournamentName: 'RPR: Max Markersmann', tournamentDate: '2026-08-02T10:00:00+02:00' })];
+  readonly apiSaw: { url: string; op: string | null; page: boolean }[] = [];
+
+  /** golf.de's API, as the page's own requests reach it. */
+  answer(url: string, body: string | null): unknown {
+    const op = body ? ((JSON.parse(body) as { operationName?: string }).operationName ?? null) : null;
+    if (!this.signedIn && op) return { data: null, errors: [{ message: 'no', extensions: { code: 'AUTH_FAILED' } }] };
+    if (op === 'GetMemberDetails') return memberAnswer();
+    if (op === 'GetHandicapHistorySheet') return historyAnswer(this.nodes, this.nodes.length);
+    if (op === 'GetScoringRecords') return scoringAnswer([this.own]);
+    if (/\/v1\.0\/tournaments\/5001\/results/.test(url)) return resultsAnswer(this.own.resultGuid as string);
+    return { errors: [{ message: 'unknown' }] };
+  }
+
+  /** A made-up page of *Mein Bereich* or the result list: it asks golf.de's API itself, as golf.de's page does. */
+  page(path: string): string {
+    const header = JSON.stringify({ 'content-type': 'application/json', 'x-client-id': 'made-up-page-client-id', [GOLFDE_PAGE_HEADER]: '1' });
+    const gql = (op: string) => `fetch('https://api-v2.golf.de/graphql', { method: 'POST', credentials: 'include', headers: ${header}, body: JSON.stringify({ operationName: '${op}', query: 'query ${op} { me { id } }', variables: {} }) })`;
+    const calls = path.startsWith('/sport/')
+      ? `fetch('https://api-v2.golf.de/v1.0/tournaments/5001/results', { headers: ${header} })`
+      : `${gql('GetMemberDetails')}.then(() => ${gql('GetHandicapHistorySheet')}).then(() => ${gql('GetScoringRecords')})`;
+    return `<!doctype html><html><head><title>golf.de (made up)</title></head><body><h1>Made-up golf.de</h1><p>Alexandra Beispielspielerin</p><script>${calls};</script></body></html>`;
+  }
+}
+
 export class World {
   readonly tm = new FakeTrackman();
   readonly target = new FakeTarget({ base: TARGET });
+  readonly hcp = new FakeHcpTarget({ base: HCP_TARGET });
+  readonly golfde = new GolfDe();
   readonly portal: Portal = { token: null, mode: 'storage' };
   /** How often Trackman's sign-out page was opened. */
   signOuts = 0;
@@ -129,11 +168,23 @@ export class World {
       return route.fulfill({ status: 200, body: '<!doctype html><title>Signed out</title><p>You are signed out.</p>', headers: { 'content-type': 'text/html' } });
     });
     await context.route(`${GRAPHQL_URL}*`, (route) => answer(route, this.tm.fetch));
-    await context.route('https://app.example.org/**', (route) =>
-      new URL(route.request().url()).pathname.startsWith('/lm/v1')
-        ? answer(route, this.target.fetch)
-        : route.fulfill({ status: 200, body: '<!doctype html><html><head><title>Example App</title></head><body><h1>Example App</h1></body></html>', headers: { 'content-type': 'text/html' } }),
-    );
+    await context.route('https://app.example.org/**', (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (path.startsWith('/lm/v1')) return answer(route, this.target.fetch);
+      if (path.startsWith('/hcp/v1')) return answer(route, this.hcp.fetch);
+      return route.fulfill({ status: 200, body: '<!doctype html><html><head><title>Example App</title></head><body><h1>Example App</h1></body></html>', headers: { 'content-type': 'text/html' } });
+    });
+    // The made-up golf.de: its pages, and its API as the pages' own requests reach it.
+    await context.route('https://www.golf.de/**', (route) => route.fulfill({ status: 200, body: this.golfde.page(new URL(route.request().url()).pathname), headers: { 'content-type': 'text/html' } }));
+    await context.route('https://api-v2.golf.de/**', async (route) => {
+      const req = route.request();
+      const cors = { 'access-control-allow-origin': 'https://www.golf.de', 'access-control-allow-credentials': 'true', 'access-control-allow-headers': `content-type, x-client-id, ${GOLFDE_PAGE_HEADER}`, 'access-control-allow-methods': 'GET, POST, OPTIONS' };
+      if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+      const body = req.postData();
+      const headers = await req.allHeaders();
+      this.golfde.apiSaw.push({ url: req.url(), op: body ? ((JSON.parse(body) as { operationName?: string }).operationName ?? null) : null, page: headers[GOLFDE_PAGE_HEADER] === '1' });
+      return route.fulfill({ status: 200, body: JSON.stringify(this.golfde.answer(req.url(), body)), headers: { 'content-type': 'application/json', ...cors } });
+    });
   }
 
   /**

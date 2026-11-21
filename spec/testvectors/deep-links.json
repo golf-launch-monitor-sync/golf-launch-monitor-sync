@@ -1,6 +1,6 @@
 {
-  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, return?} or {ok: false, error}; action is pair, sync or (1.8.0) test. parse_sync_intent (the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> {ok: true, target, reason} or {ok: false, error}.",
-  "spec_version": "1.9.0",
+  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, sync or (1.8.0) test; kind (1.10.0) lm or hcp, only where the link names it. parse_sync_intent (the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> {ok: true, target, reason} or {ok: false, error}.",
+  "spec_version": "1.10.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {
@@ -502,6 +502,71 @@
       }
     },
     {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=golfde&kind=hcp",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "provider": "golfde",
+        "kind": "hcp"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=lm",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "kind": "lm"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=HCP",
+      "expected": {
+        "ok": false,
+        "error": "invalid:kind"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=egr",
+      "expected": {
+        "ok": false,
+        "error": "invalid:kind"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=",
+      "expected": {
+        "ok": false,
+        "error": "empty:kind"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=hcp&kind=lm",
+      "expected": {
+        "ok": false,
+        "error": "duplicate:kind"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&kind=hcp&return=exampleapp%3A%2F%2Fsynced",
+      "expected": {
+        "ok": true,
+        "action": "sync",
+        "target": "https://app.example.org/lm/v1",
+        "return": "exampleapp://synced"
+      }
+    },
+    {
       "rule": "parse_pair_fragment",
       "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X",
       "expected": {
@@ -554,6 +619,56 @@
         "action": "pair",
         "target": "https://app.example.org/lm/v1",
         "code": "K7M2PQ9X"
+      }
+    },
+    {
+      "rule": "parse_pair_fragment",
+      "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=hcp",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "kind": "hcp"
+      }
+    },
+    {
+      "rule": "parse_pair_fragment",
+      "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=lm",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "kind": "lm"
+      }
+    },
+    {
+      "rule": "parse_pair_fragment",
+      "input": "#kind=hcp&target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=golfde",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "provider": "golfde",
+        "kind": "hcp"
+      }
+    },
+    {
+      "rule": "parse_pair_fragment",
+      "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=other",
+      "expected": {
+        "ok": false,
+        "error": "invalid:kind"
+      }
+    },
+    {
+      "rule": "parse_pair_fragment",
+      "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=hcp&kind=hcp",
+      "expected": {
+        "ok": false,
+        "error": "duplicate:kind"
       }
     },
     {

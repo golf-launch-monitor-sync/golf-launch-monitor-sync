@@ -224,3 +224,4 @@ export class FakeTarget {
     return response(404, { error: { code: 'bad_request' } });
   };
 }
+export * from './hcp.ts';

@@ -2,14 +2,14 @@
 <!-- Copyright (c) 2026 Reginald Stadlbauer -->
 # Privacy
 
-This covers the browser extension, the web app and the companion app of Golf Launch Monitor Sync. The store listings
-link here.
+This covers the browser extension, the web app and the companion app of Golf Stats Sync (formerly Golf Launch Monitor
+Sync). The store listings link here.
 
 **In short: this project runs no server and receives nothing.** The tools run on your device; they move your launch
-monitor data from your own account at the maker of your launch monitor (today Trackman) to an app you connect yourself
-(a *target*). Nobody behind this project sees your data, your sign-in or how you use the tools.
+monitor data from your own account at the maker of your launch monitor (today Trackman), and your handicap record as
+golf.de shows it to you, to an app you connect yourself (a *target*). Nobody behind this project sees your data, your sign-in or how you use the tools.
 
-> Unofficial: not affiliated with, endorsed by or supported by any launch monitor maker.
+> Unofficial: not affiliated with, endorsed by or supported by any launch monitor maker, the DGV or golf.de.
 
 ## What the tools handle, and where it goes
 
@@ -21,6 +21,7 @@ monitor data from your own account at the maker of your launch monitor (today Tr
 | Where your sign-in stands (one of: none, waiting for your yes, signed in, run out, another account) | on your device | to the targets you connected, so their app can show you the next step; to the connected app's own page in this browser if it asks the extension (the extension's bridge) |
 | On iPhone, the companion app's push address (an Expo push token for this app on this phone; since 1.9.0) | on your device | to the targets you connected, so a target that can push to this app may wake it when a sync is due ([spec/wake.md](spec/wake.md)). Such a wake is a silent push with nothing of yours in it (only "ask for the plan"); it passes Expo's push service and Apple's, shows nothing and asks no permission. Off with *Background App Refresh* for the app in iOS's settings, or by disconnecting |
 | A connected app's test scenario, if you enter its test code (test mode, made up by that app, no one's real data; since 1.8.0) | on your device: a file of the companion app's own, IndexedDB of the extension or of the web app's address; until you end the test, its connection ends or the app's end date for it passes | nowhere: the made-up data it plays back goes, marked as test data, to that connected app only ([spec/test-mode.md](spec/test-mode.md)) |
+| Your handicap record as golf.de's pages show it to you (History Sheet, Scoring Record, your own place in a result list, your index) - only once you connected an app for it, and only while you open those pages yourself. The extension reads what golf.de's own page loaded; it asks golf.de nothing. Names (yours, a marker's, other players'), card and member numbers never leave golf.de's page | in the extension's own storage on your device: what was seen (up to 600 results) and a fingerprint of what each app has; which golf.de account the pages showed only until the browser closes | to the app you connected for it (each batch after its plan), and nowhere else; your golf.de account only as a hash (`account_ref`) |
 | The tool's own counts and log (times, kinds of request, statuses - never content) | on your device, the last 14 days | nowhere, unless you export the log yourself |
 
 The target you connect gets your data and an `account_ref`, a hash that tells your accounts apart without naming you.
@@ -38,8 +39,10 @@ GitHub), under their own terms.
 - No analytics, no tracking, no advertising, no crash reporting to anyone.
 - Nothing is sold or shared, and nothing is used for any purpose other than moving your data to the targets you
   connected.
-- The extension reads only the provider's portal and API and the pairing page of the web app; a target's address only
-  once you allowed it, one at a time. On a connected app's own pages it adds a small bridge (only those addresses)
+- The extension reads only the provider's portal and API, the pairing page of the web app and, on golf.de, your *Mein
+  Bereich* and a tournament's result list (only what golf.de's page itself loaded there; it sends golf.de nothing, and
+  shows a small line on those pages only once an app is connected for it); a target's address only once you allowed it,
+  one at a time. On a connected app's own pages it adds a small bridge (only those addresses)
   through which that page can ask it to fetch now - it hands the page nothing of yours but whether you are signed in
   and whether it is fetching.
 

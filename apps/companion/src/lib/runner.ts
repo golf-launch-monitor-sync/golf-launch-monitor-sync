@@ -109,7 +109,7 @@ export class Runner {
 
   constructor(private readonly opts: RunnerOptions) {
     this.now = opts.now ?? Date.now;
-    this.generator = { name: 'Golf Launch Monitor Sync companion', ...(opts.version ? { version: opts.version } : {}) };
+    this.generator = { name: 'Golf Stats Sync companion', ...(opts.version ? { version: opts.version } : {}) };
   }
 
   subscribe(fn: () => void): () => void {
@@ -179,7 +179,7 @@ export class Runner {
   // --- pairing ------------------------------------------------------------------------------
 
   /** A pairing code for an import token; the pairing it replaces is revoked at the target. */
-  pair(link: { target: string; code: string; provider?: string }, name = 'Golf Launch Monitor Sync'): Promise<KeyedPairing> {
+  pair(link: { target: string; code: string; provider?: string }, name = 'Golf Stats Sync'): Promise<KeyedPairing> {
     return this.serial(async () => {
       const provider = link.provider ?? 'trackman';
       if (!this.opts.providers[provider]) throw new TargetError('provider_unknown', 'This app has no such provider.');

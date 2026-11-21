@@ -4,16 +4,18 @@
  * Who may tell the background what. A message carries no proof of its own, so the background goes by
  * where it came from (`sender.url`, which the browser sets): the Trackman key only from the portal,
  * a pairing code only from the web app's pairing page, a bridge request only from a page's top frame
- * (the background then checks its origin is a paired target's: bridge.ts), and the rest only from the
- * extension's own pages. Pure, so it is tested without a browser.
+ * (the background then checks its origin is a paired target's: bridge.ts), what golf.de's page showed only
+ * from the top frame of a page on golf.de, and the rest only from the extension's own pages. Pure, so it is
+ * tested without a browser.
  */
 
 import { PORTAL_ORIGIN } from '@glmsync/provider-trackman/portal';
 import { PAIR_PATH, WEB_APP_ORIGIN } from '@glmsync/browser';
+import { PAGE_ORIGIN as GOLFDE_ORIGIN } from '@glmsync/provider-golfde';
 import { readBridgeRequest } from '@glmsync/spec';
 import type { Message } from './messages.ts';
 
-export type Source = 'portal' | 'pair-page' | 'target-page' | 'extension' | 'other';
+export type Source = 'portal' | 'pair-page' | 'golfde' | 'target-page' | 'extension' | 'other';
 
 export interface SenderLike {
   id?: string | undefined;
@@ -38,6 +40,8 @@ export function sourceOf(sender: SenderLike, extensionId: string, extensionOrigi
   if (u.origin === PORTAL_ORIGIN && sender.tab) return 'portal';
   if (u.origin === WEB_APP_ORIGIN && sender.tab && /^\/golf-launch-monitor-sync\/pair(?:\.html|\/(?:index\.html)?)?$/.test(u.pathname)) return 'pair-page';
   if (`${u.protocol}//${u.host}` === extensionOrigin.replace(/\/$/, '')) return 'extension';
+  // golf.de's page (the relay content script): only its top frame, where the extension's scripts run.
+  if (u.origin === GOLFDE_ORIGIN && sender.tab && sender.frameId === 0) return 'golfde';
   // The bridge's content script, on some site's page: only its top frame, never the project's own site.
   if ((u.protocol === 'https:' || u.protocol === 'http:') && sender.tab && sender.frameId === 0 && u.origin !== WEB_APP_ORIGIN) return 'target-page';
   return 'other';
@@ -64,6 +68,15 @@ const FROM: Record<Message['type'], Source> = {
   'test-fetch': 'extension',
   'test-confirm': 'extension',
   'test-end': 'extension',
+  'golfde-seen': 'golfde',
+  'golfde-line': 'golfde',
+  'golfde-send': 'golfde',
+  'hcp-status': 'extension',
+  'hcp-send': 'extension',
+  'hcp-auto': 'extension',
+  'hcp-unpair': 'extension',
+  'hcp-clear-ended': 'extension',
+  'open-golfde': 'extension',
 };
 
 /** A message of a known kind, with fields of the right type, from where that kind may come; else null. */
@@ -92,6 +105,13 @@ export function accept(raw: unknown, source: Source): Message | null {
       return typeof m.yes === 'boolean' ? { type, yes: m.yes } : null;
     case 'test-end':
       return typeof m.id === 'string' && m.id.length <= 64 ? { type, id: m.id } : null;
+    case 'hcp-unpair':
+      return typeof m.id === 'string' && m.id.length <= 64 ? { type, id: m.id } : null;
+    case 'hcp-auto':
+      return typeof m.auto === 'boolean' ? { type, auto: m.auto } : null;
+    case 'golfde-seen':
+      // The seen itself is read again strictly by the background (readSeen); here only its frame.
+      return typeof m.page === 'string' && /^[0-9a-f]{8,64}$/.test(m.page) && m.seen && typeof m.seen === 'object' ? { type, page: m.page, seen: m.seen } : null;
     case 'bridge': {
       // Read again here, as strictly as on the page: the content script runs where the page can reach.
       const request = readBridgeRequest(m.request);

@@ -55,7 +55,7 @@ export interface ClientOptions {
   storage: Storage;
   vault: Storage;
   kind: ClientKind;
-  /** Shown to a target at pairing, e.g. "Golf Launch Monitor Sync for Chrome". */
+  /** Shown to a target at pairing, e.g. "Golf Stats Sync for Chrome and Edge". */
   name: string;
   version: string;
   fetch?: FetchLike;
@@ -508,11 +508,14 @@ export class BrowserClient {
   // Pairing
   // -------------------------------------------------------------------------
 
-  /** The pairing page's fragment, read strictly (spec/deep-links.md); null when it isn't one. */
-  static readFragment(fragment: string): { target: string; code: string; provider?: string } | null {
+  /**
+   * The pairing page's fragment, read strictly (spec/deep-links.md); null when it isn't one. `kind` (1.10.0): `hcp` for
+   * a handicap target (the extension's `HcpClient` pairs it), left out for launch monitor data.
+   */
+  static readFragment(fragment: string): { target: string; code: string; provider?: string; kind?: 'hcp' } | null {
     const r = parsePairFragment(fragment);
     if (!r.ok || r.action !== 'pair') return null;
-    return r.provider ? { target: r.target, code: r.code, provider: r.provider } : { target: r.target, code: r.code };
+    return { target: r.target, code: r.code, ...(r.provider ? { provider: r.provider } : {}), ...(r.kind === 'hcp' ? { kind: 'hcp' as const } : {}) };
   }
 
   /** POST /pair with the code; pairing the same target again replaces the old pairing (and ends its token). */

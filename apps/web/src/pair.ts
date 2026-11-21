@@ -10,6 +10,9 @@
  * a phone's) that is the only way it offers.
  *
  * The code is taken out of the address as soon as it was used, so it doesn't stay in the history.
+ *
+ * The handicap record (kind=hcp, spec/hcp.md) is read along on golf.de's own pages: only the extension can do that,
+ * so for it this page offers the extension and no way by hand.
  */
 
 import { BrowserClient, canHaveExtension, INSTALL_URL, storeFor } from '@glmsync/browser';
@@ -93,10 +96,11 @@ window.addEventListener('message', (event: MessageEvent) => {
   }
 });
 
-function noExtension(target: { target: string; code: string; provider?: string }, possible: boolean, waiting: boolean): void {
+function noExtension(target: { target: string; code: string; provider?: string; kind?: 'hcp' }, possible: boolean, waiting: boolean): void {
   if (extensionMode) return;
+  const hcp = target.kind === 'hcp';
   if (possible) {
-    line(t('pair.noExtension'));
+    line(hcp ? t('pair.hcpNeedsExtension') : t('pair.noExtension'));
     const store = storeFor(navigator.userAgent);
     install.hidden = false;
     fill(install,
@@ -105,8 +109,13 @@ function noExtension(target: { target: string; code: string; provider?: string }
       store ? null : h('p', { class: 'muted small' }, t('pair.notInStores')),
     );
   } else {
-    line(t('pair.noExtensionHere'));
+    line(hcp ? t('pair.hcpNeedsExtension') : t('pair.noExtensionHere'));
     install.hidden = true;
+  }
+  // golf.de can only be read along by the extension: no connecting this page instead.
+  if (hcp) {
+    without.hidden = true;
+    return;
   }
   const host = new URL(target.target).host;
   const connect = button(

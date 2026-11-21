@@ -1,12 +1,14 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!-- Copyright (c) 2026 Reginald Stadlbauer -->
-# Golf Launch Monitor Sync — browser extension
+# Golf Stats Sync — browser extension
 
 Syncs your launch monitor data from your own Trackman account into an app of your choice, in the
-background, while your browser is open. Manifest V3; Chrome, Edge and Firefox.
+background, while your browser is open — and reads your handicap record along on golf.de while you open it
+([below](#the-handicap-record-on-golfde)). Manifest V3; Chrome, Edge and Firefox.
 
-> **Unofficial.** Not affiliated with, endorsed by or supported by Trackman. It reads your own
-> account with your own sign-in, the way Trackman's web portal does.
+> **Unofficial.** Not affiliated with, endorsed by or supported by Trackman, the DGV or golf.de. It reads
+> your own Trackman account with your own sign-in, the way Trackman's web portal does, and on golf.de only
+> what golf.de's own page loaded in your tab.
 
 ## How a player uses it
 
@@ -59,6 +61,33 @@ and the requests to Trackman ("last hour 3 of 60 · last 24 hours 14 of 300") wi
 - **The app hears where the sign-in stands** (spec 1.5.0, `signin`): with every plan, and - while there is
   no sign-in it can fetch with - with a status (`GET /status`, no lease), at its regular look and when the
   sign-in changes. The five words `none`, `confirm`, `ready`, `expired`, `other`; nothing more.
+
+## The handicap record on golf.de
+
+[spec/hcp.md](../../spec/hcp.md), *A client that only observes*; the module is
+[`@glmsync/provider-golfde`](../../packages/provider-golfde/README.md).
+
+1. In the app, choose to connect Golf Stats Sync for the handicap record. It opens the same pairing page, with
+   `kind=hcp`; the connect page says the app asks for your handicap record from golf.de. *Allow and connect*.
+2. Open your **History Sheet** on golf.de (signed in as always), flip through its pages if you like, open the
+   **Scoring Record**, a tournament's **result list**. A small line at the bottom of the page says what was seen and
+   what is new (*Golf Stats Sync: 20 results seen · 3 new*); half a minute after the last new page it goes to the app,
+   or at once with *Send*. The popup has *Send by itself* to switch that off.
+
+What it does, and doesn't:
+
+- **It sends golf.de nothing.** golf.de's API answers only with golf.de's own client id, which the extension never
+  sends (*no disguise*, *no borrowed client id*). `golfde-main.ts` runs in golf.de's page before its scripts and looks
+  at the answers golf.de's page receives for three GraphQL operations, a result list and the session - nothing else -
+  and posts dgvhcp/1 results made in the page: no names, no card or member numbers ever leave it. `golfde-relay.ts`
+  hands them to the background and draws the line (in a shadow root; only once an app is connected for it).
+- **Nothing by itself.** No timer reads golf.de; what you don't open isn't read. The app reminds you instead when the
+  record is due.
+- **The plan before sending**: every batch after the app's plan (`manual`), only what that app doesn't have from here
+  yet; the pages of a visit go together, so the app keeps one import, not one per page.
+- **Whose record**: the account *Mein Bereich* names (its stable number, sent only as `account_ref`); another account's
+  record drops what was kept of the one before, and goes to no app that has another.
+- **Not read**: a scorecard's holes (golf.de shows them only as a picture).
 
 ## The bridge on the app's page
 

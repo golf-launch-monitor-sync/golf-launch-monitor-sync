@@ -12,10 +12,10 @@ The scheme is open: any app may implement the receiving side. Reference:
 ## Links
 
 ```
-glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&return=<URL to go back to>]
+glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp][&return=<URL to go back to>]
 glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
 glmsync://test?[target=<target base URL>&]code=<test code>
-https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>]
+https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp]
 ```
 
 - **pair** opens the companion app (on a phone) with what it needs to call `POST /pair`. On a
@@ -27,6 +27,10 @@ https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<i
   has just named. Not before: until the pairing stands, nothing says the address is the target's own.
   The fragment of the pairing page takes no `return` (the page stays where it is); a client older than
   1.2.0 ignores it, so a target says where to go back to in its own words as well.
+- **kind** (since 1.10.0, pair and the pairing page): which target API the base URL speaks - `lm` (the launch
+  monitor one, [target-api.md](target-api.md); also what a link without `kind` means) or `hcp` (the handicap
+  one, [hcp.md](hcp.md)). A client older than 1.10.0 ignores the key and pairs for launch monitor data, which a
+  handicap target refuses (`provider_unknown`), so nothing half-paired remains.
 - **sync** asks the companion app to fetch now (it still asks the target's plan first) and then to
   jump back to `return`. `target` picks the pairing when there are several.
 - **test** (since 1.8.0) hands a client the test code of a target's test account, for a target it is
@@ -45,6 +49,8 @@ A link comes from outside and is read strictly; anything unexpected makes it inv
   (development); no user info, no query, no fragment;
 - `code` (pair, test): 6–64 of `0-9 A-Z a-z -`;
 - `provider`: a lower-case id (`^[a-z][a-z0-9_-]{1,39}$`);
+- `kind`: `lm` or `hcp`, nothing else (`HCP` or a kind of a later version is invalid: pairing with an API the
+  client doesn't speak would only be refused);
 - `return` (sync, and pair since 1.2.0): an absolute URL — `https://host/…`, `http://` to this machine, or an app's own scheme
   written `scheme://…`; never `javascript:`, `data:`, `file:`, `vbscript:`, `about:`, `blob:` or
   `glmsync:`. At most 2048 characters for every link.

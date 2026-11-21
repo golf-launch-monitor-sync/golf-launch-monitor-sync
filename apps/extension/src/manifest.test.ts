@@ -21,6 +21,15 @@ describe('the manifest', () => {
       expect(m.content_security_policy.extension_pages).not.toMatch(/unsafe-eval|unsafe-inline|wasm/);
     });
 
+    it(`${browser}: reads along on golf.de only on the player's own pages and a result list, never golf.de's API`, () => {
+      const golf = (m.content_scripts as { matches: string[]; js: string[]; world?: string }[]).filter((c) => c.matches.some((x) => x.includes('golf.de')));
+      expect(golf.map((c) => c.js[0])).toEqual(['golfde-main.js', 'golfde-relay.js']);
+      for (const c of golf) {
+        expect(c.matches).toEqual(['https://www.golf.de/mein-bereich.html*', 'https://www.golf.de/mein-bereich/*', 'https://www.golf.de/sport/turnierkalender/clubturniere.html*']);
+      }
+      expect(JSON.stringify(m)).not.toMatch(/api-v2\.golf\.de|membership-card-api|login\.golf\.de/);
+    });
+
     it(`${browser}: has its version and names from the locales`, () => {
       expect(m.version).toBe(VERSION);
       expect(m.name).toBe('__MSG_name__');

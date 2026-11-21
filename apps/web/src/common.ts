@@ -14,7 +14,7 @@ export const client = new BrowserClient({
   storage,
   vault: storage,
   kind: 'web',
-  name: 'Golf Launch Monitor Sync web app',
+  name: 'Golf Stats Sync web app',
   version: __VERSION__,
   // A test scenario (test mode) can be far larger than localStorage takes: IndexedDB of this address.
   blobs: new IdbBlobs(),

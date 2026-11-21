@@ -315,11 +315,22 @@ def deep_link_vectors() -> dict[str, Any]:
              "glmsync://test?target=http%3A%2F%2Fapp.example.org&code=T7K2M9QX", "glmsync://test?code=T7K2M9QX#frag",
              "glmsync://test?code=T7K2M9QX&return=exampleapp%3A%2F%2Fback", "glmsync://test?code=T7K2M9QX&token=x",
              "glmsync://test?code=T7K2M9QX%ZZ", "glmsync://test?code=T7K2M9QX\n", "GLMSYNC://test?code=T7K2M9QX",
-             "glmsync://tests?code=T7K2M9QX"]
+             "glmsync://tests?code=T7K2M9QX",
+             # 1.10.0: which target API the base URL speaks
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=golfde&kind=hcp",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&kind=lm",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&kind=HCP",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&kind=egr",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&kind=",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&kind=hcp&kind=lm",
+             f"glmsync://sync?target={t}&kind=hcp&return=exampleapp%3A%2F%2Fsynced"]
     cases: list[dict[str, Any]] = [{"rule": "parse_link", "input": u, "expected": deeplinks.parse_link(u)} for u in links]
     frags = [f"#target={t}&code=K7M2PQ9X", f"target={t}&code=K7M2PQ9X&provider=demo", "#code=K7M2PQ9X", "#",
              f"#target={t}&code=K7M2PQ9X&target={t}",
-             f"#target={t}&code=K7M2PQ9X&return=exampleapp%3A%2F%2Fprofile"]
+             f"#target={t}&code=K7M2PQ9X&return=exampleapp%3A%2F%2Fprofile",
+             f"#target={t}&code=K7M2PQ9X&kind=hcp", f"#target={t}&code=K7M2PQ9X&kind=lm",
+             f"#kind=hcp&target={t}&code=K7M2PQ9X&provider=golfde", f"#target={t}&code=K7M2PQ9X&kind=other",
+             f"#target={t}&code=K7M2PQ9X&kind=hcp&kind=hcp"]
     cases += [{"rule": "parse_pair_fragment", "input": f, "expected": deeplinks.parse_pair_fragment(f)} for f in frags]
     prefixes = ["https://app.example.org/", "exampleapp://", "https://app.example.net"]
     for u in ["https://app.example.org/profile", "https://app.example.org.evil.test/", "exampleapp://synced",
@@ -337,8 +348,8 @@ def deep_link_vectors() -> dict[str, Any]:
     cases += [{"rule": "parse_sync_intent", "input": {"data": d, "reason": r},
                "expected": deeplinks.parse_sync_intent(d, r)} for d, r in intents]
     return doc("Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> "
-               "{ok: true, action, target?, code?, provider?, return?} or {ok: false, error}; action is pair, sync "
-               "or (1.8.0) test. parse_sync_intent "
+               "{ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, "
+               "sync or (1.8.0) test; kind (1.10.0) lm or hcp, only where the link names it. parse_sync_intent "
                "(the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> "
                "{ok: true, target, reason} or {ok: false, error}.", cases)
 
@@ -616,6 +627,31 @@ def dgvhcp_examples() -> dict[str, Any]:
     def on_first(**kw: Any) -> Any:
         return lambda b: b["results"][0].update(kw)
 
+    # 1.10.0: a client that only observes the provider's page sends what each page brought, one batch a page; the
+    # same result comes again and again (History Sheet, Scoring Record, the result list's own line) and is one result.
+    seen = {"played_on": "2026-10-03", "ref": "c0ffee00-0000-4000-8000-000000000001", "name": "Herbstpreis",
+            "club_name": "Golfclub Beispiel", "club_no": "9999", "course_no": "1", "country": "49", "round_no": 1,
+            "holes_read": 18, "kind": "tournament", "hcp_relevant": True, "format": "single", "art": "S",
+            "tee": "gelb", "par": 72, "cr": 71.4, "slope": 131, "hcp_index": 8.4, "ph": 10, "gbe": 85}
+
+    def page(sheet: str, result: dict[str, Any], plan: str) -> dict[str, Any]:
+        return {"format": "dgvhcp/1", "provider": "golfde", "account_ref": ref, "generated_at": "2026-11-21T19:30:00Z",
+                "generator": {"name": "Golf Stats Sync for Chrome and Edge", "version": "0.9.0"},
+                "sync": {"plan_id": plan, "reason": "manual"}, "sheet": sheet, "results": [result]}
+
+    observed = [
+        {"name": "page_history", "why": "1.10.0: one page of the History Sheet as the player opened it (a batch per "
+                                       "page; the first result of a sequence of three that are one result).",
+         "valid": True, "batch": {**page("history", seen, "hp_a1"), "index": {"value": 8.1, "as_of": "2026-11-21",
+                                                                              "low": 7.4}}},
+        {"name": "page_scoring", "why": "1.10.0: the same result from the Scoring Record, now with its Score "
+                                       "Differential.",
+         "valid": True, "batch": page("scoring", {**seen, "sd": 11.2, "pcc": 0, "counting": True}, "hp_a2")},
+        {"name": "page_own_place", "why": "1.10.0: the same result again with the player's own place from the "
+                                         "result list (the whole result, so the target finds it).",
+         "valid": True, "batch": page("mixed", {**seen, "sd": 11.2, "pcc": 0, "counting": True, "place": 7,
+                                                 "field": 42}, "hp_a3")}]
+
     cases = [{"name": "minimal", "why": "Nothing read yet (an empty record).", "valid": True,
               "batch": {"format": "dgvhcp/1", "provider": "golfde", "account_ref": ref,
                         "generated_at": "2026-11-21T12:00:00Z", "sheet": "history", "results": []}},
@@ -623,6 +659,7 @@ def dgvhcp_examples() -> dict[str, Any]:
               "valid": True, "batch": good},
              {"name": "everything", "why": "Every optional part, a private round without a name, a no-show, a result "
                                            "before the WHS (points), an adjustment.", "valid": True, "batch": full},
+             *observed,
              bad("wrong_format", "Another format version.", lambda b: b.update(format="dgvhcp/2")),
              bad("no_account_ref", "account_ref is required.", lambda b: b.pop("account_ref")),
              bad("no_sheet", "sheet is required.", lambda b: b.pop("sheet")),

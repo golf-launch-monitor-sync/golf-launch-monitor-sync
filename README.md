@@ -1,14 +1,21 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!-- Copyright (c) 2026 Reginald Stadlbauer -->
-# Golf Launch Monitor Sync
+# Golf Stats Sync
 
-Syncs the data of your launch monitor — practice sessions, every shot, simulator rounds — from
-**your own** cloud account into apps of your choice, in an open format. Open source (MIT).
+Syncs your golf data from **your own** accounts into apps of your choice, in open formats. Open source
+(MIT). Formerly *Golf Launch Monitor Sync*: the repository, its packages and the code keep that name.
 
-> **Unofficial.** This project is not affiliated with, endorsed by or supported by Trackman or any
-> other launch monitor maker. It uses your own sign-in, for your own account, the way the maker's web
-> portal does. Trademarks belong to their owners and are used here only to say which accounts the
-> project can read.
+- **Launch monitor data** — practice sessions, every shot, simulator rounds — from your launch
+  monitor's cloud account (Trackman first), in [olmd/1](spec/olmd.md).
+- **Your handicap record** — the History Sheet, the Scoring Record and your own place in a result
+  list — from golf.de, the German Golf Association's site, in [dgvhcp/1](spec/hcp.md). The extension
+  only reads along while **you** open these pages: it sends golf.de nothing of its own.
+
+> **Unofficial.** This project is not affiliated with, endorsed by or supported by Trackman, any
+> other launch monitor maker, the Deutscher Golf Verband (DGV) or golf.de. It uses your own sign-in,
+> for your own account, the way the maker's web portal does - or, for golf.de, only reads what golf.de's
+> own page loaded in your browser. Trademarks belong to their owners and are used here only to say
+> which accounts the project can read.
 
 **Status:** the spec (format, target API, planning rules, load guard, deep links, test vectors), the
 TypeScript core with the load guard, the Trackman provider, a demo provider, the
@@ -18,14 +25,15 @@ for the phone are written; none of them is in a store yet.
 ## How it works
 
 ```
-your launch monitor's cloud account  ──(your sign-in, on your device)──▶  Golf Launch Monitor Sync
-                                                                              │  olmd/1
-                                                                              ▼
-                                                                  an app of your choice, or a file
+your launch monitor's cloud account  ──(your sign-in, on your device)──▶  Golf Stats Sync
+golf.de, as you open it in your browser  ──(what the page loaded)──────▶       │  olmd/1, dgvhcp/1
+                                                                               ▼
+                                                                   an app of your choice, or a file
 ```
 
 - **Providers** read a launch monitor maker's cloud account. The first is Trackman; another maker
-  with a cloud account plugs in the same way.
+  with a cloud account plugs in the same way. **golf.de** is read differently: only by observing the
+  pages you open ([spec/hcp.md](spec/hcp.md)).
 - **Clients** run with you: a browser extension (Chrome, Edge, Firefox), a web app for doing it by
   hand, and a small companion app for the phone. Your sign-in stays in them; it is never sent to a
   target or to any server of this project — there is none.
@@ -55,7 +63,9 @@ And, as a rule for every line of code here:
 - **no borrowed credentials**: never another application's OAuth client id;
 - **only your own account**, with your own sign-in;
 - **nothing on a server**: no sign-in, token or password of yours is ever sent to or kept on a
-  server, ours or anyone's.
+  server, ours or anyone's;
+- **golf.de: reads only what golf.de's own page loaded in your tab; sends no request of its own.**
+  Nothing happens unless you open the page; names of other players never leave it.
 
 ## Repository
 
@@ -65,9 +75,10 @@ And, as a rule for every line of code here:
 | `packages/spec` | The spec for TypeScript: olmd types and schema check, limits, deep links, `account_ref`. |
 | [`packages/core`](packages/core/README.md) | One sync from a target's plan to an imported batch: plan and push client, the file target and its cursor, the load guard, errors. |
 | [`packages/provider-trackman`](packages/provider-trackman/README.md) | Reading your own Trackman account, into olmd. |
+| [`packages/provider-golfde`](packages/provider-golfde/README.md) | Reading along on golf.de's pages (your handicap record), into dgvhcp/1: the page script and its mapping. |
 | [`packages/provider-demo`](packages/provider-demo/README.md) | A made-up player's sessions and rounds, for tests, trying it out and app reviews. |
 | [`packages/browser`](packages/browser/README.md) | What the extension and the web app share: the key, pairings, "Is this you?", syncs, texts (English, German). |
-| [`apps/extension`](apps/extension/README.md) | The browser extension (Manifest V3; Chrome, Edge, Firefox): syncs in the background when a target's plan says so. |
+| [`apps/extension`](apps/extension/README.md) | The browser extension (Manifest V3; Chrome, Edge, Firefox): syncs in the background when a target's plan says so; reads along on golf.de. |
 | [`apps/web`](apps/web/README.md) | The web app on GitHub Pages: the pairing page, and syncing by hand without the extension. |
 | [`apps/companion`](apps/companion/README.md) | The companion app for the phone (Expo, iOS and Android): the provider's sign-in window, pairing by deep link, syncs when a target's plan says so. |
 

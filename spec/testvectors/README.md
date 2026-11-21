@@ -30,6 +30,6 @@ matches the version it says.
 | `wake.json` | the wake ([wake.md](../wake.md)): `read_wake` (the body of `PUT /wake`), `should_wake` (the target's rule), `is_wake` (a push's data) | exact |
 | `olmd-examples.json` | batches that must (`valid: true`) or must not validate against the schema | — |
 | `hcp-plan.json` | the handicap target's rules: `is_due`, `busy`, `cards_to_read` ([hcp.md](../hcp.md), [reference/hcp.py](../reference/hcp.py)) | exact; `most: null` is the rules' `max_cards` |
-| `dgvhcp-examples.json` | dgvhcp/1 batches that must (`valid: true`) or must not validate against [hcp/dgvhcp-1.schema.json](../hcp/dgvhcp-1.schema.json) | — |
+| `dgvhcp-examples.json` | dgvhcp/1 batches that must (`valid: true`) or must not validate against [hcp/dgvhcp-1.schema.json](../hcp/dgvhcp-1.schema.json); since 1.10.0 also `page_history`, `page_scoring`, `page_own_place`: one result sent page by page by a client that only observes, which a target keeps as one | — |
 
 All data here is **synthetic**: made up for the vectors, never recorded from anyone's account.

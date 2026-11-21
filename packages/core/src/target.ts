@@ -65,7 +65,8 @@ const CODES: ReadonlySet<string> = new Set([
   'rate_limited', 'provider_unknown', 'test_data', 'test_unavailable', 'not_test_account', 'code_expired',
 ]);
 
-function errorOf(x: Exchanged): TargetError {
+/** A target's answer that is no success, as a `TargetError` (shared with the handicap target API, hcp.ts). */
+export function errorOf(x: Exchanged): TargetError {
   const body = parseJson(x.body) as { error?: { code?: unknown; message?: unknown } } | undefined;
   const said = body?.error?.code;
   const message = typeof body?.error?.message === 'string' ? body.error.message.slice(0, 500) : `HTTP ${x.status}`;
@@ -87,7 +88,8 @@ function errorOf(x: Exchanged): TargetError {
   return new TargetError(code, message, x.status, x.retryAfterS);
 }
 
-async function call(
+/** One request to a target: what goes wrong on the way is a `TargetError` (shared with hcp.ts). */
+export async function call(
   fetchImpl: FetchLike,
   url: string,
   init: { method: string; headers: Record<string, string>; body?: string },
@@ -103,7 +105,7 @@ async function call(
   }
 }
 
-const trimBase = (base: string) => base.replace(/\/+$/, '');
+export const trimBase = (base: string) => base.replace(/\/+$/, '');
 
 export interface PairOptions {
   /** The target's base URL from the deep link or the pairing page. */
@@ -123,7 +125,7 @@ export async function pair(opts: PairOptions): Promise<Pairing> {
   if (!/^[0-9A-Za-z-]{6,64}$/.test(opts.code)) throw new TargetError('code_invalid', 'Not a pairing code.');
   if (!PROVIDER_ID.test(opts.provider)) throw new TargetError('bad_request', 'Not a provider id.');
   if (!CLIENT_KINDS.includes(opts.client.kind)) throw new TargetError('bad_request', 'Not a client kind.');
-  const client: Record<string, string> = { kind: opts.client.kind, name: opts.client.name.slice(0, 100) || 'Golf Launch Monitor Sync' };
+  const client: Record<string, string> = { kind: opts.client.kind, name: opts.client.name.slice(0, 100) || 'Golf Stats Sync' };
   if (opts.client.version) client.version = opts.client.version.slice(0, 50);
   const now = opts.now ?? Date.now;
   const x = await call(

@@ -5,6 +5,20 @@
 What the browser extension ([`apps/extension`](../../apps/extension)) and the web app
 ([`apps/web`](../../apps/web)) share. Built on [`@glmsync/core`](../core) and the Trackman provider.
 
+## `HcpClient`
+
+The handicap record read along on golf.de (spec/hcp.md, *A client that only observes*; the extension holds one). Three
+`Storage`s: the **vault** (the pairings' import tokens), **storage** (what each target last answered, the results seen -
+of one golf.de account - and a fingerprint of what each target has from here) and the **session** (which account the
+pages named; gone when the browser closes).
+
+| Method | What it does |
+| --- | --- |
+| `offerPairing({target, code})` | `POST /pair` of a handicap target (`kind=hcp`), for `golfde`. |
+| `see(page, seen)` | What golf.de's page showed (`@glmsync/provider-golfde`'s `Seen`). Results go to the account their page named, else to the one the session's pages last named (unless golf.de said since that nobody is signed in), else they wait for their page to name it. Another account's record drops what was kept of the one before. |
+| `send()` | Per target: nothing new, nothing asked; else its plan (`manual`), then what it doesn't have yet, cut to its limits, the index with the first batch; a notice (`signed_out`, `changed_page`) once. A revoked token or an ended connection forgets the pairing and says so. |
+| `view()` | What the popup and the line on golf.de show (`lineOf`, `hcpLastText` in `hcpView.ts`). |
+
 ## `BrowserClient`
 
 One object per client that keeps everything in two `Storage`s: the **vault** (import tokens and the

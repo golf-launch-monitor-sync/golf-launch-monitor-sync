@@ -40,6 +40,9 @@ format, the target API, the planning rules, the load guard and the deep links.
   without one.
 - **A client fetches only when a target's plan says so** (`GET /plan` first, every time), and never
   past the guard.
+- **golf.de: reads only what golf.de's own page loaded in the player's tab; sends no request of its
+  own** ([spec/hcp.md](spec/hcp.md), *A client that only observes*). Its API wants golf.de's own client
+  id: never sent. No timer, no paging by itself; names and card numbers never leave the page script.
 - The README's **"unofficial, not affiliated with or endorsed by …"** stays, and a provider's name is
   never part of the project's name or logo.
 
@@ -60,7 +63,8 @@ spec/                 format (olmd/1), target API (OpenAPI), planning rules, gua
                       test vectors, and the Python reference that writes them
 packages/spec         the spec for TypeScript (types, schema check, limits, deep links, account_ref)
 packages/core         one sync: plan and push client, file target and cursor, the guard, errors
-packages/provider-*   trackman, demo (each with a fake for tests: core/testing, provider-trackman/testing)
+packages/provider-*   trackman, demo, golfde (each with a fake for tests: core/testing, provider-trackman/testing,
+                      provider-golfde/testing)
 packages/browser      what the extension and the web app share (BrowserClient, texts en/de, the panel)
 apps/extension        browser extension, Manifest V3 (Chrome/Edge and Firefox builds)
 apps/web              static web app (GitHub Pages): pairing page, syncing by hand

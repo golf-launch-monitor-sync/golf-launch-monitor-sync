@@ -10,7 +10,9 @@ it in their own account; a client reads it there with the player's own sign-in, 
 clients do, and hands it to a target the player paired.
 
 Everything in [README.md](README.md) *Roles* holds: the sign-in stays in the client, a client reads
-only when the target's plan says so, and never past its load guard.
+only when the target's plan says so, and never past its load guard. Since 1.10.0 a client may also
+**only observe** the provider's own page ([below](#a-client-that-only-observes-the-providers-page)): it
+then asks the provider nothing at all, and the plan comes before sending instead of before reading.
 
 | | Machine-readable |
 | --- | --- |
@@ -75,9 +77,10 @@ a handicap import token can't call `/lm/v1`, and a launch monitor token can't ca
 
 The target app shows a code and the client's pairing page with the code in the fragment, which no
 server sees: `…/pair#target=<base URL, percent-encoded>&code=<code>&kind=hcp`. `kind=hcp` says which
-target API the base URL speaks; without it a client takes it for the launch monitor one. A client
-that doesn't know `kind=hcp` yet pairs as for launch monitor data, and a handicap target refuses that
-pairing (`provider_unknown`), so nothing half-paired remains.
+target API the base URL speaks; without it a client takes it for the launch monitor one (the key is read
+as [deep-links.md](deep-links.md) says since 1.10.0). A client that doesn't know `kind=hcp` yet pairs as
+for launch monitor data, and a handicap target refuses that pairing (`provider_unknown`), so nothing
+half-paired remains.
 
 ### When a client reads
 
@@ -103,3 +106,37 @@ come with the next read (`notice: partial`).
 
 Errors are `{"error": {"code", "message"}}` with the codes of the launch monitor API; `429` carries
 `Retry-After`.
+
+## A client that only observes the provider's page
+
+Since 1.10.0. Some providers answer their own web pages only with credentials of their own web app (a
+client id built into the page): a client sending that would pose as the provider's app, which the
+project's rules forbid (*no disguise*, *no borrowed client id*). Such a provider is read **only by
+observing**: the player opens the provider's pages in their own browser, signed in as always, and the
+client reads the answers the page itself received - in the player's tab or the companion app's window.
+
+- **No request of its own.** The client never sends anything to the provider: not a page, not a query,
+  not the next page of a list. What the player didn't open, it doesn't read. With nothing asked of
+  the provider, there is nothing for a load guard to hold back.
+- **Only the answers it knows**, only what it maps: the page script looks at the few answers named in
+  the provider module (the record, the account's own details, a result list) and turns them into
+  dgvhcp/1 **inside the page**. Names, card and member numbers and everything not mapped never leave the
+  page's own context; of a result list only the player's own line is kept (by the provider's id of the
+  result, which the record named).
+- **Nothing by itself.** No timer, no background reading. The target can't make it read: when the
+  record is due, the target app reminds the player instead (with a link to the provider's page).
+- **The plan before sending, not before reading.** Every batch still goes through `GET /plan`, with the
+  reason `manual` (the player opened the page) - for the lease, `disconnected`, `account_ref` - and is
+  sent only when the plan says `due`. The client may send each page as it is seen, or keep what it saw
+  until the player says send.
+- **Page by page.** A batch carries what one page brought (`sheet`: `history` for a page of the History
+  Sheet, `scoring` for the Scoring Record, `mixed` for a result sent again with more). The same result
+  arrives several times - from each list it is on, and again with the player's own place - always whole
+  (its day, holes, rating, score), so the target finds it; it is one result (*Importing*, idempotent).
+  The vectors show such a sequence (`page_history`, `page_scoring`, `page_own_place` in
+  `dgvhcp-examples.json`).
+- **`cards_to_read` doesn't apply**: the client reads no scorecard on its own. Where a provider shows the
+  holes of a scorecard only as a picture, an observing client leaves `holes` out.
+- **Notices**: `signed_out` when the page's own answer says the player isn't signed in (once, not on every
+  page), `changed_page` when an answer it looks at no longer has the shape it knows (it then reads none of
+  it). `partial` and `guard_limit` don't arise.

@@ -15,7 +15,7 @@ Everything another implementation needs, in one place, independent of this proje
 | **Test mode**: a target's test scenarios, played back to the real provider code (since 1.8.0) | [test-mode.md](test-mode.md) | [api/target-api.yaml](api/target-api.yaml) (`/test-scenario`) |
 | The extension's **bridge** on a target's page (*fetch now*, the sign-in) | [page-bridge.md](page-bridge.md) | — |
 | The **wake**: a silent push from the target when a plan is due (since 1.9.0) | [wake.md](wake.md) | [api/target-api.yaml](api/target-api.yaml) (`/wake`) |
-| The player's **handicap record** (dgvhcp/1) and its target API (since 1.6.0) | [hcp.md](hcp.md) | [hcp/dgvhcp-1.schema.json](hcp/dgvhcp-1.schema.json), [api/hcp-api.yaml](api/hcp-api.yaml), [hcp/rules.json](hcp/rules.json) |
+| The player's **handicap record** (dgvhcp/1) and its target API (since 1.6.0; clients that only observe a provider's page since 1.10.0) | [hcp.md](hcp.md) | [hcp/dgvhcp-1.schema.json](hcp/dgvhcp-1.schema.json), [api/hcp-api.yaml](api/hcp-api.yaml), [hcp/rules.json](hcp/rules.json) |
 | **Test vectors** for all of the above | [testvectors/README.md](testvectors/README.md) | [testvectors/](testvectors/) |
 | The **reference** that writes the vectors | [reference/README.md](reference/README.md) | [reference/](reference/) |
 
@@ -25,7 +25,8 @@ Everything another implementation needs, in one place, independent of this proje
   first). A provider module knows how to read it and turns it into olmd.
 - A **client** runs with the player — the browser extension, the web app, the companion app — holds
   the player's own provider sign-in, and fetches. It never fetches without a plan and never past
-  the guard.
+  the guard. A client that **only observes** a provider's page (since 1.10.0, [hcp.md](hcp.md)) holds no
+  sign-in and fetches nothing: it reads what the provider's own page loaded in the player's browser.
 - A **target** is an app that receives the data (or a file on disk). It plans when a client fetches
   and stores what arrives. Nothing here is specific to one target.
 

@@ -1,0 +1,20 @@
+{
+  "name": "@glmsync/provider-golfde",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Reads along on golf.de's own pages (the player's handicap record) and turns what the page loaded into dgvhcp/1. Sends golf.de nothing of its own.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./page": "./src/page.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@glmsync/core": "workspace:*",
+    "@glmsync/spec": "workspace:*"
+  }
+}

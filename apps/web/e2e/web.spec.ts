@@ -6,7 +6,7 @@
  */
 
 import { expect, test as base } from '@playwright/test';
-import { CODE, pairUrl, PORTAL, WEB, World } from '../../../tools/e2e/world.ts';
+import { CODE, HCP_CODE, HCP_TARGET, pairUrl, PORTAL, WEB, World } from '../../../tools/e2e/world.ts';
 
 const test = base.extend<{ world: World }>({
   // Every test runs in the made-up world: nothing may reach a network.
@@ -100,6 +100,14 @@ test.describe('in Safari', () => {
     await expect(page.getByTestId('install')).toHaveCount(0);
     await expect(page.getByTestId('use-web')).toBeVisible();
   });
+});
+
+test('the handicap record (kind=hcp) needs the extension: no way by hand', async ({ page, world }) => {
+  await page.goto(`${pairUrl(HCP_TARGET, HCP_CODE)}&kind=hcp`);
+  await expect(page.getByTestId('pair-status')).toHaveText(/needs the browser extension/, { timeout: 5000 });
+  await expect(page.getByTestId('install')).toBeVisible();
+  await expect(page.getByTestId('use-web')).toHaveCount(0);
+  expect(world.hcp.received).toHaveLength(0);
 });
 
 test('says so when the link is no pairing link', async ({ page }) => {

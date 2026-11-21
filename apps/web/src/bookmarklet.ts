@@ -22,7 +22,7 @@ const TEXT = {
     copy: 'Copy',
     copied: 'copied',
     copyByHand: 'please copy with Ctrl+C / Cmd+C',
-    then: 'Then paste it into Golf Launch Monitor Sync.',
+    then: 'Then paste it into Golf Stats Sync.',
     close: 'close',
     waiting: 'Waiting for Trackman',
     waitingHint: 'The key isn’t stored here; it comes with the portal’s next call. Click Activities in the portal.',
@@ -36,7 +36,7 @@ const TEXT = {
     copy: 'Kopieren',
     copied: 'kopiert',
     copyByHand: 'bitte mit Strg+C / Cmd+C kopieren',
-    then: 'Dann in Golf Launch Monitor Sync einfügen.',
+    then: 'Dann in Golf Stats Sync einfügen.',
     close: 'schließen',
     waiting: 'Warte auf Trackman',
     waitingHint: 'Der Schlüssel liegt hier nicht im Speicher, er kommt mit dem nächsten Abruf des Portals. Klick im Portal auf Activities.',
@@ -75,7 +75,7 @@ const TEXT = {
   const say = (title: string, hint: string) => box.replaceChildren(el('b', title), el('div', hint, 'margin-top:6px;opacity:.9'), closer());
 
   if (location.hostname !== 'portal.trackmangolf.com') {
-    say('Golf Launch Monitor Sync', tx.wrongPage);
+    say('Golf Stats Sync', tx.wrongPage);
     return;
   }
 

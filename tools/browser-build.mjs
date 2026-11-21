@@ -53,7 +53,7 @@ export async function bundle({ entries, outdir, define = {}, format = 'iife' }) 
     minify: false,
     sourcemap: false,
     legalComments: 'inline',
-    banner: { js: '// SPDX-License-Identifier: MIT\n// Copyright (c) 2026 Reginald Stadlbauer\n// Golf Launch Monitor Sync - built from https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync' },
+    banner: { js: '// SPDX-License-Identifier: MIT\n// Copyright (c) 2026 Reginald Stadlbauer\n// Golf Stats Sync (Golf Launch Monitor Sync) - built from https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync' },
     charset: 'utf8',
     define,
     plugins: [standaloneCheck()],

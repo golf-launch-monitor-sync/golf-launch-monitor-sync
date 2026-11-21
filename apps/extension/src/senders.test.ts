@@ -27,6 +27,20 @@ describe('who sent a message', () => {
     expect(sourceOf({ id: ID, url: 'https://app.example.org/', frameId: 0 }, ID, ORIGIN)).toBe('other'); // no tab
   });
 
+  it('knows golf.de’s pages (the top frame only) and what may come from there', () => {
+    expect(from('https://www.golf.de/mein-bereich/handicap-history-sheet.html', { frameId: 0 })).toBe('golfde');
+    expect(from('https://www.golf.de/mein-bereich/handicap-history-sheet.html', { frameId: 2 })).toBe('other');
+    expect(from('https://golf.de/mein-bereich/', { frameId: 0 })).toBe('target-page'); // another origin: only a paired target's bridge
+    expect(accept({ type: 'golfde-seen', page: 'a1b2c3d4e5', seen: { kind: 'member' } }, 'golfde')).toEqual({ type: 'golfde-seen', page: 'a1b2c3d4e5', seen: { kind: 'member' } });
+    expect(accept({ type: 'golfde-seen', page: 'a1b2c3d4e5', seen: { kind: 'member' } }, 'target-page')).toBeNull();
+    expect(accept({ type: 'golfde-seen', page: 'not hex!', seen: {} }, 'golfde')).toBeNull();
+    expect(accept({ type: 'golfde-seen', page: 'a1b2c3d4e5', seen: 'x' }, 'golfde')).toBeNull();
+    expect(accept({ type: 'golfde-send' }, 'golfde')).toEqual({ type: 'golfde-send' });
+    expect(accept({ type: 'hcp-unpair', id: 'abc' }, 'golfde')).toBeNull();
+    expect(accept({ type: 'hcp-unpair', id: 'abc' }, 'extension')).toEqual({ type: 'hcp-unpair', id: 'abc' });
+    expect(accept({ type: 'hcp-auto', auto: 'yes' }, 'extension')).toBeNull();
+  });
+
   it('trusts nothing else', () => {
     expect(from('https://portal.trackmangolf.com.evil.example/')).toBe('other');
     expect(from('http://portal.trackmangolf.com/')).toBe('other');

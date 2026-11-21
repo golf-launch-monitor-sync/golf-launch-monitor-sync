@@ -2,9 +2,9 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 /** What the popup and the connect window share: talking to the background, and the status panel. */
 
-import { pickLang, translator, type ClientStatus, type Lang, type T } from '@glmsync/browser';
+import { formatDate, hcpLastText, pickLang, translator, type ClientStatus, type HcpView, type Lang, type T } from '@glmsync/browser';
 import { download, logName } from '@glmsync/browser/download';
-import { renderStatus, testEntry, type Actions } from '@glmsync/browser/render';
+import { button, fill, h, renderStatus, testEntry, type Actions } from '@glmsync/browser/render';
 import type { FromPage, Reply } from './messages.ts';
 
 export const lang: Lang = pickLang(navigator.languages);
@@ -123,6 +123,83 @@ export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; on
       void send({ type: 'test-end', id }).then(refresh);
     },
   };
+  void refresh();
+  const timer = setInterval(() => void refresh(), 3000);
+  return { refresh, stop: () => clearInterval(timer) };
+}
+
+/**
+ * The handicap record's part of the popup (spec/hcp.md): only once an app is paired for it. Its apps (each to
+ * disconnect, asked first), what was seen on golf.de and what is new, *Send now*, whether it sends by itself, and the
+ * way to golf.de's History Sheet. Text goes in as text: names come from targets.
+ */
+export function hcpPanel(root: HTMLElement, opts: { onGolfde?: () => void } = {}) {
+  let asking: string | null = null;
+  let last: HcpView | null = null;
+
+  const draw = (v: HcpView) => {
+    last = v;
+    if (!v.pairings.length && !v.ended.length) {
+      fill(root);
+      return;
+    }
+    const now = Date.now();
+    const pairings = v.pairings.map((p) =>
+      h('div', { class: 'pairing', 'data-test': 'hcp-pairing' },
+        h('p', {}, h('strong', {}, t('hcp.connected', { name: p.name })), ` · ${p.host}`),
+        p.other_account ? h('p', { class: 'note warn' }, t('hcp.other', { name: p.name })) : null,
+        (() => {
+          const line = hcpLastText(p, t, lang, now);
+          return line ? h('p', { class: 'muted small' }, line) : null;
+        })(),
+        asking === p.id
+          ? h('div', { class: 'note' }, h('p', {}, t('hcp.disconnectAsk', { name: p.name })),
+              h('div', { class: 'row' },
+                button(t('hcp.disconnect'), () => {
+                  asking = null;
+                  void send({ type: 'hcp-unpair', id: p.id }).then(apply);
+                }, { class: 'primary', 'data-test': 'hcp-disconnect-yes' }),
+                button(t('connect.cancel'), () => {
+                  asking = null;
+                  if (last) draw(last);
+                })))
+          : h('div', { class: 'row' }, button(t('hcp.disconnect'), () => {
+              asking = p.id;
+              if (last) draw(last);
+            }, { 'data-test': 'hcp-disconnect' })),
+      ),
+    );
+    const auto = h('input', { type: 'checkbox', id: 'hcp-auto', 'data-test': 'hcp-auto' }) as HTMLInputElement;
+    auto.checked = v.auto;
+    auto.addEventListener('change', () => void send({ type: 'hcp-auto', auto: auto.checked }).then(apply));
+    const notes = [
+      v.waiting ? t('hcp.waiting') : null,
+      v.signed_out ? t('hcp.signedOut') : null,
+      v.changed_page ? t('hcp.changed') : null,
+    ].filter((x): x is string => !!x);
+    fill(root,
+      h('h2', {}, t('hcp.title')),
+      ...v.ended.map((e) => h('p', { class: 'note warn' }, t(e.why === 'revoked' ? 'ended.revoked' : 'ended.disconnected', { name: e.name, date: formatDate(Date.parse(e.at), lang) }))),
+      v.ended.length ? h('div', { class: 'row' }, button(t('ended.ok'), () => void send({ type: 'hcp-clear-ended' }).then(apply))) : null,
+      ...pairings,
+      v.pairings.length ? h('p', { 'data-test': 'hcp-seen' }, v.seen ? t('hcp.seen', { seen: v.seen, fresh: v.fresh }) : t('hcp.seenNone')) : null,
+      ...notes.map((n) => h('p', { class: 'note' }, n)),
+      v.pairings.length ? h('p', { class: 'muted small' }, t('hcp.how')) : null,
+      v.pairings.length
+        ? h('div', { class: 'row' },
+            button(t('hcp.open'), () => {
+              void send({ type: 'open-golfde' });
+              opts.onGolfde?.();
+            }, { 'data-test': 'hcp-open' }),
+            v.fresh ? button(v.sending ? t('hcp.sending') : t('hcp.send'), () => void send({ type: 'hcp-send' }).then(apply), { class: 'primary', 'data-test': 'hcp-send' }) : null)
+        : null,
+      v.pairings.length ? h('p', { class: 'small' }, h('label', { for: 'hcp-auto' }, auto, ` ${t('hcp.auto')}`)) : null,
+    );
+  };
+  const apply = (r: Reply) => {
+    if (r.ok && r.hcp) draw(r.hcp);
+  };
+  const refresh = async () => apply(await send({ type: 'hcp-status' }));
   void refresh();
   const timer = setInterval(() => void refresh(), 3000);
   return { refresh, stop: () => clearInterval(timer) };

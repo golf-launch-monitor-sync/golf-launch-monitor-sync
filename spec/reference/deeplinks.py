@@ -2,12 +2,12 @@
 # Copyright (c) 2026 Reginald Stadlbauer
 """The deep links and the pairing fragment (spec/deep-links.md).
 
-    glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&return=<URL to go back to>]
+    glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp][&return=<URL to go back to>]
     glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
     glmsync://test?[target=<target base URL>&]code=<test code>           (1.8.0, spec/test-mode.md)
     Android: a bound service with the action glmsync.intent.action.SYNC, data glmsync://sync?target=…,
              extra glmsync.extra.REASON = open | manual
-    https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>]
+    https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp]
 
 Parsed by hand rather than with a URL library, so that every port reads the same strings the same
 way. A link is data from outside: anything unexpected makes it invalid rather than guessed at.
@@ -28,6 +28,9 @@ SCHEME = re.compile(r"^([a-z][a-z0-9+.-]*):")
 NEVER_RETURN = {"javascript", "data", "file", "vbscript", "about", "blob", "glmsync"}
 LINK = re.compile(r"^glmsync://(pair|sync|test)/?(?:\?([^#]*))?$")
 MAX_LEN = 2048
+# Which target API a pairing's base URL speaks (1.10.0): `lm` (the launch monitor one, also when no kind is given)
+# or `hcp` (spec/hcp.md). Any other is invalid: pairing with an API the client doesn't know would only be refused.
+KINDS = {"lm", "hcp"}
 BAD_ESCAPE = re.compile(r"%(?![0-9A-Fa-f]{2})")  # a '%' that starts no escape: invalid, not guessed at
 
 
@@ -84,9 +87,12 @@ def _pair(p: dict[str, str]) -> dict[str, Any]:
         return {"ok": False, "error": "invalid:code"}
     if "provider" in p and not PROVIDER.fullmatch(p["provider"]):
         return {"ok": False, "error": "invalid:provider"}
+    if "kind" in p and p["kind"] not in KINDS:
+        return {"ok": False, "error": "invalid:kind"}
     if "return" in p and not valid_return(p["return"]):
         return {"ok": False, "error": "invalid:return"}
-    return {"ok": True, "action": "pair", **{k: p[k] for k in ("target", "code", "provider", "return") if k in p}}
+    return {"ok": True, "action": "pair",
+            **{k: p[k] for k in ("target", "code", "provider", "kind", "return") if k in p}}
 
 
 def parse_link(url: str) -> dict[str, Any]:
@@ -99,7 +105,7 @@ def parse_link(url: str) -> dict[str, Any]:
     if action == "pair":
         # `return` (1.2.0): where to jump back once paired - checked against the target's return_prefixes only after
         # POST /pair, like a sync's (return_allowed).
-        p = _params(query, {"target", "code", "provider", "return"})
+        p = _params(query, {"target", "code", "provider", "kind", "return"})
         return p_error(p) or _pair(p)  # type: ignore[arg-type]
     if action == "test":
         # 1.8.0: a test code for the pairing with `target` (or the only one); never a token, never a return.
@@ -131,7 +137,7 @@ def parse_pair_fragment(fragment: str) -> dict[str, Any]:
     """The web app's pairing page: the part after '#' (it reaches no server). No `return`: the page stays where it is."""
     if not isinstance(fragment, str) or len(fragment) > MAX_LEN:
         return {"ok": False, "error": "invalid:link"}
-    p = _params(fragment[1:] if fragment.startswith("#") else fragment, {"target", "code", "provider"})
+    p = _params(fragment[1:] if fragment.startswith("#") else fragment, {"target", "code", "provider", "kind"})
     return p_error(p) or _pair(p)  # type: ignore[arg-type]
 
 

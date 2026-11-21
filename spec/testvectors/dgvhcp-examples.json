@@ -1,6 +1,6 @@
 {
   "$comment": "dgvhcp/1 batches that must (valid: true) or must not validate against spec/hcp/dgvhcp-1.schema.json.",
-  "spec_version": "1.9.0",
+  "spec_version": "1.10.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {
@@ -403,6 +403,151 @@
             "kept"
           ]
         }
+      }
+    },
+    {
+      "name": "page_history",
+      "why": "1.10.0: one page of the History Sheet as the player opened it (a batch per page; the first result of a sequence of three that are one result).",
+      "valid": true,
+      "batch": {
+        "format": "dgvhcp/1",
+        "provider": "golfde",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-21T19:30:00Z",
+        "generator": {
+          "name": "Golf Stats Sync for Chrome and Edge",
+          "version": "0.9.0"
+        },
+        "sync": {
+          "plan_id": "hp_a1",
+          "reason": "manual"
+        },
+        "sheet": "history",
+        "results": [
+          {
+            "played_on": "2026-10-03",
+            "ref": "c0ffee00-0000-4000-8000-000000000001",
+            "name": "Herbstpreis",
+            "club_name": "Golfclub Beispiel",
+            "club_no": "9999",
+            "course_no": "1",
+            "country": "49",
+            "round_no": 1,
+            "holes_read": 18,
+            "kind": "tournament",
+            "hcp_relevant": true,
+            "format": "single",
+            "art": "S",
+            "tee": "gelb",
+            "par": 72,
+            "cr": 71.4,
+            "slope": 131,
+            "hcp_index": 8.4,
+            "ph": 10,
+            "gbe": 85
+          }
+        ],
+        "index": {
+          "value": 8.1,
+          "as_of": "2026-11-21",
+          "low": 7.4
+        }
+      }
+    },
+    {
+      "name": "page_scoring",
+      "why": "1.10.0: the same result from the Scoring Record, now with its Score Differential.",
+      "valid": true,
+      "batch": {
+        "format": "dgvhcp/1",
+        "provider": "golfde",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-21T19:30:00Z",
+        "generator": {
+          "name": "Golf Stats Sync for Chrome and Edge",
+          "version": "0.9.0"
+        },
+        "sync": {
+          "plan_id": "hp_a2",
+          "reason": "manual"
+        },
+        "sheet": "scoring",
+        "results": [
+          {
+            "played_on": "2026-10-03",
+            "ref": "c0ffee00-0000-4000-8000-000000000001",
+            "name": "Herbstpreis",
+            "club_name": "Golfclub Beispiel",
+            "club_no": "9999",
+            "course_no": "1",
+            "country": "49",
+            "round_no": 1,
+            "holes_read": 18,
+            "kind": "tournament",
+            "hcp_relevant": true,
+            "format": "single",
+            "art": "S",
+            "tee": "gelb",
+            "par": 72,
+            "cr": 71.4,
+            "slope": 131,
+            "hcp_index": 8.4,
+            "ph": 10,
+            "gbe": 85,
+            "sd": 11.2,
+            "pcc": 0,
+            "counting": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "page_own_place",
+      "why": "1.10.0: the same result again with the player's own place from the result list (the whole result, so the target finds it).",
+      "valid": true,
+      "batch": {
+        "format": "dgvhcp/1",
+        "provider": "golfde",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-21T19:30:00Z",
+        "generator": {
+          "name": "Golf Stats Sync for Chrome and Edge",
+          "version": "0.9.0"
+        },
+        "sync": {
+          "plan_id": "hp_a3",
+          "reason": "manual"
+        },
+        "sheet": "mixed",
+        "results": [
+          {
+            "played_on": "2026-10-03",
+            "ref": "c0ffee00-0000-4000-8000-000000000001",
+            "name": "Herbstpreis",
+            "club_name": "Golfclub Beispiel",
+            "club_no": "9999",
+            "course_no": "1",
+            "country": "49",
+            "round_no": 1,
+            "holes_read": 18,
+            "kind": "tournament",
+            "hcp_relevant": true,
+            "format": "single",
+            "art": "S",
+            "tee": "gelb",
+            "par": 72,
+            "cr": 71.4,
+            "slope": 131,
+            "hcp_index": 8.4,
+            "ph": 10,
+            "gbe": 85,
+            "sd": 11.2,
+            "pcc": 0,
+            "counting": true,
+            "place": 7,
+            "field": 42
+          }
+        ]
       }
     },
     {

@@ -35,7 +35,7 @@ export { NotTrackmanScenario, replay, TEST_NOTICE, type Replay, type ReplayOptio
 export { blobName, MemoryBlobs, Tests, type Blobs, type TestMode, type TestsOptions } from './testMode.ts';
 
 export const UNOFFICIAL =
-  'Unofficial. Golf Launch Monitor Sync is not affiliated with, endorsed by or supported by Trackman. It reads your own account with your own sign-in, the way Trackman’s web portal does.';
+  'Unofficial. Golf Stats Sync is not affiliated with, endorsed by or supported by Trackman. It reads your own account with your own sign-in, the way Trackman’s web portal does.';
 
 export interface TrackmanProvider extends Provider<string> {
   /** "Is this you?" before a first connect: through the guard, like every request. */

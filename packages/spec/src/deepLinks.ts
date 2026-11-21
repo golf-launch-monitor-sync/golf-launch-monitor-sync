@@ -9,13 +9,17 @@
  */
 
 export type LinkResult =
-  | { ok: true; action: 'pair'; target: string; code: string; provider?: string; return?: string }
+  /** `kind` (1.10.0): which target API the base URL speaks, only where the link names it (none: the launch monitor one). */
+  | { ok: true; action: 'pair'; target: string; code: string; provider?: string; kind?: PairKind; return?: string }
   | { ok: true; action: 'sync'; target?: string; return?: string }
   /** Since 1.8.0: a test code for a pairing (spec/test-mode.md); never pairs, never jumps back. */
   | { ok: true; action: 'test'; target?: string; code: string }
   | { ok: false; error: string };
 
 const MAX_LEN = 2048;
+/** Which target API a pairing speaks (1.10.0): `lm` (spec/target-api.md, also without a kind) or `hcp` (spec/hcp.md). */
+export type PairKind = 'lm' | 'hcp';
+const KINDS: ReadonlySet<string> = new Set<PairKind>(['lm', 'hcp']);
 const CODE = /^[0-9A-Za-z-]{6,64}$/;
 const PROVIDER = /^[a-z][a-z0-9_-]{1,39}$/;
 const TARGET =
@@ -72,9 +76,9 @@ export function validReturn(url: string): boolean {
   return url.startsWith(`${scheme}://`);
 }
 
-const PAIR_KEYS = new Set(['target', 'code', 'provider']);
+const PAIR_KEYS = new Set(['target', 'code', 'provider', 'kind']);
 // A pair link may name where to jump back to once paired (1.2.0); the pairing page's fragment may not.
-const PAIR_LINK_KEYS = new Set(['target', 'code', 'provider', 'return']);
+const PAIR_LINK_KEYS = new Set(['target', 'code', 'provider', 'kind', 'return']);
 const SYNC_KEYS = new Set(['target', 'return']);
 const TEST_KEYS = new Set(['target', 'code']);
 
@@ -87,6 +91,9 @@ function pair(p: Map<string, string>): LinkResult {
   if (!CODE.test(code)) return { ok: false, error: 'invalid:code' };
   const provider = p.get('provider');
   if (provider !== undefined && !PROVIDER.test(provider)) return { ok: false, error: 'invalid:provider' };
+  const kind = p.get('kind');
+  // Another API than the client knows: invalid, rather than a pairing the target could only refuse.
+  if (kind !== undefined && !KINDS.has(kind)) return { ok: false, error: 'invalid:kind' };
   const back = p.get('return');
   if (back !== undefined && !validReturn(back)) return { ok: false, error: 'invalid:return' };
   return {
@@ -95,6 +102,7 @@ function pair(p: Map<string, string>): LinkResult {
     target,
     code,
     ...(provider === undefined ? {} : { provider }),
+    ...(kind === undefined ? {} : { kind: kind as PairKind }),
     ...(back === undefined ? {} : { return: back }),
   };
 }
@@ -155,11 +163,12 @@ export function returnAllowed(url: string, prefixes: readonly string[]): boolean
 
 /**
  * A pairing link for the companion app; `back`: where it jumps once paired (checked there against the target's
- * return_prefixes, like a sync link's `return`).
+ * return_prefixes, like a sync link's `return`). `kind` (1.10.0): `hcp` for a handicap target (spec/hcp.md).
  */
-export function pairLink(target: string, code: string, provider?: string, back?: string): string {
+export function pairLink(target: string, code: string, provider?: string, back?: string, kind?: PairKind): string {
   const q = [`target=${encodeURIComponent(target)}`, `code=${encodeURIComponent(code)}`];
   if (provider) q.push(`provider=${encodeURIComponent(provider)}`);
+  if (kind) q.push(`kind=${kind}`);
   if (back) q.push(`return=${encodeURIComponent(back)}`);
   return `glmsync://pair?${q.join('&')}`;
 }

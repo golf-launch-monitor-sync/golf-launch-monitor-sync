@@ -5,11 +5,16 @@
  * every few minutes whether a target's plan says to fetch - a request to the target, never to
  * Trackman. Trackman is asked only when a plan is due, and only through the load guard.
  *
+ * And it holds the handicap record read along on golf.de (`HcpClient`, spec/hcp.md): what golf.de's own page showed
+ * the player arrives from the content script there; a few seconds after the last new page it goes to the apps paired
+ * for it, each batch after their plan. golf.de is never asked anything.
+ *
  * Woken by alarms, messages and the browser starting; it keeps nothing in memory that matters (a
  * Manifest V3 background may be stopped between events): everything is in chrome.storage.
  */
 
-import { badge, BrowserClient, IdbBlobs, pickLang, translator } from '@glmsync/browser';
+import { badge, BrowserClient, HcpClient, IdbBlobs, pickLang, SEND_AFTER_MS, translator, type HcpView } from '@glmsync/browser';
+import { HISTORY_SHEET_URL, readSeen } from '@glmsync/provider-golfde';
 import { bridgeMessage, type BridgeReply, type Reason } from '@glmsync/spec';
 import { PORTAL_URL, SIGN_OUT_URL } from '@glmsync/provider-trackman/portal';
 import { answer, bridgeMatches, originOf } from './bridge.ts';
@@ -35,11 +40,20 @@ const client = new BrowserClient({
   storage,
   vault: storage,
   kind: 'extension',
-  name: __BROWSER__ === 'firefox' ? 'Golf Launch Monitor Sync for Firefox' : 'Golf Launch Monitor Sync for Chrome and Edge',
+  name: __BROWSER__ === 'firefox' ? 'Golf Stats Sync for Firefox' : 'Golf Stats Sync for Chrome and Edge',
   version: VERSION,
   // A test scenario (test mode) can be far larger than the extension's storage takes.
   blobs: new IdbBlobs(),
 });
+const hcp = new HcpClient({
+  storage,
+  vault: storage,
+  session: new ExtensionStorage(chrome.storage.session),
+  kind: 'extension',
+  name: __BROWSER__ === 'firefox' ? 'Golf Stats Sync for Firefox' : 'Golf Stats Sync for Chrome and Edge',
+  version: VERSION,
+});
+const HCP_SEND = 'hcp-send';
 const t = () => translator(pickLang(navigator.languages));
 
 // ---------------------------------------------------------------------------
@@ -108,7 +122,36 @@ async function ensureTimer(): Promise<void> {
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === TIMER) void run('timer');
   else if (alarm.name === BACKFILL) void run('backfill');
+  else if (alarm.name === HCP_SEND) void hcp.send().catch(() => undefined);
 });
+
+// ---------------------------------------------------------------------------
+// The handicap record, read along on golf.de
+// ---------------------------------------------------------------------------
+
+/**
+ * Something new came in: it goes by itself a little after the last new page (a few pages make one import), unless the
+ * player wants to say when. Each new page moves the moment on.
+ */
+async function scheduleHcp(v: HcpView): Promise<void> {
+  if (v.auto && v.fresh > 0 && v.pairings.some((p) => !p.other_account)) {
+    // Alarms go no sooner than 30 s anyway.
+    await chrome.alarms.create(HCP_SEND, { when: Date.now() + Math.max(SEND_AFTER_MS, 30_000) });
+  }
+}
+
+async function golfdeSeen(page: string, raw: unknown): Promise<Reply> {
+  const seen = readSeen(raw);
+  if (!seen) return { ok: true, hcp: await hcp.view() };
+  const v = await hcp.see(page, seen);
+  await scheduleHcp(v).catch(() => undefined);
+  return { ok: true, hcp: v };
+}
+
+async function hcpSendNow(): Promise<Reply> {
+  await chrome.alarms.clear(HCP_SEND).catch(() => false);
+  return { ok: true, hcp: await hcp.send() };
+}
 
 chrome.runtime.onStartup.addListener(() => {
   void ensureTimer();
@@ -243,6 +286,7 @@ async function offer(fragment: string, near: Near | null): Promise<Reply> {
   if (!(had && had.code === read.code && had.target === read.target)) {
     const p: Pending = { target: read.target, host: new URL(read.target).host, code: read.code, at: now, state: 'asking' };
     if (read.provider) p.provider = read.provider;
+    if (read.kind) p.kind = read.kind;
     await setPending(p);
   }
   await openConnectWindow(near);
@@ -261,10 +305,13 @@ async function confirmPairing(): Promise<Reply> {
     return { ok: true, pending: next };
   }
   await setPending({ ...p, state: 'working' });
-  const out = await client.offerPairing({ target: p.target, code: p.code, ...(p.provider ? { provider: p.provider } : {}) });
+  const offerOf = { target: p.target, code: p.code, ...(p.provider ? { provider: p.provider } : {}) };
+  // The handicap record (kind=hcp) pairs with its own API and reads along on golf.de; nothing to fetch now.
+  const out = p.kind === 'hcp' ? await hcp.offerPairing(offerOf) : await client.offerPairing(offerOf);
   const next: Pending = out.ok ? { ...p, state: 'paired', name: out.name, code: '' } : { ...p, state: 'failed', error: out.error, code: '' };
   await setPending(next);
-  if (out.ok) {
+  if (out.ok && p.kind === 'hcp') await scheduleHcp(await hcp.view()).catch(() => undefined);
+  else if (out.ok) {
     void run('connect', out.id);
     await syncBridges();
   } else await refreshIcon();
@@ -369,6 +416,27 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
     case 'open-portal':
       // Beside the connect window, in its browser window, in front.
       await openTab(tabsApi, PORTAL_URL, near);
+      return { ok: true };
+    case 'golfde-seen':
+      return golfdeSeen(m.page, m.seen);
+    case 'golfde-line':
+    case 'hcp-status':
+      return { ok: true, hcp: await hcp.view() };
+    case 'golfde-send':
+    case 'hcp-send':
+      return hcpSendNow();
+    case 'hcp-auto': {
+      const v = await hcp.setAuto(m.auto);
+      if (!m.auto) await chrome.alarms.clear(HCP_SEND).catch(() => false);
+      else await scheduleHcp(v).catch(() => undefined);
+      return { ok: true, hcp: v };
+    }
+    case 'hcp-unpair':
+      return { ok: true, hcp: await hcp.removePairing(m.id) };
+    case 'hcp-clear-ended':
+      return { ok: true, hcp: await hcp.clearEnded() };
+    case 'open-golfde':
+      await openTab(tabsApi, HISTORY_SHEET_URL, near);
       return { ok: true };
     case 'switch-account':
       // Someone else's account is signed in to the portal here: Trackman's own sign-out, as a page the player

@@ -47,6 +47,12 @@ describe('a pairing link', () => {
     expect(parseLink(link)).toEqual({ ok: true, action: 'pair', target: 'https://app.example.org/lm/v1', code: 'K7M2-PQ9X', return: 'exampleapp://profile?focus=lm' });
   });
 
+  it('names the handicap target API (1.10.0)', () => {
+    const link = pairLink('https://app.example.org/hcp/v1', 'K7M2-PQ9X', 'golfde', undefined, 'hcp');
+    expect(parseLink(link)).toEqual({ ok: true, action: 'pair', target: 'https://app.example.org/hcp/v1', code: 'K7M2-PQ9X', provider: 'golfde', kind: 'hcp' });
+    expect(parsePairFragment('#target=https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1&code=K7M2PQ9X&kind=hcp')).toMatchObject({ ok: true, kind: 'hcp' });
+  });
+
   it('is refused for anything that is no string', () => {
     expect(parseLink(undefined)).toEqual({ ok: false, error: 'invalid:link' });
     expect(parsePairFragment(42)).toEqual({ ok: false, error: 'invalid:link' });

@@ -4,7 +4,8 @@
  * The connect window: opened when the web app's pairing page hands over a code. It shows where the
  * data would go and asks the player; the browser's own prompt for that one address follows from the
  * same click. Afterwards, and when it was opened for "Is this you?", it shows the status panel - and,
- * once all is done (paired, signed in, confirmed), says so with a button that closes this tab.
+ * once all is done (paired, signed in, confirmed), says so with a button that closes this tab. For the handicap record
+ * (kind=hcp) there is nothing to sign in to here: once paired it points to golf.de's History Sheet, and is done.
  */
 
 import type { ClientStatus } from '@glmsync/browser';
@@ -35,9 +36,13 @@ async function closeTab(): Promise<void> {
   window.close();
 }
 
+const isHcp = () => pendingNow?.kind === 'hcp';
+
 let wasDone = false;
 function showDone(): void {
-  const now = finished(pendingNow, statusNow);
+  // The handicap record has no sign-in here and no "Is this you?": paired is done.
+  panel.hidden = isHcp();
+  const now = isHcp() ? pendingNow?.state === 'paired' : finished(pendingNow, statusNow);
   if (now === wasDone) return;
   wasDone = now;
   fill(done, now ? h('div', { class: 'note', 'data-test': 'finished', role: 'status' }, h('p', {}, t('connect.finished')), h('div', { class: 'row' }, button(t('connect.close'), () => void closeTab(), { class: 'primary', 'data-test': 'close' }))) : null);
@@ -63,8 +68,8 @@ function show(p: Pending | null | undefined): void {
         show({ ...p, state: 'working' });
       }, { class: 'primary', 'data-test': 'allow' });
       fill(ask,
-        h('h3', {}, t('connect.ask', { host })),
-        h('p', {}, t('connect.what', { host })),
+        h('h3', {}, t(p.kind === 'hcp' ? 'connect.askHcp' : 'connect.ask', { host })),
+        h('p', {}, t(p.kind === 'hcp' ? 'connect.whatHcp' : 'connect.what', { host })),
         h('p', { class: 'muted small' }, t('connect.permission', { host })),
         h('div', { class: 'row' }, allow, button(t('connect.cancel'), () => void send({ type: 'pair-cancel' }).then((r) => show(r.ok ? r.pending : null)), { 'data-test': 'cancel' })),
       );
@@ -74,7 +79,15 @@ function show(p: Pending | null | undefined): void {
       fill(ask, h('p', { 'data-test': 'working' }, t('connect.working')));
       break;
     case 'paired':
-      fill(ask, h('p', { class: 'note', 'data-test': 'paired' }, t('connect.done', { name: p.name ?? host })), wasDone ? null : h('p', { class: 'muted' }, t('connect.next')));
+      if (p.kind === 'hcp') {
+        fill(ask,
+          h('p', { class: 'note', 'data-test': 'paired' }, t('connect.done', { name: p.name ?? host })),
+          h('p', {}, t('connect.nextHcp')),
+          h('div', { class: 'row' }, button(t('connect.openHcp'), () => void send({ type: 'open-golfde' }), { 'data-test': 'open-golfde' })),
+        );
+      } else {
+        fill(ask, h('p', { class: 'note', 'data-test': 'paired' }, t('connect.done', { name: p.name ?? host })), wasDone ? null : h('p', { class: 'muted' }, t('connect.next')));
+      }
       break;
     case 'failed':
       fill(ask,

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
-  "description": "The client side of Golf Launch Monitor Sync: plan and push client, file target, cursor, the load guard, errors.",
+  "description": "The client side of Golf Stats Sync (Golf Launch Monitor Sync): plan and push client, file target, cursor, the load guard, errors.",
   "type": "module",
   "sideEffects": false,
   "exports": {

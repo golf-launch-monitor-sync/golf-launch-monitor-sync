@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
-  "description": "Golf Launch Monitor Sync's web app (GitHub Pages): the pairing page, and syncing by hand without the extension.",
+  "description": "Golf Stats Sync's web app (GitHub Pages): the pairing page, and syncing by hand without the extension.",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",

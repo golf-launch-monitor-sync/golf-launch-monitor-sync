@@ -7,11 +7,15 @@
  * - **Trackman**: the portal (to read the player's own sign-in there, as the bookmark did) and its API
  *   (to fetch). Nothing else of anyone's.
  * - **The web app's pairing page**: to pick up a pairing code from its fragment.
+ * - **golf.de**: the player's *Mein Bereich* and a tournament's result list, to read along with what golf.de's own page
+ *   loaded there (spec/hcp.md). Not golf.de's API: the extension sends golf.de nothing of its own.
  * - **A target**: asked for when the player connects one (`optional_host_permissions`), one address
  *   at a time - never every site up front.
  * - No `tabs`, no `webRequest`, no `<all_urls>`. `scripting` only to reach a pairing page that was
  *   already open when the extension was installed.
  */
+
+import { PAGE_MATCHES as GOLFDE_MATCHES } from '@glmsync/provider-golfde';
 
 export type Browser = 'chrome' | 'firefox';
 
@@ -64,6 +68,9 @@ export function manifest(browser: Browser, version: string, testHosts: string[] 
       { matches: [PORTAL_MATCH], js: ['portal-relay.js'], run_at: 'document_start', all_frames: false },
       // Before the page's script, which takes the code out of the address once it was read.
       { matches: PAIR_MATCHES, js: ['pair-content.js'], run_at: 'document_start', all_frames: false },
+      // golf.de: before the page's own scripts, so their first answers are seen; reads along, sends nothing.
+      { matches: GOLFDE_MATCHES, js: ['golfde-main.js'], run_at: 'document_start', world: 'MAIN', all_frames: false },
+      { matches: GOLFDE_MATCHES, js: ['golfde-relay.js'], run_at: 'document_start', all_frames: false },
     ],
     content_security_policy: { extension_pages: CSP },
   };
@@ -78,8 +85,9 @@ export function manifest(browser: Browser, version: string, testHosts: string[] 
         update_url: FIREFOX_UPDATE_URL,
         // Content scripts in the page's world (128), the data consent below (140, an ESR).
         strict_min_version: '140.0',
-        // What leaves the browser: launch monitor data the player fetches from their own account,
-        // to the app they connect. Nothing goes to the project or anyone else.
+        // What leaves the browser: launch monitor data the player fetches from their own account, and the
+        // handicap record golf.de's page showed them, to the app they connect. Nothing goes to the project or
+        // anyone else.
         data_collection_permissions: { required: ['websiteContent'] },
       },
       // Firefox for Android knows the data consent from 142.

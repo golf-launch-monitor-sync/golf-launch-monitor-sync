@@ -105,6 +105,9 @@ importers:
       '@glmsync/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@glmsync/provider-golfde':
+        specifier: workspace:*
+        version: link:../../packages/provider-golfde
       '@glmsync/provider-trackman':
         specifier: workspace:*
         version: link:../../packages/provider-trackman
@@ -136,6 +139,9 @@ importers:
       '@glmsync/core':
         specifier: workspace:*
         version: link:../core
+      '@glmsync/provider-golfde':
+        specifier: workspace:*
+        version: link:../provider-golfde
       '@glmsync/provider-trackman':
         specifier: workspace:*
         version: link:../provider-trackman
@@ -150,6 +156,15 @@ importers:
         version: link:../spec
 
   packages/provider-demo:
+    dependencies:
+      '@glmsync/core':
+        specifier: workspace:*
+        version: link:../core
+      '@glmsync/spec':
+        specifier: workspace:*
+        version: link:../spec
+
+  packages/provider-golfde:
     dependencies:
       '@glmsync/core':
         specifier: workspace:*
