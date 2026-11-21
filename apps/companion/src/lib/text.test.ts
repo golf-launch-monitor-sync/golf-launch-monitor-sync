@@ -8,7 +8,8 @@ import { describe, expect, it } from 'vitest';
 import de from '../i18n/de.json' with { type: 'json' };
 import en from '../i18n/en.json' with { type: 'json' };
 import type { LastRun } from './runner.ts';
-import { countsText, errorText, pickLanguage, runText, translator, when } from './text.ts';
+import { TestModeError } from './tests.ts';
+import { countsText, errorText, pickLanguage, runText, testErrorText, translator, when } from './text.ts';
 import { fromTrackman, isSignInPage, readCapturedToken } from './trackmanPage.ts';
 
 const SRC = fileURLToPath(new URL('..', import.meta.url));
@@ -88,10 +89,40 @@ describe('what a run says', () => {
 describe('what went wrong', () => {
   it('in the player\'s words, never the message from outside', () => {
     expect(errorText(new TargetError('code_invalid', 'evil <b>text</b>'), NOW, 'en', t)).toBe(en['error.codeInvalid']);
-    expect(errorText(new TargetError('token_invalid', 'evil'), NOW, 'en', t)).toBe('The app\'s server refused (token_invalid).');
+    expect(errorText(new TargetError('too_large', 'evil'), NOW, 'en', t)).toBe('The app\'s server refused (too_large).');
+    expect(errorText(new TargetError('token_invalid', 'evil'), NOW, 'en', t)).toBe(en['error.tokenInvalid']);
     expect(errorText(new ProviderAuthError('x'), NOW, 'en', t)).toBe(en['error.authRejected']);
     expect(errorText(new GuardLimitError(['per_day'], NOW + 3600_000), NOW, 'en', t)).toMatch(/goes on today/);
     expect(errorText(new Error('boom'), NOW, 'en', t)).toBe(en['error.generic']);
+  });
+});
+
+describe('what went wrong in test mode (spec 1.8.0)', () => {
+  it('a sentence for each of its codes, in both languages', () => {
+    const tDe = translator(de);
+    for (const [code, key] of [
+      ['test_data', 'error.testData'],
+      ['test_unavailable', 'error.testUnavailable'],
+      ['not_test_account', 'error.notTestAccount'],
+      ['code_expired', 'error.codeExpired'],
+    ] as const) {
+      expect(errorText(new TargetError(code, 'evil'), NOW, 'en', t)).toBe(en[key]);
+      expect(errorText(new TargetError(code, 'evil'), NOW, 'de', tDe)).toBe(de[key]);
+      expect(de[key]).not.toBe(en[key]);
+    }
+  });
+
+  it('a wrong or malformed code is a wrong test code; pairing first, and a provider this app lacks, say so', () => {
+    expect(testErrorText(new TargetError('code_invalid', 'x'), NOW, 'en', t)).toBe(en['test.codeWrong']);
+    expect(testErrorText(new TargetError('bad_request', 'x'), NOW, 'en', t)).toBe(en['test.codeWrong']);
+    expect(testErrorText(new TargetError('code_expired', 'x'), NOW, 'en', t)).toBe(en['error.codeExpired']);
+    expect(testErrorText(new TargetError('unreachable', 'x'), NOW, 'en', t)).toBe(en['error.targetUnreachable']);
+    expect(errorText(new TestModeError('unpaired'), NOW, 'en', t)).toBe(en['test.pairFirst']);
+    expect(errorText(new TestModeError('provider'), NOW, 'en', t)).toBe(en['test.provider']);
+  });
+
+  it('a run a real account refused as test data says so', () => {
+    expect(runText({ at: NOW, reason: 'timer', status: 'failed', error: 'test_data' }, NOW, 'en', t)).toMatch(/no test data for a real account/);
   });
 });
 

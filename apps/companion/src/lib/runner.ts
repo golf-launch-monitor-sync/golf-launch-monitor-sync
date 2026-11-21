@@ -37,9 +37,11 @@ import {
   type Storage,
   type SyncOutcome,
 } from '@glmsync/core';
-import { FORMAT, type Batch, type NoticeCode, type Reason } from '@glmsync/spec';
+import { FORMAT, type Batch, type NoticeCode, type Reason, type TestScenario } from '@glmsync/spec';
+import { replay } from '@glmsync/provider-trackman';
 import type { KeyedPairing, Pairings } from './pairings.ts';
 import type { SignIns } from './signins.ts';
+import { TestModeError, type TestMode, type Tests } from './tests.ts';
 
 export const CLIENT: ClientKind = 'companion';
 
@@ -75,6 +77,8 @@ export interface RunnerOptions {
   guard: Guard;
   storage: Storage;
   providers: Readonly<Record<string, AppProvider>>;
+  /** Test mode's scenarios, per pairing (spec/test-mode.md); none: no test mode. */
+  tests?: Tests;
   /** For targets and providers alike (tests pass their fakes). */
   fetch?: FetchLike;
   now?: () => number;
@@ -210,6 +214,7 @@ export class Runner {
       if (!p) return;
       await this.revoke(p);
       await this.opts.pairings.remove(key);
+      await this.opts.tests?.end(key); // a test lasts only as long as its pairing
       await this.record(key, { at: this.now(), reason: 'manual', status: 'unpaired' });
     });
   }
@@ -217,6 +222,7 @@ export class Runner {
   /** The target ended the pairing (disconnected, or the token revoked there). */
   private async dropped(p: KeyedPairing) {
     await this.opts.pairings.remove(p.key);
+    await this.opts.tests?.end(p.key);
     // The last target using this sign-in is gone: so is the sign-in (spec: "disconnected").
     if (!this.opts.pairings.usesProvider(p.provider)) {
       try {
@@ -246,10 +252,19 @@ export class Runner {
     });
   }
 
+  /** The pairing's test, if it has one that lasts: the scenario played back, and its made-up sign-in. */
+  private async testOf(p: KeyedPairing): Promise<{ provider: AppProvider; credential: string } | null> {
+    const r = (await this.opts.tests?.provider(p.key)) ?? null;
+    return r && r.id === p.provider ? { provider: r, credential: r.credential } : null;
+  }
+
   private async syncOne(p: KeyedPairing, reason: Reason): Promise<LastRun> {
     const provider = this.opts.providers[p.provider];
+    const test = await this.testOf(p);
     let run: LastRun;
-    if (!provider) {
+    if (test) {
+      run = await this.fetchFor(p, test.provider, test.credential, reason, true);
+    } else if (!provider) {
       run = { at: this.now(), reason, status: 'failed', error: 'provider_unknown' };
     } else {
       const credential = this.opts.signIns.credential(p.provider);
@@ -259,7 +274,7 @@ export class Runner {
     return run;
   }
 
-  private async fetchFor(p: KeyedPairing, provider: AppProvider, credential: string, reason: Reason): Promise<LastRun> {
+  private async fetchFor(p: KeyedPairing, provider: AppProvider, credential: string, reason: Reason, test = false): Promise<LastRun> {
     const outcome = await sync({
       target: this.target(p),
       provider,
@@ -285,8 +300,8 @@ export class Runner {
         run.notice = outcome.notice.code;
         if (outcome.notice.until) run.until = outcome.notice.until;
       }
-      // The provider refused the sign-in: it goes, the mark stays for a quiet renewal.
-      if (outcome.notice?.code === 'auth_expired') await this.opts.signIns.expire(p.provider);
+      // The provider refused the sign-in: it goes, the mark stays for a quiet renewal (a test's is made up: never).
+      if (outcome.notice?.code === 'auth_expired' && !test) await this.opts.signIns.expire(p.provider);
       // What the target has bound the pairing to: used to warn before a sign-in of another account.
       const subject = provider.subject(credential);
       if (subject && outcome.result.sessions + outcome.result.rounds + outcome.result.duplicates > 0) {
@@ -355,8 +370,9 @@ export class Runner {
       const waits: number[] = [];
       const soonest = (s: number) => waits.push(s);
       for (const p of this.opts.pairings.list()) {
-        const provider = this.opts.providers[p.provider];
-        const credential = this.opts.signIns.credential(p.provider);
+        const test = await this.testOf(p);
+        const provider = test?.provider ?? this.opts.providers[p.provider];
+        const credential = test?.credential ?? this.opts.signIns.credential(p.provider);
         if (!provider || !credential) continue;
         const outcome = await sync({
           target: this.target(p),
@@ -387,7 +403,7 @@ export class Runner {
         if (outcome.status !== 'synced') continue;
         await this.record(p.key, { at: this.now(), reason: 'backfill', status: 'synced', result: outcome.result, more: outcome.more, ...(outcome.notice ? { notice: outcome.notice.code, ...(outcome.notice.until ? { until: outcome.notice.until } : {}) } : {}) });
         if (outcome.notice?.code === 'auth_expired') {
-          await this.opts.signIns.expire(p.provider);
+          if (!test) await this.opts.signIns.expire(p.provider);
           continue;
         }
         if (outcome.notice?.until) {
@@ -458,6 +474,67 @@ export class Runner {
       });
       return provider.who(ctx, token);
     });
+  }
+
+  // --- test mode (spec/test-mode.md) ---------------------------------------------------------
+
+  /**
+   * The scenario a paired app hands out for a test code, asked with that pairing's import token. Throws
+   * `TestModeError` (`unpaired`; `provider`: a scenario of another provider than the pairing's, or one this app
+   * can't play back) and the target's `TargetError` (a pairing the target ended is dropped here as at a sync).
+   */
+  async testScenario(key: string, code: string): Promise<TestScenario> {
+    const p = this.opts.pairings.get(key);
+    if (!p) throw new TestModeError('unpaired');
+    let scenario: TestScenario;
+    try {
+      scenario = await this.target(p).testScenario(code);
+    } catch (e) {
+      if (e instanceof TargetError && (e.code === 'token_invalid' || e.code === 'disconnected')) await this.dropped(p);
+      throw e;
+    }
+    if (scenario.provider !== p.provider || scenario.provider !== 'trackman') throw new TestModeError('provider');
+    return scenario;
+  }
+
+  /** "Is this your account?" for a scenario: played back through the guard, under its subject, like a sign-in's. */
+  testWho(scenario: TestScenario): Promise<WhoAnswer> {
+    return this.serial(async () => {
+      let r;
+      try {
+        r = replay(scenario, { now: this.now, ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}) });
+      } catch {
+        throw new TestModeError('provider');
+      }
+      const account = guardAccount(r.id, r.subject(r.credential));
+      await this.opts.guard.beginRun(account);
+      const ctx = providerContext({ guard: this.opts.guard, account, reason: 'connect', signal: this.signal, now: this.now });
+      return r.who(ctx, r.credential);
+    });
+  }
+
+  /** The tester said yes: the pairing syncs from the scenario until the test ends. */
+  async startTest(key: string, scenario: TestScenario, player: string | null): Promise<TestMode> {
+    if (!this.opts.tests) throw new TestModeError('provider');
+    if (!this.opts.pairings.get(key)) throw new TestModeError('unpaired');
+    return this.opts.tests.start(key, scenario, player);
+  }
+
+  /** The tester signs out of the test: the scenario leaves this phone, a run under way with it stops. */
+  async endTest(key: string): Promise<void> {
+    this.stop();
+    await this.opts.tests?.end(key);
+  }
+
+  /** "Today 14 of 300" for a test's made-up account (each code a guard of its own). */
+  async testCounts(key: string): Promise<GuardCounts | null> {
+    const m = this.opts.tests?.of(key);
+    if (!m) return null;
+    try {
+      return await this.opts.guard.counts(guardAccount('trackman', m.subject));
+    } catch {
+      return null;
+    }
   }
 
   /** The targets bound to another account of this provider than the one a key opens. */

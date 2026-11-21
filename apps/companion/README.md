@@ -64,6 +64,19 @@ portal in a sign-in window - so that window lives here, in a small app that does
   and not again within ten seconds (`src/lib/nudge.ts`); nothing comes back over the binding.
 - **Shows the counts** ("requests today 14 of 300"), and **exports the guard's log** of the last 14 days
   (times, kinds, statuses, durations - never content) through the share sheet.
+- **Test mode** (spec 1.8.0, [test-mode.md](../../spec/test-mode.md)): for testing a connected app by hand, the
+  app's test code - typed under *Enter a test code* at the bottom of the page, or brought by its link
+  `glmsync://test?code=…` (a QR code on the app's test page opens it) - for one of this phone's pairings; a test code
+  never pairs (without a pairing: "connect with the app first"). The scenario comes from that app with the pairing's
+  import token (`GET /test-scenario`, the code in its header); "Is this your account?" asks about its made-up
+  account through the guard, and only after the yes does the pairing sync from it - the real Trackman provider code
+  against the made-up Trackman (`replay` in `@glmsync/provider-trackman`), at the scenario's response times, the plan
+  first, through the guard under the scenario's own account, every batch marked `test: true`. The first sync runs
+  while the app is in front, then the history a chunk at a time, in the background too. Nothing is asked of Trackman;
+  a real sign-in and other pairings go on as before. A *test mode – made-up data* card on the page shows it, with
+  *End test mode*; the scenario goes with that, with its pairing, or when its `valid_until` has passed
+  (`src/lib/tests.ts`). Each way it can fail has its sentence in German and English (wrong or expired code, no test
+  account, an app without test mode, a provider this app lacks, no network, a real account refusing test data).
 - **Demo**: a made-up player (`@glmsync/provider-demo`) for trying the app without an account, and
   for app reviews. Its "requests" go through the guard too, so counters and log behave as for real.
 - **Save as file**: a sync into an olmd file (the share sheet), planned gently by the file target -
@@ -78,6 +91,7 @@ portal in a sign-in window - so that window lives here, in a small app that does
 | The provider sign-in (and the account it was of, for the quiet renewal) | the secure store (Keychain / Keystore), readable after the first unlock, this device only; cut into pieces where long (`ChunkedSecrets`) |
 | Each pairing's import token | the secure store |
 | The rest of a pairing (address, name, limits, return prefixes), the guard's counts and log, the last run per pairing | app storage (AsyncStorage) |
+| A test scenario (made up, up to 64 MiB; test mode) | a file in the app's document folder, until the test ends; what the page shows of it (name, account, end) in app storage |
 
 Android backups leave the secure store out (`allowBackup: false`). A sign-in goes to the provider
 only; a target gets batches and nothing else (`src/lib/runner.test.ts` checks both directions). A
@@ -90,11 +104,12 @@ provider the sign-in goes too.
 index.ts            entry: the background task and the Android sync task first, then the screen
 app.config.ts       ids (from the environment for forks), scheme glmsync, EAS project and updates
 src/lib/            everything without a screen, tested with vitest: secrets, sign-ins, pairings,
-                    links, the runner (pair, sync, history, file, "Is this you?"), the Android sync
-                    service's rules (nudge), whether a new build is out (newBuild), the wording
+                    links, the runner (pair, sync, history, file, "Is this you?"), test mode (tests),
+                    the Android sync service's rules (nudge), whether a new build is out (newBuild),
+                    the wording
 src/ui/             the screens: App (links, opening, quiet renewal), Home, PairView, SignInView,
-                    FirstSyncView, SyncView, Licenses, TrackmanLoginView
-src/platform.ts     the phone's parts: secure store, storage, share sheet
+                    FirstSyncView, SyncView, TestView, Licenses, TrackmanLoginView
+src/platform.ts     the phone's parts: secure store, storage, files, share sheet
 src/background.ts   the background task
 src/nudge.ts        the headless task behind the Android sync service
 modules/glmsync-sync  the Android sync service (Kotlin, a local Expo module; its manifest adds the

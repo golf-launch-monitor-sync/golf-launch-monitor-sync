@@ -13,6 +13,7 @@ import { Pairings } from './pairings.ts';
 import { Runner, type AppProvider } from './runner.ts';
 import { ChunkedSecrets, type Secrets } from './secrets.ts';
 import { SignIns } from './signins.ts';
+import { MemoryBlobs, Tests, type Blobs } from './tests.ts';
 import { Wakes } from './wake.ts';
 
 /** The providers this app offers, in the order shown: Trackman first, the demo for trying it out. */
@@ -34,6 +35,8 @@ export interface Platform {
   secrets: Secrets;
   storage: Storage;
   writeFile?: (file: FileOut) => Promise<void>;
+  /** Files of the app's own, for a test scenario (memory when the platform brings none). */
+  blobs?: Blobs;
   fetch?: FetchLike;
   now?: () => number;
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
@@ -44,6 +47,8 @@ export interface Services {
   providers: Record<ProviderId, AppProvider>;
   signIns: SignIns;
   pairings: Pairings;
+  /** Test mode's scenarios, per pairing (spec/test-mode.md). */
+  tests: Tests;
   guard: Guard;
   runner: Runner;
   /** This phone's push address at each target (the wake, spec/wake.md; iOS only). */
@@ -65,6 +70,10 @@ export function makeServices(platform: Platform): Services {
     platform.now ? { now: platform.now } : {},
   );
   const pairings = new Pairings(secrets, platform.storage);
+  const tests = new Tests(platform.storage, platform.blobs ?? new MemoryBlobs(), {
+    ...(platform.now ? { now: platform.now } : {}),
+    ...(platform.sleep ? { sleep: platform.sleep } : {}),
+  });
   const guard = new Guard({
     storage: platform.storage,
     ...(platform.now ? { now: platform.now } : {}),
@@ -76,6 +85,7 @@ export function makeServices(platform: Platform): Services {
     guard,
     storage: platform.storage,
     providers,
+    tests,
     ...(platform.fetch ? { fetch: platform.fetch } : {}),
     ...(platform.now ? { now: platform.now } : {}),
     ...(platform.sleep ? { sleep: platform.sleep } : {}),
@@ -92,11 +102,15 @@ export function makeServices(platform: Platform): Services {
     providers,
     signIns,
     pairings,
+    tests,
     guard,
     runner,
     wakes,
     async load() {
       await Promise.all([signIns.load(), pairings.load(), runner.loadRuns()]);
+      // After the pairings: a test whose pairing went while the app was closed goes too.
+      await tests.load();
+      for (const m of tests.list()) if (!pairings.get(m.key)) await tests.end(m.key);
     },
   };
 }

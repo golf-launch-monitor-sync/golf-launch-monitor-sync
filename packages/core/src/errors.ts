@@ -81,6 +81,12 @@ export type TargetErrorCode =
   | 'invalid_batch'
   | 'rate_limited'
   | 'provider_unknown'
+  // Test mode (spec 1.8.0, spec/test-mode.md): a test batch for an account that is no test account, a target
+  // without scenarios, a test code with an account that is no test account, a code whose test is over.
+  | 'test_data'
+  | 'test_unavailable'
+  | 'not_test_account'
+  | 'code_expired'
   // Not from the target's answer but about it:
   | 'unreachable'
   | 'unavailable'

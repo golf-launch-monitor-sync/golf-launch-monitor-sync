@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * A made-up Trackman for tests (here and in the clients' click checks): it answers the queries of
- * queries.ts in Trackman's shapes, from synthetic data it is given, and records every request. It is
- * invented for the tests - nothing here was recorded from a real account - and reaches no network.
+ * A made-up Trackman: it answers the queries of queries.ts in Trackman's shapes, from synthetic data it is given,
+ * and records every request. Invented for the tests and the clients' click checks - nothing here was recorded from a
+ * real account - and it reaches no network. Since test mode (spec/test-mode.md) it also runs inside the apps, where
+ * `replay` (replay.ts) fills it with a target's scenario: so it uses nothing a phone's engine lacks (no `Buffer`).
  */
 
-import type { FetchLike, ResponseLike } from '@glmsync/core';
+import { base64url, utf8, type FetchLike, type ResponseLike } from '@glmsync/core';
 import { GRAPHQL_URL } from './client.ts';
 
 export type Json = Record<string, unknown>;
@@ -30,8 +31,27 @@ function respond(status: number, body: unknown, headers: Record<string, string> 
 
 /** A token Trackman would hand out: a JWT whose payload carries `sub` (not signed; nobody checks here). */
 export function fakeToken(sub: string, extra: Json = {}): string {
-  const b64 = (s: string) => Buffer.from(s, 'utf8').toString('base64url');
+  const b64 = (s: string) => base64url(utf8(s));
   return `${b64('{"alg":"none"}')}.${b64(JSON.stringify({ sub, ...extra }))}.sig`;
+}
+
+const isObj = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** Waits `ms`, or rejects as soon as `signal` aborts (an answer the client stopped waiting for). */
+function wait(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((done, fail) => {
+    if (signal?.aborted) return fail(new Error('aborted'));
+    if (ms <= 0) return done();
+    const onAbort = () => {
+      clearTimeout(timer);
+      fail(new Error('aborted'));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      done();
+    }, ms);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
 }
 
 export class FakeTrackman {
@@ -45,14 +65,36 @@ export class FakeTrackman {
   profile: Json = { fullName: 'Test Player' };
   tokens = new Set<string>();
   readonly requests: TrackmanRequest[] = [];
+  /** At most this many requests are kept in `requests` (the oldest go): a fake inside an app runs for days. */
+  keep = Number.POSITIVE_INFINITY;
   /** Refuse a round's shots asked for with their ball and club data, without naming a field. */
   refuseMeasured = false;
   /** Fields of a round shot's measurement this fake doesn't know: a query asking any of them is refused, naming each. */
   refuseFields: string[] = [];
   /** Answer a query with something else (a status, a broken body), once per call. */
   override?: (req: TrackmanRequest) => ResponseLike | Error | null;
+  /** How long each answer takes (ms), by the request; none: at once. */
+  delay?: (req: TrackmanRequest) => number;
+  /** How it waits for `delay` (tests pass a virtual clock's). */
+  sleep: (ms: number, signal?: AbortSignal) => Promise<void> = wait;
 
   constructor(readonly now: () => number = Date.now) {}
+
+  /**
+   * Its answers from data in Trackman's own shapes (a test scenario's `data`, spec/test-mode.md): `activities` and
+   * `scorecards` (newest first), `nodes` and `shotHoles` (by id). Untrusted like any answer: what isn't of the shape
+   * is left out, never thrown about; the mapping later reads every value as Trackman's own.
+   */
+  load(data: unknown): this {
+    const d = isObj(data) ? data : {};
+    const list = (v: unknown) => (Array.isArray(v) ? v.filter(isObj) : []);
+    const byId = (v: unknown) => new Map(isObj(v) ? Object.entries(v) : []);
+    this.activities = list(d.activities);
+    this.scorecards = list(d.scorecards);
+    this.nodes = byId(d.nodes);
+    this.shotHoles = byId(d.shotHoles);
+    return this;
+  }
 
   count(name?: string): number {
     return name ? this.requests.filter((r) => r.name === name).length : this.requests.length;
@@ -65,6 +107,9 @@ export class FakeTrackman {
     const token = (init.headers.Authorization ?? '').replace(/^Bearer /, '');
     const req: TrackmanRequest = { name, query: body.query ?? '', variables: body.variables ?? {}, token, at: this.now(), headers: init.headers, credentials: init.credentials };
     this.requests.push(req);
+    if (this.requests.length > this.keep) this.requests.splice(0, this.requests.length - this.keep);
+    const ms = this.delay?.(req) ?? 0;
+    if (ms > 0) await this.sleep(ms, init.signal);
     const o = this.override?.(req);
     if (o instanceof Error) throw o;
     if (o) return o;

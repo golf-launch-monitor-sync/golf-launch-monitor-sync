@@ -9,7 +9,19 @@
  * target - no request here carries it.
  */
 
-import { readWake, validTarget, type Batch, type Reason, type SignIn, type WakeRegistration } from '@glmsync/spec';
+import {
+  readTestScenario,
+  readWake,
+  TEST_CODE,
+  TEST_CODE_HEADER,
+  TEST_SCENARIO_MAX_BYTES,
+  validTarget,
+  type Batch,
+  type Reason,
+  type SignIn,
+  type TestScenario,
+  type WakeRegistration,
+} from '@glmsync/spec';
 import {
   CLIENT_KINDS,
   PROVIDER_ID,
@@ -26,7 +38,11 @@ import {
 } from './api.ts';
 import { TargetError, type TargetErrorCode } from './errors.ts';
 import { defaultFetch, exchange, parseJson, TransportError, type Exchanged, type FetchLike } from './http.ts';
+import { utf8Length } from './sha256.ts';
 import { externalId } from './values.ts';
+
+/** A scenario may be large (up to 64 MiB): it gets longer than an ordinary answer to arrive. */
+export const TEST_SCENARIO_TIMEOUT_MS = 120_000;
 
 /** What a sync needs of a target. */
 export interface Target {
@@ -46,7 +62,7 @@ export interface Target {
 
 const CODES: ReadonlySet<string> = new Set([
   'bad_request', 'code_invalid', 'token_invalid', 'other_account', 'disconnected', 'too_large', 'invalid_batch',
-  'rate_limited', 'provider_unknown',
+  'rate_limited', 'provider_unknown', 'test_data', 'test_unavailable', 'not_test_account', 'code_expired',
 ]);
 
 function errorOf(x: Exchanged): TargetError {
@@ -57,6 +73,7 @@ function errorOf(x: Exchanged): TargetError {
   if (typeof said === 'string' && CODES.has(said)) code = said as TargetErrorCode;
   else if (x.status === 401) code = 'token_invalid';
   else if (x.status === 404) code = 'code_invalid';
+  else if (x.status === 410) code = 'code_expired';
   else if (x.status === 413) code = 'too_large';
   else if (x.status === 422) code = 'invalid_batch';
   else if (x.status === 429) code = 'rate_limited';
@@ -74,7 +91,7 @@ async function call(
   fetchImpl: FetchLike,
   url: string,
   init: { method: string; headers: Record<string, string>; body?: string },
-  opts: { signal?: AbortSignal | undefined; now?: () => number },
+  opts: { signal?: AbortSignal | undefined; now?: () => number; maxBytes?: number; timeoutMs?: number },
 ): Promise<Exchanged> {
   try {
     return await exchange(fetchImpl, url, init, opts);
@@ -146,14 +163,24 @@ export class HttpTarget implements Target {
     this.signal = opts.signal;
   }
 
-  private async send(method: string, path: string, body?: unknown): Promise<Exchanged> {
-    const headers: Record<string, string> = { Accept: 'application/json', Authorization: `Bearer ${this.pairing.token}` };
+  private async send(
+    method: string,
+    path: string,
+    body?: unknown,
+    more: { headers?: Record<string, string>; maxBytes?: number; timeoutMs?: number } = {},
+  ): Promise<Exchanged> {
+    const headers: Record<string, string> = { ...more.headers, Accept: 'application/json', Authorization: `Bearer ${this.pairing.token}` };
     const init: { method: string; headers: Record<string, string>; body?: string } = { method, headers };
     if (body !== undefined) {
       headers['Content-Type'] = 'application/json';
       init.body = JSON.stringify(body);
     }
-    return call(this.fetchImpl, `${trimBase(this.pairing.base)}${path}`, init, { signal: this.signal, now: this.now });
+    return call(this.fetchImpl, `${trimBase(this.pairing.base)}${path}`, init, {
+      signal: this.signal,
+      now: this.now,
+      ...(more.maxBytes !== undefined ? { maxBytes: more.maxBytes } : {}),
+      ...(more.timeoutMs !== undefined ? { timeoutMs: more.timeoutMs } : {}),
+    });
   }
 
   async plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn): Promise<Plan> {
@@ -212,6 +239,37 @@ export class HttpTarget implements Target {
     const x = await this.send('DELETE', '/wake');
     if ([200, 204, 401, 404, 405, 501].includes(x.status)) return;
     throw errorOf(x);
+  }
+
+  /**
+   * GET /test-scenario (1.8.0, spec/test-mode.md): the scenario this target hands out for a test code, read strictly.
+   * The code goes in its header, never in the address. Throws a `TargetError`: `bad_request` (not a code),
+   * `code_invalid` (no scenario for this code and account), `test_unavailable` (the target offers none: any other
+   * 404, or a 405/501 of a target that doesn't know the path), `not_test_account`, `code_expired` (410, or a
+   * scenario whose `valid_until` has passed), `bad_answer` (no scenario, or larger than 64 MiB), and whatever any
+   * other answer says (a revoked token, a wait).
+   */
+  async testScenario(code: string): Promise<TestScenario> {
+    if (typeof code !== 'string' || !TEST_CODE.test(code)) throw new TargetError('bad_request', 'Not a test code.');
+    const x = await this.send('GET', '/test-scenario', undefined, {
+      headers: { [TEST_CODE_HEADER]: code },
+      maxBytes: TEST_SCENARIO_MAX_BYTES,
+      timeoutMs: TEST_SCENARIO_TIMEOUT_MS,
+    });
+    if (x.status === 404 || x.status === 405 || x.status === 501) {
+      const said = (parseJson(x.body) as { error?: { code?: unknown } } | undefined)?.error?.code;
+      // Only a 404 that says so is a wrong code; any other is a target without scenarios (spec/test-mode.md).
+      if (x.status === 404 && said === 'code_invalid') throw new TargetError('code_invalid', 'No scenario for this code.', 404);
+      throw new TargetError('test_unavailable', 'This target offers no test scenarios.', x.status);
+    }
+    if (x.status !== 200) throw errorOf(x);
+    if (utf8Length(x.body) > TEST_SCENARIO_MAX_BYTES) throw new TargetError('bad_answer', 'The scenario is too large.');
+    const read = readTestScenario(parseJson(x.body), new Date(this.now()).toISOString());
+    if (!read.ok) {
+      if (read.error === 'expired') throw new TargetError('code_expired', 'The test is over.');
+      throw new TargetError('bad_answer', `The target answered with no scenario (${read.error}).`);
+    }
+    return read.scenario;
   }
 
   /** DELETE /token: this client disconnects itself. A token already gone counts as revoked. */

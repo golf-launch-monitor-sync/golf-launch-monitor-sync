@@ -91,10 +91,25 @@ describe('where a sync link jumps back to', () => {
 });
 
 describe('a test link (spec 1.8.0)', () => {
-  it('starts no sync and pairs nothing while this app has no test mode', () => {
-    const pairings = [pairing('https://app.example.org/lm/v1', ['exampleapp://'])];
-    expect(readIncoming('glmsync://test?code=T7K2M9QX', PROVIDERS, pairings)).toEqual({ kind: 'invalid', error: 'unsupported:test' });
-    expect(readIncoming('glmsync://test?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=T7K2M9QX', PROVIDERS, pairings).kind).toBe('invalid');
+  const a = pairing('https://app.example.org/lm/v1', ['exampleapp://']);
+  const b = pairing('https://other.example.net/lm/v1', []);
+
+  it('opens test mode for the pairings it may be for: the named target’s, else all', () => {
+    expect(readIncoming('glmsync://test?code=T7K2M9QX', PROVIDERS, [a, b])).toEqual({ kind: 'test', code: 'T7K2M9QX', keys: [a.key, b.key] });
+    expect(readIncoming('glmsync://test?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1%2F&code=T7K2M9QX', PROVIDERS, [a, b])).toEqual({ kind: 'test', code: 'T7K2M9QX', keys: [a.key] });
+  });
+
+  it('never pairs: without a pairing of its target it is for none (the app says to pair first)', () => {
+    expect(readIncoming('glmsync://test?code=T7K2M9QX', PROVIDERS, [])).toEqual({ kind: 'test', code: 'T7K2M9QX', keys: [] });
+    expect(readIncoming('glmsync://test?target=https%3A%2F%2Fevil.example%2Flm%2Fv1&code=T7K2M9QX', PROVIDERS, [a])).toEqual({ kind: 'test', code: 'T7K2M9QX', keys: [] });
+  });
+
+  it('is read strictly, and never reads as a sync', () => {
+    for (const bad of ['glmsync://test', 'glmsync://test?code=a', 'glmsync://test?code=T7K2M9QX#x']) {
+      expect(readIncoming(bad, PROVIDERS, [a]).kind).toBe('invalid');
+    }
+    // Nothing to jump back to, whatever the link adds.
+    expect(readIncoming('glmsync://test?code=T7K2M9QX&return=exampleapp://x', PROVIDERS, [a])).toEqual({ kind: 'test', code: 'T7K2M9QX', keys: [a.key] });
   });
 });
 

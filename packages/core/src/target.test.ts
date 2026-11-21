@@ -190,3 +190,76 @@ describe('Retry-After', () => {
     expect(retryAfterS(null, now)).toBeNull();
   });
 });
+
+describe('a test scenario (1.8.0)', () => {
+  const SCENARIO = {
+    name: 'Steady (test T1)',
+    provider: 'trackman',
+    subject: 'test-subject-0001',
+    profile: { fullName: 'Made Up' },
+    data: { activities: [] },
+    latency: { default: { median_s: 1, spread_s: 0.2 } },
+    valid_until: '2026-11-28T18:00:00Z',
+  };
+  const now = () => Date.parse('2026-11-21T18:00:00Z');
+
+  async function testTarget(opts: ConstructorParameters<typeof FakeTarget>[0] = {}) {
+    const fake = new FakeTarget(opts);
+    const p = await pair({ target: fake.base, code: 'K7M2PQ9X', provider: 'trackman', client: CLIENT, fetch: fake.fetch });
+    return { fake, target: new HttpTarget(p, { fetch: fake.fetch, now }) };
+  }
+
+  it('comes with the code in its header, never in the address', async () => {
+    const { fake, target } = await testTarget();
+    fake.testAccount = true;
+    fake.scenarios.set('TESTCODE1', SCENARIO);
+    const s = await target.testScenario('TESTCODE1');
+    expect(s).toMatchObject({ name: SCENARIO.name, subject: SCENARIO.subject, provider: 'trackman', latency: { default: { median_s: 1, spread_s: 0.2 }, queries: {} } });
+    const asked = fake.received.at(-1);
+    expect(asked?.url).toBe(`${fake.base}/test-scenario`);
+    expect(asked?.headers['X-Test-Code']).toBe('TESTCODE1');
+    expect(fake.received.some((r) => r.url.includes('TESTCODE1'))).toBe(false);
+  });
+
+  it('says what went wrong, by its own codes', async () => {
+    const { fake, target } = await testTarget();
+    await expect(target.testScenario('TESTCODE1')).rejects.toMatchObject({ code: 'not_test_account', status: 403 });
+    fake.testAccount = true;
+    await expect(target.testScenario('NOSUCHCODE')).rejects.toMatchObject({ code: 'code_invalid' });
+    fake.expiredCodes.add('OLDCODE1');
+    await expect(target.testScenario('OLDCODE1')).rejects.toMatchObject({ code: 'code_expired', status: 410 });
+    // Not a code: nothing is asked at all.
+    const before = fake.received.length;
+    await expect(target.testScenario('a b')).rejects.toMatchObject({ code: 'bad_request' });
+    expect(fake.received.length).toBe(before);
+  });
+
+  it('a target without scenarios: any 404 that is no wrong code, and a path it does not know', async () => {
+    const { target } = await testTarget({ tests: false });
+    await expect(target.testScenario('TESTCODE1')).rejects.toMatchObject({ code: 'test_unavailable' });
+    for (const status of [404, 405, 501]) {
+      const f: FetchLike = async (url) => (url.endsWith('/pair') ? response(200, { token: 'x'.repeat(40), account_salt: 's'.repeat(16), target: { name: 'A' }, limits: { max_bytes: 1_000_000, max_sessions: 1, max_shots: 1, max_rounds: 1, max_round_shots: 1 } }) : response(status, 'Not Found'));
+      const p = await pair({ target: 'https://app.example.org/lm/v1', code: 'K7M2PQ9X', provider: 'trackman', client: CLIENT, fetch: f });
+      await expect(new HttpTarget(p, { fetch: f, now }).testScenario('TESTCODE1')).rejects.toMatchObject({ code: 'test_unavailable', status });
+    }
+  });
+
+  it('refuses a scenario past its end, or none at all, and passes on a revoked token', async () => {
+    const { fake, target } = await testTarget();
+    fake.testAccount = true;
+    fake.scenarios.set('PASTCODE1', { ...SCENARIO, valid_until: '2026-11-20T18:00:00Z' });
+    fake.scenarios.set('JUNKCODE1', { ...SCENARIO, subject: 'with space' });
+    await expect(target.testScenario('PASTCODE1')).rejects.toMatchObject({ code: 'code_expired' });
+    await expect(target.testScenario('JUNKCODE1')).rejects.toMatchObject({ code: 'bad_answer' });
+    fake.tokens.clear();
+    await expect(target.testScenario('PASTCODE1')).rejects.toMatchObject({ code: 'token_invalid' });
+  });
+
+  it('a batch with test for an account that is no test account: test_data, nothing stored', async () => {
+    const { fake, target } = await testTarget();
+    await expect(target.import({ ...BATCH, provider: 'trackman', test: true })).rejects.toMatchObject({ code: 'test_data', status: 403 });
+    expect(fake.sessions.size).toBe(0);
+    fake.testAccount = true;
+    await expect(target.import({ ...BATCH, provider: 'trackman', test: true })).resolves.toMatchObject({ sessions: 1 });
+  });
+});

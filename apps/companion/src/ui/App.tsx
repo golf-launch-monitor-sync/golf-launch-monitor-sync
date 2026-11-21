@@ -24,6 +24,7 @@ import { FirstSyncView } from './FirstSyncView';
 import { Body, Button, colors, s } from './parts';
 import { SignInView } from './SignInView';
 import { SyncView } from './SyncView';
+import { TestView } from './TestView';
 import { TrackmanLoginView } from './TrackmanLoginView';
 
 export type Screen =
@@ -33,6 +34,8 @@ export type Screen =
   | { name: 'sync'; link: { target?: string; return?: string } }
   /** Just paired or signed in: the first sync, then (with `back`) back to the target app. */
   | { name: 'first'; target?: string; back?: { url: string; name: string } }
+  /** Test mode (spec 1.8.0): a test code for one of `keys`' pairings, typed or from a link. */
+  | { name: 'test'; keys: string[]; code?: string }
   | { name: 'licenses' };
 
 /** Coming to the front again within this long asks the plans only once. */
@@ -129,7 +132,7 @@ function Main() {
 
   useEffect(() => {
     if (!svc) return;
-    const offs = [svc.signIns.subscribe(redraw), svc.pairings.subscribe(redraw), svc.runner.subscribe(redraw)];
+    const offs = [svc.signIns.subscribe(redraw), svc.pairings.subscribe(redraw), svc.runner.subscribe(redraw), svc.tests.subscribe(redraw)];
     return () => {
       for (const off of offs) off();
     };
@@ -150,8 +153,17 @@ function Main() {
       if (!svc || !once.current.fresh(url, Date.now())) return;
       const incoming = readIncoming(url, PROVIDERS, svc.pairings.list());
       if (incoming.kind === 'invalid') {
-        setMessage(t(incoming.error === 'unsupported:test' ? 'link.testUnsupported' : 'link.invalid'));
+        setMessage(t('link.invalid'));
         setScreen({ name: 'home' });
+      } else if (incoming.kind === 'test') {
+        // A test link never pairs: without a pairing of its app there is nothing to take the code for.
+        if (!incoming.keys.length) {
+          setMessage(t('test.pairFirst'));
+          setScreen({ name: 'home' });
+        } else {
+          setMessage(null);
+          setScreen({ name: 'test', keys: incoming.keys, code: incoming.code });
+        }
       } else if (incoming.kind === 'pair') {
         setMessage(null);
         setScreen({ name: 'pair', link: incoming });
@@ -279,6 +291,8 @@ function Main() {
     body = <SyncView svc={svc} link={screen.link} renew={renewal.renew} go={setScreen} />;
   } else if (screen.name === 'first' && firstBack) {
     body = <FirstSyncView back={firstBack} sync={firstSync} done={firstDone} />;
+  } else if (screen.name === 'test') {
+    body = <TestView svc={svc} keys={screen.keys} {...(screen.code ? { code: screen.code } : {})} go={setScreen} />;
   } else if (screen.name === 'licenses') {
     body = <Licenses back={home} />;
   } else {

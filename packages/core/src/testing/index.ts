@@ -59,6 +59,8 @@ export interface FakeTargetOptions {
   fail?: Record<string, { status: number; body?: unknown; headers?: Record<string, string> }>;
   /** false: a target that offers no wake (answers 404 there, as one older than 1.9.0 does). */
   wake?: boolean;
+  /** false: a target that offers no test scenarios (answers 404 there, as one older than 1.8.0 does). */
+  tests?: boolean;
 }
 
 /** A target in memory, as the OpenAPI describes it. */
@@ -80,6 +82,11 @@ export class FakeTarget {
   readonly rounds = new Map<string, Batch['rounds'][number]>();
   accountRef: string | null = null;
   disconnected = false;
+  /** Test mode (1.8.0): the scenarios it hands out, by test code; codes whose test is over. */
+  readonly scenarios = new Map<string, unknown>();
+  readonly expiredCodes = new Set<string>();
+  /** Whether the paired account is a test account: only then a scenario, and only then a batch with `test`. */
+  testAccount = false;
   salt = 'fake-target-salt-0001';
   private seq = 0;
 
@@ -135,6 +142,15 @@ export class FakeTarget {
         : { due: true, plan_id: `pl_${++this.seq}`, known_ids: this.known(), rounds: true, round_shots: true, max_sessions: 40 };
       return response(200, { ...(this.accountRef ? { account_ref: this.accountRef } : {}), ...plan });
     }
+    if (path === '/test-scenario' && init.method === 'GET' && this.opts.tests !== false) {
+      const code = headers['X-Test-Code'];
+      if (!code || !/^[0-9A-Za-z-]{6,64}$/.test(code)) return response(400, { error: { code: 'bad_request', message: 'No test code.' } });
+      if (!this.testAccount) return response(403, { error: { code: 'not_test_account', message: 'No test account.' } });
+      if (this.expiredCodes.has(code)) return response(410, { error: { code: 'code_expired', message: 'The test is over.' } });
+      const scenario = this.scenarios.get(code);
+      if (scenario === undefined) return response(404, { error: { code: 'code_invalid', message: 'No such code.' } });
+      return response(200, scenario);
+    }
     if (path === '/import' && init.method === 'POST') {
       const body = init.body ?? '';
       if (new TextEncoder().encode(body).length > this.limits.max_bytes) return response(413, { error: { code: 'too_large' } });
@@ -149,6 +165,7 @@ export class FakeTarget {
       const batch = v.batch;
       if (this.disconnected) return response(409, { error: { code: 'disconnected' } });
       if (this.accountRef && batch.account_ref !== this.accountRef) return response(409, { error: { code: 'other_account' } });
+      if (batch.test && !this.testAccount) return response(403, { error: { code: 'test_data', message: 'Test data only for a test account.' } });
       if (batch.sessions.length > this.limits.max_sessions || batch.rounds.length > this.limits.max_rounds) {
         return response(413, { error: { code: 'too_large' } });
       }

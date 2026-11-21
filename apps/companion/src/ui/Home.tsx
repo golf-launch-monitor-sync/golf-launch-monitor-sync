@@ -13,6 +13,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { lang, t } from '../i18n';
 import type { KeyedPairing } from '../lib/pairings';
+import type { TestMode } from '../lib/tests';
 import { hostOf } from '../lib/links';
 import { checkNewBuild, type NewBuild } from '../lib/newBuild';
 import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
@@ -37,6 +38,7 @@ export function Home({
   renewing: boolean;
 }) {
   const [counts, setCounts] = useState<Partial<Record<ProviderId, GuardCounts | null>>>({});
+  const [testCounts, setTestCounts] = useState<Record<string, GuardCounts | null>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [build, setBuild] = useState<NewBuild | null>(null);
@@ -47,12 +49,19 @@ export function Home({
     const out: Partial<Record<ProviderId, GuardCounts | null>> = {};
     for (const p of PROVIDERS) out[p] = await svc.runner.counts(p);
     setCounts(out);
+    const tests: Record<string, GuardCounts | null> = {};
+    for (const m of svc.tests.list()) tests[m.key] = await svc.runner.testCounts(m.key);
+    setTestCounts(tests);
   }, [svc]);
 
   // The counts follow every run and sign-in.
   useEffect(() => {
     void refreshCounts();
-    const offs = [svc.runner.subscribe(() => void refreshCounts()), svc.signIns.subscribe(() => void refreshCounts())];
+    const offs = [
+      svc.runner.subscribe(() => void refreshCounts()),
+      svc.signIns.subscribe(() => void refreshCounts()),
+      svc.tests.subscribe(() => void refreshCounts()),
+    ];
     return () => {
       for (const off of offs) off();
     };
@@ -103,6 +112,14 @@ export function Home({
     ]);
   }
 
+  function endTest(m: TestMode, target: string) {
+    Alert.alert(t('test.endTitle'), t('test.endText', { target }), [
+      { text: t('action.cancel'), style: 'cancel' },
+      { text: t('test.end'), style: 'destructive', onPress: () => void act(`test-${m.key}`, () => svc.runner.endTest(m.key)) },
+    ]);
+  }
+
+  const tests = svc.tests.list();
   const shown = PROVIDERS.filter((p) => p === 'trackman' || svc.signIns.get(p) || svc.signIns.had(p) || pairings.some((x) => x.provider === p));
 
   return (
@@ -138,6 +155,27 @@ export function Home({
           </View>
         </Card>
       )}
+
+      {tests.map((m) => {
+        const target = svc.pairings.get(m.key)?.target.name ?? '?';
+        const line = countsText(testCounts[m.key] ?? null, now, lang, t);
+        return (
+          <Card key={`test-${m.key}`}>
+            <View style={[s.row, { justifyContent: 'space-between', alignItems: 'center' }]}>
+              <Title>{t('test.title')}</Title>
+              <Text style={s.badge}>{t('test.badge')}</Text>
+            </View>
+            <Body>{t('test.scenario', { name: m.name, target })}</Body>
+            <Body>{t('test.active', { player: m.player ?? t('signin.noName'), since: when(m.at, now, lang, t) })}</Body>
+            <Small>{t('test.notice', { target })}</Small>
+            <Small>{t('test.until', { until: when(m.valid_until, now, lang, t) })}</Small>
+            {line && <Small>{line}</Small>}
+            <View style={s.row}>
+              <Button label={t('test.end')} kind="secondary" busy={busy === `test-${m.key}`} onPress={() => endTest(m, target)} />
+            </View>
+          </Card>
+        );
+      })}
 
       {shown.map((id) => {
         const p = svc.providers[id];
@@ -192,6 +230,7 @@ export function Home({
               <Small>
                 {hostOf(p.base)} · {svc.providers[p.provider as ProviderId]?.name ?? p.provider}
               </Small>
+              {svc.tests.of(p.key) && <Small>{t('test.pairingLine', { name: svc.tests.of(p.key)?.name ?? '' })}</Small>}
               <Small>{runText(svc.runner.lastRun(p.key), now, lang, t)}</Small>
               <View style={s.row}>
                 <Button label={t('unpair.button')} kind="danger" busy={busy === `unpair-${p.key}`} onPress={() => unpair(p)} />
@@ -225,6 +264,9 @@ export function Home({
       </Card>
 
       <View style={{ gap: 8, paddingBottom: 24 }}>
+        <Pressable accessibilityRole="link" onPress={() => go({ name: 'test', keys: pairings.map((p) => p.key) })}>
+          <Text style={s.link}>{t('test.enter')}</Text>
+        </Pressable>
         <Pressable accessibilityRole="link" onPress={() => go({ name: 'licenses' })}>
           <Text style={s.link}>{t('licenses.title')}</Text>
         </Pressable>

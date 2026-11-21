@@ -36,7 +36,9 @@ const who = await provider.who(providerContext({ guard, account }), token);
 | `client.ts` | One GraphQL call through the guard: 401 is the sign-in, any other refusal stops the fetch, an answer with errors only costs that item. |
 | `queries.ts` | The portal's own queries, cut down to the mapped fields. |
 | `account.ts` | The account a sign-in opens (the token's `sub`), read without verifying and without `atob`. |
-| `testing.ts` | `FakeTrackman`: a made-up Trackman for tests and click checks (synthetic data only). |
+| `testing.ts` | `FakeTrackman`: a made-up Trackman for tests, click checks and test mode (synthetic data only; `load(data)` from Trackman's shapes, `delay` per answer; no `Buffer`, so it runs in a phone's engine). |
+| `replay.ts` | `replay(scenario)`: a target's test scenario played back through the real fetch code, the fake answering ([spec/test-mode.md](../../spec/test-mode.md)). |
+| `latency.ts` | How long each answer takes there: the scenario's `latency`, else `DEFAULT_LATENCY`; `latencyFromLog` works a profile out of an exported request log. |
 
 ## How a fetch behaves
 
@@ -60,3 +62,26 @@ const who = await provider.who(providerContext({ guard, account }), token);
   see why values are missing.
 - A history chunk reuses the activity list of the chunk before for 12 hours; once the older sessions
   are in (`max_sessions: 0`) it lists nothing and asks only for the shots of the rounds it is named.
+
+## Test mode: playing a scenario back
+
+`replay(scenario)` ([spec/test-mode.md](../../spec/test-mode.md)) is what `trackman()` runs - the activity list, the
+history chunks, the mapping, "Is this you?", every request through the guard at the plan's pace - with `FakeTrackman`
+answering instead of Trackman, filled with the scenario's `data` (`activities`, `nodes`, `scorecards`, `shotHoles`) and
+`profile`. Its requests go to the fake whatever `fetch` the client runs with (`withFetch` from core), so Trackman is
+never asked. The sign-in is a made-up token carrying the scenario's `subject`: `account_ref` and the guard's count are
+the subject's, so each code starts with a fresh guard. The provider says `test`, so every batch carries `test: true`.
+
+Each answer takes as long as the scenario's `latency` says for the query (by its name: `Activities`, `Session`,
+`Rounds`, `RoundShots`, `Who`, `Profile`; its `default` for the others), scattered about the median by the spread,
+never past three spreads or a minute. Where the scenario says nothing, `DEFAULT_LATENCY` holds: estimates for now. A
+request log the companion app exported after a real sync (*Export the log*: times, kinds, statuses, durations - never
+content) gives measured ones:
+
+```
+node --experimental-strip-types packages/provider-trackman/scripts/latency-from-log.ts glmsync-requests-2026-11-21.json
+```
+
+`replay.test.ts` plays a long history back in time-lapse against a made-up target and checks it against the real
+provider with the same answers: the same batches chunk for chunk, `test` on each, never past the guard's limits, no
+request to any network.

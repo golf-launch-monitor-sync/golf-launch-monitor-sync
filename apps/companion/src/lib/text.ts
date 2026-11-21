@@ -15,6 +15,7 @@ import {
   type GuardCounts,
 } from '@glmsync/core';
 import type { LastRun } from './runner.ts';
+import { TestModeError } from './tests.ts';
 
 export type Dict = Record<string, string>;
 export type T = (key: string, vars?: Record<string, string | number>) => string;
@@ -70,6 +71,7 @@ export function runText(run: LastRun | null, now: number, lang: Lang, t: T): str
   if (run.status === 'other_account') return t('run.otherAccount', { at });
   if (run.status === 'disconnected' || run.status === 'unpaired') return t('run.disconnected', { at });
   if (run.status === 'cancelled') return t('run.cancelled', { at });
+  if (run.error === 'test_data') return t('run.testData', { at });
   return t('run.failed', { at, error: run.error ?? '?' });
 }
 
@@ -82,8 +84,14 @@ export function countsText(c: GuardCounts | null, now: number, lang: Lang, t: T)
 
 /** What went wrong, for the player: never the raw message of a target or provider (data from outside). */
 export function errorText(e: unknown, now: number, lang: Lang, t: T): string {
+  if (e instanceof TestModeError) return t(e.code === 'unpaired' ? 'test.pairFirst' : 'test.provider');
   if (e instanceof TargetError) {
     if (e.code === 'code_invalid') return t('error.codeInvalid');
+    if (e.code === 'code_expired') return t('error.codeExpired');
+    if (e.code === 'test_unavailable') return t('error.testUnavailable');
+    if (e.code === 'not_test_account') return t('error.notTestAccount');
+    if (e.code === 'test_data') return t('error.testData');
+    if (e.code === 'token_invalid' || e.code === 'disconnected') return t('error.tokenInvalid');
     if (e.code === 'unreachable' || e.code === 'unavailable') return t('error.targetUnreachable');
     if (e.code === 'provider_unknown') return t('error.providerUnknown');
     if (e.code === 'rate_limited') return t('error.targetBusy');
@@ -98,4 +106,10 @@ export function errorText(e: unknown, now: number, lang: Lang, t: T): string {
   if (e instanceof ProviderBlockedError) return t('error.providerBlocked');
   if (e instanceof ProviderUnavailableError) return t('error.providerUnavailable');
   return t('error.generic');
+}
+
+/** What went wrong getting a test (spec/test-mode.md): a code the target doesn't know, or none at all, is a wrong code. */
+export function testErrorText(e: unknown, now: number, lang: Lang, t: T): string {
+  if (e instanceof TargetError && (e.code === 'code_invalid' || e.code === 'bad_request')) return t('test.codeWrong');
+  return errorText(e, now, lang, t);
 }

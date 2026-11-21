@@ -106,6 +106,8 @@ export async function sync<C>(opts: SyncOptions<C>): Promise<SyncOutcome> {
       generated_at: new Date(now()).toISOString(),
       ...(opts.generator ? { generator: opts.generator } : {}),
       sync: { ...(plan.plan_id ? { plan_id: plan.plan_id } : {}), reason },
+      // Made-up data says so in every batch (and `split` copies it into every part): a target refuses it for a real account.
+      ...(provider.test ? { test: true as const } : {}),
       sessions: fetched.sessions,
       rounds: fetched.rounds,
     };

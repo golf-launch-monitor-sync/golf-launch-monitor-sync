@@ -13,6 +13,8 @@
  * `queries`      the queries, next to `client` that sends them
  * `account`      the account a sign-in opens (its `sub`), read without asking anyone
  * `portal`       finding the player's own key where the signed-in portal keeps it (clients that read it there)
+ * `replay`       a target's test scenario played back through all of the above, Trackman never asked (spec/test-mode.md)
+ * `latency`      how long each of Trackman's answers takes there, and a profile from a request log
  *
  * The sign-in itself - reading it from the portal, a sign-in window - is the client's business; this
  * module only uses the token it is handed, and sends it to Trackman and nowhere else.
@@ -28,6 +30,8 @@ export { fetchForPlan, freshState, listActivities, MAX_STROKES_PER_SESSION, SHOT
 export * from './mapping.ts';
 export * as queries from './queries.ts';
 export * as portal from './portal.ts';
+export { DEFAULT_LATENCY, KIND_QUERY, latencyFromLog, latencyOf, sampleMs, type LatencyProfile } from './latency.ts';
+export { NotTrackmanScenario, replay, TEST_NOTICE, type Replay, type ReplayOptions } from './replay.ts';
 
 export const UNOFFICIAL =
   'Unofficial. Golf Launch Monitor Sync is not affiliated with, endorsed by or supported by Trackman. It reads your own account with your own sign-in, the way Trackman’s web portal does.';

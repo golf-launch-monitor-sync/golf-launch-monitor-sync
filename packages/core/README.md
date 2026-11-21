@@ -57,14 +57,20 @@ provider's "Is this you?"), so it starts a run of its own.
   field by field (`readPlan` & co.): a plan can only make a client do less. A target that takes less
   than 64 KiB a batch is not paired with (the client would fetch for nothing). Requests carry no
   cookies and no borrowed User-Agent.
+- Test mode (spec 1.8.0, [test-mode.md](../../spec/test-mode.md)): `HttpTarget.testScenario(code)` asks
+  `GET /test-scenario` with the code in `X-Test-Code` (never the address), reads the scenario strictly and says what
+  went wrong by its codes (`code_invalid`, `test_unavailable` for any other 404 or a path the target doesn't know,
+  `not_test_account`, `code_expired`); a provider with `test` (a scenario played back) makes `sync` mark every batch
+  `test: true`, and a target that refuses it for a real account answers `test_data`. `withFetch` sends a context's
+  provider requests through another `fetch` - still the guard's.
 - `FileTarget`: a sync into a file, planned gently — only when the player asks (`manual`), or the
   older history a chunk at a time (`backfill`) — with a `Cursor` of what was written and a random
   salt kept with it.
 
 ## For tests
 
-`@glmsync/core/testing`: `FakeTarget` (the target API in memory) and `VirtualClock` (days in
-milliseconds). Tests are offline; nothing here reaches a network.
+`@glmsync/core/testing`: `FakeTarget` (the target API in memory, with test scenarios and test accounts) and
+`VirtualClock` (days in milliseconds). Tests are offline; nothing here reaches a network.
 
 ## Also here
 

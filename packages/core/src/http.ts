@@ -63,9 +63,10 @@ export async function exchange(
   fetchImpl: FetchLike,
   url: string,
   init: Omit<RequestInitLike, 'signal' | 'credentials'>,
-  opts: { signal?: AbortSignal | undefined; timeoutMs?: number; now?: () => number } = {},
+  opts: { signal?: AbortSignal | undefined; timeoutMs?: number; now?: () => number; maxBytes?: number } = {},
 ): Promise<Exchanged> {
   const { signal } = opts;
+  const max = opts.maxBytes ?? MAX_BODY;
   if (signal?.aborted) throw new Cancelled();
   const ctrl = new AbortController();
   let late = false;
@@ -89,7 +90,7 @@ export async function exchange(
       return fail(e);
     }
     const length = Number(res.headers.get('Content-Length'));
-    if (Number.isFinite(length) && length > MAX_BODY) {
+    if (Number.isFinite(length) && length > max) {
       ctrl.abort();
       throw new TransportError('too_big', 'The answer is too large.');
     }
@@ -99,7 +100,7 @@ export async function exchange(
     } catch (e) {
       return fail(e);
     }
-    if (body.length > MAX_BODY) throw new TransportError('too_big', 'The answer is too large.');
+    if (body.length > max) throw new TransportError('too_big', 'The answer is too large.');
     const now = opts.now ?? Date.now;
     return { status: res.status, retryAfterS: retryAfterS(res.headers.get('Retry-After'), now()), body };
   } finally {

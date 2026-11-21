@@ -29,6 +29,11 @@ export interface Provider<Credential> {
   readonly name: string;
   /** Shown wherever the provider is named: e.g. "Unofficial; not affiliated with …". */
   readonly notice?: string;
+  /**
+   * Its answers come from a target's test scenario, not from the provider (spec/test-mode.md): every batch a sync
+   * makes with it carries `test: true`, so a target keeps the made-up data away from real accounts.
+   */
+  readonly test?: boolean;
   /** The provider's stable id of the account a sign-in opens, read without asking anyone; null if none. */
   subject(credential: Credential): string | null;
   /**
@@ -75,6 +80,28 @@ export interface ContextOptions {
   now?: () => number;
 }
 
+type Guarded = ProviderContext['guarded'];
+
+/** `http` of a context: one request through `fetch`, counted and paced by the guard's `guarded`. */
+function httpThrough(guarded: Guarded, fetchOf: () => FetchLike, now: () => number): ProviderContext['http'] {
+  return (kind, url, init) => {
+    const f = fetchOf();
+    return guarded(kind, async (signal) => {
+      try {
+        const x = await exchange(f, url, init, { signal, now });
+        return { status: x.status, retryAfterS: x.retryAfterS, value: { status: x.status, body: x.body, retryAfterS: x.retryAfterS } };
+      } catch (e) {
+        if (e instanceof Cancelled) throw e;
+        if (e instanceof TransportError) {
+          if (e.kind === 'network') throw new ProviderBlockedError('The provider could not be reached (no network, or this page may not ask it).');
+          throw new ProviderUnavailableError(e.kind === 'timeout' ? 'The provider did not answer in time.' : 'The provider sent too much.');
+        }
+        throw e;
+      }
+    });
+  };
+}
+
 export function providerContext(opts: ContextOptions): ProviderContext {
   const now = opts.now ?? Date.now;
   let fetchImpl: FetchLike | undefined = opts.fetch;
@@ -88,22 +115,14 @@ export function providerContext(opts: ContextOptions): ProviderContext {
     reason: opts.reason ?? 'manual',
     now,
     guarded,
-    async http(kind, url, init) {
-      fetchImpl ??= defaultFetch();
-      const f = fetchImpl;
-      return guarded(kind, async (signal) => {
-        try {
-          const x = await exchange(f, url, init, { signal, now });
-          return { status: x.status, retryAfterS: x.retryAfterS, value: { status: x.status, body: x.body, retryAfterS: x.retryAfterS } };
-        } catch (e) {
-          if (e instanceof Cancelled) throw e;
-          if (e instanceof TransportError) {
-            if (e.kind === 'network') throw new ProviderBlockedError('The provider could not be reached (no network, or this page may not ask it).');
-            throw new ProviderUnavailableError(e.kind === 'timeout' ? 'The provider did not answer in time.' : 'The provider sent too much.');
-          }
-          throw e;
-        }
-      });
-    },
+    http: httpThrough(guarded, () => (fetchImpl ??= defaultFetch()), now),
   };
+}
+
+/**
+ * The same context, its provider requests sent through another `fetch` (a test scenario's playback, spec/test-mode.md)
+ * - still one at a time through the same guard, at the same pace, with the same limits.
+ */
+export function withFetch(ctx: ProviderContext, fetchImpl: FetchLike): ProviderContext {
+  return { ...ctx, http: httpThrough(ctx.guarded, () => fetchImpl, ctx.now) };
 }

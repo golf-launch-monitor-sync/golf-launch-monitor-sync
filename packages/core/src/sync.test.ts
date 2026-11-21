@@ -150,6 +150,23 @@ describe('a sync', () => {
     expect(fake.imports.map((b) => b.sync?.plan_id !== undefined)).toEqual([false, false, true]);
   });
 
+  it('marks every part with test when the provider plays a test scenario back, and only then (1.8.0)', async () => {
+    const { fake, target, guard } = await setup({ limits: { max_bytes: 1_000_000, max_sessions: 2, max_shots: 100, max_rounds: 5, max_round_shots: 100 } });
+    fake.testAccount = true;
+    const playback = Object.assign(new Fake(['A', 'B', 'C', 'D', 'E']), { test: true });
+    expect(await sync({ target, provider: playback, credential: SUB, reason: 'manual', client: 'web', guard })).toMatchObject({ status: 'synced', parts: 3 });
+    expect(fake.imports.map((b) => b.test)).toEqual([true, true, true]);
+    await sync({ target, provider: new Fake(['F']), credential: SUB, reason: 'manual', client: 'web', guard });
+    expect(fake.imports.at(-1)).not.toHaveProperty('test');
+  });
+
+  it('a test batch for an account that is no test account ends with test_data, stored nowhere', async () => {
+    const { fake, target, guard } = await setup();
+    const out = await sync({ target, provider: Object.assign(new Fake(), { test: true }), credential: SUB, reason: 'manual', client: 'web', guard });
+    expect(out).toMatchObject({ status: 'failed', error: { code: 'test_data' } });
+    expect(fake.sessions.size).toBe(0);
+  });
+
   it.each([
     [{ '/plan': { status: 401 } }, 'token_invalid'],
     [{ '/plan': { status: 503 } }, 'unavailable'],

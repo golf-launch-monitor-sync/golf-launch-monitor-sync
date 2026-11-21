@@ -10,8 +10,8 @@
  *   (spec 1.2.0) is followed only once paired, and only to an address that target then named as its own;
  * - a sync link asks the targets' plans like any other run (manual), and jumps back only to an
  *   address the paired target named as its own at pairing;
- * - a test link (spec 1.8.0) does nothing yet: this app has no test mode so far, and it must never read as
- *   a sync or a pairing.
+ * - a test link (spec 1.8.0) only opens test mode's question for a target this phone is paired with: it never
+ *   pairs, never syncs by itself and never jumps back; the scenario comes only after the tester's yes.
  */
 
 import { parseLink, returnAllowed } from '@glmsync/spec';
@@ -20,6 +20,8 @@ import type { KeyedPairing } from './pairings.ts';
 export type Incoming =
   | { kind: 'pair'; target: string; code: string; provider: string; host: string; replaces: boolean; return?: string }
   | { kind: 'sync'; target?: string; return?: string }
+  /** `keys`: the pairings it may be for (of the link's target when it names one); none: pair first. */
+  | { kind: 'test'; code: string; keys: string[] }
   | { kind: 'invalid'; error: string };
 
 /** The host of a target address, as the player is shown it ("app.example.org"). */
@@ -47,8 +49,14 @@ export function readIncoming(url: unknown, providers: readonly string[], pairing
       ...(link.return ? { return: link.return } : {}),
     };
   }
-  if (link.action === 'test') return { kind: 'invalid', error: 'unsupported:test' };
+  if (link.action === 'test') return { kind: 'test', code: link.code, keys: testPairings(pairings, link.target) };
   return { kind: 'sync', ...(link.target ? { target: link.target } : {}), ...(link.return ? { return: link.return } : {}) };
+}
+
+/** The pairings a test code may be for: those of the named target, else all (a test link never pairs). */
+export function testPairings(pairings: readonly KeyedPairing[], target?: string): string[] {
+  const base = target?.replace(/\/+$/, '');
+  return pairings.filter((p) => base === undefined || p.base.replace(/\/+$/, '') === base).map((p) => p.key);
 }
 
 /**
