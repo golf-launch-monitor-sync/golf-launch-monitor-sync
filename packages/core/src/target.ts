@@ -9,7 +9,7 @@
  * target - no request here carries it.
  */
 
-import { validTarget, type Batch, type Reason, type SignIn } from '@glmsync/spec';
+import { readWake, validTarget, type Batch, type Reason, type SignIn, type WakeRegistration } from '@glmsync/spec';
 import {
   CLIENT_KINDS,
   PROVIDER_ID,
@@ -191,6 +191,27 @@ export class HttpTarget implements Target {
     const status = readStatus(parseJson(x.body));
     if (!status) throw new TargetError('bad_answer', 'The target answered the status with something else.');
     return status;
+  }
+
+  /**
+   * PUT /wake (1.9.0, spec/wake.md): the push address this target may wake the client at when a plan is due.
+   * True when the target keeps it; false when it offers no wake (404, 405, 501), so the client leaves it be for a
+   * while. Throws what any other answer says (a revoked token, `disconnected`, the target having a moment).
+   */
+  async wake(registration: WakeRegistration): Promise<boolean> {
+    const reg = readWake(registration);
+    if (!reg) throw new TargetError('bad_request', 'Not a wake address this client sends.');
+    const x = await this.send('PUT', '/wake', reg);
+    if (x.status === 204 || x.status === 200) return true;
+    if (x.status === 404 || x.status === 405 || x.status === 501) return false;
+    throw errorOf(x);
+  }
+
+  /** DELETE /wake (1.9.0): no more wakes for this client. Nothing to forget (or no wake offered) counts as done. */
+  async unwake(): Promise<void> {
+    const x = await this.send('DELETE', '/wake');
+    if ([200, 204, 401, 404, 405, 501].includes(x.status)) return;
+    throw errorOf(x);
   }
 
   /** DELETE /token: this client disconnects itself. A token already gone counts as revoked. */

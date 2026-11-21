@@ -60,9 +60,23 @@ describe('the olmd/1 schema', () => {
 describe('the target API', () => {
   const api = parse(readFileSync(`${SPEC_DIR}api/target-api.yaml`, 'utf8'));
 
-  it('is OpenAPI 3.1 with the six endpoints, and the optional one for test scenarios (1.8.0)', () => {
+  it('is OpenAPI 3.1 with the six endpoints, the optional one for test scenarios (1.8.0) and the wake (1.9.0)', () => {
     expect(api.openapi).toMatch(/^3\.1\./);
-    expect(Object.keys(api.paths).sort()).toEqual(['/import', '/known', '/pair', '/plan', '/status', '/test-scenario', '/token']);
+    expect(Object.keys(api.paths).sort()).toEqual(['/import', '/known', '/pair', '/plan', '/status', '/test-scenario', '/token', '/wake']);
+  });
+
+  it('takes the wake address the vectors take (1.9.0)', () => {
+    const schemas = (api as { components: { schemas: Record<string, { properties: Record<string, { pattern?: string; enum?: string[] }> }> } }).components.schemas;
+    const wake = schemas.WakeRegistration!;
+    const pattern = new RegExp(wake.properties.address!.pattern!);
+    const cases = readVectors<{ rule: string; input: unknown; expected: unknown }>('wake.json').cases.filter((c) => c.rule === 'read_wake');
+    for (const c of cases) {
+      const body = c.input as { service?: unknown; address?: unknown } | null;
+      const fits = !!body && typeof body === 'object' && !Array.isArray(body) && typeof body.address === 'string'
+        && body.address.length <= 256 && pattern.test(body.address)
+        && typeof body.service === 'string' && (wake.properties.service!.enum ?? []).includes(body.service);
+      expect([c.input, fits]).toEqual([c.input, c.expected !== null]);
+    }
   });
 
   it('has every reference resolve', () => {

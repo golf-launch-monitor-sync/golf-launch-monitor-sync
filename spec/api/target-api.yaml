@@ -219,6 +219,32 @@ paths:
       responses:
         "204": { description: Revoked. }
         "401": { $ref: "#/components/responses/Unauthorized" }
+  /wake:
+    put:
+      operationId: registerWake
+      summary: "Since 1.9.0, optional: the push address the target may wake this client at when a plan is due (spec/wake.md)."
+      description: |
+        Kept per import token: revoking the token ends it. Registering again replaces the address. A target that
+        offers no wake answers 404, and the client leaves it be for a while.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WakeRegistration" }
+      responses:
+        "204": { description: Kept. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { description: This target offers no wake. }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/TooMany" }
+    delete:
+      operationId: forgetWake
+      summary: "Since 1.9.0: no more wakes for this client (also when there was none)."
+      responses:
+        "204": { description: Forgotten. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { description: This target offers no wake. }
 components:
   securitySchemes:
     importToken:
@@ -476,6 +502,16 @@ components:
         valid_until:
           allOf: [{ $ref: "#/components/schemas/Time" }]
           description: When the test is over; the client drops the scenario then (and at its sign-out).
+    WakeRegistration:
+      type: object
+      required: [service, address]
+      description: "Unknown keys are ignored. A wake's push carries only {\"kind\": \"lm_plan\"} (spec/wake.md)."
+      properties:
+        service: { type: string, enum: [expo], description: "expo: an Expo push token of the client app's own project." }
+        address:
+          type: string
+          maxLength: 256
+          pattern: "^(?:ExponentPushToken|ExpoPushToken)\\[[A-Za-z0-9_-]{8,200}\\]$"
     Error:
       type: object
       additionalProperties: false

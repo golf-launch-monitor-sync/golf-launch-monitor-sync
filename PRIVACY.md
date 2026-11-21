@@ -19,6 +19,7 @@ monitor data from your own account at the maker of your launch monitor (today Tr
 | Your launch monitor data (practice sessions, shots, rounds) | only while it is being passed on; a file only if you save one | to the target app you connected, when its plan asks for it - and nowhere else |
 | A connection: the target's address and name, its import token | on your device | the token goes to that target only |
 | Where your sign-in stands (one of: none, waiting for your yes, signed in, run out, another account) | on your device | to the targets you connected, so their app can show you the next step; to the connected app's own page in this browser if it asks the extension (the extension's bridge) |
+| On iPhone, the companion app's push address (an Expo push token for this app on this phone; since 1.9.0) | on your device | to the targets you connected, so a target that can push to this app may wake it when a sync is due ([spec/wake.md](spec/wake.md)). Such a wake is a silent push with nothing of yours in it (only "ask for the plan"); it passes Expo's push service and Apple's, shows nothing and asks no permission. Off with *Background App Refresh* for the app in iOS's settings, or by disconnecting |
 | The tool's own counts and log (times, kinds of request, statuses - never content) | on your device, the last 14 days | nowhere, unless you export the log yourself |
 
 The target you connect gets your data and an `account_ref`, a hash that tells your accounts apart without naming you.

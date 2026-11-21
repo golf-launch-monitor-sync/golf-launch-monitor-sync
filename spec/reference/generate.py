@@ -31,6 +31,7 @@ import plan  # noqa: E402
 import testmode  # noqa: E402
 import trackman  # noqa: E402
 import values  # noqa: E402
+import wake  # noqa: E402
 
 SPEC = HERE.parent
 OUT = SPEC / "testvectors"
@@ -652,6 +653,48 @@ def dgvhcp_examples() -> dict[str, Any]:
                cases)
 
 
+def wake_vectors() -> dict[str, Any]:
+    tok = "ExponentPushToken[" + "a1B2c3D4e5F6g7H8i9J0kL" + "]"
+    bodies: list[Any] = [
+        {"service": "expo", "address": tok}, {"service": "expo", "address": "ExpoPushToken[abcdEFGH_-12]"},
+        {"service": "expo", "address": tok, "platform": "ios"}, {"service": "expo", "address": tok, "extra": {"x": 1}},
+        {"service": "Expo", "address": tok}, {"service": "fcm", "address": tok}, {"service": "apns", "address": tok},
+        {"address": tok}, {"service": "expo"}, {"service": "expo", "address": ""},
+        {"service": "expo", "address": "ExponentPushToken[]"}, {"service": "expo", "address": "ExponentPushToken[short]"},
+        {"service": "expo", "address": "ExponentPushToken[" + "x" * 200 + "]"},
+        {"service": "expo", "address": "ExponentPushToken[" + "x" * 201 + "]"},
+        {"service": "expo", "address": tok + " "}, {"service": "expo", "address": " " + tok},
+        {"service": "expo", "address": "ExponentPushToken[abc def ghi]"},
+        {"service": "expo", "address": "ExponentPushToken[abcdefgh\u00e9]"},
+        {"service": "expo", "address": "https://example.org/push"}, {"service": "expo", "address": 12345678},
+        {"service": "expo", "address": [tok]}, {"service": ["expo"], "address": tok}, {"service": None, "address": tok},
+        [], "expo", None, 1]
+    cases: list[dict[str, Any]] = [{"rule": "read_wake", "input": b, "expected": wake.read_wake(b)} for b in bodies]
+    now = "2026-11-21T18:00:00Z"
+    w = {"now": now, "signin": "ready", "due_at": "2026-11-21T17:59:00Z", "woken_at": None, "quiet_until": None}
+    whens: list[dict[str, Any]] = [
+        w, {**w, "due_at": now}, {**w, "due_at": "2026-11-21T18:00:01Z"}, {**w, "due_at": None},
+        {**w, "signin": "expired"}, {**w, "signin": "none"}, {**w, "signin": "confirm"}, {**w, "signin": "other"},
+        {**w, "signin": None}, {**w, "signin": "Ready"},
+        {**w, "woken_at": "2026-11-21T17:40:00Z"}, {**w, "woken_at": "2026-11-21T17:40:01Z"},
+        {**w, "woken_at": "2026-11-21T17:00:00Z"}, {**w, "woken_at": "2026-11-21T18:30:00Z"},
+        {**w, "woken_at": "yesterday"}, {**w, "quiet_until": "2026-11-21T18:00:01Z"},
+        {**w, "quiet_until": now}, {**w, "quiet_until": "2026-11-21T17:00:00Z"}, {**w, "quiet_until": 5},
+        {**w, "due_at": "2026-11-21T19:59:00+02:00"}, {**w, "due_at": "2026-11-21T20:00:01+02:00"},
+        {**w, "now": "2026-11-21T19:00:00+01:00", "woken_at": "2026-11-21T17:41:00Z"},
+        {**w, "due_at": "2026-11-21 17:59:00"}, {**w, "now": None}, {**w, "now": "now"}]
+    cases += [{"rule": "should_wake", "input": i, "expected": wake.should_wake(**i)} for i in whens]
+    datas: list[Any] = [
+        {"kind": "lm_plan"}, {"kind": "lm_plan", "experienceId": "@x/y"}, {"kind": "LM_PLAN"}, {"kind": "plan"},
+        {"kind": ["lm_plan"]}, {}, {"body": {"kind": "lm_plan"}}, "lm_plan", None, []]
+    cases += [{"rule": "is_wake", "input": d, "expected": wake.is_wake(d)} for d in datas]
+    return doc("The wake (spec/wake.md, 1.9.0). read_wake: the body of PUT /wake -> {service, address} or null. "
+               "should_wake: {now, signin, due_at, woken_at, quiet_until} (RFC 3339 times or null) -> whether a "
+               "target wakes the client now. is_wake: a push's data object -> whether it is a wake.", cases,
+               wake={"services": list(wake.SERVICES), "gap_s": wake.GAP_S, "payload": wake.PAYLOAD,
+                     "address_max": wake.ADDRESS_MAX})
+
+
 FILES = {
     "trackman-olmd.json": trackman_vectors,
     "clubs.json": club_vectors,
@@ -666,6 +709,7 @@ FILES = {
     "test-scenario.json": test_scenario_vectors,
     "hcp-plan.json": hcp_plan_vectors,
     "dgvhcp-examples.json": dgvhcp_examples,
+    "wake.json": wake_vectors,
 }
 
 

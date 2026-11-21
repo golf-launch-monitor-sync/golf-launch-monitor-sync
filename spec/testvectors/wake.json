@@ -1,0 +1,584 @@
+{
+  "$comment": "The wake (spec/wake.md, 1.9.0). read_wake: the body of PUT /wake -> {service, address} or null. should_wake: {now, signin, due_at, woken_at, quiet_until} (RFC 3339 times or null) -> whether a target wakes the client now. is_wake: a push's data object -> whether it is a wake.",
+  "spec_version": "1.9.0",
+  "generated_by": "spec/reference/generate.py",
+  "wake": {
+    "services": [
+      "expo"
+    ],
+    "gap_s": 1200,
+    "payload": {
+      "kind": "lm_plan"
+    },
+    "address_max": 256
+  },
+  "cases": [
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": "ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]"
+      },
+      "expected": {
+        "service": "expo",
+        "address": "ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]"
+      }
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": "ExpoPushToken[abcdEFGH_-12]"
+      },
+      "expected": {
+        "service": "expo",
+        "address": "ExpoPushToken[abcdEFGH_-12]"
+      }
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": "ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]",
+        "platform": "ios"
+      },
+      "expected": {
+        "service": "expo",
+        "address": "ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]"
+      }
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": "ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]",
+        "extra": {
+          "x": 1
+        }
+      },
+      "expected": {
+        "service": "expo",
+        "address": "ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]"
+      }
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "Expo",
+        "address": "ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "fcm",
+        "address": "ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "apns",
+        "address": "ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "address": "ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": ""
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": "ExponentPushToken[]"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": "ExponentPushToken[short]"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]"
+      },
+      "expected": {
+        "service": "expo",
+        "address": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]"
+      }
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": "ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL] "
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": " ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": "ExponentPushToken[abc def ghi]"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": "ExponentPushToken[abcdefghé]"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": "https://example.org/push"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": 12345678
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": "expo",
+        "address": [
+          "ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]"
+        ]
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": [
+          "expo"
+        ],
+        "address": "ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": {
+        "service": null,
+        "address": "ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": [],
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": "expo",
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": null,
+      "expected": null
+    },
+    {
+      "rule": "read_wake",
+      "input": 1,
+      "expected": null
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": true
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T18:00:00Z",
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": true
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T18:00:01Z",
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": null,
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "expired",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "none",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "confirm",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "other",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": null,
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "Ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "2026-11-21T17:40:00Z",
+        "quiet_until": null
+      },
+      "expected": true
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "2026-11-21T17:40:01Z",
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "2026-11-21T17:00:00Z",
+        "quiet_until": null
+      },
+      "expected": true
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "2026-11-21T18:30:00Z",
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "yesterday",
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": null,
+        "quiet_until": "2026-11-21T18:00:01Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": null,
+        "quiet_until": "2026-11-21T18:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": null,
+        "quiet_until": "2026-11-21T17:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": null,
+        "quiet_until": 5
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T19:59:00+02:00",
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": true
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T20:00:01+02:00",
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T19:00:00+01:00",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "2026-11-21T17:41:00Z",
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21 17:59:00",
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": null,
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "now",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": null,
+        "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_wake",
+      "input": {
+        "kind": "lm_plan"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_wake",
+      "input": {
+        "kind": "lm_plan",
+        "experienceId": "@x/y"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_wake",
+      "input": {
+        "kind": "LM_PLAN"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_wake",
+      "input": {
+        "kind": "plan"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_wake",
+      "input": {
+        "kind": [
+          "lm_plan"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_wake",
+      "input": {},
+      "expected": false
+    },
+    {
+      "rule": "is_wake",
+      "input": {
+        "body": {
+          "kind": "lm_plan"
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_wake",
+      "input": "lm_plan",
+      "expected": false
+    },
+    {
+      "rule": "is_wake",
+      "input": null,
+      "expected": false
+    },
+    {
+      "rule": "is_wake",
+      "input": [],
+      "expected": false
+    }
+  ]
+}

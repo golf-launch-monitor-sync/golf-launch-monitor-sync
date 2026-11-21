@@ -6,13 +6,14 @@
  * own, and the guard's counts in storage (with their in-flight mark) keep them honest together.
  */
 
-import { Guard, type FetchLike, type FileOut, type Storage } from '@glmsync/core';
+import { Guard, HttpTarget, type FetchLike, type FileOut, type Storage } from '@glmsync/core';
 import { demo } from '@glmsync/provider-demo';
 import { expiresAt, trackman } from '@glmsync/provider-trackman';
 import { Pairings } from './pairings.ts';
 import { Runner, type AppProvider } from './runner.ts';
 import { ChunkedSecrets, type Secrets } from './secrets.ts';
 import { SignIns } from './signins.ts';
+import { Wakes } from './wake.ts';
 
 /** The providers this app offers, in the order shown: Trackman first, the demo for trying it out. */
 export const PROVIDERS = ['trackman', 'demo'] as const;
@@ -45,6 +46,8 @@ export interface Services {
   pairings: Pairings;
   guard: Guard;
   runner: Runner;
+  /** This phone's push address at each target (the wake, spec/wake.md; iOS only). */
+  wakes: Wakes;
   /** Reads what this phone keeps; call once before using the rest. */
   load(): Promise<void>;
 }
@@ -79,12 +82,19 @@ export function makeServices(platform: Platform): Services {
     ...(platform.writeFile ? { writeFile: platform.writeFile } : {}),
     ...(platform.version ? { version: platform.version } : {}),
   });
+  const wakes = new Wakes({
+    storage: platform.storage,
+    pairings,
+    target: (p) => new HttpTarget(p, { ...(platform.fetch ? { fetch: platform.fetch } : {}), ...(platform.now ? { now: platform.now } : {}) }),
+    ...(platform.now ? { now: platform.now } : {}),
+  });
   return {
     providers,
     signIns,
     pairings,
     guard,
     runner,
+    wakes,
     async load() {
       await Promise.all([signIns.load(), pairings.load(), runner.loadRuns()]);
     },

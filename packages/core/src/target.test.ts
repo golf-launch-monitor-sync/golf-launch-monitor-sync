@@ -120,6 +120,47 @@ describe('the target API with an import token', () => {
   });
 });
 
+describe('the wake (1.9.0)', () => {
+  const ADDRESS = 'ExponentPushToken[a1B2c3D4e5F6g7H8i9J0kL]';
+
+  it('registers the address with the token, and forgets it again', async () => {
+    const { fake, target, pairing } = await paired();
+    expect(await target.wake({ service: 'expo', address: ADDRESS })).toBe(true);
+    expect(fake.wakes.get(pairing.token)).toEqual({ service: 'expo', address: ADDRESS });
+    await target.unwake();
+    expect(fake.wakes.size).toBe(0);
+    await target.unwake(); // nothing left: fine
+  });
+
+  it('sends nothing that is no wake address', async () => {
+    const { fake, target } = await paired();
+    const before = fake.received.length;
+    for (const bad of [{ service: 'expo', address: 'https://push.example.org/x' }, { service: 'fcm', address: ADDRESS }]) {
+      await expect(target.wake(bad as never)).rejects.toMatchObject({ code: 'bad_request' });
+    }
+    expect(fake.received.length).toBe(before);
+  });
+
+  it('hears a target without a wake as one, and says any other trouble', async () => {
+    const { target } = await paired(new FakeTarget({ wake: false }));
+    expect(await target.wake({ service: 'expo', address: ADDRESS })).toBe(false);
+    await target.unwake();
+    const gone = await paired(new FakeTarget());
+    gone.fake.disconnected = true;
+    await expect(gone.target.wake({ service: 'expo', address: ADDRESS })).rejects.toMatchObject({ code: 'disconnected' });
+    const busy = await paired(new FakeTarget({ fail: { '/wake': { status: 503 } } }));
+    await expect(busy.target.wake({ service: 'expo', address: ADDRESS })).rejects.toMatchObject({ code: 'unavailable' });
+    await expect(busy.target.unwake()).rejects.toMatchObject({ code: 'unavailable' });
+  });
+
+  it('forgets the address with the token', async () => {
+    const { fake, target } = await paired();
+    await target.wake({ service: 'expo', address: ADDRESS });
+    await target.revoke();
+    expect(fake.wakes.size).toBe(0);
+  });
+});
+
 describe('a plan, read from an untrusted target', () => {
   it('is not due when it is no plan', () => {
     for (const junk of [null, 'due', [], { due: 'yes' }, { due: 1 }]) expect(readPlan(junk).due).toBe(false);

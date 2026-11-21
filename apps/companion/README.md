@@ -42,6 +42,14 @@ portal in a sign-in window - so that window lives here, in a small app that does
   app). Each asks the plan first; the provider is asked only when it is due, and never past the
   [load guard](../../spec/guard.md), whose counts outlive restarts. The older history comes a chunk at
   a time while the app is open (and one chunk per background wake), spaced as the target says.
+- **Can be woken on iOS** (spec 1.9.0, [wake.md](../../spec/wake.md)): iOS wakes a background app when it likes,
+  so each paired target hears this phone's Expo push address (`PUT /wake`, `src/lib/wake.ts`; again when it changes
+  and weekly, a target without a wake left be for a week). A target that can push to it sends a silent push
+  `{"kind": "lm_plan"}` when a plan is due; the app then does what its timer does - each plan with `timer`, one
+  history chunk - at most once in five minutes (`src/wake.ts`, `expo-notifications` with
+  `enableBackgroundRemoteNotifications`). It shows no notification and asks no permission for one; Android
+  registers no address (its timer and the sync service do the job). Switched off with iOS's *Background App
+  Refresh* for the app, or by unpairing.
 - **Tells the target where its sign-in stands** with every plan (spec 1.5.0, `signin`): `ready` with a
   sign-in it can fetch with, `expired` when it ran out here, `none` when there never was one on this
   phone - and `other` (by a status, no lease) when the target has another account connected.
@@ -147,8 +155,10 @@ Mac, by a member of the Apple team, in `apps/companion` (after `pnpm install` at
 
 1. The signing credentials of the build profile `testflight`:
    `npx eas-cli@27 credentials:configure-build -p ios -e testflight` (sign in to Apple; reuse an existing
-   distribution certificate if the team has one; let Expo make the App Store provisioning profile; no push key, the
-   app has no push).
+   distribution certificate if the team has one; let Expo make the App Store provisioning profile). Since the wake
+   (spec 1.9.0) the app has the push entitlement: say yes to *Push Notifications* and reuse the team's APNs key (one
+   key serves every app of the team) or let Expo make one. A profile made before the wake lacks the entitlement:
+   run the same command once more, and the next build signs with the new one.
 2. The App Store Connect API key that EAS Submit uploads with: `npx eas-cli@27 credentials -p ios`, profile
    `testflight`, *App Store Connect: Manage your API Key* → *Set up your project to use an API Key for EAS Submit*
    (an existing team key with the role App Manager, or a new one).

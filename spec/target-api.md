@@ -3,8 +3,8 @@
 # The target API
 
 A **target** is an app that receives launch monitor data from this project's clients. It implements
-six endpoints (and, if it likes, a seventh for test scenarios), described machine-readably in
-[`api/target-api.yaml`](api/target-api.yaml) (OpenAPI 3.1). The base URL is the target's own,
+six endpoints (and, if it likes, a seventh for test scenarios and the two of the wake), described machine-readably
+in [`api/target-api.yaml`](api/target-api.yaml) (OpenAPI 3.1). The base URL is the target's own,
 conventionally ending in `/lm/v1`; the paths are relative to it.
 
 | Endpoint | What for |
@@ -16,6 +16,7 @@ conventionally ending in `/lm/v1`; the paths are relative to it.
 | `GET /status` | "Connected with …", for the client to show. |
 | `DELETE /token` | The client disconnects itself. |
 | `GET /test-scenario` | Optional, since 1.8.0: a test account's made-up provider answers ([test-mode.md](test-mode.md)). |
+| `PUT /wake`, `DELETE /wake` | Optional, since 1.9.0: the push address a target may wake the client at when a plan is due ([wake.md](wake.md)). |
 
 ## Who holds what
 
@@ -73,6 +74,12 @@ never keeps another device of the player from fetching).
 - Read strictly: exactly one value, one of the five ([`reference/bridge.py`](reference/bridge.py),
   vectors in [`testvectors/signin.json`](testvectors/signin.json)); anything else is no answer. A client
   older than 1.5.0 sends none.
+
+## The wake
+
+Since 1.9.0 a target that can push to the client's phone may wake it when a plan is due, with a silent push
+that says only "ask for the plan" ([wake.md](wake.md)): the client asks with reason `timer`, as its own timer
+would. Optional on both sides; a target without it answers `404` on `/wake`.
 
 ## Fetch now from the target's page
 

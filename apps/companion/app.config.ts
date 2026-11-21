@@ -26,7 +26,7 @@ const config: ExpoConfig = {
   slug: 'golf-launch-monitor-sync',
   owner,
   scheme: 'glmsync',
-  version: '0.1.0',
+  version: '0.2.0',
   // The native part decides which builds an update can run on (as in the target apps that use EAS).
   runtimeVersion: { policy: 'fingerprint' },
   orientation: 'portrait',
@@ -48,11 +48,17 @@ const config: ExpoConfig = {
       'android.permission.WRITE_EXTERNAL_STORAGE',
       'android.permission.RECORD_AUDIO',
       'android.permission.CAMERA',
+      // expo-notifications (the iOS wake) would ask for it; this app shows no notification.
+      'android.permission.POST_NOTIFICATIONS',
     ],
   },
   plugins: [
     'expo-localization',
     'expo-background-task',
+    // The wake (spec/wake.md): silent pushes only - nothing is ever shown, so no permission is asked for.
+    // `remote-notification` in UIBackgroundModes lets iOS start the app for one; production APNs, as every
+    // build goes to TestFlight.
+    ['expo-notifications', { enableBackgroundRemoteNotifications: true, mode: 'production' }],
     ['expo-secure-store', { configureAndroidBackup: true, faceIDPermission: false }],
   ],
   ...(projectId

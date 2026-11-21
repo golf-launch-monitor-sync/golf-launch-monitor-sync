@@ -12,6 +12,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { AppState, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { keepScheduled } from '../background';
+import { keepWake } from '../wake';
 import { t } from '../i18n';
 import { Once, readIncoming, type Incoming } from '../lib/links';
 import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
@@ -139,6 +140,10 @@ function Main() {
   useEffect(() => {
     if (svc) void keepScheduled(paired > 0);
   }, [svc, paired]);
+  // iOS: each paired target hears where it may wake this phone (spec/wake.md), again when the pairings change.
+  useEffect(() => {
+    if (svc) void keepWake(svc);
+  }, [svc, paired]);
 
   const handle = useCallback(
     (url: string) => {
@@ -197,7 +202,10 @@ function Main() {
       });
     const links = Linking.addEventListener('url', (e) => handle(e.url));
     const front = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void open();
+      if (state === 'active') {
+        void open();
+        void keepWake(svc); // a week on, or a new address: the targets hear it (src/lib/wake.ts decides)
+      }
       else if (next) clearTimeout(next);
     });
     return () => {

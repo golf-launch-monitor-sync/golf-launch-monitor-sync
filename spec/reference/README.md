@@ -14,6 +14,7 @@ must match its vectors field for field.
 | `account.py` | `account_ref`. |
 | `plan.py` | The reference planning rules of a target. |
 | `guard.py` | The load guard. |
+| `wake.py` | The wake: what a client registers, when a target wakes it, what a wake is (since 1.9.0). |
 | `deeplinks.py` | Deep links, the pairing fragment and the Android sync service's intent. |
 | `testmode.py` | A target's test scenario as a client reads it (1.8.0). |
 | `cases_trackman.py`, `generate.py` | The synthetic inputs, and the generator. |

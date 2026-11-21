@@ -6,7 +6,7 @@
  * here reaches a network.
  */
 
-import { readSignIn, validateBatch, type Batch, type Reason, type SignIn } from '@glmsync/spec';
+import { readSignIn, readWake, validateBatch, type Batch, type Reason, type SignIn, type WakeRegistration } from '@glmsync/spec';
 import type { ImportLimits } from '../api.ts';
 import type { FetchLike, ResponseLike } from '../http.ts';
 
@@ -57,6 +57,8 @@ export interface FakeTargetOptions {
   plan?: (ask: PlanAsked, target: FakeTarget) => Record<string, unknown>;
   /** A status to answer a path with instead (e.g. { '/import': 503 }). */
   fail?: Record<string, { status: number; body?: unknown; headers?: Record<string, string> }>;
+  /** false: a target that offers no wake (answers 404 there, as one older than 1.9.0 does). */
+  wake?: boolean;
 }
 
 /** A target in memory, as the OpenAPI describes it. */
@@ -71,6 +73,8 @@ export class FakeTarget {
   readonly asked: PlanAsked[] = [];
   /** Every sign-in a client told, in order. */
   readonly signins: SignInTold[] = [];
+  /** The wake addresses clients registered (1.9.0), by token. */
+  readonly wakes = new Map<string, WakeRegistration>();
   /** What it stores: external id -> the item. */
   readonly sessions = new Map<string, Batch['sessions'][number]>();
   readonly rounds = new Map<string, Batch['rounds'][number]>();
@@ -180,7 +184,23 @@ export class FakeTarget {
       if (signin) this.signins.push({ via: 'status', signin });
       return response(200, { target: { name: this.name }, connected: !this.disconnected, provider: 'demo' });
     }
+    // The wake (1.9.0): kept per token, as a target keeps it; `opts.wake === false` is a target without one.
+    if (path === '/wake' && this.opts.wake !== false) {
+      const token = auth.replace(/^Bearer /, '');
+      if (init.method === 'PUT') {
+        if (this.disconnected) return response(409, { error: { code: 'disconnected' } });
+        const reg = readWake(JSON.parse(init.body ?? 'null'));
+        if (!reg) return response(400, { error: { code: 'bad_request' } });
+        this.wakes.set(token, reg);
+        return response(204, '');
+      }
+      if (init.method === 'DELETE') {
+        this.wakes.delete(token);
+        return response(204, '');
+      }
+    }
     if (path === '/token' && init.method === 'DELETE') {
+      this.wakes.delete(auth.replace(/^Bearer /, ''));
       this.tokens.delete(auth.replace(/^Bearer /, ''));
       return response(204, '');
     }

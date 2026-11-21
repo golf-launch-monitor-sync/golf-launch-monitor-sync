@@ -27,6 +27,7 @@ matches the version it says.
 | `signin.json` | the `signin` a target reads from a client ([target-api.md](../target-api.md), *The client's sign-in*) | exact |
 | `page-bridge.json` | the extension's bridge on a target's page: requests and replies ([page-bridge.md](../page-bridge.md)) | exact |
 | `test-scenario.json` | the answer of `GET /test-scenario` as a client reads it ([test-mode.md](../test-mode.md), [reference/testmode.py](../reference/testmode.py)) | exact; `limits` are the reader's |
+| `wake.json` | the wake ([wake.md](../wake.md)): `read_wake` (the body of `PUT /wake`), `should_wake` (the target's rule), `is_wake` (a push's data) | exact |
 | `olmd-examples.json` | batches that must (`valid: true`) or must not validate against the schema | — |
 | `hcp-plan.json` | the handicap target's rules: `is_due`, `busy`, `cards_to_read` ([hcp.md](../hcp.md), [reference/hcp.py](../reference/hcp.py)) | exact; `most: null` is the rules' `max_cards` |
 | `dgvhcp-examples.json` | dgvhcp/1 batches that must (`valid: true`) or must not validate against [hcp/dgvhcp-1.schema.json](../hcp/dgvhcp-1.schema.json) | — |
