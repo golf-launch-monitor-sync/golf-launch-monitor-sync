@@ -19,10 +19,22 @@ portal in a sign-in window - so that window lives here, in a small app that does
   script in the page passes on the access key the portal itself sends to the provider's API; the
   password is typed into the provider's page and never seen by the app. Before anything is kept,
   "Is this you?" names the account (through the load guard, like every request).
+- **Keeps the sign-in window in the app** (`src/lib/trackmanPage.ts`, `windowRules`): every load is decided there, so
+  nothing goes to the system's browser - a captcha's frame from its provider's site loads in the page (react-native-
+  webview hands a URL outside `originWhitelist` to the system, which on the iPhone opened the frame in Safari), a new
+  window of the page opens in the same window, and a link anywhere else simply doesn't open.
+- **Says when a passkey can't work**: a passkey needs the sign-in site to name the app as its own, which no site does
+  for an app it doesn't make. When the page asks for one (not its offer on loading), the window says to sign in with
+  e-mail and password instead. The browser extension and the web app use the browser's own portal, where passkeys work.
 - **Renews quietly**: when the key runs out (Trackman's after about a week), a hidden window with the
   cookies the portal left on this phone brings a new one - once per app start, only where this phone
   held the player's key before, and only a key of that same account (`SignIns.renewalFits`). When that
   fails, the app says so and the target hears it (`auth_expired`).
+- **The first sync before going back**: after pairing or signing in from a target's link with a way back, the app
+  stays in front showing that it fetches until the first sync is through (at most two minutes, or "Back to … now"),
+  and only then jumps back (`src/lib/firstSync.ts`): iOS suspends an app in the back within seconds, so a first sync
+  left running behind the jump brought nothing. Without a way back the older history follows right away while the app
+  is open.
 - **Syncs only when a target's plan says so**: on opening the app (`open`), after pairing or signing
   in (`connect`), on "fetch now" and on a sync link (`manual`), when a target app binds on Android
   (`open` or `manual`, as it says), and in the background (`timer`,
@@ -73,7 +85,7 @@ src/lib/            everything without a screen, tested with vitest: secrets, si
                     links, the runner (pair, sync, history, file, "Is this you?"), the Android sync
                     service's rules (nudge), whether a new build is out (newBuild), the wording
 src/ui/             the screens: App (links, opening, quiet renewal), Home, PairView, SignInView,
-                    SyncView, Licenses, TrackmanLoginView
+                    FirstSyncView, SyncView, Licenses, TrackmanLoginView
 src/platform.ts     the phone's parts: secure store, storage, share sheet
 src/background.ts   the background task
 src/nudge.ts        the headless task behind the Android sync service

@@ -1,6 +1,6 @@
 {
   "$comment": "olmd/1 batches that must (valid: true) or must not validate against spec/olmd/olmd-1.schema.json.",
-  "spec_version": "1.6.0",
+  "spec_version": "1.7.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {
@@ -135,7 +135,9 @@
         "progress": {
           "more_available": true,
           "oldest_seen": "2025-03-01T10:00:00Z",
-          "skipped_known": 12
+          "skipped_known": 12,
+          "sessions_left": 140,
+          "oldest_listed": "2023-03-04T09:00:00Z"
         },
         "notice": {
           "code": "guard_limit",
@@ -1205,6 +1207,117 @@
         "rounds": [],
         "notice": {
           "code": "hello"
+        }
+      }
+    },
+    {
+      "name": "sessions_left_negative",
+      "why": "1.7.0: sessions_left counts, from 0.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": [],
+        "progress": {
+          "more_available": true,
+          "sessions_left": -1
+        }
+      }
+    },
+    {
+      "name": "oldest_listed_local",
+      "why": "1.7.0: oldest_listed is a time with its zone.",
+      "valid": false,
+      "batch": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [
+          {
+            "external_id": "ACT-1",
+            "started_at": "2026-11-10T17:05:00Z",
+            "kind": "simulator",
+            "kind_raw": "SIMULATOR",
+            "location": {
+              "name": "Example Golf Hall"
+            },
+            "device": {
+              "maker": "trackman"
+            },
+            "shots": [
+              {
+                "played_at": "2026-11-10T17:06:12Z",
+                "club": "7i",
+                "club_raw": "Iron7",
+                "ball": {
+                  "speed_mps": 50.0,
+                  "launch_angle_deg": 17.1,
+                  "spin_rpm": 6812.4,
+                  "spin_axis_deg": 2.6
+                },
+                "club_delivery": {
+                  "speed_mps": 36.0,
+                  "path_deg": -2.3,
+                  "face_angle_deg": -0.8,
+                  "smash_factor": 1.389
+                },
+                "flight": {
+                  "carry_m": 140.2,
+                  "total_m": 148.0,
+                  "side_m": -3.4,
+                  "total_side_m": -4.1,
+                  "curve_m": 3.2
+                }
+              }
+            ]
+          }
+        ],
+        "rounds": [],
+        "progress": {
+          "oldest_listed": "2023-03-04T09:00:00"
         }
       }
     }

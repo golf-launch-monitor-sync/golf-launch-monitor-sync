@@ -323,6 +323,10 @@ export async function fetchForPlan(plan: Plan, token: string, ctx: ProviderConte
   let more = false;
   let oldest: string | null = null;
   let notice: Fetched['notice'];
+  // What the activity list of this window holds (spec 1.7.0): sessions still to come, and the oldest activity. Only
+  // from a list that came complete; a fetch that stopped before it says neither.
+  let candidates: number | null = null;
+  let oldestListed: string | null = null;
 
   try {
     let activities: Activity[] = [];
@@ -334,6 +338,13 @@ export async function fetchForPlan(plan: Plan, token: string, ctx: ProviderConte
       else {
         activities = await listActivities(ctx, token, since);
         if (backfill) state.list = { since, items: activities, at: now };
+      }
+      candidates = 0;
+      for (const item of activities) {
+        oldestListed = earlier(oldestListed, item.time);
+        const id = externalId(item.id) as string;
+        const game = typeof item.kind === 'string' && GAME_KINDS.has(item.kind);
+        if (!game && !known.has(id) && !skipIds.has(id)) candidates += 1;
       }
     }
 
@@ -412,6 +423,9 @@ export async function fetchForPlan(plan: Plan, token: string, ctx: ProviderConte
   const { sessions, rounds } = toOlmd(raw);
   const progress: NonNullable<Fetched['progress']> = { more_available: more, skipped_known: skippedKnown };
   if (oldest) progress.oldest_seen = oldest;
+  // A session in `failed` still counts: a later sync asks for it again.
+  if (candidates !== null) progress.sessions_left = Math.max(0, candidates - raw.sessions.length);
+  if (oldestListed) progress.oldest_listed = oldestListed;
   return { sessions, rounds, failed, progress, ...(notice ? { notice } : {}) };
 }
 

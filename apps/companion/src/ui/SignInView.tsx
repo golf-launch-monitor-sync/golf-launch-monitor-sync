@@ -39,6 +39,7 @@ export function SignInView({
   const cancel = () => done(false);
   const [step, setStep] = useState<Step>(provider === 'demo' ? { name: 'checking' } : { name: 'window', fresh: false, key: 0 });
   const [saving, setSaving] = useState(false);
+  const [passkey, setPasskey] = useState(false);
   const p = svc.providers[provider];
 
   const check = useCallback(
@@ -67,8 +68,7 @@ export function SignInView({
       setStep({ name: 'error', text: t('signin.notKept'), token });
       return;
     }
-    // The first sync with this sign-in: each paired target's plan says what it wants.
-    void svc.runner.syncAll('connect').catch(() => undefined);
+    // The first sync with this sign-in comes next (App: each paired target's plan says what it wants).
     done(true);
   }
 
@@ -82,10 +82,11 @@ export function SignInView({
             <Title>{t('signin.title', { provider: p.name })}</Title>
             <Small>{t('provider.trackman.unofficial')}</Small>
             {backTo && <Small>{t('signin.thenBack', { name: backTo })}</Small>}
+            {passkey && <Body warn>{t('signin.passkey')}</Body>}
           </View>
           <Button label={t('action.cancel')} kind="secondary" onPress={cancel} />
         </View>
-        <TrackmanLoginView key={step.key} fresh={step.fresh} onToken={(token) => void check(token)} />
+        <TrackmanLoginView key={step.key} fresh={step.fresh} onToken={(token) => void check(token)} onPasskey={() => setPasskey(true)} />
       </View>
     );
   }

@@ -14,93 +14,60 @@
  * fresh: without the session this phone already has, and keeping none - for "that's not my account"
  * on a phone someone else signed in to Trackman on.
  *
+ * Nothing the page loads or opens leaves the app (lib/trackmanPage.ts, `windowRules`): a captcha's frame loads in the
+ * page, a new window in this one, and a link elsewhere doesn't open.
+ *
  * Taken over from the Birdie Box Caddie (regsta Consulting GmbH, transferred to this project).
  */
 
 import { useRef } from 'react';
 import { View } from 'react-native';
-import { WebView, type WebViewMessageEvent, type WebViewNavigation } from 'react-native-webview';
-import { fromTrackman, isSignInPage, readCapturedToken } from '../lib/trackmanPage';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { openInWindow, PAGE_SCRIPT, readPageMessage, windowRules } from '../lib/trackmanPage';
 
 const PORTAL = 'https://portal.trackmangolf.com/';
 
-/**
- * Runs inside Trackman's own page before it loads: whenever the portal calls Trackman's API, pass the
- * access token it sends on to the app.
- */
-const CAPTURE = `(function () {
-  function isTrackman(u) {
-    try { var h = new URL(u, location.href).hostname; return h === 'trackmangolf.com' || /\\.trackmangolf\\.com$/.test(h); }
-    catch (e) { return false; }
-  }
-  function send(v) {
-    if (typeof v === 'string' && /^Bearer\\s+[\\w-]+\\.[\\w-]+\\.[\\w-]+/.test(v)) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ token: v.replace(/^Bearer\\s+/, '') }));
-    }
-  }
-  var origFetch = window.fetch;
-  window.fetch = function (input, init) {
-    try {
-      var url = typeof input === 'string' ? input : input && input.url;
-      if (isTrackman(url)) {
-        var h = (init && init.headers) || (input && input.headers);
-        if (h) send(typeof h.get === 'function' ? h.get('Authorization') : (h.Authorization || h.authorization));
-      }
-    } catch (e) {}
-    return origFetch.apply(this, arguments);
-  };
-  var origOpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function (m, u) { this.__tmUrl = u; return origOpen.apply(this, arguments); };
-  var origSet = XMLHttpRequest.prototype.setRequestHeader;
-  XMLHttpRequest.prototype.setRequestHeader = function (k, v) {
-    if (String(k).toLowerCase() === 'authorization' && isTrackman(this.__tmUrl)) send(v);
-    return origSet.apply(this, arguments);
-  };
-})(); true;`;
-
 export function TrackmanLoginView({
   onToken,
+  onPasskey,
   hidden = false,
   fresh = false,
 }: {
   onToken: (token: string) => void;
+  /** The page asked for a passkey, which can't work in this window (lib/trackmanPage.ts, PAGE_SCRIPT). */
+  onPasskey?: () => void;
   hidden?: boolean;
   fresh?: boolean;
 }) {
   const done = useRef(false);
+  const view = useRef<WebView<object>>(null);
   function onMessage(e: WebViewMessageEvent) {
     // Only a Trackman page may hand over a key (a link out to anything else can't).
     if (done.current) return;
-    const token = readCapturedToken(e.nativeEvent.url, e.nativeEvent.data);
-    if (token) {
+    const msg = readPageMessage(e.nativeEvent.url, e.nativeEvent.data);
+    if (msg?.kind === 'token') {
       done.current = true;
-      onToken(token);
-    }
+      onToken(msg.token);
+    } else if (msg?.kind === 'passkey') onPasskey?.();
+  }
+  // A new window of the page (target=_blank, window.open) opens in this one, where the page may go; else nowhere.
+  function onOpenWindow(e: { nativeEvent: { targetUrl: string } }) {
+    const url = openInWindow(e.nativeEvent.targetUrl);
+    if (url) view.current?.injectJavaScript(`window.location.assign(${JSON.stringify(url)}); true;`);
   }
   return (
     <View style={hidden ? { width: 0, height: 0, overflow: 'hidden' } : { flex: 1 }}>
       <WebView
+        ref={view}
         source={{ uri: PORTAL }}
-        injectedJavaScriptBeforeContentLoaded={CAPTURE}
+        injectedJavaScriptBeforeContentLoaded={PAGE_SCRIPT}
         onMessage={onMessage}
+        onOpenWindow={onOpenWindow}
         incognito={fresh}
         sharedCookiesEnabled={!fresh}
         thirdPartyCookiesEnabled
-        // Trackman's own pages and the sign-in providers its page offers; a link to anywhere else
-        // doesn't open here.
-        originWhitelist={[
-          'https://trackmangolf.com',
-          'https://*.trackmangolf.com',
-          'https://trackman.com',
-          'https://*.trackman.com',
-          'https://appleid.apple.com',
-          'https://idmsa.apple.com',
-          'https://accounts.google.com',
-        ]}
-        // A page's own frames (a captcha, say) may load from elsewhere; the page itself may not.
-        onShouldStartLoadWithRequest={(req: WebViewNavigation & { isTopFrame?: boolean }) =>
-          req.isTopFrame === false || fromTrackman(req.url) || isSignInPage(req.url) || req.url === 'about:blank'
-        }
+        originWhitelist={windowRules.originWhitelist}
+        onShouldStartLoadWithRequest={windowRules.onShouldStartLoadWithRequest}
         style={{ flex: 1 }}
       />
     </View>

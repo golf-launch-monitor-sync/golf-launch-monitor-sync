@@ -60,6 +60,12 @@ describe('the demo provider', () => {
     expect(await go('timer')).toMatchObject({ result: { sessions: 4, rounds: 0 }, more: false });
     expect(await go('backfill')).toMatchObject({ result: { sessions: 10 }, more: true });
     expect(fake.imports.at(-1)?.progress).toMatchObject({ more_available: true, skipped_known: 4 });
+    // Spec 1.7.0: what is left of the history and how far back it reaches (a session every few days back to the window).
+    const p = fake.imports.at(-1)?.progress;
+    expect(p?.sessions_left).toBeGreaterThan(0);
+    expect(Date.parse(p?.oldest_listed ?? '')).toBeGreaterThanOrEqual(Date.parse('2024-11-01T00:00:00Z'));
+    expect(await go('backfill')).toMatchObject({ result: { sessions: 10 } });
+    expect(fake.imports.at(-1)?.progress?.sessions_left).toBe((p?.sessions_left ?? 0) - 10);
   });
 
   it('is another account for another sign-in, and none for none', () => {

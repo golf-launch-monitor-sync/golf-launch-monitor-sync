@@ -42,9 +42,24 @@ Examples that must and must not validate: [`testvectors/olmd-examples.json`](tes
 | `generator` | | `{name, version}` of the producing tool. |
 | `sync` | | The plan this batch answers: `{plan_id, reason}` ([target API](target-api.md)). Absent in a file export. |
 | `failed` | | Sessions the provider couldn't send this time: `[{external_id, started_at}]`; a later sync asks again. |
-| `progress` | | How far through the provider's history: `{more_available, oldest_seen, skipped_known}`. |
+| `progress` | | How far through the provider's history: `{more_available, oldest_seen, skipped_known, sessions_left, oldest_listed}` (below). |
 | `notice` | | Something the player should know: `{code, message, until}`, codes `auth_expired` (sign in to the provider again), `guard_limit` (the [load guard](guard.md) stopped for now), `provider_unavailable`, `provider_blocked`, `partial`. |
 | `extra` | | See above. |
+
+### `progress`
+
+- `more_available`: the provider holds more than this fetch brought (the rest comes with a later one).
+- `oldest_seen`: the oldest activity this fetch got to (fetched, or skipped as known): how far back the history is in.
+- `skipped_known`: activities left out because the target named them as known.
+- `sessions_left` (since 1.7.0): of the sessions the provider listed for this fetch's window (from the plan's
+  `since`), how many the target neither has nor gave up and this batch didn't carry (one in `failed` counts: a later
+  sync asks for it again). For a history chunk (`backfill`,
+  the whole history) that is how many sessions are still to come; for a regular sync only those of its window.
+- `oldest_listed` (since 1.7.0): the oldest activity, session or round, the provider listed for that window. For a
+  history chunk, the oldest activity in the account: how far back the history will reach.
+
+A producer leaves out what it can't tell; a target shows it as it likes ("about 140 sessions still to come, back to
+March 2023") and reads a batch without these fields as before.
 
 ### `account_ref`
 

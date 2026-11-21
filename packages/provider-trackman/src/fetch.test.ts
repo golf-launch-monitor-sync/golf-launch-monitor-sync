@@ -46,7 +46,7 @@ describe('one sync', () => {
     tm.nodes.set('A1', { strokes: [stroke(140), null, stroke(150)] });
     const out = await run({ known_ids: ['K1'], give_up: ['X1'] });
     expect(out.sessions.map((s) => [s.external_id, s.shots.length])).toEqual([['A1', 2], ['A2', 0]]);
-    expect(out.progress).toEqual({ more_available: false, skipped_known: 1, oldest_seen: '2026-11-01T10:00:00Z' });
+    expect(out.progress).toEqual({ more_available: false, skipped_known: 1, oldest_seen: '2026-11-01T10:00:00Z', sessions_left: 0, oldest_listed: '2026-11-01T10:00:00Z' });
     expect(tm.requests.map((r) => r.name)).toEqual(['Activities', 'Session', 'Session']);
     expect(out.notice).toBeUndefined();
   });
@@ -74,6 +74,45 @@ describe('one sync', () => {
     const out = await run({ max_sessions: 2 });
     expect(out.sessions.map((s) => s.external_id)).toEqual(['A5', 'A4']);
     expect(out.progress).toMatchObject({ more_available: true, oldest_seen: '2026-11-14T10:00:00Z' });
+  });
+
+  it('says how many sessions of the listed window are still to come, and the oldest activity listed (spec 1.7.0)', async () => {
+    tm.activities = [
+      act('A1', '2026-11-14T10:00:00Z'),
+      act('K1', '2026-11-13T10:00:00Z'),
+      act('G1', '2026-11-12T10:00:00Z', 'COURSE_PLAY'),
+      act('A2', '2026-11-11T10:00:00Z'),
+      act('X1', '2026-11-10T10:00:00Z'),
+      act('A3', '2026-11-09T10:00:00Z'),
+      act('A4', '2026-11-08T10:00:00Z'),
+      act('G2', '2023-03-04T09:00:00Z', 'COURSE_PLAY'),
+    ];
+    const out = await run({ since: '2011-11-16T12:00:00Z', max_sessions: 2, known_ids: ['K1'], give_up: ['X1'] }, 'backfill');
+    expect(out.sessions.map((s) => s.external_id)).toEqual(['A1', 'A2']);
+    // A3 and A4 wait; K1 is the target's, X1 given up, G1 and G2 are rounds.
+    expect(out.progress).toMatchObject({ more_available: true, sessions_left: 2, oldest_listed: '2023-03-04T09:00:00Z' });
+  });
+
+  it('says nothing is left once all came, and leaves both out when it listed nothing', async () => {
+    tm.activities = [act('A1', '2026-11-14T10:00:00Z')];
+    expect((await run({})).progress).toMatchObject({ more_available: false, sessions_left: 0, oldest_listed: '2026-11-14T10:00:00Z' });
+    tm.activities = [];
+    const none = await run({});
+    expect(none.progress?.sessions_left).toBe(0);
+    expect(none.progress?.oldest_listed).toBeUndefined();
+    tm.override = (r) => (r.name === 'Activities' ? respond(503, '<html>maintenance</html>', { 'Retry-After': '60' }) : null);
+    const failed = await run({}, 'manual');
+    expect(failed.progress).not.toHaveProperty('sessions_left');
+    expect(failed.progress).not.toHaveProperty('oldest_listed');
+  });
+
+  it('counts what a session’s trouble left unasked, when the fetch stopped half way', async () => {
+    tm.activities = [act('A1'), act('A2'), act('A3')];
+    tm.nodes.set('A1', { strokes: [stroke(140)] });
+    tm.override = (r) => (r.name === 'Session' && r.variables.id === 'A2' ? respond(503, '<html>maintenance</html>', { 'Retry-After': '60' }) : null);
+    const out = await run({});
+    expect(out.notice).toBeDefined();
+    expect(out.progress?.sessions_left).toBe(2);
   });
 
   it('pages the activities in hundreds and stops when it has them all', async () => {

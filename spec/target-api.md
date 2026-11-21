@@ -86,7 +86,7 @@ now, without a switch to another page or app: [page-bridge.md](page-bridge.md).
 - A target stores what it can and says what it couldn't (`not_stored`); one bad value costs that
   value, not the batch. A batch the schema refuses as a whole is `422 invalid_batch`.
 - `notice` and `progress` are for the target to show ("sign in to the provider again", "history back
-  to March 2025").
+  to March 2025", and since 1.7.0 "about 140 sessions still to come, back to March 2023": [olmd.md](olmd.md#progress)).
 
 ## Errors and limits
 

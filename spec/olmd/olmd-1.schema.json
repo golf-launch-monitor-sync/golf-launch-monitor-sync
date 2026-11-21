@@ -56,7 +56,9 @@
       "properties": {
         "more_available": { "type": "boolean" },
         "oldest_seen": { "$ref": "#/$defs/time" },
-        "skipped_known": { "type": "integer", "minimum": 0 }
+        "skipped_known": { "type": "integer", "minimum": 0 },
+        "sessions_left": { "type": "integer", "minimum": 0, "description": "Since 1.7.0: sessions the provider listed for this fetch's window that the target neither has nor gave up, and that this batch didn't carry (one in failed counts)." },
+        "oldest_listed": { "$ref": "#/$defs/time", "description": "Since 1.7.0: the oldest activity (session or round) the provider listed for this fetch's window." }
       }
     },
     "notice": { "$ref": "#/$defs/notice" },

@@ -9,7 +9,6 @@
  * already, else after the sign-in - but only to an address the target named as its own in its answer.
  */
 
-import * as Linking from 'expo-linking';
 import { useState } from 'react';
 import { ScrollView } from 'react-native';
 import { lang, t } from '../i18n';
@@ -31,10 +30,9 @@ export function PairView({ svc, link, go }: { svc: Services; link: Extract<Incom
       const p = await svc.runner.pair(link);
       const back = backAfterPairing(link, p);
       if (svc.signIns.credential(p.provider)) {
-        // Signed in already: the first sync right away (the target's plan decides what it brings).
-        void svc.runner.syncAll('connect', { target: p.base }).catch(() => undefined);
-        go({ name: 'home' });
-        if (back) await Linking.openURL(back).catch(() => undefined); // the app to go back to is gone: stay
+        // Signed in already: the first sync right away (the target's plan decides what it brings), and back only
+        // once it is through (FirstSyncView: on the iPhone a sync left running behind the jump stops).
+        go({ name: 'first', target: p.base, ...(back ? { back: { url: back, name: p.target.name } } : {}) });
       } else {
         go({ name: 'signin', provider: p.provider as 'trackman' | 'demo', ...(back ? { back: { url: back, name: p.target.name } } : {}) });
       }

@@ -19,6 +19,7 @@ import { services } from '../platform';
 import { Home } from './Home';
 import { Licenses } from './Licenses';
 import { PairView } from './PairView';
+import { FirstSyncView } from './FirstSyncView';
 import { Body, Button, colors, s } from './parts';
 import { SignInView } from './SignInView';
 import { SyncView } from './SyncView';
@@ -29,6 +30,8 @@ export type Screen =
   | { name: 'pair'; link: Extract<Incoming, { kind: 'pair' }> }
   | { name: 'signin'; provider: ProviderId; back?: { url: string; name: string } }
   | { name: 'sync'; link: { target?: string; return?: string } }
+  /** Just paired or signed in: the first sync, then (with `back`) back to the target app. */
+  | { name: 'first'; target?: string; back?: { url: string; name: string } }
   | { name: 'licenses' };
 
 /** Coming to the front again within this long asks the plans only once. */
@@ -114,6 +117,8 @@ function Main() {
   const [, redraw] = useReducer((x: number) => x + 1, 0);
   const renewal = useRenewal(svc);
   const once = useRef(new Once());
+  /** Starts the older history now, while the app is in front (set by the effect below). */
+  const historyNow = useRef<() => void>(() => undefined);
 
   const start = useCallback(() => {
     setBroken(false);
@@ -160,10 +165,18 @@ function Main() {
     let stopped = false;
     let lastOpen = 0;
     let next: ReturnType<typeof setTimeout> | null = null;
-    const history = async () => {
+    // One loop at a time: a newer start ends the one before at its next step.
+    let gen = 0;
+    const history = async (mine = ++gen) => {
       const wait = await svc.runner.backfill().catch(() => null);
-      if (stopped || wait === null || AppState.currentState !== 'active') return;
-      next = setTimeout(() => void history(), Math.max(5, wait) * 1000);
+      if (stopped || mine !== gen || wait === null || AppState.currentState !== 'active') return;
+      next = setTimeout(() => void history(mine), Math.max(5, wait) * 1000);
+    };
+    // Only in front: a chunk started as the app goes to the back stops there and holds the target's lease.
+    historyNow.current = () => {
+      if (stopped || AppState.currentState !== 'active') return;
+      if (next) clearTimeout(next);
+      void history();
     };
     const open = async () => {
       if (Date.now() - lastOpen < OPEN_EVERY_MS || !svc.pairings.list().length) return;
@@ -197,6 +210,32 @@ function Main() {
 
   const home = useCallback(() => setScreen({ name: 'home' }), []);
 
+  /** The first sync after pairing or signing in (the plans decide what it brings); then the older history. */
+  const connectSync = useCallback(
+    async (target?: string) => {
+      if (!svc) return;
+      await svc.runner.syncAll('connect', target ? { target } : {}).catch(() => undefined);
+    },
+    [svc],
+  );
+  const firstTarget = screen.name === 'first' ? screen.target : undefined;
+  const firstBack = screen.name === 'first' ? screen.back : undefined;
+  const firstSync = useCallback(() => connectSync(firstTarget), [connectSync, firstTarget]);
+  const firstDone = useCallback(
+    (how: 'back' | 'stayed' | 'here') => {
+      home();
+      if (how === 'stayed') setMessage(t('sync.stayed'));
+      historyNow.current();
+    },
+    [home],
+  );
+  // Without a way back the app stays: home at once, the first sync and the history while it is in front.
+  useEffect(() => {
+    if (screen.name !== 'first' || screen.back) return;
+    home();
+    void connectSync(screen.target).then(() => historyNow.current());
+  }, [screen, home, connectSync]);
+
   let body;
   if (broken) {
     body = (
@@ -221,14 +260,17 @@ function Main() {
         {...(screen.back ? { backTo: screen.back.name } : {})}
         done={(signedIn) => {
           renewal.allowAgain();
-          home();
-          // Paired from a link with a return: back to the target app once signed in (spec 1.2.0).
-          if (signedIn && screen.back) void Linking.openURL(screen.back.url).catch(() => undefined);
+          // Signed in: the first sync, and when paired from a link with a return, back to the target app once it is
+          // through (spec 1.2.0; FirstSyncView).
+          if (signedIn) setScreen({ name: 'first', ...(screen.back ? { back: screen.back } : {}) });
+          else home();
         }}
       />
     );
   } else if (screen.name === 'sync') {
     body = <SyncView svc={svc} link={screen.link} renew={renewal.renew} go={setScreen} />;
+  } else if (screen.name === 'first' && firstBack) {
+    body = <FirstSyncView back={firstBack} sync={firstSync} done={firstDone} />;
   } else if (screen.name === 'licenses') {
     body = <Licenses back={home} />;
   } else {

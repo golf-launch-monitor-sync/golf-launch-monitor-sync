@@ -387,7 +387,8 @@ def olmd_examples() -> dict[str, Any]:
                           account_ref=cases_trackman.REF, generated_at=cases_trackman.AT)
     full = {**copy.deepcopy(good), "generator": {"name": "golf-launch-monitor-sync", "version": "0.1.0"},
             "sync": {"plan_id": "pl_7d1c", "reason": "timer"},
-            "progress": {"more_available": True, "oldest_seen": "2025-03-01T10:00:00Z", "skipped_known": 12},
+            "progress": {"more_available": True, "oldest_seen": "2025-03-01T10:00:00Z", "skipped_known": 12,
+                         "sessions_left": 140, "oldest_listed": "2023-03-04T09:00:00Z"},
             "notice": {"code": "guard_limit", "message": "Enough asked of the provider today; tomorrow it goes on."},
             "failed": [{"external_id": "ACT-9", "started_at": "2026-11-09T10:00:00Z"}],
             "extra": {"anything": ["is", "kept", 1]}}
@@ -437,7 +438,11 @@ def olmd_examples() -> dict[str, Any]:
              bad("round_shot_empty_ball", "An empty group is left out on a round's shot too.",
                  lambda b: b["rounds"].append({"external_id": "R1", "shots": [{"hole": 1, "number": 1, "ball": {}}]})),
              bad("unknown_top_level", "Extensions go into extra.", lambda b: b.update(player="Someone")),
-             bad("notice_code", "Notice codes are a closed list.", lambda b: b.update(notice={"code": "hello"}))]
+             bad("notice_code", "Notice codes are a closed list.", lambda b: b.update(notice={"code": "hello"})),
+             bad("sessions_left_negative", "1.7.0: sessions_left counts, from 0.",
+                 lambda b: b.update(progress={"more_available": True, "sessions_left": -1})),
+             bad("oldest_listed_local", "1.7.0: oldest_listed is a time with its zone.",
+                 lambda b: b.update(progress={"oldest_listed": "2023-03-04T09:00:00"}))]
     return doc("olmd/1 batches that must (valid: true) or must not validate against spec/olmd/olmd-1.schema.json.",
                cases)
 

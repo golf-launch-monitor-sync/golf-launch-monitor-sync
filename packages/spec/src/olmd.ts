@@ -137,7 +137,8 @@ export interface Batch {
   sessions: Session[];
   rounds: Round[];
   failed?: { external_id: string; started_at?: Time }[];
-  progress?: { more_available?: boolean; oldest_seen?: Time; skipped_known?: number };
+  /** spec/olmd.md, "progress"; `sessions_left` and `oldest_listed` since 1.7.0. */
+  progress?: { more_available?: boolean; oldest_seen?: Time; skipped_known?: number; sessions_left?: number; oldest_listed?: Time };
   notice?: { code: NoticeCode; message?: string; until?: Time };
   extra?: Extra;
 }

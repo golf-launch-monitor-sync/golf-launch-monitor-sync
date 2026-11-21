@@ -170,8 +170,14 @@ async function fetchForPlan(plan: Plan, ctx: ProviderContext): Promise<Fetched> 
   let skipped = 0;
   let more = false;
   let oldest: string | undefined;
+  // Spec 1.7.0: the sessions of the listed window still to come, and its oldest one.
+  let left: number | undefined;
+  let oldestListed: string | undefined;
   if (max > 0 || ctx.reason !== 'backfill') {
     const list = await ctx.guarded('list', ok(days(since, now, SESSION_EVERY_DAYS, 0)));
+    const listed = list.map(sessionOn).filter((s) => !(ms(s.started_at) < since));
+    left = listed.filter((s) => !known.has(s.external_id) && !skip.has(s.external_id)).length;
+    for (const s of listed) if (!oldestListed || ms(s.started_at) < ms(oldestListed)) oldestListed = s.started_at;
     for (const d of list) {
       const s = sessionOn(d);
       if (ms(s.started_at) < since) continue;
@@ -210,6 +216,8 @@ async function fetchForPlan(plan: Plan, ctx: ProviderContext): Promise<Fetched> 
   }
   const progress: NonNullable<Fetched['progress']> = { more_available: more, skipped_known: skipped };
   if (oldest) progress.oldest_seen = oldest;
+  if (left !== undefined) progress.sessions_left = Math.max(0, left - sessions.length);
+  if (oldestListed) progress.oldest_listed = oldestListed;
   return { sessions, rounds, failed: [], progress };
 }
 
