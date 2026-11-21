@@ -15,6 +15,7 @@ must match its vectors field for field.
 | `plan.py` | The reference planning rules of a target. |
 | `guard.py` | The load guard. |
 | `deeplinks.py` | Deep links, the pairing fragment and the Android sync service's intent. |
+| `testmode.py` | A target's test scenario as a client reads it (1.8.0). |
 | `cases_trackman.py`, `generate.py` | The synthetic inputs, and the generator. |
 
 ```

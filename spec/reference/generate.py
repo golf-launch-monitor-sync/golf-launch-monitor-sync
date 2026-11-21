@@ -28,6 +28,7 @@ import deeplinks  # noqa: E402
 import guard  # noqa: E402
 import hcp  # noqa: E402
 import plan  # noqa: E402
+import testmode  # noqa: E402
 import trackman  # noqa: E402
 import values  # noqa: E402
 
@@ -305,7 +306,15 @@ def deep_link_vectors() -> dict[str, Any]:
              f"glmsync://pair?target={t}&code=K7M2PQ9X&return=javascript%3Aalert(1)",
              f"glmsync://pair?target={t}&code=K7M2PQ9X&return=glmsync%3A%2F%2Fsync",
              f"glmsync://pair?target={t}&code=K7M2PQ9X&return=",
-             f"glmsync://pair?target={t}&code=K7M2PQ9X&return=exampleapp%3A%2F%2Fa&return=exampleapp%3A%2F%2Fb"]
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&return=exampleapp%3A%2F%2Fa&return=exampleapp%3A%2F%2Fb",
+             # 1.8.0: a test code for a pairing (spec/test-mode.md)
+             "glmsync://test?code=T7K2M9QX", f"glmsync://test/?target={t}&code=T7K2-M9QX&utm=x",
+             f"glmsync://test?target={t}", "glmsync://test", "glmsync://test?code=T7K2", "glmsync://test?code=T7K2+M9QX",
+             "glmsync://test?code=T7K2M9QX&code=AAAAAAAA", "glmsync://test?code=",
+             "glmsync://test?target=http%3A%2F%2Fapp.example.org&code=T7K2M9QX", "glmsync://test?code=T7K2M9QX#frag",
+             "glmsync://test?code=T7K2M9QX&return=exampleapp%3A%2F%2Fback", "glmsync://test?code=T7K2M9QX&token=x",
+             "glmsync://test?code=T7K2M9QX%ZZ", "glmsync://test?code=T7K2M9QX\n", "GLMSYNC://test?code=T7K2M9QX",
+             "glmsync://tests?code=T7K2M9QX"]
     cases: list[dict[str, Any]] = [{"rule": "parse_link", "input": u, "expected": deeplinks.parse_link(u)} for u in links]
     frags = [f"#target={t}&code=K7M2PQ9X", f"target={t}&code=K7M2PQ9X&provider=demo", "#code=K7M2PQ9X", "#",
              f"#target={t}&code=K7M2PQ9X&target={t}",
@@ -323,11 +332,12 @@ def deep_link_vectors() -> dict[str, Any]:
         (f"glmsync://sync?target={t}&return=exampleapp%3A%2F%2Fsynced", "manual"),
         (f"glmsync://pair?target={t}&code=K7M2PQ9X", "manual"), ("glmsync://sync?target=ftp%3A%2F%2Fx", "open"),
         (f"glmsync://sync?target={t}&target={t}", "open"), (None, "open"), ("", "open"),
-        (f"https://app.example.org/sync?target={t}", "open")]
+        (f"https://app.example.org/sync?target={t}", "open"), (f"glmsync://test?target={t}&code=T7K2M9QX", "open")]
     cases += [{"rule": "parse_sync_intent", "input": {"data": d, "reason": r},
                "expected": deeplinks.parse_sync_intent(d, r)} for d, r in intents]
     return doc("Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> "
-               "{ok: true, action, target?, code?, provider?, return?} or {ok: false, error}. parse_sync_intent "
+               "{ok: true, action, target?, code?, provider?, return?} or {ok: false, error}; action is pair, sync "
+               "or (1.8.0) test. parse_sync_intent "
                "(the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> "
                "{ok: true, target, reason} or {ok: false, error}.", cases)
 
@@ -412,6 +422,8 @@ def olmd_examples() -> dict[str, Any]:
               "batch": trackman.batch({"round_shots": [{"id": "SC-4001", "holes": cases_trackman.MEASURED_HOLES,
                                                         "measured": True}]},
                                       account_ref=cases_trackman.REF, generated_at=cases_trackman.AT)},
+             {"name": "test_batch", "why": "1.8.0: made from a test scenario, not from the provider.", "valid": True,
+              "batch": {**copy.deepcopy(good), "test": True}},
              bad("wrong_format", "Another format version.", lambda b: b.update(format="olmd/2")),
              bad("no_provider", "provider is required.", drop("provider")),
              bad("provider_case", "Provider ids are lower case.", lambda b: b.update(provider="Trackman")),
@@ -442,9 +454,92 @@ def olmd_examples() -> dict[str, Any]:
              bad("sessions_left_negative", "1.7.0: sessions_left counts, from 0.",
                  lambda b: b.update(progress={"more_available": True, "sessions_left": -1})),
              bad("oldest_listed_local", "1.7.0: oldest_listed is a time with its zone.",
-                 lambda b: b.update(progress={"oldest_listed": "2023-03-04T09:00:00"}))]
+                 lambda b: b.update(progress={"oldest_listed": "2023-03-04T09:00:00"})),
+             bad("test_false", "1.8.0: test is true or absent.", lambda b: b.update(test=False)),
+             bad("test_as_text", "1.8.0: test is the JSON value true.", lambda b: b.update(test="true"))]
     return doc("olmd/1 batches that must (valid: true) or must not validate against spec/olmd/olmd-1.schema.json.",
                cases)
+
+
+def test_scenario_vectors() -> dict[str, Any]:
+    """The answer of GET /test-scenario as a client reads it (spec/test-mode.md, 1.8.0)."""
+    now = "2026-11-21T18:00:00Z"
+    ok: dict[str, Any] = {
+        "name": "steady", "provider": "trackman", "subject": "test-0f3a9c21-steady",
+        "profile": {"fullName": "Sam Example (test)"},
+        "data": {"activities": [{"id": "ACT-T1", "kind": "RANGE_PRACTICE", "time": "2026-11-20T17:00:00Z"}],
+                 "nodes": {"ACT-T1": {"strokes": []}}, "scorecards": [], "shotHoles": {}},
+        "latency": {"default": {"median_s": 0.8, "spread_s": 0.3},
+                    "queries": {"Activities": {"median_s": 1.2, "spread_s": 0.4},
+                                "Session": {"median_s": 2, "spread_s": 1}}},
+        "valid_until": "2026-11-28T18:00:00+01:00"}
+
+    def but(**kw: Any) -> dict[str, Any]:
+        a = copy.deepcopy(ok)
+        for k, v in kw.items():
+            if v is ...:
+                a.pop(k)
+            else:
+                a[k] = v
+        return a
+
+    answers: list[tuple[str, Any, str]] = [
+        ("whole", ok, now),
+        ("minimal", but(latency=...), now),
+        ("empty_account", but(data={}, profile={}), now),
+        ("later_version_keys", {**ok, "hint": "kept for later versions", "x_extra": 1}, now),
+        ("unicode_name", but(name="Léon ⛳ (Test T17)"), now),
+        ("name_of_100", but(name="n" * 100), now),
+        ("name_of_101", but(name="n" * 101), now),
+        ("name_blank", but(name="   "), now),
+        ("name_empty", but(name=""), now),
+        ("name_control", but(name="Sam\nExample"), now),
+        ("name_missing", but(name=...), now),
+        ("name_number", but(name=7), now),
+        ("provider_case", but(provider="Trackman"), now),
+        ("provider_missing", but(provider=...), now),
+        ("subject_space", but(subject="test 1"), now),
+        ("subject_unicode", but(subject="tëst-1"), now),
+        ("subject_long", but(subject="s" * 201), now),
+        ("subject_missing", but(subject=...), now),
+        ("profile_list", but(profile=[]), now),
+        ("profile_missing", but(profile=...), now),
+        ("data_list", but(data=[{"id": "x"}]), now),
+        ("data_text", but(data="{}"), now),
+        ("data_missing", but(data=...), now),
+        ("until_local", but(valid_until="2026-11-28T18:00:00"), now),
+        ("until_spaces", but(valid_until=" 2026-11-28T18:00:00Z"), now),
+        ("until_date", but(valid_until="2026-11-28"), now),
+        ("until_impossible", but(valid_until="2026-02-30T10:00:00Z"), now),
+        ("until_number", but(valid_until=1795000000), now),
+        ("until_missing", but(valid_until=...), now),
+        ("expired", but(valid_until="2026-11-21T17:59:59Z"), now),
+        ("expired_now", but(valid_until="2026-11-21T19:00:00+01:00"), now),
+        ("expired_by_ms", but(valid_until="2026-11-21T18:00:00.000999Z"), "2026-11-21T18:00:00.000500Z"),
+        ("good_by_ms", but(valid_until="2026-11-21T18:00:00.001Z"), now),
+        ("clock_unreadable", ok, "soon"),
+        ("clock_offset", ok, "2026-11-28T18:59:59+02:00"),
+        ("latency_not_object", but(latency=[1, 2]), now),
+        ("latency_bad_entries", but(latency={
+            "default": {"median_s": -1, "spread_s": 0.2},
+            "queries": {"Activities": {"median_s": "1", "spread_s": 0.2}, "Session": {"median_s": 61, "spread_s": 1},
+                        "Rounds": {"median_s": 1, "spread_s": 60}, "RoundShots": {"median_s": 1},
+                        "Who": {"median_s": True, "spread_s": 0}, "1Bad": {"median_s": 1, "spread_s": 1},
+                        "has space": {"median_s": 1, "spread_s": 1}, "Profile": [1, 1],
+                        "Ok.name_2-x": {"median_s": 0, "spread_s": 0, "extra": "ignored"}}}), now),
+        ("latency_queries_list", but(latency={"default": {"median_s": 1, "spread_s": 0}, "queries": []}), now),
+        ("latency_many", but(latency={"queries": {f"Q{i:02d}": {"median_s": i / 10, "spread_s": 0}
+                                                  for i in range(60)}}), now),
+        ("not_object", [ok], now),
+        ("null", None, now),
+        ("text", "steady", now)]
+    cases = [{"name": n, "input": {"answer": a, "now": t}, "expected": testmode.read_scenario(a, t)}
+             for n, a, t in answers]
+    return doc("The answer of GET /test-scenario as a client reads it (spec/test-mode.md; 1.8.0): input {answer, now} "
+               "-> {ok: true, scenario: {name, provider, subject, profile, data, latency: {default?, queries}, "
+               "valid_until}} or {ok: false, error}. All of it synthetic.", cases,
+               limits={"max_bytes": testmode.MAX_BYTES, "max_latency_s": testmode.MAX_LATENCY_S,
+                       "max_queries": testmode.MAX_QUERIES})
 
 
 # ---------------------------------------------------------------------------
@@ -568,6 +663,7 @@ FILES = {
     "signin.json": signin_vectors,
     "page-bridge.json": bridge_vectors,
     "olmd-examples.json": olmd_examples,
+    "test-scenario.json": test_scenario_vectors,
     "hcp-plan.json": hcp_plan_vectors,
     "dgvhcp-examples.json": dgvhcp_examples,
 }

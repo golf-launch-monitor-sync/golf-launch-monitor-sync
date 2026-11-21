@@ -3,9 +3,9 @@
 # The target API
 
 A **target** is an app that receives launch monitor data from this project's clients. It implements
-six endpoints, described machine-readably in [`api/target-api.yaml`](api/target-api.yaml) (OpenAPI
-3.1). The base URL is the target's own, conventionally ending in `/lm/v1`; the paths are relative to
-it.
+six endpoints (and, if it likes, a seventh for test scenarios), described machine-readably in
+[`api/target-api.yaml`](api/target-api.yaml) (OpenAPI 3.1). The base URL is the target's own,
+conventionally ending in `/lm/v1`; the paths are relative to it.
 
 | Endpoint | What for |
 | --- | --- |
@@ -15,6 +15,7 @@ it.
 | `GET /known?provider=&since=` | The external ids the target has, so they aren't fetched twice. |
 | `GET /status` | "Connected with …", for the client to show. |
 | `DELETE /token` | The client disconnects itself. |
+| `GET /test-scenario` | Optional, since 1.8.0: a test account's made-up provider answers ([test-mode.md](test-mode.md)). |
 
 ## Who holds what
 
@@ -22,7 +23,8 @@ it.
   a target, and no endpoint here takes one.
 - The **import token** is the target's: one per player, provider and client, kept by the target only
   as a hash, shown in the target app with when it was last used, revocable there at any time. It can
-  only write batches and read its own list of external ids — no shots, no rounds, no profile. The
+  only write batches and read its own list of external ids — no shots, no rounds, no profile — and,
+  since 1.8.0 and only for a test account, read that account's test scenario with its code. The
   client keeps it like a password.
 - `account_salt` (from pairing) makes `account_ref` ([olmd.md](olmd.md)). The target connects one
   provider account per player; a batch of another one is refused (`409 other_account`) until the
@@ -85,6 +87,8 @@ now, without a switch to another page or app: [page-bridge.md](page-bridge.md).
   and `shots`.
 - A target stores what it can and says what it couldn't (`not_stored`); one bad value costs that
   value, not the batch. A batch the schema refuses as a whole is `422 invalid_batch`.
+- A batch with `test: true` (1.8.0) was made from a test scenario: a target takes it only for one of its
+  test accounts and answers `403 test_data` for any other ([test-mode.md](test-mode.md)).
 - `notice` and `progress` are for the target to show ("sign in to the provider again", "history back
   to March 2025", and since 1.7.0 "about 140 sessions still to come, back to March 2023": [olmd.md](olmd.md#progress)).
 
@@ -94,6 +98,11 @@ Errors are `{"error": {"code", "message"}}` with the codes in the OpenAPI file. 
 requests per token and minute; `429` carries `Retry-After`, which a client honours. CORS: a target
 that wants the browser extension or the web app as clients allows their origins for these paths
 (and only these).
+
+## Test scenarios
+
+Since 1.8.0 a target may hand its own test accounts made-up answers of a provider, which a client plays back
+to its real provider code — plan, guard and all — instead of asking the provider: [test-mode.md](test-mode.md).
 
 ## Reasons
 

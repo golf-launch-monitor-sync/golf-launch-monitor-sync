@@ -8,6 +8,7 @@
   "action.ok": "OK",
   "action.back": "Back",
   "link.invalid": "That link couldn't be read, so nothing happened. Open it again from your app.",
+  "link.testUnsupported": "This version of the app has no test mode yet. Update it, then open the link again.",
   "pair.title": "Connect with {host}?",
   "pair.what": "From now on, your {provider} data goes to {host} whenever that app asks for it. Your sign-in stays on this phone.",
   "pair.only": "Only say yes if you just tapped “connect” in that app yourself.",

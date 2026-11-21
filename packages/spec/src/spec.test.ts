@@ -60,9 +60,9 @@ describe('the olmd/1 schema', () => {
 describe('the target API', () => {
   const api = parse(readFileSync(`${SPEC_DIR}api/target-api.yaml`, 'utf8'));
 
-  it('is OpenAPI 3.1 with the six endpoints', () => {
+  it('is OpenAPI 3.1 with the six endpoints, and the optional one for test scenarios (1.8.0)', () => {
     expect(api.openapi).toMatch(/^3\.1\./);
-    expect(Object.keys(api.paths).sort()).toEqual(['/import', '/known', '/pair', '/plan', '/status', '/token']);
+    expect(Object.keys(api.paths).sort()).toEqual(['/import', '/known', '/pair', '/plan', '/status', '/test-scenario', '/token']);
   });
 
   it('has every reference resolve', () => {

@@ -140,5 +140,7 @@ export interface Batch {
   /** spec/olmd.md, "progress"; `sessions_left` and `oldest_listed` since 1.7.0. */
   progress?: { more_available?: boolean; oldest_seen?: Time; skipped_known?: number; sessions_left?: number; oldest_listed?: Time };
   notice?: { code: NoticeCode; message?: string; until?: Time };
+  /** Made from a target's test scenario, not fetched from the provider (1.8.0, spec/test-mode.md). */
+  test?: true;
   extra?: Extra;
 }

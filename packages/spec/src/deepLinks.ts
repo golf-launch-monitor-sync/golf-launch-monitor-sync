@@ -11,6 +11,8 @@
 export type LinkResult =
   | { ok: true; action: 'pair'; target: string; code: string; provider?: string; return?: string }
   | { ok: true; action: 'sync'; target?: string; return?: string }
+  /** Since 1.8.0: a test code for a pairing (spec/test-mode.md); never pairs, never jumps back. */
+  | { ok: true; action: 'test'; target?: string; code: string }
   | { ok: false; error: string };
 
 const MAX_LEN = 2048;
@@ -20,7 +22,7 @@ const TARGET =
   /^(?:https:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?|http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?)(?:\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$/;
 const SCHEME = /^([a-z][a-z0-9+.-]*):/;
 const NEVER_RETURN = new Set(['javascript', 'data', 'file', 'vbscript', 'about', 'blob', 'glmsync']);
-const LINK = /^glmsync:\/\/(pair|sync)\/?(?:\?([^#]*))?$/;
+const LINK = /^glmsync:\/\/(pair|sync|test)\/?(?:\?([^#]*))?$/;
 const BAD_ESCAPE = /%(?![0-9A-Fa-f]{2})/;
 // What Python's str.isspace() counts: JS's \s plus the separators \x1c-\x1f.
 const SPACE = /[\s\x1c-\x1f]/;
@@ -74,6 +76,7 @@ const PAIR_KEYS = new Set(['target', 'code', 'provider']);
 // A pair link may name where to jump back to once paired (1.2.0); the pairing page's fragment may not.
 const PAIR_LINK_KEYS = new Set(['target', 'code', 'provider', 'return']);
 const SYNC_KEYS = new Set(['target', 'return']);
+const TEST_KEYS = new Set(['target', 'code']);
 
 function pair(p: Map<string, string>): LinkResult {
   const target = p.get('target');
@@ -96,7 +99,17 @@ function pair(p: Map<string, string>): LinkResult {
   };
 }
 
-/** `glmsync://pair?…` or `glmsync://sync?…`. */
+/** A test link (1.8.0): the code, and the pairing's target when there are several. */
+function test(p: Map<string, string>): LinkResult {
+  const target = p.get('target');
+  const code = p.get('code');
+  if (code === undefined) return { ok: false, error: 'missing:code' };
+  if (target !== undefined && !validTarget(target)) return { ok: false, error: 'invalid:target' };
+  if (!CODE.test(code)) return { ok: false, error: 'invalid:code' };
+  return { ok: true, action: 'test', ...(target === undefined ? {} : { target }), code };
+}
+
+/** `glmsync://pair?…`, `glmsync://sync?…` or (1.8.0) `glmsync://test?…`. */
 export function parseLink(url: unknown): LinkResult {
   if (typeof url !== 'string' || url.length > MAX_LEN) return { ok: false, error: 'invalid:link' };
   const m = LINK.exec(url);
@@ -105,6 +118,10 @@ export function parseLink(url: unknown): LinkResult {
   if (m[1] === 'pair') {
     const p = params(query, PAIR_LINK_KEYS);
     return typeof p === 'string' ? { ok: false, error: p } : pair(p);
+  }
+  if (m[1] === 'test') {
+    const p = params(query, TEST_KEYS);
+    return typeof p === 'string' ? { ok: false, error: p } : test(p);
   }
   const p = params(query, SYNC_KEYS);
   if (typeof p === 'string') return { ok: false, error: p };
@@ -145,6 +162,13 @@ export function pairLink(target: string, code: string, provider?: string, back?:
   if (provider) q.push(`provider=${encodeURIComponent(provider)}`);
   if (back) q.push(`return=${encodeURIComponent(back)}`);
   return `glmsync://pair?${q.join('&')}`;
+}
+
+/** A test link for the companion app (1.8.0); `target` picks the pairing when the client has several. */
+export function testLink(code: string, target?: string): string {
+  const q = target ? [`target=${encodeURIComponent(target)}`] : [];
+  q.push(`code=${encodeURIComponent(code)}`);
+  return `glmsync://test?${q.join('&')}`;
 }
 
 /**

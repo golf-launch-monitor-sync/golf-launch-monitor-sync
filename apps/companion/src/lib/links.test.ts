@@ -90,6 +90,14 @@ describe('where a sync link jumps back to', () => {
   });
 });
 
+describe('a test link (spec 1.8.0)', () => {
+  it('starts no sync and pairs nothing while this app has no test mode', () => {
+    const pairings = [pairing('https://app.example.org/lm/v1', ['exampleapp://'])];
+    expect(readIncoming('glmsync://test?code=T7K2M9QX', PROVIDERS, pairings)).toEqual({ kind: 'invalid', error: 'unsupported:test' });
+    expect(readIncoming('glmsync://test?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=T7K2M9QX', PROVIDERS, pairings).kind).toBe('invalid');
+  });
+});
+
 describe('the same link twice', () => {
   it('is taken once within a few seconds, again later', () => {
     const once = new Once(3000);

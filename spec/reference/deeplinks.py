@@ -4,6 +4,7 @@
 
     glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&return=<URL to go back to>]
     glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
+    glmsync://test?[target=<target base URL>&]code=<test code>           (1.8.0, spec/test-mode.md)
     Android: a bound service with the action glmsync.intent.action.SYNC, data glmsync://sync?target=…,
              extra glmsync.extra.REASON = open | manual
     https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>]
@@ -25,7 +26,7 @@ TARGET = re.compile(r"^(?:https://[A-Za-z0-9.-]+(?::\d{1,5})?|http://(?:localhos
                     r"(?:/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$")
 SCHEME = re.compile(r"^([a-z][a-z0-9+.-]*):")
 NEVER_RETURN = {"javascript", "data", "file", "vbscript", "about", "blob", "glmsync"}
-LINK = re.compile(r"^glmsync://(pair|sync)/?(?:\?([^#]*))?$")
+LINK = re.compile(r"^glmsync://(pair|sync|test)/?(?:\?([^#]*))?$")
 MAX_LEN = 2048
 BAD_ESCAPE = re.compile(r"%(?![0-9A-Fa-f]{2})")  # a '%' that starts no escape: invalid, not guessed at
 
@@ -100,6 +101,18 @@ def parse_link(url: str) -> dict[str, Any]:
         # POST /pair, like a sync's (return_allowed).
         p = _params(query, {"target", "code", "provider", "return"})
         return p_error(p) or _pair(p)  # type: ignore[arg-type]
+    if action == "test":
+        # 1.8.0: a test code for the pairing with `target` (or the only one); never a token, never a return.
+        p = _params(query, {"target", "code"})
+        if isinstance(p, str):
+            return {"ok": False, "error": p}
+        if "code" not in p:
+            return {"ok": False, "error": "missing:code"}
+        if "target" in p and not valid_target(p["target"]):
+            return {"ok": False, "error": "invalid:target"}
+        if not CODE.fullmatch(p["code"]):
+            return {"ok": False, "error": "invalid:code"}
+        return {"ok": True, "action": "test", **{k: p[k] for k in ("target", "code") if k in p}}
     p = _params(query, {"target", "return"})
     if isinstance(p, str):
         return {"ok": False, "error": p}

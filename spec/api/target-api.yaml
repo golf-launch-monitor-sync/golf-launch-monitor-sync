@@ -16,7 +16,8 @@ info:
     The base URL is the target's own, conventionally ending in `/lm/v1`
     (`https://app.example.org/api/lm/v1`); every path below is relative to it. All requests but
     `POST /pair` carry `Authorization: Bearer <import token>`. An import token can only write
-    olmd batches and read the list of its own external ids: no shots, no rounds, no profile.
+    olmd batches and read the list of its own external ids: no shots, no rounds, no profile. Since
+    1.8.0 a test account's token can also read its test scenario, with its code (spec/test-mode.md).
 
     See spec/target-api.md for the rules behind each endpoint.
 servers:
@@ -109,6 +110,11 @@ paths:
               schema: { $ref: "#/components/schemas/ImportResult" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "`test_data` (1.8.0): a batch marked `test` for an account that is no test account (spec/test-mode.md). Don't send it again."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "409":
           description: "`other_account`: the batch comes from another provider account than the connected one; `disconnected`: the player ended the connection."
           content:
@@ -166,6 +172,46 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Status" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+  /test-scenario:
+    get:
+      operationId: testScenario
+      summary: "Optional, since 1.8.0: the test scenario of a test account, made-up answers of a provider."
+      description: |
+        Only for a target that offers test scenarios, and only for the import token of a test account: a
+        client plays the scenario back to its real provider code instead of asking the provider
+        (spec/test-mode.md). The test code travels in the header `X-Test-Code`, never in the address. A
+        target that offers none answers 404 (`test_unavailable`, or its own 404 when it doesn't know the
+        path at all).
+      parameters:
+        - name: X-Test-Code
+          in: header
+          required: true
+          description: The test code the target app showed for this test account (spec/test-mode.md).
+          schema: { type: string, pattern: "^[0-9A-Za-z-]{6,64}$" }
+      responses:
+        "200":
+          description: The scenario. The same every time for the same code.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestScenario" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "`not_test_account`: the token's account is no test account (the token stays good for everything else)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: "`code_invalid`: no scenario for this code and account; `test_unavailable`: the target offers no test scenarios. Any other 404 reads as `test_unavailable`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "410":
+          description: "`code_expired`: the code was good once, but its test is over."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooMany" }
   /token:
     delete:
       operationId: revokeToken
@@ -379,6 +425,57 @@ components:
           properties:
             created_at: { $ref: "#/components/schemas/Time" }
             last_used_at: { $ref: "#/components/schemas/Time" }
+    Latency:
+      type: object
+      required: [median_s, spread_s]
+      description: How long the provider takes to answer, in seconds. A client waits about the median, give or take the spread.
+      properties:
+        median_s: { type: number, minimum: 0, maximum: 60 }
+        spread_s: { type: number, minimum: 0, maximum: 60 }
+    TestScenario:
+      type: object
+      required: [name, provider, subject, profile, data, valid_until]
+      description: |
+        Since 1.8.0 (spec/test-mode.md): made-up answers of a provider, in the provider's own shapes, which a
+        client plays back to its real provider code. Synthetic, always. A client reads it strictly
+        (spec/reference/testmode.py, vectors in spec/testvectors/test-scenario.json) and ignores keys it
+        doesn't know; at most 64 MiB.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: The scenario's name, shown beside the client's test mode badge. No control characters.
+        provider: { $ref: "#/components/schemas/Provider" }
+        subject:
+          type: string
+          pattern: "^[\\x21-\\x7e]{1,200}$"
+          description: |
+            The made-up provider account's stable id: what the client's `account_ref` and its load guard count
+            under. A target gives every code a subject of its own, so every test starts with a fresh guard.
+        profile:
+          type: object
+          description: The provider's answer about whose account it is (for Trackman the `profile` of `me`), in its own shape.
+        data:
+          type: object
+          description: |
+            The provider's answers, in its own shape. For `trackman`: `activities` (newest first), `nodes` (each
+            session's node by activity id), `scorecards` (newest first) and `shotHoles` (a scorecard's holes with
+            their shots, by scorecard id), as packages/provider-trackman's test double answers them.
+        latency:
+          type: object
+          description: Response times; a bad entry is dropped, a missing one is the client's own default.
+          properties:
+            default: { $ref: "#/components/schemas/Latency" }
+            queries:
+              type: object
+              maxProperties: 50
+              description: By the provider's own name of the query (for Trackman Activities, Session, Rounds, RoundShots, Who, Profile).
+              propertyNames: { pattern: "^[A-Za-z][A-Za-z0-9_.-]{0,63}$" }
+              additionalProperties: { $ref: "#/components/schemas/Latency" }
+        valid_until:
+          allOf: [{ $ref: "#/components/schemas/Time" }]
+          description: When the test is over; the client drops the scenario then (and at its sign-out).
     Error:
       type: object
       additionalProperties: false
@@ -391,5 +488,5 @@ components:
           properties:
             code:
               type: string
-              enum: [bad_request, code_invalid, token_invalid, other_account, disconnected, too_large, invalid_batch, rate_limited, provider_unknown]
+              enum: [bad_request, code_invalid, token_invalid, other_account, disconnected, too_large, invalid_batch, rate_limited, provider_unknown, test_data, test_unavailable, not_test_account, code_expired]
             message: { type: string, maxLength: 500 }

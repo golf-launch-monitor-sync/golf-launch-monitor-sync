@@ -145,7 +145,7 @@ function Main() {
       if (!svc || !once.current.fresh(url, Date.now())) return;
       const incoming = readIncoming(url, PROVIDERS, svc.pairings.list());
       if (incoming.kind === 'invalid') {
-        setMessage(t('link.invalid'));
+        setMessage(t(incoming.error === 'unsupported:test' ? 'link.testUnsupported' : 'link.invalid'));
         setScreen({ name: 'home' });
       } else if (incoming.kind === 'pair') {
         setMessage(null);

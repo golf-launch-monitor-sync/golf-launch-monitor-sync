@@ -43,6 +43,7 @@ Examples that must and must not validate: [`testvectors/olmd-examples.json`](tes
 | `sync` | | The plan this batch answers: `{plan_id, reason}` ([target API](target-api.md)). Absent in a file export. |
 | `failed` | | Sessions the provider couldn't send this time: `[{external_id, started_at}]`; a later sync asks again. |
 | `progress` | | How far through the provider's history: `{more_available, oldest_seen, skipped_known, sessions_left, oldest_listed}` (below). |
+| `test` | | Since 1.8.0: `true` when the batch was made from a target's test scenario, not fetched from the provider ([test-mode.md](test-mode.md)). A target takes it only for a test account; absent otherwise. |
 | `notice` | | Something the player should know: `{code, message, until}`, codes `auth_expired` (sign in to the provider again), `guard_limit` (the [load guard](guard.md) stopped for now), `provider_unavailable`, `provider_blocked`, `partial`. |
 | `extra` | | See above. |
 

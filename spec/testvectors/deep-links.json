@@ -1,6 +1,6 @@
 {
-  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, return?} or {ok: false, error}. parse_sync_intent (the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> {ok: true, target, reason} or {ok: false, error}.",
-  "spec_version": "1.7.0",
+  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, return?} or {ok: false, error}; action is pair, sync or (1.8.0) test. parse_sync_intent (the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> {ok: true, target, reason} or {ok: false, error}.",
+  "spec_version": "1.8.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {
@@ -369,6 +369,139 @@
       }
     },
     {
+      "rule": "parse_link",
+      "input": "glmsync://test?code=T7K2M9QX",
+      "expected": {
+        "ok": true,
+        "action": "test",
+        "code": "T7K2M9QX"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://test/?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=T7K2-M9QX&utm=x",
+      "expected": {
+        "ok": true,
+        "action": "test",
+        "target": "https://app.example.org/lm/v1",
+        "code": "T7K2-M9QX"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://test?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": {
+        "ok": false,
+        "error": "missing:code"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://test",
+      "expected": {
+        "ok": false,
+        "error": "missing:code"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://test?code=T7K2",
+      "expected": {
+        "ok": false,
+        "error": "invalid:code"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://test?code=T7K2+M9QX",
+      "expected": {
+        "ok": false,
+        "error": "invalid:code"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://test?code=T7K2M9QX&code=AAAAAAAA",
+      "expected": {
+        "ok": false,
+        "error": "duplicate:code"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://test?code=",
+      "expected": {
+        "ok": false,
+        "error": "empty:code"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://test?target=http%3A%2F%2Fapp.example.org&code=T7K2M9QX",
+      "expected": {
+        "ok": false,
+        "error": "invalid:target"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://test?code=T7K2M9QX#frag",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://test?code=T7K2M9QX&return=exampleapp%3A%2F%2Fback",
+      "expected": {
+        "ok": true,
+        "action": "test",
+        "code": "T7K2M9QX"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://test?code=T7K2M9QX&token=x",
+      "expected": {
+        "ok": true,
+        "action": "test",
+        "code": "T7K2M9QX"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://test?code=T7K2M9QX%ZZ",
+      "expected": {
+        "ok": false,
+        "error": "invalid:encoding"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://test?code=T7K2M9QX\n",
+      "expected": {
+        "ok": false,
+        "error": "invalid:code"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "GLMSYNC://test?code=T7K2M9QX",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://tests?code=T7K2M9QX",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
       "rule": "parse_pair_fragment",
       "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X",
       "expected": {
@@ -689,6 +822,17 @@
       "expected": {
         "ok": false,
         "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_sync_intent",
+      "input": {
+        "data": "glmsync://test?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=T7K2M9QX",
+        "reason": "open"
+      },
+      "expected": {
+        "ok": false,
+        "error": "invalid:action"
       }
     }
   ]

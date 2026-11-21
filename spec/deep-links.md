@@ -14,6 +14,7 @@ The scheme is open: any app may implement the receiving side. Reference:
 ```
 glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&return=<URL to go back to>]
 glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
+glmsync://test?[target=<target base URL>&]code=<test code>
 https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>]
 ```
 
@@ -28,18 +29,21 @@ https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<i
   1.2.0 ignores it, so a target says where to go back to in its own words as well.
 - **sync** asks the companion app to fetch now (it still asks the target's plan first) and then to
   jump back to `return`. `target` picks the pairing when there are several.
+- **test** (since 1.8.0) hands a client the test code of a target's test account, for a target it is
+  already paired with; `target` picks the pairing when there are several. It never pairs, and it has no
+  `return` (a key `return` is ignored like any unknown one). What the code is for: [test-mode.md](test-mode.md).
 
 ## Reading a link
 
 A link comes from outside and is read strictly; anything unexpected makes it invalid:
 
-- exactly `glmsync://pair` or `glmsync://sync` (an optional `/` before `?`), no fragment;
+- exactly `glmsync://pair`, `glmsync://sync` or `glmsync://test` (an optional `/` before `?`), no fragment;
 - `key=value` pairs separated by `&`, percent- and `+`-decoded as UTF-8. A `%` that starts no valid
   escape, or bytes that aren't UTF-8, make the link invalid. A known key twice, or empty: invalid.
   Unknown keys are ignored (a later version may add some);
 - `target`: `https://host[:port][/path]`, or `http://` only to `localhost`, `127.0.0.1` or `[::1]`
   (development); no user info, no query, no fragment;
-- `code`: 6–64 of `0-9 A-Z a-z -`;
+- `code` (pair, test): 6–64 of `0-9 A-Z a-z -`;
 - `provider`: a lower-case id (`^[a-z][a-z0-9_-]{1,39}$`);
 - `return` (sync, and pair since 1.2.0): an absolute URL — `https://host/…`, `http://` to this machine, or an app's own scheme
   written `scheme://…`; never `javascript:`, `data:`, `file:`, `vbscript:`, `about:`, `blob:` or
@@ -54,7 +58,8 @@ The same holds for a pair link's `return`. Only to a URL that starts with one of
 ## What a link never carries
 
 No provider sign-in, no import token, nothing about the player. A pairing code is good for ten
-minutes and once; whoever reads it first pairs, so a target shows it only to the signed-in player.
+minutes and once; whoever reads it first pairs, so a target shows it only to the signed-in player. A test
+code is good only with the import token of the test account it was made for.
 
 ## Android
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 import { describe, expect, it } from 'vitest';
-import { pairLink, parseLink, parsePairFragment, parseSyncIntent, returnAllowed } from './deepLinks.ts';
+import { pairLink, parseLink, parsePairFragment, parseSyncIntent, returnAllowed, testLink } from './deepLinks.ts';
 import { readVectors } from './vectors.ts';
 
 type Case = { rule: string; input: unknown; expected: unknown };
@@ -22,6 +22,17 @@ describe('deep links answer the vectors', () => {
 
   it('covers every rule', () => {
     expect(new Set(cases.map((c) => c.rule))).toEqual(new Set(['parse_link', 'parse_pair_fragment', 'return_allowed', 'parse_sync_intent']));
+  });
+});
+
+describe('a test link (1.8.0)', () => {
+  it('reads back as what went in, with and without the target', () => {
+    expect(parseLink(testLink('T7K2-M9QX'))).toEqual({ ok: true, action: 'test', code: 'T7K2-M9QX' });
+    expect(parseLink(testLink('T7K2-M9QX', 'https://app.example.org/lm/v1'))).toEqual({ ok: true, action: 'test', target: 'https://app.example.org/lm/v1', code: 'T7K2-M9QX' });
+  });
+
+  it('is no sync for the Android service', () => {
+    expect(parseSyncIntent(testLink('T7K2-M9QX', 'https://app.example.org/lm/v1'), 'open')).toEqual({ ok: false, error: 'invalid:action' });
   });
 });
 

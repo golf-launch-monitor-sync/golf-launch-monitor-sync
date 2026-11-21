@@ -62,6 +62,7 @@
       }
     },
     "notice": { "$ref": "#/$defs/notice" },
+    "test": { "const": true, "description": "Since 1.8.0: made from a target's test scenario, not fetched from the provider (spec/test-mode.md). A target takes it only for a test account." },
     "extra": { "$ref": "#/$defs/extra" }
   },
   "$defs": {

@@ -9,7 +9,9 @@
  * - a pair link only opens a question ("Pair with <host>?"); the player says yes or no. Its `return`
  *   (spec 1.2.0) is followed only once paired, and only to an address that target then named as its own;
  * - a sync link asks the targets' plans like any other run (manual), and jumps back only to an
- *   address the paired target named as its own at pairing.
+ *   address the paired target named as its own at pairing;
+ * - a test link (spec 1.8.0) does nothing yet: this app has no test mode so far, and it must never read as
+ *   a sync or a pairing.
  */
 
 import { parseLink, returnAllowed } from '@glmsync/spec';
@@ -45,6 +47,7 @@ export function readIncoming(url: unknown, providers: readonly string[], pairing
       ...(link.return ? { return: link.return } : {}),
     };
   }
+  if (link.action === 'test') return { kind: 'invalid', error: 'unsupported:test' };
   return { kind: 'sync', ...(link.target ? { target: link.target } : {}), ...(link.return ? { return: link.return } : {}) };
 }
 
