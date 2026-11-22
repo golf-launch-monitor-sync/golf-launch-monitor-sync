@@ -45,18 +45,26 @@ golf.de, as you open it in your browser  ──(what the page loaded)───�
 
 ## Connecting, step by step
 
-Every client connects the same way, for every service (Trackman, golf.de, those to come) - one frame,
-[`packages/browser`'s wizard](packages/browser/README.md#connecting-step-by-step), not one per module:
+Every client opens on the same main view: **Connect new** and the **list of connections**, one per service and
+account, each with where it stands (*running*, *loading the history*, *run out – sign in again*, *test mode*, *not set
+up yet – continue*); a row opens its details. And every client connects the same way, for every service (Trackman,
+golf.de, those to come) - one frame, [`packages/browser`'s wizard](packages/browser/README.md#connecting-step-by-step),
+not one per module, one button per step:
 
-1. **sign in** at the service (its own page, in your browser or the companion app's window);
-2. **your account**: the service names it - *Is this your account?* - and nothing is fetched or sent before
+1. **allow**: the app that wants the data asks (its pairing link, by its address) and you allow it - or, started
+   from *Connect new*, where to start in that app;
+2. **the service**: what to connect (Trackman; golf.de for the handicap record; later more launch monitors) - only
+   then the connection is made;
+3. **sign in** at the service (its own page, in your browser or the companion app's window; small, *Enter a test
+   code* for an app's test account);
+4. **your account**: the service names it - *Is this your account?* - and nothing is fetched or sent before
    *Yes, that's me*;
-3. **the first data**, shown plainly (*10 sessions, 6 rounds fetched*, then *older data follows bit by bit,
+5. **the first data**, shown plainly (*10 sessions, 6 rounds fetched*, then *older data follows bit by bit,
    about 140 sessions still to come*);
-4. **done**: *Back to …* where the client can take you there, else the sentence that you can go back and the
+6. **done**: *Back to …* where the client can take you there, else the sentence that you can go back and the
    rest comes by itself.
 
-Until step 2 is answered the tools show no count that looks as if anything were running - only, big, *Not yet
+Until step 4 is answered the tools show no count that looks as if anything were running - only, big, *Not yet
 connected with … – confirm your account*. Then the usual overview.
 
 ## Gentle by design

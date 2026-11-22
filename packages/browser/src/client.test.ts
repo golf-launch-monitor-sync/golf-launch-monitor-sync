@@ -115,6 +115,20 @@ describe('the key and "Is this you?"', () => {
     expect(s.attention).toBeNull();
   });
 
+  it('keeps the confirmed account’s name for the list of connections, only while its key is there', async () => {
+    const w = world();
+    await paired(w);
+    await w.client.setKey(w.token());
+    expect((await w.client.status()).player).toBeNull();
+    await w.client.confirm(true);
+    expect((await w.client.status()).player).toBe('Alex Example');
+    // Another account's key (the target knows no account yet, so it asks again): not that name.
+    await w.client.setKey(w.token('player-0002'));
+    expect((await w.client.status()).player).toBeNull();
+    await w.client.dropKey();
+    expect((await w.client.status()).player).toBeNull();
+  });
+
   it('"No" drops the key, and the same account is refused until the player says otherwise', async () => {
     const w = world();
     await paired(w);

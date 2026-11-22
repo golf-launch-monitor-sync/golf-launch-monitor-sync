@@ -6,7 +6,7 @@
  */
 
 import { CODE, pairUrl, PORTAL, TARGET } from '../../../tools/e2e/world.ts';
-import { badgeText, connectWindow, expect, popup, test } from './fixture.ts';
+import { allowAndChoose, badgeText, connectWindow, expect, popup, test } from './fixture.ts';
 
 test('pairs from the app’s page, takes the sign-in from the portal, asks, and syncs', async ({ context, world, extensionId, background }) => {
   // The app sends the player to the web app's pairing page; the extension picks the code up.
@@ -15,7 +15,11 @@ test('pairs from the app’s page, takes the sign-in from the portal, asks, and 
   await pairPage.goto(pairUrl());
   await expect(pairPage.getByTestId('pair-status')).toHaveText(/The extension takes over/);
   const connect = await windowOpens;
-  await expect(connect.getByText('The app at app.example.org asks for your Trackman data.')).toBeVisible();
+  // Connecting step by step, one button each: (1) the app asks by its address, and the player allows it.
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'pair');
+  await expect(connect.getByTestId('wizard-title')).toHaveText('Connect with app.example.org?');
+  await expect(connect.getByTestId('wizard-progress')).toHaveText('Step 1 of 6');
+  await expect(connect.getByTestId('offer-what')).toHaveText('Your data then goes to app.example.org – nowhere else.');
   // The connect window is a tab right beside the pairing page, in the same browser window, in front - not a
   // window of its own, which went full screen on a Mac (17 Nov).
   // Without the `tabs` permission the browser shows the extension no tab's address it has no host permission for,
@@ -34,7 +38,12 @@ test('pairs from the app’s page, takes the sign-in from the portal, asks, and 
   await expect.poll(placed).toEqual({ same: true, beside: true, active: true });
   expect(await background.evaluate(async () => (await chrome.windows.getAll({ windowTypes: ['popup'] })).length)).toBe(0);
   await connect.getByTestId('allow').click();
-  await expect(connect.getByTestId('paired')).toHaveText('Connected with Example App.');
+  // (2) What to connect: nothing is paired before this button.
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'service');
+  await expect(connect.getByTestId('wizard-progress')).toHaveText('Step 2 of 6');
+  await expect(connect.getByTestId('wizard-title')).toHaveText('What do you want to connect?');
+  expect(world.target.tokens.size).toBe(0);
+  await connect.getByTestId('service-trackman').click();
   await expect(pairPage.getByTestId('pair-status')).toHaveText('Connected with Example App. You can close this page.');
   // The code left the address bar once it was used.
   await expect.poll(() => pairPage.url()).not.toContain(CODE);
@@ -42,7 +51,7 @@ test('pairs from the app’s page, takes the sign-in from the portal, asks, and 
   // Nothing to fetch with yet: the icon says sign in, and connecting goes on as steps - the first is the sign-in.
   await expect.poll(() => badgeText(background)).toBe('!');
   await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'signin');
-  await expect(connect.getByTestId('wizard-progress')).toHaveText('Step 1 of 4');
+  await expect(connect.getByTestId('wizard-progress')).toHaveText('Step 3 of 6');
   await expect(connect.getByTestId('unconfirmed')).toHaveText('Not yet connected with Example App – sign in at Trackman');
 
   // The player opens the portal, signed in: the extension takes the key, and asks whose it is.
@@ -62,7 +71,7 @@ test('pairs from the app’s page, takes the sign-in from the portal, asks, and 
   // The tab the extension opened may be attached to the test a moment late; the player's own tab is certain.
   await (await context.newPage()).goto(PORTAL);
   await expect(connect.getByTestId('wizard-title')).toHaveText('Is this your Trackman account?');
-  await expect(connect.getByTestId('wizard-progress')).toHaveText('Step 2 of 4');
+  await expect(connect.getByTestId('wizard-progress')).toHaveText('Step 4 of 6');
   await expect(connect.getByTestId('confirm')).toContainText('Alex Example');
   await expect(connect.getByTestId('confirm')).toContainText('Newest activity on 15 Nov 2026 at Example Range');
   // Before the yes nothing that looks like data on its way (a tester once took "150 activities" for synced).
@@ -91,8 +100,15 @@ test('pairs from the app’s page, takes the sign-in from the portal, asks, and 
   // Every sync asked the plan first.
   expect(world.target.asked.map((a) => a.reason)).toContain('connect');
 
-  // The popup: connected, the guard's counts, the log to export.
+  // The popup: the list of connections, with the account's name and where it stands; its row opens the details -
+  // connected, the guard's counts, the log to export.
   const pop = await popup(context, extensionId);
+  const row = pop.getByTestId('connection');
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText('Trackman · Alex Example');
+  await expect(row).toContainText('to Example App');
+  await expect(pop.getByTestId('connection-state')).toHaveText(/^(Running|Loading the history)$/);
+  await row.click();
   await expect(pop.getByTestId('pairing')).toContainText('Connected with Example App');
   await expect(pop.getByTestId('counts')).toHaveText(`Last hour ${world.tm.count()} of 60 · last 24 hours ${world.tm.count()} of 300`);
   const download = pop.waitForEvent('download');
@@ -108,8 +124,7 @@ test('a key the portal only sends with its calls is found too; the same account 
   const windowOpens = connectWindow(context, extensionId);
   await pairPage.goto(pairUrl());
   const connect = await windowOpens;
-  await connect.getByTestId('allow').click();
-  await expect(connect.getByTestId('paired')).toBeVisible();
+  await allowAndChoose(connect);
 
   world.portal.mode = 'fetch';
   world.portal.token = world.key();
@@ -124,7 +139,7 @@ test('a key the portal only sends with its calls is found too; the same account 
   world.portal.mode = 'storage';
   world.portal.token = world.key();
   await portal.reload();
-  const pop = await popup(context, extensionId);
+  const pop = await popup(context, extensionId, 'lm');
   await expect(pop.getByTestId('key-ready')).toBeVisible();
   expect(world.tm.count('Who')).toBe(whoAsked);
 });
@@ -134,7 +149,7 @@ test('says when the sign-in ran out, and when the app ended the connection', asy
   const windowOpens = connectWindow(context, extensionId);
   await pairPage.goto(pairUrl());
   const connect = await windowOpens;
-  await connect.getByTestId('allow').click();
+  await allowAndChoose(connect);
   const key = world.key();
   world.portal.token = key;
   await (await context.newPage()).goto(PORTAL);
@@ -145,7 +160,7 @@ test('says when the sign-in ran out, and when the app ended the connection', asy
   // Trackman no longer takes the key: the sync says so, the app is told, the icon asks to sign in.
   world.tm.tokens.delete(key);
   world.tm.activities.unshift({ id: 'S3', time: new Date().toISOString(), kind: 'RANGE_PRACTICE' });
-  const pop = await popup(context, extensionId);
+  const pop = await popup(context, extensionId, 'lm');
   await pop.getByTestId('fetch-now').click();
   await expect(pop.getByTestId('key-expired')).toBeVisible({ timeout: 60_000 });
   expect(world.target.imports.at(-1)?.notice?.code).toBe('auth_expired');
@@ -173,9 +188,13 @@ test('the player can say no in the connect window, and disconnect in the popup',
   await pairPage.goto(pairUrl(TARGET, 'SECOND01'));
   await pairPage.reload();
   const c2 = await again;
-  await c2.getByTestId('allow').click();
-  await expect(c2.getByTestId('paired')).toBeVisible();
+  await allowAndChoose(c2);
   const pop = await popup(context, extensionId);
+  // Paired, never signed in: the row says the steps aren't through, and opens them.
+  await expect(pop.getByTestId('connection-state')).toHaveText('Not set up yet – continue');
+  await pop.getByTestId('connection').click();
+  await expect(pop.getByTestId('wizard')).toHaveAttribute('data-step', 'signin');
+  await expect(pop.getByTestId('unconfirmed')).toHaveText('Not yet connected with Example App – sign in at Trackman');
   await pop.getByTestId('disconnect').click();
   await pop.getByTestId('disconnect-yes').click();
   await expect(pop.getByTestId('no-pairings')).toBeVisible();
@@ -187,7 +206,7 @@ test('in the background it asks the app’s plan, and Trackman only when the pla
   const windowOpens = connectWindow(context, extensionId);
   await pairPage.goto(pairUrl());
   const connect = await windowOpens;
-  await connect.getByTestId('allow').click();
+  await allowAndChoose(connect);
   world.portal.token = world.key();
   await (await context.newPage()).goto(PORTAL);
   await connect.getByTestId('confirm-yes').click();
@@ -208,12 +227,61 @@ test('in the background it asks the app’s plan, and Trackman only when the pla
   await expect.poll(() => world.target.sessions.has('S3'), { timeout: 60_000 }).toBe(true);
 });
 
+test('*Connect new* in the popup: the connect window at its first step, which the app’s page then fills', async ({ context, world, extensionId }) => {
+  const pop = await popup(context, extensionId);
+  await expect(pop.getByTestId('connections-none')).toHaveText('Nothing connected yet.');
+  const opens = connectWindow(context, extensionId);
+  await pop.getByTestId('connect-new').click();
+  const connect = await opens;
+  expect(new URL(connect.url()).searchParams.has('new')).toBe(true);
+  // No app asked yet: where to start, and nothing else on the page (no sign-in, no apps).
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'pair');
+  await expect(connect.getByTestId('wizard-title')).toHaveText('Start in your app');
+  await expect(connect.getByTestId('offer-start')).toBeVisible();
+  await expect(connect.getByTestId('allow')).toHaveCount(0);
+  await expect(connect.locator('#status')).toBeHidden();
+  await expect(connect.getByTestId('test-enter')).toBeHidden();
+
+  // The app's pairing page hands over its code: the same window asks.
+  const pairPage = await context.newPage();
+  await pairPage.goto(pairUrl());
+  await expect(connect.getByTestId('wizard-title')).toHaveText('Connect with app.example.org?', { timeout: 30_000 });
+  await allowAndChoose(connect);
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'signin');
+  await expect(connect.getByTestId('test-enter')).toBeVisible();
+  expect(world.target.tokens.size).toBe(1);
+});
+
+test('a code that ran out: step 1 says so and where to start again', async ({ context, world, extensionId }) => {
+  world.target.codes.clear();
+  const pairPage = await context.newPage();
+  const windowOpens = connectWindow(context, extensionId);
+  await pairPage.goto(pairUrl());
+  const connect = await windowOpens;
+  await connect.getByTestId('allow').click();
+  await connect.getByTestId('service-trackman').click();
+  await expect(connect.getByTestId('offer-error')).toHaveText('The code has run out or was used already. Start again in your app.');
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'pair');
+  await expect(connect.getByTestId('offer-start')).toBeVisible();
+  expect(world.target.tokens.size).toBe(0);
+});
+
 test.describe('in German', () => {
   test.use({ locale: 'de-DE' });
 
   test('the popup speaks the browser’s language', async ({ context, extensionId }) => {
     const pop = await popup(context, extensionId);
-    await expect(pop.getByTestId('no-pairings')).toContainText('Noch mit keiner App verbunden');
-    await expect(pop.getByTestId('open-portal')).toHaveText('Trackman-Portal öffnen');
+    await expect(pop.getByTestId('connect-new')).toHaveText('Neu verbinden');
+    await expect(pop.getByTestId('connections-none')).toHaveText('Noch nichts verbunden.');
+  });
+
+  test('*Neu verbinden* in German: the steps and their words', async ({ context, extensionId }) => {
+    const pop = await popup(context, extensionId);
+    const opens = connectWindow(context, extensionId);
+    await pop.getByTestId('connect-new').click();
+    const connect = await opens;
+    await expect(connect.getByTestId('wizard-title')).toHaveText('In deiner App starten');
+    await expect(connect.getByTestId('wizard-progress')).toHaveText('Schritt 1 von 6');
+    await expect(connect.locator('ol.steps li')).toHaveText(['Erlauben', 'Dienst', 'Anmelden', 'Konto', 'Erste Daten', 'Fertig']);
   });
 });

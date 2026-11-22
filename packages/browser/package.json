@@ -11,6 +11,7 @@
     "./hcp": "./src/hcp.ts",
     "./hcpView": "./src/hcpView.ts",
     "./wizard": "./src/wizard.ts",
+    "./connections": "./src/connections.ts",
     "./i18n": "./src/i18n.ts",
     "./render": "./src/render.ts",
     "./download": "./src/download.ts",

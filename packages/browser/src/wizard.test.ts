@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { ClientStatus } from './client.ts';
 import type { HcpView } from './hcp.ts';
 import { translator } from './i18n.ts';
-import { factsOfHcp, factsOfStatus, hcpWhoLine, targetOf, whoLine, wizardLines, wizardOf, type WizardFacts } from './wizard.ts';
+import { factsOfHcp, factsOfOffer, factsOfStatus, hcpWhoLine, targetOf, whoLine, wizardLines, wizardOf, type WizardFacts } from './wizard.ts';
 
 const en = translator('en');
 const de = translator('de');
@@ -26,28 +26,43 @@ const status = (key: ClientStatus['key'], pairings: P[] = [pairing()], running: 
 const READY = { state: 'ready', until: 0 } as const;
 
 describe('the steps', () => {
-  it('goes sign in, account, first data, done – and says where it stands', () => {
+  it('goes allow, service, sign in, account, first data, done – and says where it stands', () => {
     const steps = [
+      wizardOf(factsOfOffer('none', 'lm')),
+      wizardOf(factsOfOffer('allowed', 'lm')),
       wizardOf(facts()),
       wizardOf(facts({ signedIn: true, asking: true })),
       wizardOf(facts({ signedIn: true, confirmed: true, first: 'running' })),
       wizardOf(facts({ signedIn: true, confirmed: true, first: 'through' })),
     ];
     expect(steps.map((v) => [v.step, v.index, v.total])).toEqual([
-      ['signin', 1, 4],
-      ['account', 2, 4],
-      ['load', 3, 4],
-      ['done', 4, 4],
+      ['pair', 1, 6],
+      ['service', 2, 6],
+      ['signin', 3, 6],
+      ['account', 4, 6],
+      ['load', 5, 6],
+      ['done', 6, 6],
     ]);
-    expect(steps[1]?.steps.map((s) => s.state)).toEqual(['done', 'current', 'todo', 'todo']);
-    expect(steps[3]?.steps.map((s) => s.state)).toEqual(['done', 'done', 'done', 'done']);
+    // A connection with a client state behind it is paired and its service chosen.
+    expect(steps[3]?.steps.map((s) => s.state)).toEqual(['done', 'done', 'done', 'current', 'todo', 'todo']);
+    expect(steps[5]?.steps.map((s) => s.state)).toEqual(['done', 'done', 'done', 'done', 'done', 'done']);
+    expect(wizardOf(factsOfOffer('asking', 'hcp')).step).toBe('pair');
+    expect(wizardOf(factsOfOffer('working', 'hcp')).step).toBe('service');
+  });
+
+  it('the first two steps: the app asks by its address, no "not yet connected" before there is an app', () => {
+    const t = (f: WizardFacts, target: string | null) => wizardLines(wizardOf(f), f, de, { service: 'Trackman', target });
+    expect(t(factsOfOffer('none', 'lm'), null)).toMatchObject({ title: 'In deiner App starten', unconfirmed: null, progress: 'Schritt 1 von 6' });
+    expect(t(factsOfOffer('asking', 'lm'), 'app.example.org')).toMatchObject({ title: 'Mit app.example.org verbinden?', unconfirmed: null });
+    expect(t(factsOfOffer('allowed', 'lm'), 'app.example.org')).toMatchObject({ title: 'Was möchtest du verbinden?', unconfirmed: null, progress: 'Schritt 2 von 6' });
+    expect(t(factsOfOffer('allowed', 'lm'), 'app.example.org').labels).toEqual(['Erlauben', 'Dienst', 'Anmelden', 'Konto', 'Erste Daten', 'Fertig']);
   });
 
   it('before the yes: the big line says what is missing, and nothing counts as on its way', () => {
     const t = (f: WizardFacts) => wizardLines(wizardOf(f), f, de, words);
     // A count was there already (from an earlier connection): still not shown before the yes.
     const asking = facts({ signedIn: true, asking: true, brought: { sessions: 150, rounds: 3 }, more: 140 });
-    expect(t(asking)).toMatchObject({ title: 'Ist das dein Trackman-Konto?', unconfirmed: 'Noch nicht mit Example App verbunden – Konto bestätigen', brought: null, more: null, progress: 'Schritt 2 von 4' });
+    expect(t(asking)).toMatchObject({ title: 'Ist das dein Trackman-Konto?', unconfirmed: 'Noch nicht mit Example App verbunden – Konto bestätigen', brought: null, more: null, progress: 'Schritt 4 von 6' });
     expect(t(facts())).toMatchObject({ title: 'Bei Trackman anmelden', unconfirmed: 'Noch nicht mit Example App verbunden – bei Trackman anmelden', brought: null });
     expect(wizardLines(wizardOf(facts()), facts(), en, { service: 'Trackman', target: null }).unconfirmed).toBe('Not yet connected with your app – sign in at Trackman');
   });

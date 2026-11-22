@@ -173,6 +173,8 @@ export interface ClientStatus {
   testAsking: TestAsking | null;
   /** Pairings a sync runs for right now. */
   running: string[];
+  /** The name of the account signed in, as it named itself when the player said it was theirs (null: not known). */
+  player: string | null;
   /** Connections the target app ended since the player last looked. */
   ended: Farewell[];
   counts: GuardCounts | null;
@@ -204,6 +206,8 @@ const KEY = 'glmsync/key/';
 const CONFIRMED = 'glmsync/confirmed/';
 const REJECTED = 'glmsync/rejected/';
 const WHO = 'glmsync/who/';
+/** The confirmed account's own name, for the list of connections: `{ account, player }`. */
+const PLAYER = 'glmsync/player/';
 const TESTS = 'glmsync/tests';
 const TEST_ASKING = 'glmsync/test-asking';
 /** Pairing ids are 16 base64url characters: this never names a pairing's own file. */
@@ -404,6 +408,30 @@ export class BrowserClient {
     await this.opts.vault.set(KEY + this.provider.id, JSON.stringify({ token: expiredMark(token), at, refused: true, hash: fingerprint(token) }));
   }
 
+  /** The name "Is this you?" showed, kept for the account the player said was theirs (nothing else of it). */
+  private async keepPlayer(account: string): Promise<void> {
+    try {
+      const raw = await this.opts.storage.get(WHO + this.provider.id);
+      const stored = raw ? (JSON.parse(raw) as { account?: string; who?: Who }) : null;
+      const player = stored?.account === account ? stored.who?.player : null;
+      if (typeof player === 'string' && player) await this.opts.storage.set(PLAYER + this.provider.id, JSON.stringify({ account, player }));
+    } catch {
+      // only the list's name depends on it
+    }
+  }
+
+  /** The kept name, only while the key is that very account's. */
+  private async player(subject: string | null): Promise<string | null> {
+    if (!subject) return null;
+    try {
+      const raw = await this.opts.storage.get(PLAYER + this.provider.id);
+      const kept = raw ? (JSON.parse(raw) as { account?: unknown; player?: unknown }) : null;
+      return kept && kept.account === guardAccount(this.provider.id, subject) && typeof kept.player === 'string' ? kept.player : null;
+    } catch {
+      return null;
+    }
+  }
+
   /** "Is this you?": the account's name, its number of activities and the newest - through the guard. */
   private async askWho(token: string, subject: string): Promise<void> {
     const account = guardAccount(this.provider.id, subject);
@@ -489,6 +517,7 @@ export class BrowserClient {
       const account = guardAccount(this.provider.id, subject);
       if (yes) {
         await this.addAccount(CONFIRMED, account);
+        await this.keepPlayer(account);
       } else {
         await this.addAccount(REJECTED, account);
         await this.opts.vault.remove(KEY + this.provider.id);
@@ -951,6 +980,7 @@ export class BrowserClient {
       }),
       testAsking: asking && entries.some((e) => e.id === asking.id) && !over(asking.valid_until, this.now()) ? asking : null,
       running: [...this.active],
+      player: key.state === 'ready' ? await this.player(subject) : null,
       ended: await readList<Farewell>(this.opts.storage, ENDED),
       counts,
       attention,

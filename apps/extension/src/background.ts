@@ -273,11 +273,16 @@ const tabsApi = chrome as unknown as TabsApi;
  * The connect window: brought to the front if it is open, else opened as a tab beside the page that asked (the
  * pairing page, the portal) - never a popup window of its own (tabs.ts says why).
  */
-async function openConnectWindow(near: Near | null): Promise<void> {
+async function openConnectWindow(near: Near | null, fresh = false): Promise<void> {
   const got = await chrome.storage.session.get(CONNECT_TAB_KEY);
   const id = got[CONNECT_TAB_KEY];
-  if (typeof id === 'number' && (await showTab(tabsApi, id))) return;
-  const tab = await openTab(tabsApi, chrome.runtime.getURL('connect.html'), near);
+  // *Connect new*: the window starts at its first step (`new`), also when it was open showing something else.
+  const url = chrome.runtime.getURL(fresh ? 'connect.html?new=1' : 'connect.html');
+  if (typeof id === 'number') {
+    if (fresh) await chrome.tabs.update(id, { url }).catch(() => undefined);
+    if (await showTab(tabsApi, id)) return;
+  }
+  const tab = await openTab(tabsApi, url, near);
   if (tab?.id !== undefined) await chrome.storage.session.set({ [CONNECT_TAB_KEY]: tab.id });
 }
 
@@ -297,7 +302,8 @@ async function offer(fragment: string, near: Near | null): Promise<Reply> {
   return { ok: true };
 }
 
-async function confirmPairing(): Promise<Reply> {
+/** The yes to the pending offer, with the service the player chose when the offer named none. */
+async function confirmPairing(chosen?: string): Promise<Reply> {
   const p = await pending();
   if (!p || p.state !== 'asking') return { ok: true, pending: p };
   const origin = `${new URL(p.target).origin}/*`;
@@ -309,7 +315,8 @@ async function confirmPairing(): Promise<Reply> {
     return { ok: true, pending: next };
   }
   await setPending({ ...p, state: 'working' });
-  const offerOf = { target: p.target, code: p.code, ...(p.provider ? { provider: p.provider } : {}) };
+  const provider = p.provider ?? chosen;
+  const offerOf = { target: p.target, code: p.code, ...(provider ? { provider } : {}) };
   // The handicap record (kind=hcp) pairs with its own API and reads along on golf.de; nothing to fetch now.
   const out = p.kind === 'hcp' ? await hcp.offerPairing(offerOf) : await client.offerPairing(offerOf);
   const next: Pending = out.ok ? { ...p, state: 'paired', name: out.name, code: '' } : { ...p, state: 'failed', error: out.error, code: '' };
@@ -355,7 +362,10 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
     case 'pending':
       return { ok: true, pending: await pending() };
     case 'pair-confirm':
-      return confirmPairing();
+      return confirmPairing(m.provider);
+    case 'open-connect':
+      await openConnectWindow(near, true);
+      return { ok: true };
     case 'pair-cancel': {
       const p = await pending();
       if (p && p.state === 'asking') await setPending({ ...p, state: 'cancelled', code: '' });

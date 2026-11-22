@@ -20,6 +20,7 @@ import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
 import { services } from '../platform';
 import { Home } from './Home';
 import { Licenses } from './Licenses';
+import { NewView } from './NewView';
 import { PairView } from './PairView';
 import { FirstSyncView } from './FirstSyncView';
 import { GolfdeView } from './GolfdeView';
@@ -31,7 +32,10 @@ import { TestView } from './TestView';
 import { TrackmanLoginView } from './TrackmanLoginView';
 
 export type Screen =
-  | { name: 'home' }
+  /** The main view: *Connect new* and the list of connections; with `focus`, one connection's details. */
+  | { name: 'home'; focus?: string }
+  /** *Connect new* before any app asked: where to start (or the demo). */
+  | { name: 'new' }
   | { name: 'pair'; link: Extract<Incoming, { kind: 'pair' }> }
   /** A pair link for the handicap record (kind=hcp). */
   | { name: 'pairHcp'; link: Extract<Incoming, { kind: 'pair-hcp' }> }
@@ -327,8 +331,10 @@ function Main() {
     body = <TestView svc={svc} keys={screen.keys} {...(screen.code ? { code: screen.code } : {})} go={setScreen} />;
   } else if (screen.name === 'licenses') {
     body = <Licenses back={home} />;
+  } else if (screen.name === 'new') {
+    body = <NewView go={setScreen} />;
   } else {
-    body = <Home svc={svc} message={message} dismiss={() => setMessage(null)} go={setScreen} renewing={renewal.on} />;
+    body = <Home svc={svc} {...(screen.focus ? { focus: screen.focus } : {})} message={message} dismiss={() => setMessage(null)} go={setScreen} renewing={renewal.on} />;
   }
 
   return (

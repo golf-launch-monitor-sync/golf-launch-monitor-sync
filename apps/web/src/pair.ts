@@ -6,8 +6,9 @@
  * over (its content script read the fragment before this script ran) and this page says how it went.
  * Without it, the page offers the extension and waits for it - every two seconds, up to five minutes:
  * install, leave the page open, and it pairs by itself (the extension reaches a page that was open when
- * it was installed). Or it connects this page itself; in a browser that can't run the extension (Safari,
- * a phone's) that is the only way it offers.
+ * it was installed). Or it connects this page itself, as *Connect new*'s first two steps (`@glmsync/browser`'s
+ * wizard): allow the app, then what to connect; the rest follows on the page by hand (`app.html#connect`). In a
+ * browser that can't run the extension (Safari, a phone's) that is the only way it offers.
  *
  * The code is taken out of the address as soon as it was used, so it doesn't stay in the history.
  *
@@ -16,7 +17,7 @@
  */
 
 import { BrowserClient, canHaveExtension, INSTALL_URL, storeFor } from '@glmsync/browser';
-import { button, fill, h } from '@glmsync/browser/render';
+import { fill, h, offerWizard, type OfferContext } from '@glmsync/browser/render';
 import { $, client, t, texts } from './common.ts';
 
 texts('pair.title');
@@ -96,6 +97,70 @@ window.addEventListener('message', (event: MessageEvent) => {
   }
 });
 
+/** Errors after which the same code can't be tried again (the player starts again in the app). */
+const FINAL = new Set(['link', 'code', 'provider']);
+
+/** This page connected by hand: steps 1 and 2 of *Connect new*. */
+function byHand(target: { target: string; code: string; provider?: string }): void {
+  const host = new URL(target.target).host;
+  let state: OfferContext['state'] = 'asking';
+  let error: string | null = null;
+  const frame = h('div', {});
+  const draw = () =>
+    fill(
+      frame,
+      offerWizard(
+        {
+          t,
+          state,
+          kind: 'lm',
+          host,
+          services: [{ id: client.provider.id, name: client.provider.name }],
+          error,
+          allowLabel: t('pair.useWeb', { host }),
+        },
+        {
+          allow: () => {
+            state = 'allowed';
+            draw();
+          },
+          cancel: () => {
+            forgetCode();
+            state = 'none';
+            error = null;
+            draw();
+          },
+          choose: (id) => {
+            state = 'working';
+            error = null;
+            draw();
+            client.offerPairing({ ...target, provider: target.provider ?? id }).then(
+              (out) => {
+                if (out.ok) {
+                  forgetCode();
+                  location.assign('./app.html#connect');
+                  return;
+                }
+                error = t('pair.failed', { why: t(`connect.error.${out.error}`) });
+                state = FINAL.has(out.error) ? 'none' : 'allowed';
+                if (state === 'none') forgetCode();
+                draw();
+              },
+              () => {
+                error = t('pair.failed', { why: t('connect.error.unreachable') });
+                state = 'allowed';
+                draw();
+              },
+            );
+          },
+        },
+      ),
+    );
+  draw();
+  without.hidden = false;
+  fill(without, h('h2', {}, t('pair.withoutTitle')), h('p', { class: 'muted small' }, t('pair.without')), frame);
+}
+
 function noExtension(target: { target: string; code: string; provider?: string; kind?: 'hcp' }, possible: boolean, waiting: boolean): void {
   if (extensionMode) return;
   const hcp = target.kind === 'hcp';
@@ -117,25 +182,9 @@ function noExtension(target: { target: string; code: string; provider?: string; 
     without.hidden = true;
     return;
   }
-  const host = new URL(target.target).host;
-  const connect = button(
-    t('pair.useWeb', { host }),
-    async () => {
-      connect.disabled = true;
-      line(t('connect.working'));
-      const out = await client.offerPairing(target);
-      if (out.ok) {
-        forgetCode();
-        location.assign('./app.html');
-      } else {
-        connect.disabled = false;
-        line(t('pair.failed', { why: t(`connect.error.${out.error}`) }), 'note warn');
-      }
-    },
-    { 'data-test': 'use-web' },
-  );
-  without.hidden = false;
-  fill(without, h('h2', {}, t('pair.withoutTitle')), h('p', {}, t('pair.without')), h('p', { class: 'muted small' }, t('connect.what', { host })), h('div', { class: 'row' }, connect));
+  // Drawn once: the waiting above may say "stopped" later without starting the steps again.
+  if (!without.hidden) return;
+  byHand(target);
 }
 
 if (!offer) {

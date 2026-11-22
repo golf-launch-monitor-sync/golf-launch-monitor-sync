@@ -13,7 +13,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { BrowserContext, Locator } from '@playwright/test';
 import { pairUrl, PORTAL, ROOT } from '../../../tools/e2e/world.ts';
-import { connectWindow, expect, popup, test } from './fixture.ts';
+import { allowAndChoose, connectWindow, expect, popup, test } from './fixture.ts';
 
 const OUT = join(ROOT, 'apps', 'extension', 'store');
 
@@ -43,8 +43,7 @@ test('store screenshots', async ({ context, world, extensionId }) => {
   await expect(connect.getByTestId('allow')).toBeVisible();
   await frame(context, connect.locator('main'), 'Your app asks for your launch monitor data – you decide', '1-connect.png');
 
-  await connect.getByTestId('allow').click();
-  await expect(connect.getByTestId('paired')).toBeVisible();
+  await allowAndChoose(connect);
   world.portal.token = world.key();
   await (await context.newPage()).goto(PORTAL);
   await expect(connect.getByTestId('confirm')).toContainText('Alex Example');
@@ -56,6 +55,6 @@ test('store screenshots', async ({ context, world, extensionId }) => {
 
   const pop = await popup(context, extensionId);
   await pop.setViewportSize({ width: 400, height: 640 });
-  await expect(pop.getByTestId('pairing')).toContainText('Connected with Example App');
+  await expect(pop.getByTestId('connection')).toContainText('Example App');
   await frame(context, pop.locator('body'), 'Everything at a glance in the toolbar', '4-popup.png');
 });

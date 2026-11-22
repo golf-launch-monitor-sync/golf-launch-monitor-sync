@@ -6,21 +6,28 @@
  * when its plan says so) or into a file. The same client, guard and rules as the extension. While the
  * page is open, a connected app's older history comes a chunk at a time, when its plan says it may.
  *
- * Connecting goes as steps (`@glmsync/browser`'s wizard): the key (the bookmark, pasted), *Is this you?*, the first
- * sync right after the yes, shown plainly, and done - the overview then follows below.
+ * The main view: *Connect new* and the list of connections (connections.ts); a row opens its details. *Connect new*
+ * starts in the app that should get the data (its pairing page brings the player back here, `#connect`). Connecting
+ * goes as steps (`@glmsync/browser`'s wizard): allowed and chosen on the pairing page, then here the key (the
+ * bookmark, pasted), *Is this you?*, the first sync right after the yes, shown plainly, and done - the overview then
+ * follows below.
  *
  * Test mode (spec/test-mode.md): *Enter a test code* at the bottom, for testing a connected app with
  * its made-up scenario instead of a Trackman account.
  */
 
-import { type ClientStatus, type KeyOutcome, type TestOutcome } from '@glmsync/browser';
+import { connectionsOfStatus, sortConnections, type ClientStatus, type KeyOutcome, type TestOutcome } from '@glmsync/browser';
 import { download, logName } from '@glmsync/browser/download';
-import { button, fill, h, PORTAL_URL, renderStatus, testEntry, type Actions, type WizardMemory } from '@glmsync/browser/render';
+import { backLink, button, endedNotes, fill, h, offerWizard, PORTAL_URL, renderConnections, renderStatus, testEntry, type Actions, type WizardMemory } from '@glmsync/browser/render';
 import { $, client, lang, t, texts } from './common.ts';
 
 declare const __BOOKMARKLET__: string;
 
 texts('web.title');
+const listView = $('list');
+const listRoot = $('connections');
+const newView = $('new');
+const detail = $('detail');
 const panel = $('status');
 const keyBox = $('key');
 const fileBox = $('file');
@@ -33,6 +40,23 @@ let keyMessage: { text: string; undo?: boolean } | null = null;
 let fileMessage = '';
 let confirming = false;
 const memory: WizardMemory = { walked: false };
+
+type View = 'list' | 'new' | 'detail';
+// Back from an app's pairing page (`#connect`): its steps go on in the details.
+let view: View = location.hash === '#connect' ? 'detail' : 'list';
+if (location.hash) window.history.replaceState(null, '', location.pathname + location.search);
+let first = true;
+
+function show(next: View): void {
+  view = next;
+  // *Connect new* here: it starts in the app (its pairing page brings the player back). Drawn only while shown.
+  fill($('new-steps'), view === 'new' ? offerWizard({ t, state: 'none', kind: 'lm', services: [] }, { allow: () => undefined, cancel: () => show('list'), choose: () => undefined }) : null);
+  listView.hidden = view !== 'list';
+  newView.hidden = view !== 'new';
+  detail.hidden = view !== 'detail';
+  if (last) draw(last);
+}
+for (const el of [newView, detail]) fill(el.querySelector('.back-link') as HTMLElement, backLink(t, () => show('list')));
 
 // *Enter a test code* below the panel, drawn apart from it (typing survives a redraw).
 const testRoot = h('div', {});
@@ -53,6 +77,15 @@ async function refresh(): Promise<void> {
 }
 
 function draw(s: ClientStatus): void {
+  // A test's question waits for an answer in the details (it came from a code typed there).
+  if (first && s.testAsking) view = 'detail';
+  first = false;
+  listView.hidden = view !== 'list';
+  newView.hidden = view !== 'new';
+  detail.hidden = view !== 'detail';
+  const notes = endedNotes(s.ended, t, lang, () => void client.clearEnded().then(refresh));
+  renderConnections(listRoot, sortConnections(connectionsOfStatus(s, busy)), { t }, { add: () => show('new'), open: () => show('detail') });
+  if (notes.length) listRoot.prepend(...notes);
   renderStatus(panel, s, { t, lang, now: Date.now(), busy, client: 'web', asking, askingEnd, testConfirming, confirming, memory }, actions);
   drawKey(s);
   // The key's box belongs to the wizard's first step while it stands there; otherwise above the panel, as before.

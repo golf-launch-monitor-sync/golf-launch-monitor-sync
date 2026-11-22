@@ -30,8 +30,13 @@ portal in a sign-in window - so that window lives here, in a small app that does
   cookies the portal left on this phone brings a new one - once per app start, only where this phone
   held the player's key before, and only a key of that same account (`SignIns.renewalFits`). When that
   fails, the app says so and the target hears it (`auth_expired`).
+- **Opens on the list of connections** (`src/lib/connections.ts`, `src/ui/Connections.tsx`, as in the extension):
+  *Connect new* and one row per provider account, per connection in test mode and golf.de's record, each with where
+  it stands; a row opens its details (`Home`'s `focus`). *Connect new* without a pair link says to start in the app
+  (and offers the demo).
 - **Connects as steps** (`@glmsync/browser`'s wizard, the same as the extension's; `src/lib/wizard.ts`,
-  `src/ui/WizardFrame.tsx`): sign in, *Is this your account?* (its name and newest activity - no count), the first
+  `src/ui/WizardFrame.tsx`), one button each: *Connect with <host>?* (the pair link), what to connect, sign in, *Is
+  this your account?* (its name and newest activity - no count), the first
   data shown plainly (*10 sessions, 6 rounds fetched*, how much older data is still to come), and done. Paired but
   never signed in here, the home page says so big (*Not yet connected with … – sign in at Trackman*) instead of a card
   that looks as if things were running. golf.de the same: *Is this your golf.de account?* (its handicap index) in the

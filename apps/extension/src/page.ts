@@ -128,7 +128,7 @@ export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; on
   };
   void refresh();
   const timer = setInterval(() => void refresh(), 3000);
-  return { refresh, stop: () => clearInterval(timer) };
+  return { refresh, stop: () => clearInterval(timer), entry: entryRoot };
 }
 
 /**

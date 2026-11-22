@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * The one page: the provider sign-ins (with how much was asked of the provider today), the apps this
- * phone is paired with and how their last sync went, fetching now, the handicap record read along on golf.de
- * (HcpCard), the request log to export, the demo, the licences. Someone who connected only the handicap record sees
- * no launch monitor cards they have no use for.
+ * The main view: *Connect new* and the list of connections (Connections.tsx; one per provider account, per pairing in
+ * test mode, and golf.de's record), each with where it stands. A row opens its details (`focus`): the provider's
+ * sign-in (with how much was asked of the provider today), the apps it goes to and how their last sync went, fetching
+ * now, the request log to export, *Enter a test code* - or the handicap record read along on golf.de (HcpCard), or a
+ * test's card.
  */
 
 import type { GuardCounts } from '@glmsync/core';
@@ -23,6 +24,8 @@ import { shareFile, version } from '../platform';
 import type { Screen } from './App';
 import { targetOf } from '@glmsync/browser/wizard';
 import { beforeYes, wizardText } from '../lib/wizard';
+import { connectionsOfApp } from '../lib/connections';
+import { BackToList, Connections } from './Connections';
 import { HcpCard, useHcpView } from './HcpCard';
 import { Body, Button, Card, colors, s, Small, Title } from './parts';
 import { WizardFrame } from './WizardFrame';
@@ -31,12 +34,15 @@ const REPO = 'https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sy
 
 export function Home({
   svc,
+  focus,
   message,
   dismiss,
   go,
   renewing,
 }: {
   svc: Services;
+  /** The connection whose details are open (`lm:<provider>`, `test:<key>`, `hcp`); none: the list. */
+  focus?: string;
   message: string | null;
   dismiss: () => void;
   go: (s: Screen) => void;
@@ -134,6 +140,19 @@ export function Home({
   // that looks as if things were running.
   const lmPairings = pairings.filter((p) => p.provider === 'trackman' && !svc.tests.of(p.key));
   const setup = lmPairings.length > 0 && !svc.signIns.valid('trackman') && !svc.signIns.had('trackman');
+  const list = connectionsOfApp({
+    providers: PROVIDERS.map((id) => ({ id, name: svc.providers[id].name })),
+    pairings,
+    tests: tests.map((m) => ({ key: m.key, player: m.player })),
+    signIn: (id) => ({ valid: svc.signIns.valid(id), had: !!svc.signIns.had(id), player: svc.signIns.get(id)?.player ?? null }),
+    lastRun: (key) => svc.runner.lastRun(key),
+    hcp: hcp.view,
+  });
+  const lmFocus = focus?.startsWith('lm:') ? focus.slice(3) : null;
+  const testFocus = focus?.startsWith('test:') ? focus.slice(5) : null;
+  const toList = () => go({ name: 'home' });
+  // The details' apps: the provider's pairings (its test pairings too), or the one in test mode.
+  const focused = pairings.filter((p) => (lmFocus ? p.provider === lmFocus : p.key === testFocus));
   const setupText = setup ? wizardText(beforeYes(false), lang, { service: svc.providers.trackman.name, target: targetOf(lmPairings.map((p) => p.target.name)) }) : null;
 
   return (
@@ -142,7 +161,7 @@ export function Home({
         <Text style={s.heading} accessibilityRole="header">
           {t('app.name')}
         </Text>
-        <Body muted>{t('app.what')}</Body>
+        {!focus && <Body muted>{t('app.what')}</Body>}
       </View>
 
       {message && (
@@ -156,7 +175,7 @@ export function Home({
           <Body warn>{note}</Body>
         </Card>
       )}
-      {build && (
+      {build && !focus && (
         <Card>
           <Title>{t('newBuild.title')}</Title>
           <Body>{t(build.platform === 'android' ? 'newBuild.android' : 'newBuild.ios')}</Body>
@@ -170,85 +189,92 @@ export function Home({
         </Card>
       )}
 
-      {setupText && (
+      {!focus && <Connections list={list} add={() => go({ name: 'new' })} open={(id) => go({ name: 'home', focus: id })} />}
+      {focus && <BackToList onPress={toList} />}
+
+      {lmFocus === 'trackman' && setupText && (
         <WizardFrame view={setupText.view} lines={setupText.lines}>
           <Small>{t('provider.trackman.unofficial')}</Small>
           <Button label={t('provider.signIn')} onPress={() => go({ name: 'signin', provider: 'trackman' })} />
         </WizardFrame>
       )}
 
-      {hcpShown && hcp.view && <HcpCard svc={svc} view={hcp.view} setView={hcp.setView} open={() => go({ name: 'golfde' })} />}
+      {focus === 'hcp' && hcpShown && hcp.view && <HcpCard svc={svc} view={hcp.view} setView={hcp.setView} open={() => go({ name: 'golfde' })} />}
 
-      {tests.map((m) => {
-        const target = svc.pairings.get(m.key)?.target.name ?? '?';
-        const line = countsText(testCounts[m.key] ?? null, now, lang, t);
-        return (
-          <Card key={`test-${m.key}`}>
-            <View style={[s.row, { justifyContent: 'space-between', alignItems: 'center' }]}>
-              <Title>{t('test.title')}</Title>
-              <Text style={s.badge}>{t('test.badge')}</Text>
-            </View>
-            <Body>{t('test.scenario', { name: m.name, target })}</Body>
-            <Body>{t('test.active', { player: m.player ?? t('signin.noName'), since: when(m.at, now, lang, t) })}</Body>
-            <Small>{t('test.notice', { target })}</Small>
-            <Small>{t('test.until', { until: when(m.valid_until, now, lang, t) })}</Small>
-            {line && <Small>{line}</Small>}
-            <View style={s.row}>
-              <Button label={t('test.end')} kind="secondary" busy={busy === `test-${m.key}`} onPress={() => endTest(m, target)} />
-            </View>
-          </Card>
-        );
-      })}
+      {tests
+        .filter((m) => testFocus === m.key)
+        .map((m) => {
+          const target = svc.pairings.get(m.key)?.target.name ?? '?';
+          const line = countsText(testCounts[m.key] ?? null, now, lang, t);
+          return (
+            <Card key={`test-${m.key}`}>
+              <View style={[s.row, { justifyContent: 'space-between', alignItems: 'center' }]}>
+                <Title>{t('test.title')}</Title>
+                <Text style={s.badge}>{t('test.badge')}</Text>
+              </View>
+              <Body>{t('test.scenario', { name: m.name, target })}</Body>
+              <Body>{t('test.active', { player: m.player ?? t('signin.noName'), since: when(m.at, now, lang, t) })}</Body>
+              <Small>{t('test.notice', { target })}</Small>
+              <Small>{t('test.until', { until: when(m.valid_until, now, lang, t) })}</Small>
+              {line && <Small>{line}</Small>}
+              <View style={s.row}>
+                <Button label={t('test.end')} kind="secondary" busy={busy === `test-${m.key}`} onPress={() => endTest(m, target)} />
+              </View>
+            </Card>
+          );
+        })}
 
-      {shown.map((id) => {
-        const p = svc.providers[id];
-        const signIn = svc.signIns.get(id);
-        const valid = svc.signIns.valid(id);
-        const had = svc.signIns.had(id);
-        const line = countsText(counts[id] ?? null, now, lang, t);
-        return (
-          <Card key={id}>
-            <View style={[s.row, { justifyContent: 'space-between', alignItems: 'center' }]}>
-              <Title>{p.name}</Title>
-              <Text style={s.badge}>{id === 'demo' ? t('provider.demo.badge') : t('provider.unofficial')}</Text>
-            </View>
-            <Small>{id === 'demo' ? t('provider.demo.notice') : t('provider.trackman.unofficial')}</Small>
-            {valid && signIn ? (
-              <Body>{t('provider.signedIn', { player: signIn.player ?? t('signin.noName'), since: when(signIn.at, now, lang, t) })}</Body>
-            ) : had ? (
-              <Body warn>{renewing && id === 'trackman' ? t('provider.renewing') : t('provider.expired')}</Body>
-            ) : (
-              <Body muted>{t('provider.signedOut')}</Body>
-            )}
-            {line && <Small>{line}</Small>}
-            <View style={s.row}>
-              {(!valid || !signIn) && <Button label={had ? t('provider.signInAgain') : t('provider.signIn')} onPress={() => go({ name: 'signin', provider: id })} />}
-              {valid && (
-                <Button
-                  label={t('file.save')}
-                  kind="secondary"
-                  busy={busy === `file-${id}`}
-                  onPress={() =>
-                    void act(`file-${id}`, async () => {
-                      const run = await svc.runner.toFile(id);
-                      setNote(run.status === 'synced' ? null : runText(run, Date.now(), lang, t));
-                    })
-                  }
-                />
+      {shown
+        .filter((id) => lmFocus === id && !(id === 'trackman' && setupText))
+        .map((id) => {
+          const p = svc.providers[id];
+          const signIn = svc.signIns.get(id);
+          const valid = svc.signIns.valid(id);
+          const had = svc.signIns.had(id);
+          const line = countsText(counts[id] ?? null, now, lang, t);
+          return (
+            <Card key={id}>
+              <View style={[s.row, { justifyContent: 'space-between', alignItems: 'center' }]}>
+                <Title>{p.name}</Title>
+                <Text style={s.badge}>{id === 'demo' ? t('provider.demo.badge') : t('provider.unofficial')}</Text>
+              </View>
+              <Small>{id === 'demo' ? t('provider.demo.notice') : t('provider.trackman.unofficial')}</Small>
+              {valid && signIn ? (
+                <Body>{t('provider.signedIn', { player: signIn.player ?? t('signin.noName'), since: when(signIn.at, now, lang, t) })}</Body>
+              ) : had ? (
+                <Body warn>{renewing && id === 'trackman' ? t('provider.renewing') : t('provider.expired')}</Body>
+              ) : (
+                <Body muted>{t('provider.signedOut')}</Body>
               )}
-              {(signIn || had) && <Button label={t('provider.signOut')} kind="secondary" busy={busy === `out-${id}`} onPress={() => signOut(id)} />}
-            </View>
-          </Card>
-        );
-      })}
+              {line && <Small>{line}</Small>}
+              <View style={s.row}>
+                {(!valid || !signIn) && <Button label={had ? t('provider.signInAgain') : t('provider.signIn')} onPress={() => go({ name: 'signin', provider: id })} />}
+                {valid && (
+                  <Button
+                    label={t('file.save')}
+                    kind="secondary"
+                    busy={busy === `file-${id}`}
+                    onPress={() =>
+                      void act(`file-${id}`, async () => {
+                        const run = await svc.runner.toFile(id);
+                        setNote(run.status === 'synced' ? null : runText(run, Date.now(), lang, t));
+                      })
+                    }
+                  />
+                )}
+                {(signIn || had) && <Button label={t('provider.signOut')} kind="secondary" busy={busy === `out-${id}`} onPress={() => signOut(id)} />}
+              </View>
+            </Card>
+          );
+        })}
 
-      {!hcpOnly && (
+      {(lmFocus || testFocus) && (
         <Card>
           <Title>{t('targets.title')}</Title>
-          {pairings.length === 0 ? (
+          {focused.length === 0 ? (
             <Body muted>{t('targets.none')}</Body>
           ) : (
-            pairings.map((p) => (
+            focused.map((p) => (
               <View key={p.key} style={{ gap: 4, paddingVertical: 6, borderTopWidth: 1, borderColor: colors.line }}>
                 <Body>{p.target.name}</Body>
                 <Small>
@@ -262,43 +288,41 @@ export function Home({
               </View>
             ))
           )}
-          {pairings.length > 0 && (
-            <Button label={t('sync.now')} busy={busy === 'sync'} onPress={() => void act('sync', () => svc.runner.syncAll('manual'))} />
-          )}
+          {focused.length > 0 && <Button label={t('sync.now')} busy={busy === 'sync'} onPress={() => void act('sync', () => svc.runner.syncAll('manual'))} />}
           <Small>{t('targets.plan')}</Small>
         </Card>
       )}
 
-      {!shown.includes('demo') && !hcpOnly && (
+      {lmFocus && (
         <Card>
-          <Title>{t('demo.title')}</Title>
-          <Body muted>{t('demo.text')}</Body>
-          <Button label={t('demo.button')} kind="secondary" onPress={() => go({ name: 'signin', provider: 'demo' })} />
+          <Title>{t('log.title')}</Title>
+          <Body muted>{t('log.text')}</Body>
+          <Button
+            label={t('log.export')}
+            kind="secondary"
+            busy={busy === 'log'}
+            onPress={() => void act('log', async () => shareFile(await svc.runner.logFile()))}
+          />
         </Card>
       )}
 
-      <Card>
-        <Title>{t('log.title')}</Title>
-        <Body muted>{t('log.text')}</Body>
-        <Button
-          label={t('log.export')}
-          kind="secondary"
-          busy={busy === 'log'}
-          onPress={() => void act('log', async () => shareFile(await svc.runner.logFile()))}
-        />
-      </Card>
-
       <View style={{ gap: 8, paddingBottom: 24 }}>
-        <Pressable accessibilityRole="link" onPress={() => go({ name: 'test', keys: pairings.map((p) => p.key) })}>
-          <Text style={s.link}>{t('test.enter')}</Text>
-        </Pressable>
-        <Pressable accessibilityRole="link" onPress={() => go({ name: 'licenses' })}>
-          <Text style={s.link}>{t('licenses.title')}</Text>
-        </Pressable>
-        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(REPO).catch(() => undefined)}>
-          <Text style={s.link}>{t('about.source')}</Text>
-        </Pressable>
-        <Small>{t('about.line', { version })}</Small>
+        {lmFocus && focused.length > 0 && (
+          <Pressable accessibilityRole="link" onPress={() => go({ name: 'test', keys: focused.map((p) => p.key) })}>
+            <Text style={s.link}>{t('test.enter')}</Text>
+          </Pressable>
+        )}
+        {!focus && (
+          <>
+            <Pressable accessibilityRole="link" onPress={() => go({ name: 'licenses' })}>
+              <Text style={s.link}>{t('licenses.title')}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(REPO).catch(() => undefined)}>
+              <Text style={s.link}>{t('about.source')}</Text>
+            </Pressable>
+            <Small>{t('about.line', { version })}</Small>
+          </>
+        )}
       </View>
     </ScrollView>
   );

@@ -64,6 +64,7 @@ const FROM: Record<Message['type'], Source> = {
   bridge: 'target-page',
   pending: 'extension',
   'pair-confirm': 'extension',
+  'open-connect': 'extension',
   'pair-cancel': 'extension',
   'test-fetch': 'extension',
   'test-confirm': 'extension',
@@ -113,6 +114,10 @@ export function accept(raw: unknown, source: Source): Message | null {
       return typeof m.auto === 'boolean' ? { type, auto: m.auto } : null;
     case 'hcp-confirm':
       return typeof m.yes === 'boolean' ? { type, yes: m.yes } : null;
+    case 'pair-confirm':
+      // A service is a lower-case id (spec/deep-links.md, `provider`).
+      if (m.provider === undefined) return { type };
+      return typeof m.provider === 'string' && /^[a-z][a-z0-9_-]{1,39}$/.test(m.provider) ? { type, provider: m.provider } : null;
     case 'golfde-seen':
       // The seen itself is read again strictly by the background (readSeen); here only its frame.
       return typeof m.page === 'string' && /^[0-9a-f]{8,64}$/.test(m.page) && m.seen && typeof m.seen === 'object' ? { type, page: m.page, seen: m.seen } : null;

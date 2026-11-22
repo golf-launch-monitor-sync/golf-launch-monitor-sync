@@ -14,11 +14,18 @@
   <body>
     <main class="page">
       <header><img src="./icon.png" alt="" /><h1 data-t="web.title">Golf Stats Sync</h1></header>
-      <p data-t="web.intro"></p>
-      <p class="muted small"><span data-t="web.extensionBetter"></span> <a href="./" data-t="pair.install"></a></p>
-      <section id="key"></section>
-      <div id="status"></div>
-      <section id="file"></section>
+      <div id="list">
+        <p class="muted" data-t="web.intro"></p>
+        <p class="muted small"><span data-t="web.extensionBetter"></span> <a href="./" data-t="pair.install"></a></p>
+        <div id="connections"></div>
+      </div>
+      <div id="new" hidden><div class="back-link"></div><div id="new-steps"></div></div>
+      <div id="detail" hidden>
+        <div class="back-link"></div>
+        <section id="key"></section>
+        <div id="status"></div>
+        <section id="file"></section>
+      </div>
       <footer><a href="./" data-t="app.name"></a><a href="https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync" data-t="footer.source"></a></footer>
     </main>
     <script src="./app.js"></script>

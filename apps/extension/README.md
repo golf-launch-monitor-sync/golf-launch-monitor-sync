@@ -14,12 +14,15 @@ background, while your browser is open — and reads your handicap record along 
 
 1. In the app that wants the data (a *target*), choose to connect Launch Monitor Sync. It opens the
    web app's pairing page (`…/pair#target=…&code=…`; the part after `#` reaches no server).
-2. The extension picks the code up and opens its connect page in a tab beside it: **which address** the data would go to.
-   *Allow and connect* — the browser asks once for that one address — and it is connected. The pairing page closes
-   itself once the extension took over (when the app opened it; otherwise it says it may be closed).
-3. From here connecting goes **as steps with their progress** (*Step 2 of 4*; the same for every service,
-   [`@glmsync/browser`'s wizard](../../packages/browser/README.md#connecting-step-by-step)), in the connect page and
-   in the popup alike. Open the Trackman portal (`portal.trackmangolf.com`) and sign in, or just open it if you are.
+2. The extension picks the code up and opens its connect page in a tab beside it. Connecting goes **as steps with
+   their progress**, one button each (*Step 1 of 6*; the same for every service,
+   [`@glmsync/browser`'s wizard](../../packages/browser/README.md#connecting-step-by-step)): **which address** the data
+   would go to - *Allow* (the browser asks once for that one address) -, then **what to connect** (*Trackman*), and it
+   is connected. The pairing page closes itself once the extension took over (when the app opened it; otherwise it
+   says it may be closed). *Connect new* in the popup opens the same page at its first step, which says to start in
+   the app and goes on by itself once the app's pairing page hands over its code.
+3. The steps go on in the connect page (and from the popup's row): open the Trackman portal (`portal.trackmangolf.com`)
+   and sign in, or just open it if you are.
    The extension takes your sign-in from there and asks **"Is this your Trackman account?"** (the name, the newest
    activity and where - no count) before anything is fetched; until the answer the page shows nothing that looks as if
    it were running, only, big, *Not yet connected with … – confirm your account*. *Yes*: the first data, shown plainly
@@ -32,7 +35,7 @@ background, while your browser is open — and reads your handicap record along 
 5. The app's own page in this browser can ask the extension to **fetch now** and show where its sign-in stands
    ([the bridge](#the-bridge-on-the-apps-page)).
 6. **Test mode** (for testing a connected app by hand, [spec/test-mode.md](../../spec/test-mode.md)): *Enter a test
-   code* at the bottom of the popup or the connect page, for a connected app's test account - the code its test page
+   code* below the Trackman sign-in step or a connection's details in the popup, for a connected app's test account - the code its test page
    shows, or its test link (`glmsync://test?…`, which a browser can't open: copy it in). The scenario comes from that
    app with the connection's token; **"Is this your account?"** about its made-up account; then that connection syncs
    from it exactly as from Trackman (the plan, the guard under the scenario's own account, the first sync, the older
@@ -40,8 +43,11 @@ background, while your browser is open — and reads your handicap record along 
    A card *Test mode – made-up data* with *End test mode*; the scenario lies in the extension's IndexedDB until then,
    until the connection ends or its end date passes. The sign-in and other connections go on as before.
 
-The popup shows the sign-in, the connected apps with what they last got, *Fetch now*, *Disconnect*,
-and the requests to Trackman ("last hour 3 of 60 · last 24 hours 14 of 300") with the log to export.
+The popup opens on *Connect new* and the **list of connections** (Trackman's account, golf.de's record, a connection
+in test mode), each with where it stands - *running*, *loading the history*, *run out – sign in again*, *test mode*,
+*not set up yet – continue*. A row opens its details: the sign-in, the connected apps with what they last got, *Fetch
+now*, *Disconnect*, and the requests to Trackman ("last hour 3 of 60 · last 24 hours 14 of 300") with the log to
+export - or, while it isn't set up, its steps.
 
 ## What it does, and doesn't
 

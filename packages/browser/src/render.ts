@@ -11,7 +11,8 @@ import type { HcpView } from './hcp.ts';
 import { hcpLastText } from './hcpView.ts';
 import { formatDate, formatDateTime, formatTime, type Lang, type T } from './i18n.ts';
 import { historyText, lastText, noticeText } from './view.ts';
-import { factsOfHcp, factsOfStatus, hcpWhoLine, targetOf, whoLine, wizardLines, wizardOf, type WizardFacts, type WizardLines, type WizardView } from './wizard.ts';
+import { connectionLine, type Connection } from './connections.ts';
+import { factsOfHcp, factsOfOffer, factsOfStatus, hcpWhoLine, targetOf, whoLine, wizardLines, wizardOf, type ServiceKind, type WizardFacts, type WizardLines, type WizardView } from './wizard.ts';
 
 type Child = Node | string | null | undefined | false;
 
@@ -93,18 +94,7 @@ export function renderStatus(root: HTMLElement, s: ClientStatus, c: RenderContex
   const { t, lang, now } = c;
   const parts: Child[] = [];
 
-  for (const f of s.ended) {
-    const at = Date.parse(f.at);
-    parts.push(
-      h(
-        'div',
-        { class: 'note warn', 'data-test': 'ended' },
-        t(f.why === 'disconnected' ? 'ended.disconnected' : 'ended.revoked', { name: f.name, date: Number.isFinite(at) ? formatDate(at, lang) : '' }),
-        ' ',
-        button(t('ended.ok'), a.clearEnded, { class: 'link' }),
-      ),
-    );
-  }
+  parts.push(...endedNotes(s.ended, t, lang, a.clearEnded));
 
   // A test code fetched: "Is this your account?" about its made-up account, before anything is synced.
   const ta = s.testAsking;
@@ -228,11 +218,34 @@ export function renderStatus(root: HTMLElement, s: ClientStatus, c: RenderContex
   fill(root, ...parts);
 }
 
-/** Not signed in, run out, or another account than the app's: what to do (the overview's and the wizard's step 1). */
-function signInPart(s: ClientStatus, c: RenderContext, a: Actions): Child[] {
+/** Connections an app ended since the player last looked: one line each, with *OK* (the overview and the list). */
+export function endedNotes(ended: readonly { name: string; at: string; why: string }[], t: T, lang: Lang, ok: () => void): HTMLElement[] {
+  return ended.map((f) => {
+    const at = Date.parse(f.at);
+    return h(
+      'div',
+      { class: 'note warn', 'data-test': 'ended' },
+      t(f.why === 'disconnected' ? 'ended.disconnected' : 'ended.revoked', { name: f.name, date: Number.isFinite(at) ? formatDate(at, lang) : '' }),
+      ' ',
+      button(t('ended.ok'), ok, { class: 'link' }),
+    );
+  });
+}
+
+/**
+ * Not signed in, run out, or another account than the app's: what to do (the overview's and the wizard's sign-in step).
+ * In the wizard a first sign-in says one line and has one button; what went wrong (run out, another account, said no)
+ * is said as in the overview.
+ */
+function signInPart(s: ClientStatus, c: RenderContext, a: Actions, inWizard = false): Child[] {
   const { t } = c;
   const k = s.key;
   const out: Child[] = [];
+  if (inWizard && k.state === 'none' && !s.rejected) {
+    // The web app puts its own key box (the bookmark) into the step.
+    if (c.client === 'extension') out.push(h('p', { 'data-test': 'key-none' }, t('wizard.signinHow')), h('div', { class: 'row' }, button(t('key.openPortal'), a.openPortal, { class: 'primary', 'data-test': 'open-portal' })));
+    return out;
+  }
   const [line, hint] =
     k.state === 'expired' ? (['key.expired', 'key.expiredHint'] as const) : k.state === 'other' ? (['key.other', 'key.otherHint'] as const) : (['key.none', 'key.noneHint'] as const);
   // The player said no to the account signed in to the portal here, or the target has another one: the way
@@ -286,7 +299,7 @@ function statusWizard(s: ClientStatus, view: WizardView, facts: WizardFacts, c: 
   const target = targetOf(real.map((p) => p.name));
   const lines = wizardLines(view, facts, t, { service: s.provider.name, target });
   const body: Child[] = [];
-  if (view.step === 'signin') body.push(...signInPart(s, c, a));
+  if (view.step === 'signin') body.push(...signInPart(s, c, a, true));
   else if (view.step === 'account') {
     const confirm = confirmPart(s, c, a);
     // The frame's title asks already.
@@ -309,14 +322,15 @@ function statusWizard(s: ClientStatus, view: WizardView, facts: WizardFacts, c: 
 }
 
 /** The frame every service's steps share: the big line before the yes, the steps, where it stands, the step's title. */
-export function wizardFrame(view: WizardView, lines: WizardLines, body: Child[], spinning = true): HTMLElement {
+export function wizardFrame(view: WizardView, lines: WizardLines, body: Child[], spinning = true, busy = false): HTMLElement {
+  const spin = busy || (view.step === 'load' && spinning);
   return h(
     'section',
     { class: 'wizard', 'data-test': 'wizard', 'data-step': view.step },
     lines.unconfirmed ? h('p', { class: 'banner', 'data-test': 'unconfirmed', role: 'status' }, lines.unconfirmed) : null,
     h('ol', { class: 'steps' }, ...view.steps.map((st, i) => h('li', { class: st.state, ...(st.state === 'current' ? { 'aria-current': 'step' } : {}) }, lines.labels[i] ?? ''))),
     h('p', { class: 'muted small', 'data-test': 'wizard-progress' }, lines.progress),
-    h('h3', { 'data-test': 'wizard-title', ...(view.step === 'load' && spinning ? { class: 'spin', role: 'status' } : {}) }, lines.title),
+    h('h3', { 'data-test': 'wizard-title', ...(spin ? { class: 'spin', role: 'status' } : {}) }, lines.title),
     ...body,
   );
 }
@@ -445,6 +459,89 @@ export function hcpWizard(v: HcpView, c: HcpWizardContext, a: HcpWizardActions):
   }
   // Waiting for pages to be opened isn't "running": the spinner only while something is sent.
   return { el: wizardFrame(view, lines, body, facts.first === 'running'), done: view.step === 'done' };
+}
+
+export interface OfferContext {
+  t: T;
+  /** `none`: no app asked yet; `asking`: waiting for the yes; `allowed`: what to connect is next; `working`: pairing. */
+  state: 'none' | 'asking' | 'allowed' | 'working';
+  kind: ServiceKind;
+  /** The asking app's address (shown plainly: any page can ask). */
+  host?: string;
+  /** What can be connected for this kind (the offer may name one). */
+  services: readonly { id: string; name: string }[];
+  /** What went wrong with the last request (a code run out, the permission refused …), said on its step. */
+  error?: string | null;
+  /** The yes in this client's words (the web app: *Connect this page with …*). */
+  allowLabel?: string;
+}
+
+export interface OfferActions {
+  allow(): void;
+  cancel(): void;
+  choose(id: string): void;
+}
+
+/**
+ * A new connection's first two steps, in the same frame as the rest: an app asks and the player allows it (or, with no
+ * app asking yet, where to start), then what to connect. One button each.
+ */
+export function offerWizard(c: OfferContext, a: OfferActions): HTMLElement {
+  const { t } = c;
+  const facts = factsOfOffer(c.state, c.kind);
+  const view = wizardOf(facts);
+  const target = c.state === 'none' ? null : (c.host ?? null);
+  const lines = wizardLines(view, facts, t, { service: c.services[0]?.name ?? '', target });
+  const body: Child[] = [];
+  if (c.error) body.push(h('p', { class: 'note warn', 'data-test': 'offer-error', role: 'alert' }, c.error));
+  if (c.state === 'none') body.push(h('p', { 'data-test': 'offer-start' }, t('wizard.pairStartHow')));
+  else if (c.state === 'asking') {
+    body.push(
+      h('p', { 'data-test': 'offer-what' }, t('wizard.pairWhat', { host: c.host ?? '' })),
+      h('div', { class: 'row' }, button(c.allowLabel ?? t('wizard.allow'), a.allow, { class: 'primary', 'data-test': 'allow' }), button(t('connect.cancel'), a.cancel, { class: 'link', 'data-test': 'cancel' })),
+    );
+  } else {
+    const working = c.state === 'working';
+    body.push(
+      h('p', { class: 'muted small' }, t(c.kind === 'hcp' ? 'wizard.serviceHcp' : 'wizard.serviceLm')),
+      h('div', { class: 'row services' }, ...c.services.map((x) => button(x.name, () => a.choose(x.id), { class: 'primary', 'data-test': `service-${x.id}`, ...(working ? { disabled: '' } : {}) }))),
+      c.kind === 'lm' ? h('p', { class: 'muted small' }, t('wizard.serviceMore')) : null,
+      working ? h('p', { class: 'muted', role: 'status', 'data-test': 'working' }, t('connect.working')) : h('div', { class: 'row' }, button(t('connect.cancel'), a.cancel, { class: 'link', 'data-test': 'cancel' })),
+    );
+  }
+  return wizardFrame(view, lines, body, true, c.state === 'working');
+}
+
+/** The main view: *Connect new* and the list of connections, each a row that opens its details. */
+export function renderConnections(root: HTMLElement, list: readonly Connection[], c: { t: T }, a: { add(): void; open(id: string): void }): void {
+  const { t } = c;
+  const row = (x: Connection) => {
+    const l = connectionLine(x, t);
+    const b = h(
+      'button',
+      { type: 'button', class: 'connection', 'data-test': 'connection', 'data-id': x.id, 'data-state': x.state },
+      h('span', { class: 'title' }, l.title),
+      h('span', { class: 'muted small' }, l.targets),
+      h('span', { class: `state ${l.tone}`, 'data-test': 'connection-state' }, l.state),
+    );
+    b.addEventListener('click', () => a.open(x.id));
+    return h('li', {}, b);
+  };
+  fill(
+    root,
+    h(
+      'section',
+      { class: 'connections', 'data-test': 'connections' },
+      h('div', { class: 'row' }, button(t('connections.new'), a.add, { class: 'primary', 'data-test': 'connect-new' })),
+      h('h2', {}, t('connections.title')),
+      list.length ? h('ul', { class: 'list' }, ...list.map(row)) : h('p', { class: 'muted', 'data-test': 'connections-none' }, t('connections.none')),
+    ),
+  );
+}
+
+/** Back from a connection's details (or from *Connect new*) to the list. */
+export function backLink(t: T, onBack: () => void): HTMLElement {
+  return h('div', { class: 'row back' }, button(`‹ ${t('connections.back')}`, onBack, { class: 'link', 'data-test': 'connections-back' }));
 }
 
 /** A pairing's test while it lasts: the badge, whose made-up account, until when, its own guard counts, the way out. */

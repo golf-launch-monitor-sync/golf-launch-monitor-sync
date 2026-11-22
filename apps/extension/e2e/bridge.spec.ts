@@ -7,7 +7,7 @@
 
 import type { Page } from '@playwright/test';
 import { APP_PAGE, pairUrl, PORTAL } from '../../../tools/e2e/world.ts';
-import { connectWindow, expect, popup, test } from './fixture.ts';
+import { allowAndChoose, connectWindow, expect, popup, test } from './fixture.ts';
 
 type Reply = Record<string, unknown>;
 
@@ -42,8 +42,7 @@ test('the app’s page learns the sign-in and has the extension fetch now', asyn
   const windowOpens = connectWindow(context, extensionId);
   await pairPage.goto(pairUrl());
   const connect = await windowOpens;
-  await connect.getByTestId('allow').click();
-  await expect(connect.getByTestId('paired')).toBeVisible();
+  await allowAndChoose(connect);
 
   await expect.poll(() => marked(app)).toBe('1');
   expect(await ask(app, 'state', 's1')).toEqual([{ glmsync: 'reply', v: 1, id: 's1', answer: 'state', signin: 'none', fetching: false }]);
@@ -74,7 +73,7 @@ test('the app’s page learns the sign-in and has the extension fetch now', asyn
   expect(await ask(portal, 'state', 'p1', 2_000)).toEqual([]);
 
   // Disconnected in the popup: the bridge goes with the pairing.
-  const pop = await popup(context, extensionId);
+  const pop = await popup(context, extensionId, 'lm');
   await pop.getByTestId('disconnect').click();
   await pop.getByTestId('disconnect-yes').click();
   await expect(pop.getByTestId('no-pairings')).toBeVisible();

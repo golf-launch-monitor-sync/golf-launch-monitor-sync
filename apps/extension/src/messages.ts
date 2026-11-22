@@ -33,7 +33,10 @@ export type FromPage =
   | { type: 'open-portal' }
   | { type: 'switch-account' }
   | { type: 'pending' }
-  | { type: 'pair-confirm' }
+  /** The yes to an app's pairing, with the service chosen (step 2): the offer's own, or this one when it named none. */
+  | { type: 'pair-confirm'; provider?: string }
+  /** *Connect new* in the popup: the connect window, at its first step. */
+  | { type: 'open-connect' }
   | { type: 'pair-cancel' }
   /** Test mode (spec/test-mode.md): a test code typed for a pairing, the answer to its question, its end. */
   | { type: 'test-fetch'; code: string; id?: string }

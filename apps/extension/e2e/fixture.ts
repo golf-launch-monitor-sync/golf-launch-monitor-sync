@@ -36,11 +36,24 @@ export const test = base.extend<{ world: World; context: BrowserContext; backgro
 
 export const expect = test.expect;
 
-/** The popup, opened as a page. */
-export async function popup(context: BrowserContext, extensionId: string): Promise<Page> {
+/**
+ * The popup, opened as a page: its main view, the list of connections - or, with `open`, the details of a connection
+ * (`lm` the launch monitor's, `hcp` golf.de's), opened by its row.
+ */
+export async function popup(context: BrowserContext, extensionId: string, open?: 'lm' | 'hcp'): Promise<Page> {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/popup.html`);
+  if (open) await page.locator(`[data-test="connection"][data-id="${open}"]`).click();
   return page;
+}
+
+/** *Connect new*'s first two steps in the connect window: allow the app, then the service the offer asks for. */
+export async function allowAndChoose(connect: Page, service = 'trackman'): Promise<void> {
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'pair');
+  await connect.getByTestId('allow').click();
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'service');
+  await connect.getByTestId(`service-${service}`).click();
+  await expect(connect.getByTestId('wizard').first()).not.toHaveAttribute('data-step', /^(pair|service)$/);
 }
 
 /** The toolbar icon's badge. */
@@ -51,7 +64,9 @@ export async function badgeText(background: Worker): Promise<string> {
 /** The connect window, which the background opens by itself. */
 export async function connectWindow(context: BrowserContext, extensionId: string): Promise<Page> {
   const url = `chrome-extension://${extensionId}/connect.html`;
-  const open = context.pages().find((p) => p.url() === url);
+  // `connect.html?new=1` when *Connect new* opened it.
+  const is = (p: Page) => p.url() === url || p.url().startsWith(`${url}?`);
+  const open = context.pages().find(is);
   if (open) return open;
-  return context.waitForEvent('page', { predicate: (p) => p.url() === url });
+  return context.waitForEvent('page', { predicate: is });
 }

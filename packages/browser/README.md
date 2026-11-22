@@ -73,10 +73,18 @@ chunk may go: the target's `wait_s`, a minute after a chunk that brought somethi
 
 ## Connecting, step by step
 
-`wizard.ts` (pure, tested without a browser): connecting as four steps, the same for every service - **sign in**,
-**your account** (*Is this your account?*), **the first data**, **done**. Each client turns its own state into
-`WizardFacts` (`factsOfStatus` for a launch monitor, `factsOfHcp` for golf.de, the companion app its own),
-`wizardOf` decides the step and `wizardLines` says it (English, German).
+`wizard.ts` (pure, tested without a browser): connecting as six steps, the same for every service, one button each -
+**allow** (the app's pairing, by its address), **the service** (what to connect), **sign in**, **your account** (*Is
+this your account?*), **the first data**, **done**. Each client turns its own state into `WizardFacts`
+(`factsOfOffer` for the first two, before the pairing stands; `factsOfStatus` for a launch monitor, `factsOfHcp` for
+golf.de, the companion app its own), `wizardOf` decides the step and `wizardLines` says it (English, German). A
+connection with a client state behind it is past the first two (`paired`, `chosen` absent).
+
+`connections.ts` (pure): the main view's list - one connection per service and account (`connectionsOfStatus`: the
+signed-in account's pairings, and each pairing in test mode; `connectionOfHcp`: golf.de's record; the companion app
+its own), each with its state (`connectionState`: test, not set up yet, run out, another account, last fetch failed,
+loading the history, running - what needs the player first) and its row's words (`connectionLine`). The account's
+name is the one *Is this your account?* showed, kept once the player said yes (`ClientStatus.player`).
 
 - Before the yes: no count of any kind - no sessions, results, requests, not even the number of activities in the
   question (`whoLine`: the newest activity and where; `hcpWhoLine`: golf.de's handicap index) - and, big, what is
@@ -89,7 +97,8 @@ chunk may go: the target's `wait_s`, a minute after a chunk that brought somethi
 - Not a setup: no app connected, only apps in test mode, or a connection that brought data before and only needs a
   new sign-in (the overview says *sign in again*). A new account to answer about is asked about in the steps.
 
-`render.ts` draws them (`renderStatus` for a launch monitor, `hcpWizard` for golf.de, the shared `wizardFrame`): until
+`render.ts` draws them (`renderConnections` the list, `offerWizard` steps 1 and 2, `renderStatus` for a launch monitor,
+`hcpWizard` for golf.de, the shared `wizardFrame`): until
 the first data is through they stand in place of the overview; a page that walked the steps (`WizardMemory`) shows
 *done* with the overview below, one opened afterwards just the overview.
 

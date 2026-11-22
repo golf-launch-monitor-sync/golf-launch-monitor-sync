@@ -24,7 +24,8 @@ const test = base.extend<{ world: World }>({
 
 async function pairByHand(page: Page) {
   await page.goto(pairUrl());
-  await page.getByTestId('use-web').click();
+  await page.getByTestId('allow').click();
+  await page.getByTestId('service-trackman').click();
   await expect(page).toHaveURL(`${WEB}/app.html`);
   // Paired, no Trackman sign-in: connecting's first step (a tester of test mode needs none, and goes on below).
   await expect(page.getByTestId('unconfirmed')).toContainText('Example App');
@@ -85,7 +86,11 @@ test('a test code: asked first, then the scenario as from Trackman, in chunks wh
   expect(new Set(world.target.imports.map((b) => b.account_ref))).toEqual(new Set([accountRefOf(world.target.salt, 'trackman', TEST_SUBJECT)]));
 
   // After a reload the test is still there (this browser's IndexedDB and storage).
+  // In the list it is a connection of its own; its row opens it.
   await page.reload();
+  const row = page.locator('[data-test="connection"][data-state="test"]');
+  await expect(row).toContainText('Leon (Test T17)');
+  await row.click();
   await expect(page.getByTestId('test-card')).toContainText('Leon (Test T17)');
 
   // Ended: the card goes, the pairing stays, nothing more comes from the scenario.
@@ -100,11 +105,10 @@ test('a test code: asked first, then the scenario as from Trackman, in chunks wh
   expect(await page.evaluate(() => Object.keys(localStorage).join(' '))).not.toContain('test-asking');
 });
 
-test('without a pairing it says to connect first; an app’s account that is no test account says so', async ({ page, world }) => {
+test('without a pairing no test code to enter; an app’s account that is no test account says so', async ({ page, world }) => {
   await page.goto(`${WEB}/app.html`);
-  await page.getByTestId('test-enter').click();
-  await expect(page.getByTestId('test-error')).toHaveText(/Connect with the app first/);
-  await expect(page.getByTestId('test-fetch')).toHaveCount(0);
+  await expect(page.getByTestId('connections-none')).toBeVisible();
+  await expect(page.getByTestId('test-enter')).toBeHidden();
 
   await pairByHand(page);
   await enter(page, TEST_CODE);

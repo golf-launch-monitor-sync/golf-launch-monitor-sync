@@ -85,6 +85,18 @@ describe('which messages are taken', () => {
     expect(accept({ type: 'switch-account' }, 'extension')).toEqual({ type: 'switch-account' });
   });
 
+  it('the yes to a pairing with the service chosen, and *Connect new*, only from the extension’s own pages', () => {
+    expect(accept({ type: 'pair-confirm' }, 'extension')).toEqual({ type: 'pair-confirm' });
+    expect(accept({ type: 'pair-confirm', provider: 'trackman' }, 'extension')).toEqual({ type: 'pair-confirm', provider: 'trackman' });
+    expect(accept({ type: 'pair-confirm', provider: 'Trackman' }, 'extension')).toBeNull();
+    expect(accept({ type: 'pair-confirm', provider: 7 }, 'extension')).toBeNull();
+    expect(accept({ type: 'open-connect' }, 'extension')).toEqual({ type: 'open-connect' });
+    for (const source of ['target-page', 'portal', 'pair-page', 'golfde', 'other'] as const) {
+      expect(accept({ type: 'pair-confirm', provider: 'trackman' }, source)).toBeNull();
+      expect(accept({ type: 'open-connect' }, source)).toBeNull();
+    }
+  });
+
   it('with fields of the right kind only', () => {
     expect(accept({ type: 'portal-key', token: 42 }, 'portal')).toBeNull();
     expect(accept({ type: 'portal-key', token: 'x'.repeat(20_000) }, 'portal')).toBeNull();

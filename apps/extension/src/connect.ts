@@ -1,18 +1,21 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * The connect window: opened when the web app's pairing page hands over a code. It shows where the data would go and
- * asks the player; the browser's own prompt for that one address follows from the same click. Then connecting goes on
- * as steps with their progress, the same for every service (`@glmsync/browser`'s wizard): sign in, *Is this your
- * account?*, the first data shown plainly, and *Back to …* (which closes this tab). For a launch monitor the steps are
- * the status panel's; for the handicap record (kind=hcp) the golf.de steps - also when golf.de's page brought this
- * window to the front for the yes (*Confirm* on its line).
+ * The connect window: *Connect new*, step by step, the same for every service (`@glmsync/browser`'s wizard), one button
+ * per step. (1) An app asks - the web app's pairing page handed over its code - and the player allows it, the browser's
+ * own prompt for that one address following from the same click; opened from the popup (`?new`) before any app asked,
+ * it says where to start and waits. (2) What to connect (the offer's service; later more launch monitors). (3) The
+ * service's steps (Trackman: *Open the Trackman portal*, small *Enter a test code*; golf.de: open the History Sheet),
+ * (4) *Is this your account?*, (5) the first data shown plainly, (6) *Back to …*, which closes this tab. Steps 3 to 6 are
+ * the status panel's (or the handicap record's, kind=hcp - also when golf.de's page brought this window to the front
+ * for the yes).
  */
 
 import type { ClientStatus, HcpView } from '@glmsync/browser';
-import { button, fill, h, type WizardMemory } from '@glmsync/browser/render';
+import { button, fill, h, offerWizard, type OfferContext, type WizardMemory } from '@glmsync/browser/render';
+import { PROVIDER_ID as GOLFDE } from '@glmsync/provider-golfde';
 import { finished } from './finished.ts';
-import type { Pending } from './messages.ts';
+import type { Pending, Reply } from './messages.ts';
 import { hcpPanel, heading, send, statusPanel, t } from './page.ts';
 
 heading('connect.title');
@@ -23,10 +26,22 @@ const panel = document.getElementById('status') as HTMLElement;
 const hcpRoot = document.createElement('div');
 panel.before(hcpRoot);
 
+/** Opened by *Connect new*: the first step, also when no app has asked yet. */
+const fresh = new URLSearchParams(location.search).has('new');
+
 let pendingNow: Pending | null = null;
 let statusNow: ClientStatus | null = null;
 let hcpNow: HcpView | null = null;
 const memory: WizardMemory = { walked: false };
+/** The offer (by its time) the player allowed: what to connect is next. */
+let allowedAt: number | null = null;
+/** The yes with the service is on its way. */
+let choosing = false;
+/** What went wrong with the last answer of the background, said on the step. */
+let failure: string | null = null;
+/** *Enter a test code*, drawn below the launch monitor's panel. */
+let lmEntry: HTMLElement | null = null;
+const panels: { lm?: { refresh(): Promise<void> }; hcp?: { refresh(): Promise<void> } } = {};
 
 /** This tab, closed: by the browser's tab API (an extension page may close its own tab), else by the window. */
 async function closeTab(): Promise<void> {
@@ -44,89 +59,128 @@ async function closeTab(): Promise<void> {
 
 const isHcp = () => pendingNow?.kind === 'hcp';
 
-let wasDone = false;
-function showDone(): void {
-  // Only the handicap record here (asked for it, or brought here by golf.de's page): no Trackman panel in the way.
-  panel.hidden = isHcp() || (!!statusNow && !statusNow.pairings.length && !!hcpNow && hcpNow.pairings.length > 0);
-  // The steps end with their own *Back to …*; a window opened when everything was done already just says so.
-  const now = !isHcp() && !memory.walked && finished(pendingNow, statusNow);
-  if (now === wasDone) return;
-  wasDone = now;
-  fill(done, now ? h('div', { class: 'note', 'data-test': 'finished', role: 'status' }, h('p', {}, t('connect.finished')), h('div', { class: 'row' }, button(t('connect.close'), () => void closeTab(), { class: 'primary', 'data-test': 'close' }))) : null);
-  show(pendingNow);
+/** Steps 1 and 2 while the pairing doesn't stand yet; null once it does (or there is nothing to start here). */
+function offerState(p: Pending | null): Pick<OfferContext, 'state' | 'error'> | null {
+  if (!p) return fresh ? { state: 'none' } : null;
+  switch (p.state) {
+    case 'asking':
+      return { state: choosing ? 'working' : allowedAt === p.at ? 'allowed' : 'asking', error: failure };
+    case 'working':
+      return { state: 'working' };
+    case 'failed':
+      return { state: 'none', error: p.error === 'denied' ? t('connect.denied', { host: p.host }) : t(`connect.error.${p.error ?? 'refused'}` as Parameters<typeof t>[0]) };
+    case 'cancelled':
+      return { state: 'none' };
+    case 'paired':
+      // Paired, but the panel hasn't heard yet: still "connecting", not an overview without the new app.
+      return (p.kind === 'hcp' ? hcpNow && !hcpNow.pairings.length : statusNow && !statusNow.pairings.length) ? { state: 'working' } : null;
+    default:
+      return null;
+  }
 }
 
-function show(p: Pending | null | undefined): void {
-  if (!p) {
-    fill(ask);
-    return;
-  }
-  const host = p.host;
-  switch (p.state) {
-    case 'asking': {
-      const origins = [`${new URL(p.target).origin}/*`];
-      const allow = button(t('connect.allow'), () => {
-        // The browser's prompt needs this very click: ask first, then tell the background.
-        allow.disabled = true;
-        chrome.permissions.request({ origins }).then(
-          () => void send({ type: 'pair-confirm' }).then((r) => show(r.ok ? r.pending : null)),
-          () => void send({ type: 'pair-confirm' }).then((r) => show(r.ok ? r.pending : null)),
-        );
-        show({ ...p, state: 'working' });
-      }, { class: 'primary', 'data-test': 'allow' });
-      fill(ask,
-        h('h3', {}, t(p.kind === 'hcp' ? 'connect.askHcp' : 'connect.ask', { host })),
-        h('p', {}, t(p.kind === 'hcp' ? 'connect.whatHcp' : 'connect.what', { host })),
-        h('p', { class: 'muted small' }, t('connect.permission', { host })),
-        h('div', { class: 'row' }, allow, button(t('connect.cancel'), () => void send({ type: 'pair-cancel' }).then((r) => show(r.ok ? r.pending : null)), { 'data-test': 'cancel' })),
-      );
-      break;
-    }
-    case 'working':
-      fill(ask, h('p', { 'data-test': 'working' }, t('connect.working')));
-      break;
-    case 'paired':
-      // What comes next is the steps' first one (sign in at the service).
-      fill(ask, h('p', { class: 'note', 'data-test': 'paired' }, t('connect.done', { name: p.name ?? host })));
-      break;
-    case 'failed':
-      fill(ask,
-        h('p', { class: 'note warn', 'data-test': 'failed' }, p.error === 'denied' ? t('connect.denied', { host }) : t(`connect.error.${p.error ?? 'refused'}` as Parameters<typeof t>[0])),
-      );
-      break;
-    case 'cancelled':
-      fill(ask, h('p', { class: 'muted' }, t('connect.gone')));
-      break;
-  }
+/** What can be connected for the offer: its own service when it named one, else this version's. */
+function services(p: Pending | null): OfferContext['services'] {
+  if (p?.kind === 'hcp') return [{ id: GOLFDE, name: 'golf.de' }];
+  const own = statusNow?.provider ?? { id: 'trackman', name: 'Trackman' };
+  return p?.provider && p.provider !== own.id ? [{ id: p.provider, name: p.provider }] : [{ id: own.id, name: own.name }];
+}
+
+function apply(r: Reply): void {
+  if (r.ok) {
+    failure = null;
+    if (r.pending !== undefined) pendingNow = r.pending;
+  } else failure = t('last.failed', { error: t('error.error') });
+  draw();
+}
+
+function draw(): void {
+  const p = pendingNow;
+  const offer = offerState(p);
+  if (offer) {
+    memory.walked = true;
+    fill(
+      ask,
+      offerWizard(
+        { t, ...offer, kind: p?.kind ?? 'lm', ...(p ? { host: p.host } : {}), services: services(p) },
+        {
+          allow: () => {
+            if (!p) return;
+            // The browser's prompt needs this very click. Then what the browser holds decides (a permission given
+            // before counts); refused, the background says so (it checks again before pairing).
+            const origins = [`${new URL(p.target).origin}/*`];
+            const next = () =>
+              chrome.permissions.contains({ origins }).then(
+                (has) => {
+                  if (has) {
+                    allowedAt = p.at;
+                    draw();
+                  } else void send({ type: 'pair-confirm' }).then(apply);
+                },
+                () => void send({ type: 'pair-confirm' }).then(apply),
+              );
+            chrome.permissions.request({ origins }).then(next, next);
+          },
+          cancel: () => {
+            allowedAt = null;
+            void send({ type: 'pair-cancel' }).then(apply);
+          },
+          choose: (id) => {
+            choosing = true;
+            draw();
+            void send({ type: 'pair-confirm', provider: id }).then((r) => {
+              choosing = false;
+              apply(r);
+              // The next step is the panel's: it hears of the new pairing now, not at its next look.
+              void panels.lm?.refresh();
+              void panels.hcp?.refresh();
+            });
+          },
+        },
+      ),
+    );
+  } else fill(ask);
+  // Steps 1 and 2 stand alone; then only the service asked for (the handicap record, or the launch monitor).
+  const lmHidden = !!offer || isHcp() || (!!statusNow && !statusNow.pairings.length && !!hcpNow && hcpNow.pairings.length > 0);
+  panel.hidden = lmHidden;
+  // *Enter a test code* belongs to the launch monitor's steps (below them).
+  if (lmEntry) lmEntry.hidden = lmHidden;
+  hcpRoot.hidden = !!offer;
+  // The steps end with their own *Back to …*; a window opened when everything was done already just says so.
+  const now = !offer && !isHcp() && !memory.walked && finished(p, statusNow);
+  fill(done, now ? h('div', { class: 'note', 'data-test': 'finished', role: 'status' }, h('p', {}, t('connect.finished')), h('div', { class: 'row' }, button(t('connect.close'), () => void closeTab(), { class: 'primary', 'data-test': 'close' }))) : null);
 }
 
 // Another app's page may hand over a new code while this window is open: it shows the newest request.
 let shown = '';
 const look = async () => {
   const r = await send({ type: 'pending' });
-  const p = r.ok ? r.pending : null;
-  pendingNow = p ?? null;
+  const p = r.ok ? (r.pending ?? null) : pendingNow;
   const said = p ? `${p.target}|${p.at}|${p.state}` : '';
+  pendingNow = p;
   if (said !== shown) {
     shown = said;
-    show(p);
+    if (!p || p.at !== allowedAt) allowedAt = null;
+    failure = null;
   }
-  showDone();
+  draw();
 };
 void look();
 setInterval(() => void look(), 1000);
-statusPanel(panel, {
+const lm = statusPanel(panel, {
   memory,
   back: () => void closeTab(),
   onStatus: (s) => {
     statusNow = s;
-    showDone();
+    draw();
   },
 });
-hcpPanel(hcpRoot, {
+panels.lm = lm;
+lmEntry = lm.entry;
+panels.hcp = hcpPanel(hcpRoot, {
   back: () => void closeTab(),
   onView: (v) => {
     hcpNow = v;
-    showDone();
+    draw();
   },
 });

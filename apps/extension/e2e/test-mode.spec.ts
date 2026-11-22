@@ -10,7 +10,7 @@
 import type { Page } from '@playwright/test';
 import { accountRefOf } from '../../../packages/core/src/sha256.ts';
 import { pairUrl, TEST_CODE, TEST_SUBJECT } from '../../../tools/e2e/world.ts';
-import { badgeText, connectWindow, expect, popup, test } from './fixture.ts';
+import { allowAndChoose, badgeText, connectWindow, expect, popup, test } from './fixture.ts';
 
 async function enter(page: Page, code: string) {
   if (await page.getByTestId('test-enter').isVisible()) await page.getByTestId('test-enter').click();
@@ -25,12 +25,11 @@ test('a test code in the popup: asked first, then the scenario in chunks as from
   const windowOpens = connectWindow(context, extensionId);
   await pairPage.goto(pairUrl());
   const connect = await windowOpens;
-  await connect.getByTestId('allow').click();
-  await expect(connect.getByTestId('paired')).toHaveText('Connected with Example App.');
+  await allowAndChoose(connect);
   // Not signed in to Trackman: the icon says so - until the pairing is in test mode, which needs no sign-in.
   await expect.poll(() => badgeText(background)).toBe('!');
 
-  const pop = await popup(context, extensionId);
+  const pop = await popup(context, extensionId, 'lm');
   await enter(pop, 'WRONG0001');
   await expect(pop.getByTestId('test-error')).toHaveText('That test code isn’t right. Check it, or get a new one in your app.');
   await enter(pop, 'OVER0001');
@@ -49,6 +48,11 @@ test('a test code in the popup: asked first, then the scenario in chunks as from
   await pop.getByTestId('test-yes').click();
   await expect(pop.getByTestId('test-card')).toContainText('Signed in as Leon (Test T17)');
   await expect(pop.getByTestId('last')).toContainText('new session', { timeout: 30_000 });
+  // In the list the test is a connection of its own, with its made-up account.
+  await pop.getByTestId('connections-back').first().click();
+  await expect(pop.locator('[data-test="connection"][data-state="test"]')).toContainText('Leon (Test T17)');
+  await expect(pop.locator('[data-test="connection"][data-state="test"]')).toContainText('Test mode');
+  await pop.locator('[data-test="connection"][data-state="test"]').click();
   await expect.poll(() => badgeText(background)).toBe('');
   expect(world.target.imports.map((b) => b.sync?.reason)).toEqual(['connect']);
 
@@ -91,8 +95,8 @@ test('a test code in the popup: asked first, then the scenario in chunks as from
   expect(world.target.imports).toHaveLength(had);
 });
 
-test('no pairing: the field says to connect first', async ({ context, extensionId }) => {
+test('no pairing: no test code to enter, only *Connect new*', async ({ context, extensionId }) => {
   const pop = await popup(context, extensionId);
-  await pop.getByTestId('test-enter').click();
-  await expect(pop.getByTestId('test-error')).toHaveText(/Connect with the app first/);
+  await expect(pop.getByTestId('connections-none')).toBeVisible();
+  await expect(pop.getByTestId('test-enter')).toBeHidden();
 });
