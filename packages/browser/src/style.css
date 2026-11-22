@@ -68,4 +68,18 @@ a { color: var(--accent); }
 footer { margin-top: 14px; font-size: 12px; color: var(--muted); display: flex; gap: 12px; }
 .bookmarklet { cursor: grab; }
 main.page { max-width: 640px; margin: 0 auto; padding: 24px 18px 40px; }
+/* Connecting as steps (wizard.ts): the big line before the yes, the steps with their progress, the current step. */
+.wizard { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 8px 0 12px; }
+.wizard .banner { font-size: 16px; font-weight: 700; padding: 10px 12px; border-radius: 8px; background: var(--warn-bg); color: var(--warn-fg); margin: 0 0 10px; }
+.wizard ol.steps { display: flex; gap: 6px; list-style: none; padding: 0; margin: 0 0 4px; }
+.wizard ol.steps li { flex: 1; font-size: 11px; color: var(--muted); border-top: 3px solid var(--line); padding-top: 4px; }
+.wizard ol.steps li.done { border-top-color: var(--accent); }
+.wizard ol.steps li.current { border-top-color: var(--accent); color: var(--fg); font-weight: 600; }
+.wizard h3 { margin-top: 8px; }
+.wizard .brought { font-size: 15px; font-weight: 600; }
+.wizard .confirm { border: 0; padding: 0; }
+.wizard .spin::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%;
+  border: 2px solid var(--line); border-top-color: var(--accent); animation: glmsync-spin 1s linear infinite; vertical-align: -1px; }
+@keyframes glmsync-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .wizard .spin::before { animation: none; } }
 [hidden] { display: none !important; }

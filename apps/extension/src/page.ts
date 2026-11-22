@@ -4,7 +4,7 @@
 
 import { formatDate, hcpLastText, pickLang, translator, type ClientStatus, type HcpView, type Lang, type T } from '@glmsync/browser';
 import { download, logName } from '@glmsync/browser/download';
-import { button, fill, h, renderStatus, testEntry, type Actions } from '@glmsync/browser/render';
+import { button, fill, h, hcpWizard, renderStatus, testEntry, type Actions, type WizardMemory } from '@glmsync/browser/render';
 import type { FromPage, Reply } from './messages.ts';
 
 export const lang: Lang = pickLang(navigator.languages);
@@ -30,9 +30,11 @@ export function heading(key: Parameters<T>[0]): void {
 
 /**
  * The status panel, kept current: it re-reads every few seconds while the page is open. `onStatus` hears
- * every status it shows (the connect window says "done" from it).
+ * every status it shows (the connect window says "done" from it). Until the first data is through it shows connecting
+ * as steps (the wizard); `back` is its last step's button.
  */
-export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; onStatus?: (s: ClientStatus) => void } = {}) {
+export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; onStatus?: (s: ClientStatus) => void; back?: () => void; memory?: WizardMemory } = {}) {
+  const memory: WizardMemory = opts.memory ?? { walked: false };
   const busy = new Set<string>();
   let asking: string | null = null;
   let confirming = false;
@@ -53,7 +55,7 @@ export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; on
     last = s;
     // "Connected, the data is on its way" while the first sync after the yes runs.
     if (confirmed && s.key.state === 'ready' && !s.running.length && s.pairings.some((p) => p.last)) confirmed = false;
-    renderStatus(root, s, { t, lang, now: Date.now(), busy, client: 'extension', asking, confirming, confirmed, askingEnd, testConfirming }, actions);
+    renderStatus(root, s, { t, lang, now: Date.now(), busy, client: 'extension', asking, confirming, confirmed, askingEnd, testConfirming, memory }, actions);
     entry.update(s);
     opts.onStatus?.(s);
   };
@@ -122,6 +124,7 @@ export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; on
       askingEnd = null;
       void send({ type: 'test-end', id }).then(refresh);
     },
+    ...(opts.back ? { back: opts.back } : {}),
   };
   void refresh();
   const timer = setInterval(() => void refresh(), 3000);
@@ -133,17 +136,50 @@ export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; on
  * disconnect, asked first), what was seen on golf.de and what is new, *Send now*, whether it sends by itself, and the
  * way to golf.de's History Sheet. Text goes in as text: names come from targets.
  */
-export function hcpPanel(root: HTMLElement, opts: { onGolfde?: () => void } = {}) {
+export function hcpPanel(root: HTMLElement, opts: { onGolfde?: () => void; back?: () => void; onView?: (v: HcpView) => void } = {}) {
   let asking: string | null = null;
+  let confirming = false;
   let last: HcpView | null = null;
+  const memory: WizardMemory = { walked: false };
 
   const draw = (v: HcpView) => {
     last = v;
+    opts.onView?.(v);
     if (!v.pairings.length && !v.ended.length) {
       fill(root);
       return;
     }
     const now = Date.now();
+    // Connecting as steps until the first results went out; nothing that looks like data on its way before the yes.
+    const wizard = hcpWizard(v, { t, lang, now, memory, asking, confirming }, {
+      openGolfde: () => {
+        void send({ type: 'open-golfde' });
+        opts.onGolfde?.();
+      },
+      confirm: (yes) => {
+        confirming = true;
+        draw(v);
+        void send({ type: 'hcp-confirm', yes }).then((r) => {
+          confirming = false;
+          if (r.ok && r.hcp) draw(r.hcp);
+          else if (last) draw(last);
+        });
+      },
+      send: () => void send({ type: 'hcp-send' }).then(apply),
+      askDisconnect: (id) => {
+        asking = id;
+        if (last) draw(last);
+      },
+      disconnect: (id) => {
+        asking = null;
+        void send({ type: 'hcp-unpair', id }).then(apply);
+      },
+      ...(opts.back ? { back: opts.back } : {}),
+    });
+    if (wizard && !wizard.done) {
+      fill(root, h('h2', {}, t('hcp.title')), wizard.el);
+      return;
+    }
     const pairings = v.pairings.map((p) =>
       h('div', { class: 'pairing', 'data-test': 'hcp-pairing' },
         h('p', {}, h('strong', {}, t('hcp.connected', { name: p.name })), ` · ${p.host}`),
@@ -179,6 +215,7 @@ export function hcpPanel(root: HTMLElement, opts: { onGolfde?: () => void } = {}
     ].filter((x): x is string => !!x);
     fill(root,
       h('h2', {}, t('hcp.title')),
+      wizard ? wizard.el : null,
       ...v.ended.map((e) => h('p', { class: 'note warn' }, t(e.why === 'revoked' ? 'ended.revoked' : 'ended.disconnected', { name: e.name, date: formatDate(Date.parse(e.at), lang) }))),
       v.ended.length ? h('div', { class: 'row' }, button(t('ended.ok'), () => void send({ type: 'hcp-clear-ended' }).then(apply))) : null,
       ...pairings,

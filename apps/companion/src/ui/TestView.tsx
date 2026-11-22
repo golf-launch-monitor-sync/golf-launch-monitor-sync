@@ -10,6 +10,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { TEST_CODE, type TestScenario } from '@glmsync/spec';
+import { translator } from '@glmsync/browser/i18n';
+import { whoLine } from '@glmsync/browser/wizard';
 import { lang, t } from '../i18n';
 import type { KeyedPairing } from '../lib/pairings';
 import type { WhoAnswer } from '../lib/runner';
@@ -129,9 +131,9 @@ export function TestView({ svc, keys, code: linked, go }: { svc: Services; keys:
       </Card>
     );
   } else if (step.name === 'confirm') {
-    const a = step.who.activities;
     const now = Date.now();
     const { pairing, scenario, who } = step;
+    const facts = whoLine(who.activities, translator(lang), lang);
     content = (
       <Card>
         <View style={[s.row, { justifyContent: 'space-between', alignItems: 'center' }]}>
@@ -139,13 +141,8 @@ export function TestView({ svc, keys, code: linked, go }: { svc: Services; keys:
           <Text style={s.badge}>{t('test.badge')}</Text>
         </View>
         <Body>{who.player ?? t('signin.noName')}</Body>
-        {a && (
-          <Body muted>
-            {a.count === 0
-              ? t('signin.noActivities')
-              : t('signin.activities', { count: a.count, last: a.last ? when(a.last, now, lang, t) : '–', place: a.place ?? '–' })}
-          </Body>
-        )}
+        {/* The newest activity, no count (as for a real account: a number there read as data on its way). */}
+        {facts && <Body muted>{facts}</Body>}
         <Body muted>{t('test.scenario', { name: scenario.name, target: pairing.target.name })}</Body>
         <Small>{t('test.notice', { target: pairing.target.name })}</Small>
         <Small>{t('test.until', { until: when(scenario.valid_until, now, lang, t) })}</Small>

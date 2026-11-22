@@ -17,6 +17,10 @@
  * - in the **session** (gone when the browser closes): which golf.de account the pages showed, and results of a
  *   page that hasn't said yet whose they are.
  *
+ * Nothing goes to a target before the player said the golf.de account the pages named is theirs (*Is this your
+ * account?*, `confirm`), unless a target already has that very account connected (as with a launch monitor's
+ * sign-in): on a shared computer someone else may be signed in to golf.de.
+ *
  * Every method is serialised, and nothing throws at the caller for what can happen (a target down, a token
  * revoked): that is a state to show.
  */
@@ -54,6 +58,9 @@ const SENT = 'glmsync/hcp/sent/';
 const SETTINGS = 'glmsync/hcp/settings';
 const ENDED = 'glmsync/hcp/ended';
 const SESSION = 'glmsync/hcp/session';
+/** The golf.de accounts the player said were theirs, and those they said weren't (fingerprints of the subject). */
+const ACCOUNTS = 'glmsync/hcp/accounts';
+const MAX_ACCOUNTS = 20;
 
 export interface HcpClientOptions {
   storage: Storage;
@@ -84,6 +91,8 @@ export interface HcpEntry {
   account_ref?: string;
   last?: HcpLast;
   other_account?: boolean;
+  /** Results this target took as new or with more, all sends together (the wizard's "12 results sent"). */
+  total?: number;
 }
 
 export interface HcpView {
@@ -102,6 +111,13 @@ export interface HcpView {
   changed_page: boolean;
   sending: boolean;
   ended: Farewell[];
+  /**
+   * The golf.de account the pages named: `none` (none named yet), `asking` (waiting for the player's yes: nothing is
+   * sent), `confirmed`, `rejected` (not theirs: nothing of it is kept or sent).
+   */
+  account: 'none' | 'asking' | 'confirmed' | 'rejected';
+  /** While asking: the account's handicap index as its page showed it, to tell whose it is. */
+  index: { value: number; as_of: string } | null;
 }
 
 interface Kept {
@@ -145,6 +161,14 @@ function stable(v: unknown): string {
 }
 
 const print = (v: unknown) => base64url(sha256(utf8(stable(v)))).slice(0, 16);
+
+/** What is kept of a golf.de account the player answered about: a fingerprint, not its id. */
+const accountPrint = (subject: string) => base64url(sha256(utf8(`glmsync-hcp-account|${subject}`))).slice(0, 22);
+
+interface Accounts {
+  confirmed: string[];
+  rejected: string[];
+}
 
 /** The day in the browser's own time zone (what "today" is for the player). */
 function today(now: number): string {
@@ -223,6 +247,30 @@ export class HcpClient {
 
   private async sent(id: string): Promise<Record<string, string>> {
     return read<Record<string, string>>(this.opts.storage, SENT + id, {});
+  }
+
+  private async accounts(): Promise<Accounts> {
+    const a = await read<Partial<Accounts>>(this.opts.storage, ACCOUNTS, {});
+    const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+    return { confirmed: list(a.confirmed), rejected: list(a.rejected) };
+  }
+
+  /**
+   * Where the account the pages named stands. Confirmed also when a target already has that very account connected
+   * (its `account_ref`): the player said yes to it once, here or on another device.
+   */
+  private async accountOf(k: Kept): Promise<HcpView['account']> {
+    if (!k.subject) return 'none';
+    const a = await this.accounts();
+    const mine = accountPrint(k.subject);
+    if (a.rejected.includes(mine)) return 'rejected';
+    if (a.confirmed.includes(mine)) return 'confirmed';
+    const entries = await this.entries();
+    for (const p of await this.pairings()) {
+      const e = entries.find((x) => x.id === hcpPairingId(p.base));
+      if (e?.account_ref && e.account_ref === accountRefOf(p.account_salt, PROVIDER_ID, k.subject)) return 'confirmed';
+    }
+    return 'asking';
   }
 
   private async session(): Promise<Session> {
@@ -378,8 +426,33 @@ export class HcpClient {
           k.changed_page = today(at);
           break;
       }
+      // Not the player's (they said so): nothing of it is kept.
+      if (k.subject && (await this.accountOf(k)) === 'rejected') {
+        k.results = {};
+        k.index = null;
+      }
       await this.saveSession(s);
       await this.keep(k);
+      return this.viewNow();
+    });
+  }
+
+  /**
+   * The player's answer to *Is this your account?* about the golf.de account the pages named. Yes: what was seen goes
+   * to the apps (with the next send). No: what was kept of it is dropped, and nothing of it is kept or sent again.
+   */
+  confirm(yes: boolean): Promise<HcpView> {
+    return this.serial(async () => {
+      const k = await this.kept();
+      if (!k.subject) return this.viewNow();
+      const mine = accountPrint(k.subject);
+      const a = await this.accounts();
+      const without = (xs: string[]) => xs.filter((x) => x !== mine);
+      const next: Accounts = yes
+        ? { confirmed: [...without(a.confirmed), mine].slice(-MAX_ACCOUNTS), rejected: without(a.rejected) }
+        : { confirmed: without(a.confirmed), rejected: [...without(a.rejected), mine].slice(-MAX_ACCOUNTS) };
+      await this.opts.storage.set(ACCOUNTS, JSON.stringify(next));
+      if (!yes) await this.keep({ ...k, index: null, results: {} });
       return this.viewNow();
     });
   }
@@ -434,6 +507,8 @@ export class HcpClient {
       if (!entry.other_account) await this.update(id, (e) => ({ ...e, other_account: true }));
       return;
     }
+    // Nothing before the player's yes (or an app that has this very account already).
+    if ((await this.accountOf(k)) !== 'confirmed') return;
     const sent = await this.sent(id);
     const fresh = this.fresh(k, sent);
     const told = k.told?.[id];
@@ -486,7 +561,7 @@ export class HcpClient {
         else delete after.told[id]; // something read again: a later notice is news
         await this.keep(after);
       }
-      await this.update(id, (e) => ({ ...e, account_ref: ref, other_account: false, last: { at, status: 'sent', brought: total.new + total.changed, result: total } }));
+      await this.update(id, (e) => ({ ...e, account_ref: ref, other_account: false, total: (e.total ?? 0) + total.new + total.changed, last: { at, status: 'sent', brought: total.new + total.changed, result: total } }));
     } catch (e) {
       const code = e instanceof TargetError ? e.code : 'error';
       if (code === 'token_invalid') await this.forget(id, 'revoked');
@@ -506,9 +581,10 @@ export class HcpClient {
 
   private async viewNow(): Promise<HcpView> {
     const [entries, k, s] = [await this.entries(), await this.kept(), await this.session()];
+    const account = await this.accountOf(k);
     let fresh = 0;
     for (const e of entries) {
-      if (e.other_account) continue;
+      if (e.other_account || account !== 'confirmed') continue;
       const f = this.fresh(k, await this.sent(e.id));
       fresh = Math.max(fresh, f.results.length);
     }
@@ -523,6 +599,8 @@ export class HcpClient {
       changed_page: k.changed_page === today(this.now()),
       sending: this.sending,
       ended: Array.isArray(ended) ? (ended as Farewell[]) : [],
+      account,
+      index: account === 'asking' && k.index ? { value: k.index.value, as_of: k.index.as_of } : null,
     };
   }
 

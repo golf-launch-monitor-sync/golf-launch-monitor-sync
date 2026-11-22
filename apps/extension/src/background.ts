@@ -63,12 +63,15 @@ const t = () => translator(pickLang(navigator.languages));
 async function refreshIcon(): Promise<void> {
   try {
     const s = await client.status();
-    const b = badge(s);
+    // golf.de's account waiting for the yes asks as a launch monitor's does (nothing is sent before it).
+    const hcpAsking = !s.attention && (await hcp.view().catch(() => null))?.account === 'asking';
+    const b = hcpAsking ? badge({ attention: 'confirm' }) : badge(s);
     await chrome.action.setBadgeText({ text: b.text });
     if (b.text) await chrome.action.setBadgeBackgroundColor({ color: b.color });
     const tr = t();
-    const title =
-      s.attention === 'sign_in'
+    const title = hcpAsking
+      ? tr('wizard.title.account', { service: 'golf.de' })
+      : s.attention === 'sign_in'
         ? s.key.state === 'expired'
           ? tr('key.expired')
           : tr('key.none')
@@ -145,6 +148,7 @@ async function golfdeSeen(page: string, raw: unknown): Promise<Reply> {
   if (!seen) return { ok: true, hcp: await hcp.view() };
   const v = await hcp.see(page, seen);
   await scheduleHcp(v).catch(() => undefined);
+  if (v.account === 'asking') await refreshIcon();
   return { ok: true, hcp: v };
 }
 
@@ -435,6 +439,17 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
       return { ok: true, hcp: await hcp.removePairing(m.id) };
     case 'hcp-clear-ended':
       return { ok: true, hcp: await hcp.clearEnded() };
+    case 'hcp-confirm': {
+      const v = await hcp.confirm(m.yes);
+      await refreshIcon();
+      // The answer goes back first; what was seen goes to the apps right after a yes (the wizard shows it coming).
+      if (m.yes && v.account === 'confirmed') void hcpSendNow().catch(() => undefined);
+      return { ok: true, hcp: v };
+    }
+    case 'golfde-confirm':
+      // From golf.de's page: only the connect window comes to the front, where the player answers.
+      await openConnectWindow(near);
+      return { ok: true, hcp: await hcp.view() };
     case 'open-golfde':
       await openTab(tabsApi, HISTORY_SHEET_URL, near);
       return { ok: true };

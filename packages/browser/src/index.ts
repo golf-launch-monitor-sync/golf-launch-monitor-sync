@@ -7,6 +7,7 @@
  * - `HcpClient`      the handicap record read along on golf.de, and its pairings (spec/hcp.md)
  * - `i18n`, `messages` English and German texts
  * - `view`           what a state says, as text (pure); `@glmsync/browser/render` puts it on a page
+ * - `wizard`         connecting as steps (sign in, the account, the first data, done), the same for every service
  * - `config`         where the web app lives, the project's links
  */
 
@@ -17,4 +18,5 @@ export * from './hcpView.ts';
 export * from './i18n.ts';
 export * from './messages.ts';
 export * from './view.ts';
+export * from './wizard.ts';
 export * from './blobs.ts';

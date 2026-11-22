@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { AppState, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { targetOf } from '@glmsync/browser/wizard';
 import { keepScheduled } from '../background';
 import { keepWake } from '../wake';
 import { t } from '../i18n';
@@ -38,7 +39,7 @@ export type Screen =
   | { name: 'golfde' }
   | { name: 'signin'; provider: ProviderId; back?: { url: string; name: string } }
   | { name: 'sync'; link: { target?: string; return?: string } }
-  /** Just paired or signed in: the first sync, then (with `back`) back to the target app. */
+  /** Just signed in: the first sync shown as the wizard's steps 3 and 4, then (with `back`) *Back to …*. */
   | { name: 'first'; target?: string; back?: { url: string; name: string } }
   /** Test mode (spec 1.8.0): a test code for one of `keys`' pairings, typed or from a link. */
   | { name: 'test'; keys: string[]; code?: string }
@@ -269,22 +270,18 @@ function Main() {
     [svc],
   );
   const firstTarget = screen.name === 'first' ? screen.target : undefined;
-  const firstBack = screen.name === 'first' ? screen.back : undefined;
   const firstSync = useCallback(() => connectSync(firstTarget), [connectSync, firstTarget]);
+  // The first sync is through: the older history follows a chunk at a time while the app is in front.
+  const firstThrough = useCallback(() => historyNow.current(), []);
   const firstDone = useCallback(
     (how: 'back' | 'stayed' | 'here') => {
       home();
       if (how === 'stayed') setMessage(t('sync.stayed'));
-      historyNow.current();
     },
     [home],
   );
-  // Without a way back the app stays: home at once, the first sync and the history while it is in front.
-  useEffect(() => {
-    if (screen.name !== 'first' || screen.back) return;
-    home();
-    void connectSync(screen.target).then(() => historyNow.current());
-  }, [screen, home, connectSync]);
+  /** The app the data of a provider goes to, for the wizard's words (null: several, or none). */
+  const targetFor = (provider: string) => (svc ? targetOf(svc.pairings.list().filter((p) => p.provider === provider).map((p) => p.target.name)) : null);
 
   let body;
   if (broken) {
@@ -311,6 +308,7 @@ function Main() {
       <SignInView
         svc={svc}
         provider={screen.provider}
+        target={targetFor(screen.provider)}
         {...(screen.back ? { backTo: screen.back.name } : {})}
         done={(signedIn) => {
           renewal.allowAgain();
@@ -323,8 +321,8 @@ function Main() {
     );
   } else if (screen.name === 'sync') {
     body = <SyncView svc={svc} link={screen.link} renew={renewal.renew} go={setScreen} />;
-  } else if (screen.name === 'first' && firstBack) {
-    body = <FirstSyncView back={firstBack} sync={firstSync} done={firstDone} />;
+  } else if (screen.name === 'first') {
+    body = <FirstSyncView svc={svc} {...(screen.back ? { back: screen.back } : {})} target={targetFor('trackman')} sync={firstSync} through={firstThrough} done={firstDone} />;
   } else if (screen.name === 'test') {
     body = <TestView svc={svc} keys={screen.keys} {...(screen.code ? { code: screen.code } : {})} go={setScreen} />;
   } else if (screen.name === 'licenses') {

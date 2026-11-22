@@ -41,6 +41,10 @@ describe('the handicap record on the phone', () => {
 
     await w.hcp.see('p1', member());
     await w.hcp.see('p1', history(2));
+    // Nothing before the player's yes to the account golf.de's page named.
+    expect(await w.hcp.send()).toMatchObject({ account: 'asking', fresh: 0 });
+    expect(w.target.imports).toHaveLength(0);
+    await w.hcp.confirm(true);
     const v = await w.hcp.send();
     expect(v).toMatchObject({ seen: 2, fresh: 0 });
     expect(w.target.results.size).toBe(2);
@@ -92,6 +96,8 @@ const view = (over: Partial<HcpView> = {}): HcpView => ({
   changed_page: false,
   sending: false,
   ended: [],
+  account: 'confirmed',
+  index: null,
   ...over,
 });
 

@@ -15,8 +15,12 @@ export type FromPortal = { type: 'portal-key'; token: string };
 /** From the bridge on a paired target's page (spec/page-bridge.md); the request as read from the page. */
 export type FromTargetPage = { type: 'bridge'; request: BridgeRequest };
 export type FromPairPage = { type: 'pair-offer'; fragment: string } | { type: 'pair-status' };
-/** From golfde-relay.ts on golf.de's page: what it showed (read again strictly here), the line, *Send*. */
-export type FromGolfde = { type: 'golfde-seen'; page: string; seen: unknown } | { type: 'golfde-line' } | { type: 'golfde-send' };
+/**
+ * From golfde-relay.ts on golf.de's page: what it showed (read again strictly here), the line, *Send*, and *Confirm*,
+ * which only brings the connect window to the front - the yes itself is given there, in the extension's own page,
+ * never on golf.de's (whose scripts reach the line).
+ */
+export type FromGolfde = { type: 'golfde-seen'; page: string; seen: unknown } | { type: 'golfde-line' } | { type: 'golfde-send' } | { type: 'golfde-confirm' };
 export type FromPage =
   | { type: 'status' }
   | { type: 'run'; id?: string }
@@ -40,6 +44,8 @@ export type FromPage =
   | { type: 'hcp-auto'; auto: boolean }
   | { type: 'hcp-unpair'; id: string }
   | { type: 'hcp-clear-ended' }
+  /** The answer to "Is this your golf.de account?" (the connect window, the popup). */
+  | { type: 'hcp-confirm'; yes: boolean }
   | { type: 'open-golfde' };
 
 export type Message = FromPortal | FromPairPage | FromTargetPage | FromGolfde | FromPage;

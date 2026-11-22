@@ -71,6 +71,31 @@ Asked for (`backfill`) only while a target's plan says `history.done: false`, an
 chunk may go: the target's `wait_s`, a minute after a chunk that brought something, the guard's
 `until` after it held. `nextBackfill()` says when; the extension sets an alarm for it.
 
+## Connecting, step by step
+
+`wizard.ts` (pure, tested without a browser): connecting as four steps, the same for every service - **sign in**,
+**your account** (*Is this your account?*), **the first data**, **done**. Each client turns its own state into
+`WizardFacts` (`factsOfStatus` for a launch monitor, `factsOfHcp` for golf.de, the companion app its own),
+`wizardOf` decides the step and `wizardLines` says it (English, German).
+
+- Before the yes: no count of any kind - no sessions, results, requests, not even the number of activities in the
+  question (`whoLine`: the newest activity and where; `hcpWhoLine`: golf.de's handicap index) - and, big, what is
+  missing (*Not yet connected with … – confirm your account* / *– sign in at …*).
+- The first data: what each target took since pairing, all syncs together (`Entry.brought`, `HcpEntry.total`), and
+  how much of the older history is still to come (`Entry.left`, from olmd's `progress.sessions_left` of the last
+  history chunk; core's `SyncOutcome.left`).
+- Done: *Back to …* (`Actions.back`: the extension's connect window closes its tab, the popup itself) or the sentence
+  that the player can go back.
+- Not a setup: no app connected, only apps in test mode, or a connection that brought data before and only needs a
+  new sign-in (the overview says *sign in again*). A new account to answer about is asked about in the steps.
+
+`render.ts` draws them (`renderStatus` for a launch monitor, `hcpWizard` for golf.de, the shared `wizardFrame`): until
+the first data is through they stand in place of the overview; a page that walked the steps (`WizardMemory`) shows
+*done* with the overview below, one opened afterwards just the overview.
+
+`HcpClient` sends nothing before the player's yes to the golf.de account the pages named (`confirm`), unless a target
+already has that very account (`account_ref`); *No* drops what was kept of it and keeps nothing of it again.
+
 ## Texts
 
 English and German (`messages.ts`, the browser's language picks), the same keys and placeholders

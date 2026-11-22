@@ -21,8 +21,11 @@ import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
 import { countsText, errorText, runText, when } from '../lib/text';
 import { shareFile, version } from '../platform';
 import type { Screen } from './App';
+import { targetOf } from '@glmsync/browser/wizard';
+import { beforeYes, wizardText } from '../lib/wizard';
 import { HcpCard, useHcpView } from './HcpCard';
 import { Body, Button, Card, colors, s, Small, Title } from './parts';
+import { WizardFrame } from './WizardFrame';
 
 const REPO = 'https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync';
 
@@ -127,6 +130,11 @@ export function Home({
   // Only the handicap record connected, and no launch monitor sign-in ever: its cards would only be in the way.
   const hcpOnly = !!hcp.view && hcp.view.pairings.length > 0 && pairings.length === 0 && !svc.signIns.get('trackman') && !svc.signIns.had('trackman');
   const shown = PROVIDERS.filter((p) => (p === 'trackman' && !hcpOnly) || svc.signIns.get(p) || svc.signIns.had(p) || pairings.some((x) => x.provider === p));
+  // Paired, but never signed in here (or the account not confirmed): the wizard's first step, said big - not a card
+  // that looks as if things were running.
+  const lmPairings = pairings.filter((p) => p.provider === 'trackman' && !svc.tests.of(p.key));
+  const setup = lmPairings.length > 0 && !svc.signIns.valid('trackman') && !svc.signIns.had('trackman');
+  const setupText = setup ? wizardText(beforeYes(false), lang, { service: svc.providers.trackman.name, target: targetOf(lmPairings.map((p) => p.target.name)) }) : null;
 
   return (
     <ScrollView contentContainerStyle={s.scroll}>
@@ -160,6 +168,13 @@ export function Home({
             <Button label={t('newBuild.later')} kind="secondary" onPress={() => setBuild(null)} />
           </View>
         </Card>
+      )}
+
+      {setupText && (
+        <WizardFrame view={setupText.view} lines={setupText.lines}>
+          <Small>{t('provider.trackman.unofficial')}</Small>
+          <Button label={t('provider.signIn')} onPress={() => go({ name: 'signin', provider: 'trackman' })} />
+        </WizardFrame>
       )}
 
       {hcpShown && hcp.view && <HcpCard svc={svc} view={hcp.view} setView={hcp.setView} open={() => go({ name: 'golfde' })} />}

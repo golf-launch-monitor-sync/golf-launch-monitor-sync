@@ -94,6 +94,10 @@ export interface Entry {
   other_account?: boolean;
   /** The `exp` (ms) of the key whose running out this target was told about. */
   told_expired?: number;
+  /** What this target took from here since pairing, all syncs together (the wizard's "10 sessions, 6 rounds"). */
+  brought?: { sessions: number; rounds: number; shots: number };
+  /** Sessions of the older history still to come, as the last history chunk's provider could tell. */
+  left?: number;
 }
 
 export type KeyState =
@@ -796,7 +800,13 @@ export class BrowserClient {
     await this.update(id, (e) => {
       const next: Entry = { ...e, last, history, other_account: other };
       if (accountRef) next.account_ref = accountRef;
-      if (outcome.status === 'synced') next.last_synced_at = at;
+      if (outcome.status === 'synced') {
+        next.last_synced_at = at;
+        const b = e.brought ?? { sessions: 0, rounds: 0, shots: 0 };
+        next.brought = { sessions: b.sessions + outcome.result.sessions, rounds: b.rounds + outcome.result.rounds, shots: b.shots + outcome.result.shots };
+        if (outcome.left !== undefined) next.left = outcome.left;
+        else if (reason === 'backfill' && !outcome.more) delete next.left;
+      }
       if (toldExpired !== undefined) next.told_expired = toldExpired;
       return next;
     });

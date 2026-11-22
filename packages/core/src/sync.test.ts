@@ -64,6 +64,22 @@ async function setup(fakeOpts: ConstructorParameters<typeof FakeTarget>[0] = {})
 const SUB = { sub: 'sub-1' };
 
 describe('a sync', () => {
+  it('says how many sessions of the history are still to come, for a history chunk only (the wizard shows it)', async () => {
+    class Left extends Fake {
+      override async fetch(plan: Plan, c: { sub: string }, ctx: ProviderContext): Promise<Fetched> {
+        const out = await super.fetch(plan, c, ctx);
+        return { ...out, progress: { more_available: true, sessions_left: 140 } };
+      }
+    }
+    const { target, guard } = await setup();
+    const chunk = await sync({ target, provider: new Left(), credential: SUB, reason: 'backfill', client: 'web', guard });
+    expect(chunk).toMatchObject({ status: 'synced', more: true, left: 140 });
+    // A regular sync's `sessions_left` counts only its window: no promise about the history.
+    const regular = await sync({ target, provider: new Left(), credential: SUB, reason: 'manual', client: 'web', guard });
+    expect(regular.status).toBe('synced');
+    expect('left' in regular).toBe(false);
+  });
+
   it('asks the plan first, and the provider nothing when it is not due', async () => {
     const { fake, target, guard } = await setup({ plan: () => ({ due: false }) });
     const provider = new Fake();

@@ -40,7 +40,7 @@ test('another account in the portal: no, sign out, sign in with your own in the 
   world.portal.token = world.key('someone-else');
   const portal = await context.newPage();
   await portal.goto(PORTAL);
-  await expect(connect.getByTestId('confirm')).toContainText('Is this your Trackman account?');
+  await expect(connect.getByTestId('wizard-title')).toHaveText('Is this your Trackman account?');
   await expect.poll(() => world.target.signins.at(-1)).toEqual({ via: 'status', signin: 'confirm' });
   await connect.getByTestId('confirm-no').click();
   await expect(connect.getByTestId('rejected')).toBeVisible();
@@ -60,13 +60,15 @@ test('another account in the portal: no, sign out, sign in with your own in the 
   await portal.goto(`${PORTAL}account/callback`);
   await expect(connect.getByTestId('confirm-yes')).toBeVisible({ timeout: 30_000 });
 
-  // "Yes, that's me": it says so at once, then the data comes, then it is done.
+  // "Yes, that's me": the next step at once (the data on its way), then the data, then done - back to the app.
   await connect.getByTestId('confirm-yes').click();
-  await expect(connect.getByTestId('confirmed')).toHaveText('Connected. Your data is being fetched now.', { timeout: 5_000 });
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', /^(load|done)$/, { timeout: 5_000 });
+  await expect(connect.getByTestId('wizard-brought')).toHaveText('2 sessions, 0 rounds fetched', { timeout: 60_000 });
   await expect(connect.getByTestId('last')).toContainText('2 new sessions', { timeout: 60_000 });
   expect(world.target.asked.at(-1)).toMatchObject({ reason: 'connect', client: 'extension', signin: 'ready' });
-  await expect(connect.getByTestId('finished')).toContainText('Done. You can close this tab.');
-  await connect.getByTestId('close').click();
+  await expect(connect.getByTestId('wizard-back-hint')).toHaveText('You can go back to Example App now; the rest comes by itself.');
+  await expect(connect.getByTestId('finished')).toHaveCount(0);
+  await connect.getByTestId('wizard-back').click();
   await expect.poll(() => connect.isClosed()).toBe(true);
 });
 

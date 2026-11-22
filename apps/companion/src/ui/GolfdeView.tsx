@@ -12,6 +12,8 @@
  */
 
 import type { HcpView } from '@glmsync/browser/hcp';
+import { translator } from '@glmsync/browser/i18n';
+import { hcpWhoLine } from '@glmsync/browser/wizard';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
@@ -76,6 +78,17 @@ export function GolfdeView({ svc, done }: { svc: Services; done: () => void }) {
   }
 
   const line = view ? hcpLine(view, lang) : null;
+  const tr = translator(lang);
+  // *Is this your golf.de account?*, in the app's own bar (golf.de's page can't reach it): nothing goes out before the yes.
+  const answer = (yes: boolean) =>
+    svc.hcp.confirm(yes).then(
+      (v) => {
+        setView(v);
+        setNote(null);
+        if (yes && v.account === 'confirmed') void svc.hcpSender.now();
+      },
+      () => setNote(t('error.generic')),
+    );
   return (
     <View style={{ flex: 1 }}>
       <View style={[s.bar, { flexWrap: 'wrap', gap: 8 }]}>
@@ -83,9 +96,12 @@ export function GolfdeView({ svc, done }: { svc: Services; done: () => void }) {
           <Title>golf.de</Title>
           <Small>{t('golfde.hint')}</Small>
           {line && (line.warn ? <Body warn>{line.text}</Body> : <Small>{line.text}</Small>)}
+          {line?.confirm && view && <Body>{hcpWhoLine(view.index, tr, lang)}</Body>}
           {note && <Body warn>{note}</Body>}
         </View>
         <View style={{ gap: 6 }}>
+          {line?.confirm && <Button label={tr('confirm.yes')} onPress={() => void answer(true)} />}
+          {line?.confirm && <Button label={tr('confirm.no')} kind="secondary" onPress={() => void answer(false)} />}
           {line?.send && <Button label={t('hcp.send')} onPress={() => void svc.hcpSender.now()} disabled={!!view?.sending} />}
           <Button label={t('golfde.done')} kind="secondary" onPress={close} />
         </View>

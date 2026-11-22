@@ -55,6 +55,7 @@ describe('what golf.de’s pages showed, sent', () => {
     const w = await paired();
     const own = entry();
     await w.client.see('p1', member());
+    await w.client.confirm(true);
     await w.client.see('p1', history([own, entry({ tournamentDate: '2026-09-12T10:00:00+02:00', ratedGrossResult: 88 })], 2));
     let v = await w.client.send();
     expect(v).toMatchObject({ seen: 2, fresh: 0 });
@@ -87,6 +88,7 @@ describe('what golf.de’s pages showed, sent', () => {
     const w = await paired();
     const own = entry();
     await w.client.see('p1', member());
+    await w.client.confirm(true);
     await w.client.see('p1', history([own, entry({ tournamentType: 8, tournamentName: `RPR: ${PERSONAL.marker}` })]));
     await w.client.see('p2', places(own.resultGuid as string));
     await w.client.send();
@@ -99,6 +101,7 @@ describe('what golf.de’s pages showed, sent', () => {
   it('keeps to the target’s limits, with the index in the first batch', async () => {
     const w = await paired(world({ limits: { max_bytes: 2_097_152, max_results: 3 } }));
     await w.client.see('p1', member());
+    await w.client.confirm(true);
     await w.client.see('p1', history(Array.from({ length: 7 }, (_, i) => entry({ tournamentDate: `2026-0${(i % 9) + 1}-1${i}T10:00:00+02:00` }))));
     await w.client.send();
     expect(w.target.imports.map((b) => b.results.length)).toEqual([3, 3, 1]);
@@ -108,6 +111,7 @@ describe('what golf.de’s pages showed, sent', () => {
   it('sends the index alone when only it is new', async () => {
     const w = await paired();
     await w.client.see('p1', member());
+    await w.client.confirm(true);
     await w.client.send();
     expect(w.target.imports).toHaveLength(1);
     expect(w.target.imports[0]).toMatchObject({ results: [], index: { value: 8.1 } });
@@ -115,6 +119,49 @@ describe('what golf.de’s pages showed, sent', () => {
 });
 
 describe('whose record it is', () => {
+  it('sends nothing, and asks the target nothing, before the player says the account is theirs', async () => {
+    const w = await paired();
+    await w.client.see('p1', member());
+    await w.client.see('p1', history([entry()]));
+    const v = await w.client.send();
+    expect(v).toMatchObject({ account: 'asking', fresh: 0 });
+    expect(w.target.received.filter((r) => !r.url.endsWith('/pair'))).toHaveLength(0);
+    await w.client.confirm(true);
+    await w.client.send();
+    expect(w.target.results.size).toBe(1);
+    expect((await w.client.view()).pairings[0]?.total).toBe(1);
+    // A new client on the same storage still knows the yes.
+    expect((await w.make().view()).account).toBe('confirmed');
+  });
+
+  it('“No”: what was kept of the account goes, and nothing of it is kept or sent again', async () => {
+    const w = await paired();
+    await w.client.see('p1', member());
+    await w.client.see('p1', history([entry()]));
+    let v = await w.client.confirm(false);
+    expect(v).toMatchObject({ account: 'rejected', seen: 0, fresh: 0, index: null });
+    v = await w.client.see('p2', history([entry({ tournamentDate: '2026-08-01T10:00:00+02:00' })]));
+    expect(v).toMatchObject({ account: 'rejected', seen: 0 });
+    await w.client.send();
+    expect(w.target.imports).toHaveLength(0);
+    // Their own account signs in: asked about afresh.
+    expect((await w.client.see('p3', member(654321))).account).toBe('asking');
+  });
+
+  it('no question when the app already has this very account (a yes given on another device)', async () => {
+    const w = world();
+    w.target.accountRef = accountRefOf(w.target.salt, 'golfde', 'member:123456');
+    await paired(w);
+    expect((await w.client.see('p1', member())).account).toBe('confirmed');
+    // Another account than the app's is asked about all the same: someone else may be signed in here.
+    expect((await w.client.see('p2', member(2))).account).toBe('asking');
+  });
+
+  it('“Is this you?” without an account named does nothing', async () => {
+    const w = await paired();
+    expect(await w.client.confirm(true)).toMatchObject({ account: 'none' });
+  });
+
   it('results of a page wait for that page to name the account', async () => {
     const w = await paired();
     await w.client.see('p1', history([entry()]));
@@ -122,7 +169,10 @@ describe('whose record it is', () => {
     expect(v).toMatchObject({ waiting: true, seen: 0 });
     expect(w.target.imports).toHaveLength(0);
     v = await w.client.see('p1', member());
-    expect(v).toMatchObject({ waiting: false, seen: 1, fresh: 1 });
+    // Whose it is now known, but nothing counts as on its way before the player's yes.
+    expect(v).toMatchObject({ waiting: false, seen: 1, fresh: 0, account: 'asking', index: { value: 8.1 } });
+    v = await w.client.confirm(true);
+    expect(v).toMatchObject({ account: 'confirmed', fresh: 1, index: null });
   });
 
   it('a page that names none takes the account the session’s pages named, unless golf.de said since nobody is signed in', async () => {
@@ -138,6 +188,7 @@ describe('whose record it is', () => {
   it('another account’s record drops what was kept of the one before, and goes to no target that has another', async () => {
     const w = await paired();
     await w.client.see('p1', member(1));
+    await w.client.confirm(true);
     await w.client.see('p1', history([entry()]));
     await w.client.send();
     expect(w.target.results.size).toBe(1);
@@ -156,6 +207,7 @@ describe('when things go wrong', () => {
   it('a target having a moment: tried again with the next send, nothing marked as sent', async () => {
     const w = await paired(world({ fail: { '/import': { status: 503 } } }));
     await w.client.see('p1', member());
+    await w.client.confirm(true);
     await w.client.see('p1', history([entry()]));
     const v = await w.client.send();
     expect(v.pairings[0]?.last).toMatchObject({ status: 'failed', error: 'unavailable' });
@@ -166,6 +218,7 @@ describe('when things go wrong', () => {
     const w = await paired();
     w.target.disconnected = true;
     await w.client.see('p1', member());
+    await w.client.confirm(true);
     const v = await w.client.send();
     expect(v.pairings).toEqual([]);
     expect(v.ended).toMatchObject([{ name: 'Example App', why: 'disconnected' }]);
@@ -176,12 +229,14 @@ describe('when things go wrong', () => {
     const w = await paired();
     w.target.tokens.clear();
     await w.client.see('p1', member());
+    await w.client.confirm(true);
     expect((await w.client.send()).ended).toMatchObject([{ why: 'revoked' }]);
   });
 
   it('signed out on golf.de: the target hears it once', async () => {
     const w = await paired();
     await w.client.see('p1', member());
+    await w.client.confirm(true);
     await w.client.send();
     await w.client.see('p2', reduce({ kind: 'session' }, 200, { authenticated: false }) as Seen);
     await w.client.send();
@@ -194,6 +249,7 @@ describe('when things go wrong', () => {
   it('a page that changed: the target hears it once a day', async () => {
     const w = await paired();
     await w.client.see('p1', member());
+    await w.client.confirm(true);
     await w.client.send();
     await w.client.see('p1', { kind: 'changed_page', what: 'GetHandicapHistorySheet' });
     await w.client.send();
@@ -229,6 +285,7 @@ describe('settings and pairings', () => {
   it('a new pairing gets what was seen before', async () => {
     const w = world();
     await w.client.see('p1', member());
+    await w.client.confirm(true);
     await w.client.see('p1', history([entry()]));
     await w.client.offerPairing({ target: TARGET, code: 'H7M2PQ9X' });
     await w.client.send();

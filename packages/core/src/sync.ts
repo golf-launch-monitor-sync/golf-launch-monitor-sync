@@ -51,6 +51,11 @@ export type SyncOutcome =
       notice?: Notice;
       /** More is waiting at the provider (the next sync or history chunk brings it). */
       more: boolean;
+      /**
+       * For a history chunk (`backfill`): how many sessions of the history are still to come (olmd's
+       * `progress.sessions_left`), when the provider could tell. A client shows it ("about 140 still to come").
+       */
+      left?: number;
       parts: number;
       /** Values the schema refused, and items too large for the target, left out. */
       dropped: number;
@@ -128,6 +133,8 @@ export async function sync<C>(opts: SyncOptions<C>): Promise<SyncOutcome> {
       dropped: dropped + left_out,
     };
     if (valid.notice) out.notice = valid.notice;
+    const left = valid.progress?.sessions_left;
+    if (reason === 'backfill' && typeof left === 'number' && Number.isFinite(left) && left >= 0) out.left = left;
     return out;
   } catch (e) {
     if (e instanceof Cancelled) return { status: 'cancelled' };

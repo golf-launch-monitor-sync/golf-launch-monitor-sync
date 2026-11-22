@@ -69,6 +69,10 @@ export interface LastRun {
   /** A failed run's kind (a target error code, or the error's name); never a message from outside. */
   error?: string;
   more?: boolean;
+  /** What the target took from here since pairing, all runs together (the wizard's "10 sessions, 6 rounds"). */
+  total?: { sessions: number; rounds: number };
+  /** Sessions of the older history still to come, as the last history chunk's provider could tell. */
+  left?: number;
 }
 
 export interface RunnerOptions {
@@ -163,8 +167,15 @@ export class Runner {
     return this.runs[key] ?? null;
   }
 
-  private async record(key: string, run: LastRun) {
+  private async record(key: string, given: LastRun) {
     if (!this.loaded) await this.loadRuns();
+    // What came adds up across runs, and how much is still to come stays until a chunk says otherwise.
+    const before = this.runs[key];
+    const run: LastRun = { ...given };
+    const total = before?.total ?? { sessions: 0, rounds: 0 };
+    if (run.status === 'synced' && run.result) run.total = { sessions: total.sessions + run.result.sessions, rounds: total.rounds + run.result.rounds };
+    else if (before?.total) run.total = before.total;
+    if (run.left === undefined && before?.left !== undefined && !(run.reason === 'backfill' && run.status === 'synced' && !run.more)) run.left = before.left;
     const runs = { ...this.runs, [key]: run };
     const keys = Object.keys(runs).sort((a, b) => (runs[b]?.at ?? 0) - (runs[a]?.at ?? 0));
     this.runs = Object.fromEntries(keys.slice(0, MAX_RUNS).map((k) => [k, runs[k] as LastRun]));
@@ -401,7 +412,7 @@ export class Runner {
           continue;
         }
         if (outcome.status !== 'synced') continue;
-        await this.record(p.key, { at: this.now(), reason: 'backfill', status: 'synced', result: outcome.result, more: outcome.more, ...(outcome.notice ? { notice: outcome.notice.code, ...(outcome.notice.until ? { until: outcome.notice.until } : {}) } : {}) });
+        await this.record(p.key, { at: this.now(), reason: 'backfill', status: 'synced', result: outcome.result, more: outcome.more, ...(outcome.left !== undefined ? { left: outcome.left } : {}), ...(outcome.notice ? { notice: outcome.notice.code, ...(outcome.notice.until ? { until: outcome.notice.until } : {}) } : {}) });
         if (outcome.notice?.code === 'auth_expired') {
           if (!test) await this.opts.signIns.expire(p.provider);
           continue;

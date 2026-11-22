@@ -15,6 +15,8 @@ export interface Line {
   /** Offer *Send* (something new, and it doesn't go by itself, or the player may not want to wait). */
   send: boolean;
   warn: boolean;
+  /** Offer *Confirm*: the account the pages named waits for the player's yes (given in the extension's own page). */
+  confirm?: boolean;
 }
 
 /** The line on golf.de's page; null when no app is connected (then the extension shows nothing there at all). */
@@ -25,6 +27,9 @@ export function lineOf(v: HcpView, t: T): Line | null {
   const name = (live[0] ?? first).name;
   const label = (key: MessageKey, vars: Record<string, string | number> = {}) => `${t('line.label')}: ${t(key, { name, ...vars })}`;
   if (v.changed_page) return { text: label('line.changed'), send: false, warn: true };
+  // Before the yes no count: "20 results seen" read as if they were on their way.
+  if (v.account === 'rejected') return { text: label('line.rejected'), send: false, warn: true };
+  if (v.account === 'asking') return { text: label('line.confirm'), send: false, warn: true, confirm: true };
   if (!live.length) return { text: label('line.other'), send: false, warn: true };
   if (v.sending) return { text: label('line.sending'), send: false, warn: false };
   if (v.signed_out && !v.seen) return { text: label('line.signedOut'), send: false, warn: false };

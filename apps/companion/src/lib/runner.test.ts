@@ -228,6 +228,22 @@ describe('a sync', () => {
 });
 
 describe('the older history', () => {
+  it('adds up what the target took across runs, and keeps how much of the history is still to come (the wizard)', async () => {
+    const s = setup({
+      plan: (ask, t) => ({ due: true, plan_id: `p-${ask.reason}`, known_ids: t.known(), rounds: false, round_shots: true, max_sessions: 1, history: { done: false } }),
+    });
+    const p = await paired(s);
+    await s.services.signIns.set('trackman', s.token);
+    await s.services.runner.syncAll('connect');
+    expect(s.services.runner.lastRun(p.key)).toMatchObject({ status: 'synced', total: { sessions: 1, rounds: 0 } });
+    expect(s.services.runner.lastRun(p.key)?.left).toBeUndefined();
+    await s.services.runner.backfill();
+    expect(s.services.runner.lastRun(p.key)).toMatchObject({ reason: 'backfill', total: { sessions: 2, rounds: 0 }, left: 0 });
+    // A run that brings nothing keeps both.
+    await s.services.runner.syncAll('timer');
+    expect(s.services.runner.lastRun(p.key)).toMatchObject({ total: { sessions: 2, rounds: 0 }, left: 0 });
+  });
+
   it('waits as long as the target says between chunks', async () => {
     const s = setup({ plan: (ask) => (ask.reason === 'backfill' ? { due: false, wait_s: 75, history: { done: false } } : { due: false }) });
     await paired(s);

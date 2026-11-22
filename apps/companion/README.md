@@ -30,11 +30,17 @@ portal in a sign-in window - so that window lives here, in a small app that does
   cookies the portal left on this phone brings a new one - once per app start, only where this phone
   held the player's key before, and only a key of that same account (`SignIns.renewalFits`). When that
   fails, the app says so and the target hears it (`auth_expired`).
-- **The first sync before going back**: after pairing or signing in from a target's link with a way back, the app
-  stays in front showing that it fetches until the first sync is through (at most two minutes, or "Back to … now"),
-  and only then jumps back (`src/lib/firstSync.ts`): iOS suspends an app in the back within seconds, so a first sync
-  left running behind the jump brought nothing. Without a way back the older history follows right away while the app
-  is open.
+- **Connects as steps** (`@glmsync/browser`'s wizard, the same as the extension's; `src/lib/wizard.ts`,
+  `src/ui/WizardFrame.tsx`): sign in, *Is this your account?* (its name and newest activity - no count), the first
+  data shown plainly (*10 sessions, 6 rounds fetched*, how much older data is still to come), and done. Paired but
+  never signed in here, the home page says so big (*Not yet connected with … – sign in at Trackman*) instead of a card
+  that looks as if things were running. golf.de the same: *Is this your golf.de account?* (its handicap index) in the
+  window's bar and on the home page's card; nothing goes to an app before the yes.
+- **The first sync before going back**: after signing in the app stays in front showing that it fetches until the
+  first sync is through (at most two minutes; `src/lib/firstSync.ts`): iOS suspends an app in the back within seconds,
+  so a first sync left running behind a jump brought nothing. Then *Back to …* where the target named a way back (the
+  player taps it; the app doesn't jump), else the sentence that the rest comes by itself; the older history follows a
+  chunk at a time while the app is open.
 - **Syncs only when a target's plan says so**: on opening the app (`open`), after pairing or signing
   in (`connect`), on "fetch now" and on a sync link (`manual`), when a target app binds on Android
   (`open` or `manual`, as it says), and in the background (`timer`,

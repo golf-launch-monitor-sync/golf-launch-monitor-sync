@@ -43,6 +43,22 @@ golf.de, as you open it in your browser  ──(what the page loaded)───�
 - **olmd/1** ([Open Launch Monitor Data](spec/olmd.md)) is the format: JSON, SI units, a JSON Schema,
   test vectors. Anyone may produce or read it.
 
+## Connecting, step by step
+
+Every client connects the same way, for every service (Trackman, golf.de, those to come) - one frame,
+[`packages/browser`'s wizard](packages/browser/README.md#connecting-step-by-step), not one per module:
+
+1. **sign in** at the service (its own page, in your browser or the companion app's window);
+2. **your account**: the service names it - *Is this your account?* - and nothing is fetched or sent before
+   *Yes, that's me*;
+3. **the first data**, shown plainly (*10 sessions, 6 rounds fetched*, then *older data follows bit by bit,
+   about 140 sessions still to come*);
+4. **done**: *Back to …* where the client can take you there, else the sentence that you can go back and the
+   rest comes by itself.
+
+Until step 2 is answered the tools show no count that looks as if anything were running - only, big, *Not yet
+connected with … – confirm your account*. Then the usual overview.
+
 ## Gentle by design
 
 The load on a provider must never exceed what a person causes by looking through their own sessions

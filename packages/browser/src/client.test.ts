@@ -371,6 +371,31 @@ describe('the target ends it', () => {
 });
 
 describe('the older history', () => {
+  it('adds up what each target took, and keeps how much of the history is still to come (the wizard shows both)', async () => {
+    const w = world({
+      target: {
+        plan: (ask, t) =>
+          ask.reason === 'backfill'
+            ? { due: true, plan_id: 'h1', known_ids: t.known(), rounds: false, round_shots: true, max_sessions: 1, history: { done: false } }
+            : { due: true, plan_id: 'p1', known_ids: t.known(), rounds: false, round_shots: true, max_sessions: 1, history: { done: false } },
+      },
+    });
+    const id = await paired(w);
+    await w.client.setKey(w.token());
+    // Nothing before the yes: no count to show.
+    expect((await w.client.status()).pairings[0]?.brought).toBeUndefined();
+    await w.client.confirm(true);
+    await w.client.run('connect');
+    let p = (await w.client.status()).pairings[0];
+    expect(p?.brought).toEqual({ sessions: 1, rounds: 0, shots: 1 });
+    expect(p?.left).toBeUndefined();
+    w.clock.advance(120_000);
+    await w.client.run('backfill', id);
+    p = (await w.client.status()).pairings[0];
+    expect(p?.brought).toEqual({ sessions: 2, rounds: 0, shots: 2 });
+    expect(p?.left).toBe(0);
+  });
+
   it('is asked for chunk by chunk, when the target says it may', async () => {
     let historyDone = false;
     const w = world({

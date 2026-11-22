@@ -6,13 +6,16 @@
  * when its plan says so) or into a file. The same client, guard and rules as the extension. While the
  * page is open, a connected app's older history comes a chunk at a time, when its plan says it may.
  *
+ * Connecting goes as steps (`@glmsync/browser`'s wizard): the key (the bookmark, pasted), *Is this you?*, the first
+ * sync right after the yes, shown plainly, and done - the overview then follows below.
+ *
  * Test mode (spec/test-mode.md): *Enter a test code* at the bottom, for testing a connected app with
  * its made-up scenario instead of a Trackman account.
  */
 
 import { type ClientStatus, type KeyOutcome, type TestOutcome } from '@glmsync/browser';
 import { download, logName } from '@glmsync/browser/download';
-import { button, fill, h, PORTAL_URL, renderStatus, testEntry, type Actions } from '@glmsync/browser/render';
+import { button, fill, h, PORTAL_URL, renderStatus, testEntry, type Actions, type WizardMemory } from '@glmsync/browser/render';
 import { $, client, lang, t, texts } from './common.ts';
 
 declare const __BOOKMARKLET__: string;
@@ -28,6 +31,8 @@ let testConfirming = false;
 let last: ClientStatus | null = null;
 let keyMessage: { text: string; undo?: boolean } | null = null;
 let fileMessage = '';
+let confirming = false;
+const memory: WizardMemory = { walked: false };
 
 // *Enter a test code* below the panel, drawn apart from it (typing survives a redraw).
 const testRoot = h('div', {});
@@ -48,8 +53,13 @@ async function refresh(): Promise<void> {
 }
 
 function draw(s: ClientStatus): void {
-  renderStatus(panel, s, { t, lang, now: Date.now(), busy, client: 'web', asking, askingEnd, testConfirming }, actions);
+  renderStatus(panel, s, { t, lang, now: Date.now(), busy, client: 'web', asking, askingEnd, testConfirming, confirming, memory }, actions);
   drawKey(s);
+  // The key's box belongs to the wizard's first step while it stands there; otherwise above the panel, as before.
+  const step = panel.querySelector('[data-test="wizard"]')?.getAttribute('data-step');
+  const at = step === 'signin' ? panel.querySelector('[data-test="wizard"]') : null;
+  if (at && keyBox.parentElement !== at) at.querySelector('[data-test="wizard-title"]')?.after(keyBox);
+  else if (!at && keyBox.nextElementSibling !== panel) panel.before(keyBox);
   drawFile(s);
   entry.update(s);
 }
@@ -153,8 +163,41 @@ function drawFile(s: ClientStatus): void {
   );
 }
 
+/** The first sync, right after the yes: the wizard's third step shows it coming. */
+async function firstSync(): Promise<void> {
+  let s: ClientStatus;
+  try {
+    s = await client.status();
+  } catch {
+    return;
+  }
+  const ids = s.pairings.filter((p) => !p.test).map((p) => p.id);
+  for (const id of ids) busy.add(id);
+  draw(s);
+  try {
+    await client.run('connect');
+  } catch {
+    // What went wrong is the step's line (and the pairing's), with *Fetch now* to try again.
+  } finally {
+    for (const id of ids) busy.delete(id);
+    await refresh();
+    void planHistory();
+  }
+}
+
 const actions: Actions = {
-  confirm: (yes) => void client.confirm(yes).then(refresh),
+  confirm: (yes) => {
+    confirming = true;
+    if (last) draw(last);
+    void client
+      .confirm(yes)
+      .catch(() => null)
+      .then(async (state) => {
+        confirming = false;
+        await refresh();
+        if (yes && state?.state === 'ready') await firstSync();
+      });
+  },
   retryWho: () => void client.retryWho().then(refresh),
   fetchNow: (id) => {
     busy.add(id);

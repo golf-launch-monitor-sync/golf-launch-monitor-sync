@@ -26,7 +26,8 @@ async function pairByHand(page: Page) {
   await page.goto(pairUrl());
   await page.getByTestId('use-web').click();
   await expect(page).toHaveURL(`${WEB}/app.html`);
-  await expect(page.getByTestId('pairing')).toContainText('Example App');
+  // Paired, no Trackman sign-in: connecting's first step (a tester of test mode needs none, and goes on below).
+  await expect(page.getByTestId('unconfirmed')).toContainText('Example App');
 }
 
 async function enter(page: Page, code: string) {
@@ -52,7 +53,9 @@ test('a test code: asked first, then the scenario as from Trackman, in chunks wh
   await expect(ask).toContainText('Is this your account?');
   await expect(ask).toContainText('Test mode – made-up data');
   await expect(ask).toContainText('Leon (Test T17)');
-  await expect(ask).toContainText('7 activities');
+  // Its newest activity, no count (a number in the question read as data already on its way).
+  await expect(ask).toContainText('Newest activity on');
+  await expect(ask).not.toContainText('7 activities');
   await expect(ask).toContainText('Test “Leon, never switched” from Example App');
   await expect(page.getByTestId('test-entry')).toHaveCount(0);
   expect(world.target.imports).toHaveLength(0);

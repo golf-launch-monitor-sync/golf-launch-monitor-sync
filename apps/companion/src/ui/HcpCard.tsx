@@ -4,16 +4,20 @@
  * The handicap record on the home page (shown once an app is connected for it, or one ended its connection): the
  * connected apps with what each last answered, what golf.de's pages showed and what is still to send, *Open golf.de*,
  * *Send now*, sending by itself, *Disconnect*. The same parts as the extension's popup, in the app's words where
- * those speak of the extension.
+ * those speak of the extension. Until the first results went out, connecting stands there as steps (the wizard): open
+ * golf.de and sign in, *Is this your golf.de account?*, the first results - and no count before the yes.
  */
 
 import type { HcpView } from '@glmsync/browser/hcp';
+import { translator } from '@glmsync/browser/i18n';
+import { factsOfHcp, hcpWhoLine, targetOf, wizardLines, wizardOf } from '@glmsync/browser/wizard';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Switch, Text, View } from 'react-native';
 import { lang, t } from '../i18n';
 import { hcpEnded, hcpLast } from '../lib/hcpText';
 import type { Services } from '../lib/services';
 import { Body, Button, Card, colors, s, Small, Title } from './parts';
+import { WizardFrame } from './WizardFrame';
 
 /** The view, kept current: loaded at once, after each send of the sender and whenever `refresh` is called. */
 export function useHcpView(svc: Services) {
@@ -58,6 +62,62 @@ export function HcpCard({ svc, view, setView, open }: { svc: Services; view: Hcp
   }
 
   const live = view.pairings.filter((p) => !p.other_account);
+  const facts = factsOfHcp(view);
+  const wv = facts ? wizardOf(facts) : null;
+  if (facts && wv && wv.step !== 'done') {
+    const tr = translator(lang);
+    const target = targetOf(view.pairings.map((p) => p.name));
+    const lines = wizardLines(wv, facts, tr, { service: 'golf.de', target });
+    return (
+      <WizardFrame view={wv} lines={lines} spinning={facts.first === 'running'}>
+        {wv.step === 'signin' && (
+          <>
+            {view.account === 'rejected' && <Body warn>{tr('wizard.hcpRejected')}</Body>}
+            {view.account !== 'rejected' && view.signed_out && <Body warn>{t('hcp.signedOut')}</Body>}
+            {view.account !== 'rejected' && view.waiting && <Body warn>{t('hcp.waiting')}</Body>}
+            <Body muted>{t('hcp.what', { name: target ?? tr('wizard.yourApp') })}</Body>
+            <Button label={t('hcp.open')} onPress={open} />
+          </>
+        )}
+        {wv.step === 'account' && (
+          <>
+            <Body>{hcpWhoLine(view.index, tr, lang)}</Body>
+            <Small>{tr('wizard.hcpWhy')}</Small>
+            <Button
+              label={tr('confirm.yes')}
+              busy={busy === 'yes'}
+              onPress={() =>
+                void act('yes', async () => {
+                  const v = await svc.hcp.confirm(true);
+                  // What was seen goes right after the yes (the next step shows it coming).
+                  setView(v);
+                  return v.account === 'confirmed' ? svc.hcpSender.now() : v;
+                })
+              }
+            />
+            <Button label={tr('confirm.no')} kind="secondary" disabled={busy === 'yes'} onPress={() => void act('no', () => svc.hcp.confirm(false))} />
+          </>
+        )}
+        {wv.step === 'load' && (
+          <>
+            {facts.first === 'waiting' && <Body muted>{tr('wizard.hcpWaiting', { target: target ?? tr('wizard.yourApp') })}</Body>}
+            {facts.first === 'failed' && <Body warn>{view.pairings.map((p) => hcpLast(p, lang, now)).find((x) => !!x) ?? t('error.generic')}</Body>}
+            <View style={s.row}>
+              <Button label={t('hcp.open')} kind={view.fresh ? 'secondary' : 'primary'} onPress={open} />
+              {view.fresh > 0 && <Button label={t('hcp.send')} busy={busy === 'send' || view.sending} onPress={() => void act('send', () => svc.hcpSender.now())} />}
+            </View>
+          </>
+        )}
+        {note && <Body warn>{note}</Body>}
+        {view.pairings.map((p) => (
+          <View key={p.id} style={[s.row, { alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderColor: colors.line, paddingTop: 6 }]}>
+            <Small>{p.host}</Small>
+            <Button label={t('hcp.disconnect')} kind="danger" busy={busy === `off-${p.id}`} onPress={() => disconnect(p.id, p.name)} />
+          </View>
+        ))}
+      </WizardFrame>
+    );
+  }
   const notes = [view.waiting ? t('hcp.waiting') : null, view.signed_out ? t('hcp.signedOut') : null, view.changed_page ? t('hcp.changed') : null].filter(
     (x): x is string => !!x,
   );

@@ -26,17 +26,34 @@ test('pairs for the handicap record, reads along on golf.de, sends on Send, and 
   await expect(connect.getByText('The app at app.example.org asks for your handicap record from golf.de.')).toBeVisible();
   await connect.getByTestId('allow').click();
   await expect(connect.getByTestId('paired')).toHaveText('Connected with Example App.');
-  await expect(connect.getByTestId('open-golfde')).toBeVisible();
-  await expect(connect.getByTestId('finished')).toBeVisible();
+  // Then the same steps as for a launch monitor. golf.de's page was open in this browser before (signed in), so the
+  // account is known already: the step is its question, and nothing goes out before the answer.
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'account');
+  await expect(connect.getByTestId('wizard-progress')).toHaveText('Step 2 of 4');
+  await expect(connect.getByTestId('unconfirmed')).toHaveText('Not yet connected with Example App – confirm your account');
+  await expect(connect.getByTestId('finished')).toHaveCount(0);
   expect(world.hcp.tokens.size).toBe(1);
   expect(world.target.tokens.size).toBe(0); // the launch monitor API heard nothing
 
-  // The player opens the History Sheet: the page asks golf.de's API itself; the extension reads along.
+  // The player opens the History Sheet: the page asks golf.de's API itself; the extension reads along - and before
+  // the player said the account is theirs, the line counts nothing and nothing goes to the app.
   const page = await context.newPage();
   await page.goto(GOLFDE_HISTORY);
   const line = page.getByTestId('golfde-line');
-  await expect(line).toContainText('Golf Stats Sync: 3 results seen · 3 new');
-  await page.getByTestId('golfde-send').click();
+  await expect(line).toContainText('Golf Stats Sync: not yet connected with Example App – confirm your account');
+  await expect(line).not.toContainText('results');
+  await expect(page.getByTestId('golfde-send')).toHaveCount(0);
+  await page.waitForTimeout(1000);
+  expect(world.hcp.imports).toHaveLength(0);
+
+  // *Confirm* on the line brings the connect window to the front; the yes is given there.
+  await page.getByTestId('golfde-confirm').click();
+  await expect(connect.getByTestId('wizard-title')).toHaveText('Is this your golf.de account?');
+  await expect(connect.getByTestId('hcp-confirm')).toContainText('Handicap index 8.1, as of');
+  await connect.getByTestId('hcp-confirm-yes').click();
+  // What was seen goes right after the yes; the steps say how much.
+  await expect(connect.getByTestId('wizard-brought')).toHaveText('3 results sent to Example App', { timeout: 30_000 });
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'done');
   await expect(line).toContainText('Example App has them all');
   expect(world.hcp.results.size).toBe(3);
   const own = [...world.hcp.results.values()].find((r) => r.ref === world.golfde.own.resultGuid);
@@ -76,6 +93,10 @@ test('signed out on golf.de: the line says so, and nothing goes to the app witho
   const connect = await windowOpens;
   await connect.getByTestId('allow').click();
   await expect(connect.getByTestId('paired')).toBeVisible();
+  // golf.de not opened yet in this browser: the first step is its sign-in.
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'signin');
+  await expect(connect.getByTestId('unconfirmed')).toHaveText('Not yet connected with Example App – sign in at golf.de');
+  await expect(connect.getByTestId('hcp-open')).toBeVisible();
 
   world.golfde.signedIn = false;
   const page = await context.newPage();
@@ -83,4 +104,24 @@ test('signed out on golf.de: the line says so, and nothing goes to the app witho
   await expect(page.getByTestId('golfde-line')).toContainText('not signed in on golf.de');
   await page.waitForTimeout(500);
   expect(world.hcp.imports).toHaveLength(0); // nothing seen, and no account to tell it for yet
+});
+
+test('not my account: nothing of it is kept or sent, and the line says so', async ({ context, world, extensionId }) => {
+  const pairPage = await context.newPage();
+  const windowOpens = connectWindow(context, extensionId);
+  await pairPage.goto(`${pairUrl(HCP_TARGET, HCP_CODE)}&kind=hcp`);
+  const connect = await windowOpens;
+  await connect.getByTestId('allow').click();
+  await expect(connect.getByTestId('paired')).toBeVisible();
+
+  const page = await context.newPage();
+  await page.goto(GOLFDE_HISTORY);
+  await expect(connect.getByTestId('hcp-confirm')).toContainText('Handicap index 8.1');
+  await connect.getByTestId('hcp-confirm-no').click();
+  await expect(connect.getByTestId('hcp-rejected')).toContainText('nothing of this account is sent');
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'signin');
+  await page.reload();
+  await expect(page.getByTestId('golfde-line')).toContainText('not your account – nothing goes to Example App');
+  await page.waitForTimeout(1000);
+  expect(world.hcp.imports).toHaveLength(0);
 });

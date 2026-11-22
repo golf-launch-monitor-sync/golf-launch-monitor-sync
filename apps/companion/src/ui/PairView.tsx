@@ -5,8 +5,8 @@
  * pairing sends this player's launch monitor data to that address: so the address is shown plainly
  * and nothing happens without the player's yes.
  *
- * Once paired the app jumps back to the link's `return` (spec 1.2.0) - right away when it is signed in
- * already, else after the sign-in - but only to an address the target named as its own in its answer.
+ * Once paired, connecting goes on as steps (the wizard): the sign-in when there is none yet, then the first sync, and
+ * *Back to …* the link's `return` (spec 1.2.0) - only to an address the target named as its own in its answer.
  */
 
 import { useState } from 'react';
@@ -30,8 +30,8 @@ export function PairView({ svc, link, go }: { svc: Services; link: Extract<Incom
       const p = await svc.runner.pair(link);
       const back = backAfterPairing(link, p);
       if (svc.signIns.credential(p.provider)) {
-        // Signed in already: the first sync right away (the target's plan decides what it brings), and back only
-        // once it is through (FirstSyncView: on the iPhone a sync left running behind the jump stops).
+        // Signed in already: the first sync right away (the target's plan decides what it brings), shown as the
+        // wizard's steps 3 and 4 with *Back to …* (FirstSyncView: on the iPhone a sync left running behind a jump stops).
         go({ name: 'first', target: p.base, ...(back ? { back: { url: back, name: p.target.name } } : {}) });
       } else {
         go({ name: 'signin', provider: p.provider as 'trackman' | 'demo', ...(back ? { back: { url: back, name: p.target.name } } : {}) });

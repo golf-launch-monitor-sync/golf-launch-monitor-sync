@@ -39,6 +39,13 @@ describe('who sent a message', () => {
     expect(accept({ type: 'hcp-unpair', id: 'abc' }, 'golfde')).toBeNull();
     expect(accept({ type: 'hcp-unpair', id: 'abc' }, 'extension')).toEqual({ type: 'hcp-unpair', id: 'abc' });
     expect(accept({ type: 'hcp-auto', auto: 'yes' }, 'extension')).toBeNull();
+    // The yes to golf.de's account only from the extension's own pages: golf.de's scripts reach the line on its page.
+    expect(accept({ type: 'hcp-confirm', yes: true }, 'extension')).toEqual({ type: 'hcp-confirm', yes: true });
+    expect(accept({ type: 'hcp-confirm', yes: true }, 'golfde')).toBeNull();
+    expect(accept({ type: 'hcp-confirm', yes: 'yes' }, 'extension')).toBeNull();
+    // From golf.de only the way to that page.
+    expect(accept({ type: 'golfde-confirm' }, 'golfde')).toEqual({ type: 'golfde-confirm' });
+    expect(accept({ type: 'golfde-confirm' }, 'target-page')).toBeNull();
   });
 
   it('trusts nothing else', () => {

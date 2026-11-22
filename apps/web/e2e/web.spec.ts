@@ -29,7 +29,10 @@ test('pairs this page when there is no extension, then fetches by hand', async (
   await expect(page.locator('main')).not.toContainText('null');
   await page.getByTestId('use-web').click();
   await expect(page).toHaveURL(`${WEB}/app.html`);
-  await expect(page.getByTestId('pairing')).toContainText('Connected with Example App');
+  // Connecting as steps: the first is the Trackman key (the bookmark, pasted), in the step itself.
+  await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'signin');
+  await expect(page.getByTestId('unconfirmed')).toHaveText('Not yet connected with Example App – sign in at Trackman');
+  await expect(page.getByTestId('wizard').getByTestId('paste')).toBeVisible();
   expect(page.url()).not.toContain(CODE);
 
   // The key, pasted: first something that isn't one, then the real one; "Is this you?" before anything.
@@ -40,13 +43,19 @@ test('pairs this page when there is no extension, then fetches by hand', async (
   await page.getByTestId('paste').fill(key);
   await page.getByTestId('use-key').click();
   await expect(page.getByTestId('confirm')).toContainText('Alex Example');
-  await expect(page.getByTestId('fetch-now')).toBeDisabled();
+  await expect(page.getByTestId('confirm')).toContainText('Newest activity on 15 Nov 2026');
+  await expect(page.getByTestId('unconfirmed')).toHaveText('Not yet connected with Example App – confirm your account');
+  await expect(page.getByTestId('fetch-now')).toHaveCount(0);
+  await expect(page.getByTestId('wizard').getByTestId('paste')).toHaveCount(0);
+  // The yes: the first sync right away, shown plainly; then done, and the overview below.
   await page.getByTestId('confirm-yes').click();
-  await page.getByTestId('fetch-now').click();
+  await expect(page.getByTestId('wizard-brought')).toHaveText('2 sessions, 0 rounds fetched', { timeout: 60_000 });
+  await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'done');
+  await expect(page.getByTestId('wizard-back-hint')).toHaveText('You can go back to Example App now. The rest comes while this page stays open.');
   await expect(page.getByTestId('last')).toContainText('2 new sessions, 4 shots', { timeout: 60_000 });
   expect(world.targetSaw()).not.toContain(key);
-  // While the page is open the older history may follow on its own (backfill); by hand it was "manual" from "web".
-  expect(world.target.asked.filter((a) => a.reason !== 'backfill').map((a) => [a.reason, a.client])).toEqual([['manual', 'web']]);
+  // While the page is open the older history may follow on its own (backfill); the first was "connect" from "web".
+  expect(world.target.asked.filter((a) => a.reason !== 'backfill').map((a) => [a.reason, a.client])).toEqual([['connect', 'web']]);
 
   // A file of what is new; the next one has nothing new, so none is saved.
   const download = page.waitForEvent('download');
@@ -60,10 +69,39 @@ test('pairs this page when there is no extension, then fetches by hand', async (
   await page.getByTestId('file-manual').click();
   await expect(page.getByTestId('file-message')).toHaveText('Nothing new for a file.', { timeout: 60_000 });
 
-  // After a reload everything is still there (this browser's storage).
+  // After a reload everything is still there (this browser's storage), and the steps are behind it: the overview.
   await page.reload();
   await expect(page.getByTestId('key-ready')).toBeVisible();
+  await expect(page.getByTestId('wizard')).toHaveCount(0);
   await expect(page.getByTestId('pairing')).toContainText('Connected with Example App');
+});
+
+test('connecting’s steps in German; a first sync that fails stays on its step and offers to try again', async ({ browser, world }) => {
+  const context = await browser.newContext({ locale: 'de-DE' });
+  await world.route(context);
+  const page = await context.newPage();
+  await page.goto(pairUrl());
+  await page.getByTestId('use-web').click();
+  await expect(page.getByTestId('wizard-progress')).toHaveText('Schritt 1 von 4');
+  await expect(page.getByTestId('unconfirmed')).toHaveText('Noch nicht mit Example App verbunden – bei Trackman anmelden');
+  await page.getByTestId('paste').fill(world.key());
+  await page.getByTestId('use-key').click();
+  await expect(page.getByTestId('wizard-title')).toHaveText('Ist das dein Trackman-Konto?');
+  await expect(page.getByTestId('unconfirmed')).toHaveText('Noch nicht mit Example App verbunden – Konto bestätigen');
+  await expect(page.getByTestId('confirm')).toContainText('Neueste Aktivität am 15. Nov. 2026');
+
+  // The app is down for a moment: the first sync fails, the step says why and offers *Fetch now*.
+  const opts = world.target.opts as { fail?: Record<string, { status: number }> };
+  opts.fail = { '/import': { status: 503 } };
+  await page.getByTestId('confirm-yes').click();
+  await expect(page.getByTestId('wizard-failed')).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'load');
+  await expect(page.getByTestId('unconfirmed')).toHaveCount(0);
+  delete opts.fail;
+  await page.getByTestId('fetch-now').click();
+  await expect(page.getByTestId('wizard-brought')).toHaveText('2 Sessions, 0 Runden geholt', { timeout: 60_000 });
+  await expect(page.getByTestId('wizard-title')).toHaveText('Fertig');
+  await context.close();
 });
 
 test('waits for the extension: installed while the page is open, it takes over; after five minutes it stops', async ({ page }) => {

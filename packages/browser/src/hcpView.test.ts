@@ -7,7 +7,7 @@ import { translator } from './i18n.ts';
 
 const t = translator('en');
 const pairing = { id: 'a', base: 'https://app.example.org/hcp/v1', host: 'app.example.org', name: 'Example App', paired_at: '2026-11-21T19:00:00Z' };
-const view = (over: Partial<HcpView> = {}): HcpView => ({ pairings: [pairing], auto: true, seen: 0, fresh: 0, waiting: false, signed_out: false, changed_page: false, sending: false, ended: [], ...over });
+const view = (over: Partial<HcpView> = {}): HcpView => ({ pairings: [pairing], auto: true, seen: 0, fresh: 0, waiting: false, signed_out: false, changed_page: false, sending: false, ended: [], account: 'confirmed', index: null, ...over });
 
 describe('the line on golf.de', () => {
   it('shows nothing without a connected app', () => {

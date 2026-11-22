@@ -17,6 +17,8 @@ const view = (over: Partial<HcpView> = {}): HcpView => ({
   changed_page: false,
   sending: false,
   ended: [],
+  account: 'confirmed',
+  index: null,
   ...over,
 });
 
@@ -26,6 +28,9 @@ describe('the handicap record’s words on the phone', () => {
     expect(hcpLine(view(), 'de')?.text).toMatch(/12 Ergebnisse gesehen · 3 neu – gehen gleich an Example App/);
     expect(hcpLine(view({ auto: false }), 'en')).toMatchObject({ send: true });
     expect(hcpLine(view({ pairings: [] }), 'en')).toBeNull();
+    // Before the yes to the account: no count, only what is missing (the app's bar asks right there).
+    expect(hcpLine(view({ account: 'asking' }), 'de')).toMatchObject({ text: 'Golf Stats Sync: noch nicht mit Example App verbunden – Konto bestätigen', confirm: true, send: false });
+    expect(hcpLine(view({ account: 'rejected' }), 'en')).toMatchObject({ text: 'Golf Stats Sync: not your account – nothing goes to Example App', warn: true });
   });
 
   it('what a target last answered, and a connection it ended', () => {

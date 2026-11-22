@@ -3,7 +3,9 @@
 /**
  * The extension's side of golf.de's page (its own isolated world): takes what golfde-main.ts saw on this window and
  * hands it to the background, and shows one small line on the page - what was seen, what is new, and *Send* - but only
- * when an app is connected for the handicap record; otherwise it shows nothing at all. The line lives in a shadow
+ * when an app is connected for the handicap record; otherwise it shows nothing at all. Before the player said the
+ * account is theirs it shows no count, only that the connection waits for that, and *Confirm*, which brings the
+ * extension's connect window to the front (the yes is given there). The line lives in a shadow
  * root, so golf.de's styles don't reach it (it holds nothing golf.de's page doesn't show itself), and it can be
  * hidden for the page.
  */
@@ -49,6 +51,15 @@ function draw(v: HcpView | undefined): void {
   const text = document.createElement('span');
   text.textContent = line.text;
   box.append(text);
+  if (line.confirm) {
+    // Only the way to the extension's own page: the yes is given there, out of reach of golf.de's scripts.
+    const confirm = document.createElement('button');
+    confirm.type = 'button';
+    confirm.textContent = t('line.confirmButton');
+    confirm.setAttribute('data-test', 'golfde-confirm');
+    confirm.addEventListener('click', () => void ask({ type: 'golfde-confirm' }));
+    box.append(confirm);
+  }
   if (line.send) {
     const send = document.createElement('button');
     send.type = 'button';
@@ -74,7 +85,7 @@ function draw(v: HcpView | undefined): void {
   root?.replaceChildren(style, box);
 }
 
-async function ask(m: { type: 'golfde-seen'; page: string; seen: unknown } | { type: 'golfde-line' } | { type: 'golfde-send' }): Promise<void> {
+async function ask(m: { type: 'golfde-seen'; page: string; seen: unknown } | { type: 'golfde-line' } | { type: 'golfde-send' } | { type: 'golfde-confirm' }): Promise<void> {
   try {
     const r = (await chrome.runtime.sendMessage(m)) as Reply | undefined;
     if (r?.ok) draw(r.hcp);

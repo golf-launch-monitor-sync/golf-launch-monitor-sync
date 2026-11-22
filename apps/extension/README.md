@@ -17,12 +17,16 @@ background, while your browser is open — and reads your handicap record along 
 2. The extension picks the code up and opens its connect page in a tab beside it: **which address** the data would go to.
    *Allow and connect* — the browser asks once for that one address — and it is connected. The pairing page closes
    itself once the extension took over (when the app opened it; otherwise it says it may be closed).
-3. Open the Trackman portal (`portal.trackmangolf.com`) and sign in, or just open it if you are. The
-   extension takes your sign-in from there and asks **"Is this your Trackman account?"** (name,
-   number of activities, the newest) before anything is fetched. *Yes* says *Checking …* at once, then
-   *Connected*; once all is done the connect page says so and offers to close its tab. *No* offers **Sign in
-   with another Trackman account**: Trackman's own sign-out, then the portal to sign in with your own (in the
-   same tab is fine: the extension keeps looking for the new sign-in for a while after the portal loads).
+3. From here connecting goes **as steps with their progress** (*Step 2 of 4*; the same for every service,
+   [`@glmsync/browser`'s wizard](../../packages/browser/README.md#connecting-step-by-step)), in the connect page and
+   in the popup alike. Open the Trackman portal (`portal.trackmangolf.com`) and sign in, or just open it if you are.
+   The extension takes your sign-in from there and asks **"Is this your Trackman account?"** (the name, the newest
+   activity and where - no count) before anything is fetched; until the answer the page shows nothing that looks as if
+   it were running, only, big, *Not yet connected with … – confirm your account*. *Yes*: the first data, shown plainly
+   (*2 sessions, 0 rounds fetched*, then how much older data is still to come), and **Back to …**, which closes the
+   tab. *No* offers **Sign in with another Trackman account**: Trackman's own sign-out, then the portal to sign in
+   with your own (in the same tab is fine: the extension keeps looking for the new sign-in for a while after the
+   portal loads).
 4. From then on it runs by itself. About once a week Trackman's sign-in runs out: the icon shows
    **!**, the app is told too, and opening the portal again is enough.
 5. The app's own page in this browser can ask the extension to **fetch now** and show where its sign-in stands
@@ -69,10 +73,14 @@ and the requests to Trackman ("last hour 3 of 60 · last 24 hours 14 of 300") wi
 
 1. In the app, choose to connect Golf Stats Sync for the handicap record. It opens the same pairing page, with
    `kind=hcp`; the connect page says the app asks for your handicap record from golf.de. *Allow and connect*.
-2. Open your **History Sheet** on golf.de (signed in as always), flip through its pages if you like, open the
-   **Scoring Record**, a tournament's **result list**. A small line at the bottom of the page says what was seen and
-   what is new (*Golf Stats Sync: 20 results seen · 3 new*); half a minute after the last new page it goes to the app,
-   or at once with *Send*. The popup has *Send by itself* to switch that off.
+2. Open your **History Sheet** on golf.de (signed in as always). The same steps as for a launch monitor follow: the
+   account golf.de's page named - **"Is this your golf.de account?"** with its handicap index - and nothing goes to the
+   app before *Yes, that's me*. The line on golf.de's page says so (*not yet connected with … – confirm your account*)
+   with *Confirm*, which only brings the connect page to the front: the yes is given there, in the extension's own
+   page, out of reach of golf.de's scripts. *No* keeps nothing of that account and sends nothing of it.
+3. Then flip through its pages if you like, open the **Scoring Record**, a tournament's **result list**. The line
+   says what was seen and what is new (*Golf Stats Sync: 20 results seen · 3 new*); half a minute after the last new
+   page it goes to the app, or at once with *Send*. The popup has *Send by itself* to switch that off.
 
 What it does, and doesn't:
 

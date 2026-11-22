@@ -1,26 +1,32 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * The connect window: opened when the web app's pairing page hands over a code. It shows where the
- * data would go and asks the player; the browser's own prompt for that one address follows from the
- * same click. Afterwards, and when it was opened for "Is this you?", it shows the status panel - and,
- * once all is done (paired, signed in, confirmed), says so with a button that closes this tab. For the handicap record
- * (kind=hcp) there is nothing to sign in to here: once paired it points to golf.de's History Sheet, and is done.
+ * The connect window: opened when the web app's pairing page hands over a code. It shows where the data would go and
+ * asks the player; the browser's own prompt for that one address follows from the same click. Then connecting goes on
+ * as steps with their progress, the same for every service (`@glmsync/browser`'s wizard): sign in, *Is this your
+ * account?*, the first data shown plainly, and *Back to …* (which closes this tab). For a launch monitor the steps are
+ * the status panel's; for the handicap record (kind=hcp) the golf.de steps - also when golf.de's page brought this
+ * window to the front for the yes (*Confirm* on its line).
  */
 
-import type { ClientStatus } from '@glmsync/browser';
-import { button, fill, h } from '@glmsync/browser/render';
+import type { ClientStatus, HcpView } from '@glmsync/browser';
+import { button, fill, h, type WizardMemory } from '@glmsync/browser/render';
 import { finished } from './finished.ts';
 import type { Pending } from './messages.ts';
-import { heading, send, statusPanel, t } from './page.ts';
+import { hcpPanel, heading, send, statusPanel, t } from './page.ts';
 
 heading('connect.title');
 const done = document.getElementById('done') as HTMLElement;
 const ask = document.getElementById('ask') as HTMLElement;
 const panel = document.getElementById('status') as HTMLElement;
+// The handicap record's steps, above the launch monitor's.
+const hcpRoot = document.createElement('div');
+panel.before(hcpRoot);
 
 let pendingNow: Pending | null = null;
 let statusNow: ClientStatus | null = null;
+let hcpNow: HcpView | null = null;
+const memory: WizardMemory = { walked: false };
 
 /** This tab, closed: by the browser's tab API (an extension page may close its own tab), else by the window. */
 async function closeTab(): Promise<void> {
@@ -40,9 +46,10 @@ const isHcp = () => pendingNow?.kind === 'hcp';
 
 let wasDone = false;
 function showDone(): void {
-  // The handicap record has no sign-in here and no "Is this you?": paired is done.
-  panel.hidden = isHcp();
-  const now = isHcp() ? pendingNow?.state === 'paired' : finished(pendingNow, statusNow);
+  // Only the handicap record here (asked for it, or brought here by golf.de's page): no Trackman panel in the way.
+  panel.hidden = isHcp() || (!!statusNow && !statusNow.pairings.length && !!hcpNow && hcpNow.pairings.length > 0);
+  // The steps end with their own *Back to …*; a window opened when everything was done already just says so.
+  const now = !isHcp() && !memory.walked && finished(pendingNow, statusNow);
   if (now === wasDone) return;
   wasDone = now;
   fill(done, now ? h('div', { class: 'note', 'data-test': 'finished', role: 'status' }, h('p', {}, t('connect.finished')), h('div', { class: 'row' }, button(t('connect.close'), () => void closeTab(), { class: 'primary', 'data-test': 'close' }))) : null);
@@ -79,15 +86,8 @@ function show(p: Pending | null | undefined): void {
       fill(ask, h('p', { 'data-test': 'working' }, t('connect.working')));
       break;
     case 'paired':
-      if (p.kind === 'hcp') {
-        fill(ask,
-          h('p', { class: 'note', 'data-test': 'paired' }, t('connect.done', { name: p.name ?? host })),
-          h('p', {}, t('connect.nextHcp')),
-          h('div', { class: 'row' }, button(t('connect.openHcp'), () => void send({ type: 'open-golfde' }), { 'data-test': 'open-golfde' })),
-        );
-      } else {
-        fill(ask, h('p', { class: 'note', 'data-test': 'paired' }, t('connect.done', { name: p.name ?? host })), wasDone ? null : h('p', { class: 'muted' }, t('connect.next')));
-      }
+      // What comes next is the steps' first one (sign in at the service).
+      fill(ask, h('p', { class: 'note', 'data-test': 'paired' }, t('connect.done', { name: p.name ?? host })));
       break;
     case 'failed':
       fill(ask,
@@ -116,8 +116,17 @@ const look = async () => {
 void look();
 setInterval(() => void look(), 1000);
 statusPanel(panel, {
+  memory,
+  back: () => void closeTab(),
   onStatus: (s) => {
     statusNow = s;
+    showDone();
+  },
+});
+hcpPanel(hcpRoot, {
+  back: () => void closeTab(),
+  onView: (v) => {
+    hcpNow = v;
     showDone();
   },
 });

@@ -39,8 +39,11 @@ test('pairs from the app’s page, takes the sign-in from the portal, asks, and 
   // The code left the address bar once it was used.
   await expect.poll(() => pairPage.url()).not.toContain(CODE);
   expect(world.target.tokens.size).toBe(1);
-  // Nothing to fetch with yet: the icon says sign in.
+  // Nothing to fetch with yet: the icon says sign in, and connecting goes on as steps - the first is the sign-in.
   await expect.poll(() => badgeText(background)).toBe('!');
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'signin');
+  await expect(connect.getByTestId('wizard-progress')).toHaveText('Step 1 of 4');
+  await expect(connect.getByTestId('unconfirmed')).toHaveText('Not yet connected with Example App – sign in at Trackman');
 
   // The player opens the portal, signed in: the extension takes the key, and asks whose it is.
   const key = world.key();
@@ -58,13 +61,24 @@ test('pairs from the app’s page, takes the sign-in from the portal, asks, and 
   await expect.poll(portalPlaced).toEqual({ same: true, beside: true, active: true });
   // The tab the extension opened may be attached to the test a moment late; the player's own tab is certain.
   await (await context.newPage()).goto(PORTAL);
-  await expect(connect.getByTestId('confirm')).toContainText('Is this your Trackman account?');
+  await expect(connect.getByTestId('wizard-title')).toHaveText('Is this your Trackman account?');
+  await expect(connect.getByTestId('wizard-progress')).toHaveText('Step 2 of 4');
   await expect(connect.getByTestId('confirm')).toContainText('Alex Example');
-  await expect(connect.getByTestId('confirm')).toContainText('2 activities, the newest on 15 Nov 2026 at Example Range');
+  await expect(connect.getByTestId('confirm')).toContainText('Newest activity on 15 Nov 2026 at Example Range');
+  // Before the yes nothing that looks like data on its way (a tester once took "150 activities" for synced).
+  await expect(connect.getByTestId('unconfirmed')).toHaveText('Not yet connected with Example App – confirm your account');
+  await expect(connect.locator('main')).not.toContainText('activities');
+  await expect(connect.getByTestId('counts')).toHaveCount(0);
+  await expect(connect.getByTestId('last')).toHaveCount(0);
   await expect.poll(() => badgeText(background)).toBe('?');
   expect(world.target.imports).toHaveLength(0);
 
   await connect.getByTestId('confirm-yes').click();
+  // The first data, shown plainly; then done, with the way back (the overview below it).
+  await expect(connect.getByTestId('wizard-brought')).toHaveText('2 sessions, 0 rounds fetched', { timeout: 60_000 });
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'done');
+  await expect(connect.getByTestId('unconfirmed')).toHaveCount(0);
+  await expect(connect.getByTestId('wizard-back')).toHaveText('Back to Example App');
   await expect(connect.getByTestId('last')).toContainText('2 new sessions, 4 shots', { timeout: 60_000 });
   expect(world.target.sessions.size).toBe(2);
   await expect.poll(() => badgeText(background)).toBe('');
