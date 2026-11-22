@@ -9,7 +9,8 @@ Syncs your golf data from **your own** accounts into apps of your choice, in ope
   monitor's cloud account (Trackman first), in [olmd/1](spec/olmd.md).
 - **Your handicap record** — the History Sheet, the Scoring Record and your own place in a result
   list — from golf.de, the German Golf Association's site, in [dgvhcp/1](spec/hcp.md). The extension
-  only reads along while **you** open these pages: it sends golf.de nothing of its own.
+  and the companion app (in its own golf.de window) only read along while **you** open these pages: they send
+  golf.de nothing of their own.
 
 > **Unofficial.** This project is not affiliated with, endorsed by or supported by Trackman, any
 > other launch monitor maker, the Deutscher Golf Verband (DGV) or golf.de. It uses your own sign-in,
@@ -80,7 +81,7 @@ And, as a rule for every line of code here:
 | [`packages/browser`](packages/browser/README.md) | What the extension and the web app share: the key, pairings, "Is this you?", syncs, texts (English, German). |
 | [`apps/extension`](apps/extension/README.md) | The browser extension (Manifest V3; Chrome, Edge, Firefox): syncs in the background when a target's plan says so; reads along on golf.de. |
 | [`apps/web`](apps/web/README.md) | The web app on GitHub Pages: the pairing page, and syncing by hand without the extension. |
-| [`apps/companion`](apps/companion/README.md) | The companion app for the phone (Expo, iOS and Android): the provider's sign-in window, pairing by deep link, syncs when a target's plan says so. |
+| [`apps/companion`](apps/companion/README.md) | The companion app for the phone (Expo, iOS and Android): the provider's sign-in window, pairing by deep link, syncs when a target's plan says so; reads along on golf.de in its own window. |
 
 ## Development
 

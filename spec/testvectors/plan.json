@@ -1,6 +1,6 @@
 {
   "$comment": "The reference planning rules of a target (spec/planning.md). Times compare as instants within compare.time_tolerance_s; dict results compare without regard to key order.",
-  "spec_version": "1.10.0",
+  "spec_version": "1.11.0",
   "generated_by": "spec/reference/generate.py",
   "rules": {
     "$comment": "The reference planning rules of a target (spec/planning.md). Informative: a target may plan more gently; the load guard (spec/guard/limits.json) holds regardless.",

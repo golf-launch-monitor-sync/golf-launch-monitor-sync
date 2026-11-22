@@ -11,14 +11,22 @@
  * - a sync link asks the targets' plans like any other run (manual), and jumps back only to an
  *   address the paired target named as its own at pairing;
  * - a test link (spec 1.8.0) only opens test mode's question for a target this phone is paired with: it never
- *   pairs, never syncs by itself and never jumps back; the scenario comes only after the tester's yes.
+ *   pairs, never syncs by itself and never jumps back; the scenario comes only after the tester's yes;
+ * - a pair link with `kind=hcp` (spec 1.10.0) asks the same question for the handicap record read along on golf.de
+ *   (the provider `golfde`, none other); a read link (spec 1.11.0) only opens the golf.de window, where the player
+ *   signs in and opens their record themselves - it never pairs and sends nothing by itself.
  */
 
+import { PROVIDER_ID as GOLFDE } from '@glmsync/provider-golfde';
 import { parseLink, returnAllowed } from '@glmsync/spec';
 import type { KeyedPairing } from './pairings.ts';
 
 export type Incoming =
   | { kind: 'pair'; target: string; code: string; provider: string; host: string; replaces: boolean; return?: string }
+  /** The handicap record (kind=hcp): no `return` - a handicap pairing names no return_prefixes, so it never jumps back. */
+  | { kind: 'pair-hcp'; target: string; code: string; provider: string; host: string }
+  /** Open the golf.de window (spec 1.11.0). */
+  | { kind: 'read' }
   | { kind: 'sync'; target?: string; return?: string }
   /** `keys`: the pairings it may be for (of the link's target when it names one); none: pair first. */
   | { kind: 'test'; code: string; keys: string[] }
@@ -34,6 +42,12 @@ export function hostOf(target: string): string {
 export function readIncoming(url: unknown, providers: readonly string[], pairings: readonly KeyedPairing[]): Incoming {
   const link = parseLink(url);
   if (!link.ok) return { kind: 'invalid', error: link.error };
+  if (link.action === 'read') return { kind: 'read' };
+  if (link.action === 'pair' && link.kind === 'hcp') {
+    const provider = link.provider ?? GOLFDE;
+    if (provider !== GOLFDE) return { kind: 'invalid', error: 'unknown:provider' };
+    return { kind: 'pair-hcp', target: link.target, code: link.code, provider, host: hostOf(link.target) };
+  }
   if (link.action === 'pair') {
     const provider = link.provider ?? 'trackman';
     if (!providers.includes(provider)) return { kind: 'invalid', error: 'unknown:provider' };

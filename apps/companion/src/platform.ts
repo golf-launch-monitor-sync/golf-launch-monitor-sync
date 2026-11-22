@@ -8,6 +8,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { FileOut, Storage } from '@glmsync/core';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import { File, Paths } from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
 import * as Sharing from 'expo-sharing';
@@ -74,7 +75,7 @@ let shared: Promise<Services> | null = null;
 /** This runtime's parts, loaded once (the screen and the background task each have their own runtime). */
 export function services(): Promise<Services> {
   if (!shared) {
-    const s = makeServices({ secrets: secureStore, storage, blobs, writeFile: shareFile, version });
+    const s = makeServices({ secrets: secureStore, storage, blobs, writeFile: shareFile, version, os: Platform.OS });
     shared = s.load().then(
       () => s,
       (e: unknown) => {

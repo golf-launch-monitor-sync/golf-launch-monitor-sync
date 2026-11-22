@@ -6,9 +6,11 @@
  * own, and the guard's counts in storage (with their in-flight mark) keep them honest together.
  */
 
+import type { HcpClient } from '@glmsync/browser/hcp';
 import { Guard, HttpTarget, type FetchLike, type FileOut, type Storage } from '@glmsync/core';
 import { demo } from '@glmsync/provider-demo';
 import { expiresAt, trackman } from '@glmsync/provider-trackman';
+import { HcpSender, makeHcp } from './hcp.ts';
 import { Pairings } from './pairings.ts';
 import { Runner, type AppProvider } from './runner.ts';
 import { ChunkedSecrets, type Secrets } from './secrets.ts';
@@ -41,6 +43,8 @@ export interface Platform {
   now?: () => number;
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
   version?: string;
+  /** `ios` or `android`: how the app names itself to a handicap target. */
+  os?: string;
 }
 
 export interface Services {
@@ -53,6 +57,10 @@ export interface Services {
   runner: Runner;
   /** This phone's push address at each target (the wake, spec/wake.md; iOS only). */
   wakes: Wakes;
+  /** The handicap record read along in the golf.de window, and its pairings (spec/hcp.md). */
+  hcp: HcpClient;
+  /** Sends what the golf.de window saw a little after the last new page. */
+  hcpSender: HcpSender;
   /** Reads what this phone keeps; call once before using the rest. */
   load(): Promise<void>;
 }
@@ -98,6 +106,14 @@ export function makeServices(platform: Platform): Services {
     target: (p) => new HttpTarget(p, { ...(platform.fetch ? { fetch: platform.fetch } : {}), ...(platform.now ? { now: platform.now } : {}) }),
     ...(platform.now ? { now: platform.now } : {}),
   });
+  const hcp = makeHcp({
+    storage: platform.storage,
+    secrets,
+    ...(platform.os ? { os: platform.os } : {}),
+    ...(platform.version ? { version: platform.version } : {}),
+    ...(platform.fetch ? { fetch: platform.fetch } : {}),
+    ...(platform.now ? { now: platform.now } : {}),
+  });
   return {
     providers,
     signIns,
@@ -106,6 +122,8 @@ export function makeServices(platform: Platform): Services {
     guard,
     runner,
     wakes,
+    hcp,
+    hcpSender: new HcpSender(hcp),
     async load() {
       await Promise.all([signIns.load(), pairings.load(), runner.loadRuns()]);
       // After the pairings: a test whose pairing went while the app was closed goes too.

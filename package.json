@@ -10,7 +10,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "typecheck": "pnpm -r --if-present typecheck && tsc -p tools --noEmit",
+    "typecheck": "pnpm -r --if-present typecheck && tsc -p tools --noEmit && tsc -p apps/companion/scripts --noEmit",
     "test": "vitest run",
     "vectors": "python3 spec/reference/generate.py",
     "vectors:check": "python3 spec/reference/generate.py --check",

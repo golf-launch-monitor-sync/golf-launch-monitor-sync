@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
  * The page script: runs in golf.de's own page (the extension's content script in the world MAIN, before the page's
- * own scripts; later the companion app's window), and reads along. It wraps the page's `fetch` and `XMLHttpRequest`
+ * own scripts; in the companion app's golf.de window injected before them as well), and reads along. It wraps the page's `fetch` and `XMLHttpRequest`
  * only to look at the answers golf.de's page receives for the few requests observe.ts names - a clone of the answer,
  * read after the page got it, so the page notices nothing - and posts what it made of them (`Seen`: no names, no
  * numbers) to the extension's side.

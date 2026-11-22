@@ -323,7 +323,13 @@ def deep_link_vectors() -> dict[str, Any]:
              f"glmsync://pair?target={t}&code=K7M2PQ9X&kind=egr",
              f"glmsync://pair?target={t}&code=K7M2PQ9X&kind=",
              f"glmsync://pair?target={t}&code=K7M2PQ9X&kind=hcp&kind=lm",
-             f"glmsync://sync?target={t}&kind=hcp&return=exampleapp%3A%2F%2Fsynced"]
+             f"glmsync://sync?target={t}&kind=hcp&return=exampleapp%3A%2F%2Fsynced",
+             # 1.11.0: open the client's way of reading along (the handicap record)
+             "glmsync://read?kind=hcp", "glmsync://read/?kind=hcp&utm=x", "glmsync://read", "glmsync://read?kind=lm",
+             "glmsync://read?kind=HCP", "glmsync://read?kind=", "glmsync://read?kind=hcp&kind=hcp",
+             f"glmsync://read?kind=hcp&target={t}&return=exampleapp%3A%2F%2Fback", "glmsync://read?kind=hcp#frag",
+             "glmsync://read?kind=hcp\n", "GLMSYNC://read?kind=hcp", "glmsync://reads?kind=hcp",
+             "glmsync://read?kind=hcp%ZZ"]
     cases: list[dict[str, Any]] = [{"rule": "parse_link", "input": u, "expected": deeplinks.parse_link(u)} for u in links]
     frags = [f"#target={t}&code=K7M2PQ9X", f"target={t}&code=K7M2PQ9X&provider=demo", "#code=K7M2PQ9X", "#",
              f"#target={t}&code=K7M2PQ9X&target={t}",
@@ -344,12 +350,14 @@ def deep_link_vectors() -> dict[str, Any]:
         (f"glmsync://sync?target={t}&return=exampleapp%3A%2F%2Fsynced", "manual"),
         (f"glmsync://pair?target={t}&code=K7M2PQ9X", "manual"), ("glmsync://sync?target=ftp%3A%2F%2Fx", "open"),
         (f"glmsync://sync?target={t}&target={t}", "open"), (None, "open"), ("", "open"),
-        (f"https://app.example.org/sync?target={t}", "open"), (f"glmsync://test?target={t}&code=T7K2M9QX", "open")]
+        (f"https://app.example.org/sync?target={t}", "open"), (f"glmsync://test?target={t}&code=T7K2M9QX", "open"),
+        ("glmsync://read?kind=hcp", "open")]
     cases += [{"rule": "parse_sync_intent", "input": {"data": d, "reason": r},
                "expected": deeplinks.parse_sync_intent(d, r)} for d, r in intents]
     return doc("Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> "
                "{ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, "
-               "sync or (1.8.0) test; kind (1.10.0) lm or hcp, only where the link names it. parse_sync_intent "
+               "sync, (1.8.0) test or (1.11.0) read; kind (1.10.0) lm or hcp, only where the link names it (read: "
+               "always, and only hcp). parse_sync_intent "
                "(the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> "
                "{ok: true, target, reason} or {ok: false, error}.", cases)
 

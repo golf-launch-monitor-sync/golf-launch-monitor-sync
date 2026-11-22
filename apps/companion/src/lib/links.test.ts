@@ -129,3 +129,33 @@ describe('the host shown', () => {
     expect(hostOf('http://[::1]:8000/lm/v1')).toBe('[::1]');
   });
 });
+
+describe('the handicap record’s links (spec 1.10.0, 1.11.0)', () => {
+  const T = 'https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1';
+
+  it('a pair link with kind=hcp asks about the handicap record, for golf.de, and never jumps back', () => {
+    // Before TE-10b-3 the app took it for launch monitor data (Trackman), which a handicap target refuses.
+    expect(readIncoming(`glmsync://pair?target=${T}&code=K7M2PQ9X&kind=hcp`, PROVIDERS, [])).toEqual({
+      kind: 'pair-hcp',
+      target: 'https://app.example.org/hcp/v1',
+      code: 'K7M2PQ9X',
+      provider: 'golfde',
+      host: 'app.example.org',
+    });
+    const r = readIncoming(`glmsync://pair?target=${T}&code=K7M2PQ9X&provider=golfde&kind=hcp&return=exampleapp%3A%2F%2Fback`, PROVIDERS, []);
+    expect(r).toMatchObject({ kind: 'pair-hcp', provider: 'golfde' });
+    expect(r).not.toHaveProperty('return');
+  });
+
+  it('refuses another provider for the handicap record, and golf.de for launch monitor data', () => {
+    expect(readIncoming(`glmsync://pair?target=${T}&code=K7M2PQ9X&provider=trackman&kind=hcp`, PROVIDERS, [])).toEqual({ kind: 'invalid', error: 'unknown:provider' });
+    expect(readIncoming(`glmsync://pair?target=${T}&code=K7M2PQ9X&provider=golfde`, PROVIDERS, []).kind).toBe('invalid');
+    expect(readIncoming(`glmsync://pair?target=${T}&code=K7M2PQ9X&provider=golfde&kind=lm`, PROVIDERS, []).kind).toBe('invalid');
+  });
+
+  it('a read link only opens the golf.de window; another kind is no link', () => {
+    expect(readIncoming('glmsync://read?kind=hcp', PROVIDERS, [])).toEqual({ kind: 'read' });
+    expect(readIncoming('glmsync://read?kind=lm', PROVIDERS, []).kind).toBe('invalid');
+    expect(readIncoming('glmsync://read', PROVIDERS, []).kind).toBe('invalid');
+  });
+});

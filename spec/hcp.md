@@ -124,7 +124,9 @@ client reads the answers the page itself received - in the player's tab or the c
   page's own context; of a result list only the player's own line is kept (by the provider's id of the
   result, which the record named).
 - **Nothing by itself.** No timer, no background reading. The target can't make it read: when the
-  record is due, the target app reminds the player instead (with a link to the provider's page).
+  record is due, the target app reminds the player instead (with a link to the provider's page; on a phone,
+  since 1.11.0, the read link `glmsync://read?kind=hcp` that opens the companion app's window there,
+  [deep-links.md](deep-links.md)).
 - **The plan before sending, not before reading.** Every batch still goes through `GET /plan`, with the
   reason `manual` (the player opened the page) - for the lease, `disconnected`, `account_ref` - and is
   sent only when the plan says `due`. The client may send each page as it is seen, or keep what it saw

@@ -3,7 +3,7 @@
 /**
  * The app's frame: loads what the phone keeps, takes the links that open it, syncs when it comes to
  * the front (the plans decide whether anything is fetched), renews an expired Trackman sign-in quietly
- * where it may, and shows one view at a time.
+ * where it may, sends what the golf.de window saw when the app goes to the back, and shows one view at a time.
  */
 
 import * as Linking from 'expo-linking';
@@ -21,6 +21,8 @@ import { Home } from './Home';
 import { Licenses } from './Licenses';
 import { PairView } from './PairView';
 import { FirstSyncView } from './FirstSyncView';
+import { GolfdeView } from './GolfdeView';
+import { PairHcpView } from './PairHcpView';
 import { Body, Button, colors, s } from './parts';
 import { SignInView } from './SignInView';
 import { SyncView } from './SyncView';
@@ -30,6 +32,10 @@ import { TrackmanLoginView } from './TrackmanLoginView';
 export type Screen =
   | { name: 'home' }
   | { name: 'pair'; link: Extract<Incoming, { kind: 'pair' }> }
+  /** A pair link for the handicap record (kind=hcp). */
+  | { name: 'pairHcp'; link: Extract<Incoming, { kind: 'pair-hcp' }> }
+  /** golf.de in the app's window, read along for the handicap record. */
+  | { name: 'golfde' }
   | { name: 'signin'; provider: ProviderId; back?: { url: string; name: string } }
   | { name: 'sync'; link: { target?: string; return?: string } }
   /** Just paired or signed in: the first sync, then (with `back`) back to the target app. */
@@ -167,6 +173,26 @@ function Main() {
       } else if (incoming.kind === 'pair') {
         setMessage(null);
         setScreen({ name: 'pair', link: incoming });
+      } else if (incoming.kind === 'pair-hcp') {
+        setMessage(null);
+        setScreen({ name: 'pairHcp', link: incoming });
+      } else if (incoming.kind === 'read') {
+        // Only with a connection for the handicap record: without one there is nobody to send what was read to.
+        void svc.hcp.view().then(
+          (v) => {
+            if (v.pairings.length) {
+              setMessage(null);
+              setScreen({ name: 'golfde' });
+            } else {
+              setMessage(t('hcp.pairFirst'));
+              setScreen({ name: 'home' });
+            }
+          },
+          () => {
+            setMessage(t('start.failed'));
+            setScreen({ name: 'home' });
+          },
+        );
       } else {
         setMessage(null);
         setScreen({ name: 'sync', link: { ...(incoming.target ? { target: incoming.target } : {}), ...(incoming.return ? { return: incoming.return } : {}) } });
@@ -218,7 +244,11 @@ function Main() {
         void open();
         void keepWake(svc); // a week on, or a new address: the targets hear it (src/lib/wake.ts decides)
       }
-      else if (next) clearTimeout(next);
+      else {
+        if (next) clearTimeout(next);
+        // What the golf.de window saw goes before iOS stops the app (a timer may never fire behind it).
+        if (state === 'background') void svc.hcpSender.flush();
+      }
     });
     return () => {
       stopped = true;
@@ -272,6 +302,10 @@ function Main() {
     );
   } else if (screen.name === 'pair') {
     body = <PairView svc={svc} link={screen.link} go={setScreen} />;
+  } else if (screen.name === 'pairHcp') {
+    body = <PairHcpView svc={svc} link={screen.link} go={setScreen} />;
+  } else if (screen.name === 'golfde') {
+    body = <GolfdeView svc={svc} done={home} />;
   } else if (screen.name === 'signin') {
     body = (
       <SignInView

@@ -2,8 +2,9 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
  * The one page: the provider sign-ins (with how much was asked of the provider today), the apps this
- * phone is paired with and how their last sync went, fetching now, the request log to export, the
- * demo, the licences.
+ * phone is paired with and how their last sync went, fetching now, the handicap record read along on golf.de
+ * (HcpCard), the request log to export, the demo, the licences. Someone who connected only the handicap record sees
+ * no launch monitor cards they have no use for.
  */
 
 import type { GuardCounts } from '@glmsync/core';
@@ -20,6 +21,7 @@ import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
 import { countsText, errorText, runText, when } from '../lib/text';
 import { shareFile, version } from '../platform';
 import type { Screen } from './App';
+import { HcpCard, useHcpView } from './HcpCard';
 import { Body, Button, Card, colors, s, Small, Title } from './parts';
 
 const REPO = 'https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync';
@@ -44,6 +46,7 @@ export function Home({
   const [build, setBuild] = useState<NewBuild | null>(null);
   const pairings = svc.pairings.list();
   const now = Date.now();
+  const hcp = useHcpView(svc);
 
   const refreshCounts = useCallback(async () => {
     const out: Partial<Record<ProviderId, GuardCounts | null>> = {};
@@ -120,7 +123,10 @@ export function Home({
   }
 
   const tests = svc.tests.list();
-  const shown = PROVIDERS.filter((p) => p === 'trackman' || svc.signIns.get(p) || svc.signIns.had(p) || pairings.some((x) => x.provider === p));
+  const hcpShown = !!hcp.view && (hcp.view.pairings.length > 0 || hcp.view.ended.length > 0);
+  // Only the handicap record connected, and no launch monitor sign-in ever: its cards would only be in the way.
+  const hcpOnly = !!hcp.view && hcp.view.pairings.length > 0 && pairings.length === 0 && !svc.signIns.get('trackman') && !svc.signIns.had('trackman');
+  const shown = PROVIDERS.filter((p) => (p === 'trackman' && !hcpOnly) || svc.signIns.get(p) || svc.signIns.had(p) || pairings.some((x) => x.provider === p));
 
   return (
     <ScrollView contentContainerStyle={s.scroll}>
@@ -155,6 +161,8 @@ export function Home({
           </View>
         </Card>
       )}
+
+      {hcpShown && hcp.view && <HcpCard svc={svc} view={hcp.view} setView={hcp.setView} open={() => go({ name: 'golfde' })} />}
 
       {tests.map((m) => {
         const target = svc.pairings.get(m.key)?.target.name ?? '?';
@@ -219,32 +227,34 @@ export function Home({
         );
       })}
 
-      <Card>
-        <Title>{t('targets.title')}</Title>
-        {pairings.length === 0 ? (
-          <Body muted>{t('targets.none')}</Body>
-        ) : (
-          pairings.map((p) => (
-            <View key={p.key} style={{ gap: 4, paddingVertical: 6, borderTopWidth: 1, borderColor: colors.line }}>
-              <Body>{p.target.name}</Body>
-              <Small>
-                {hostOf(p.base)} · {svc.providers[p.provider as ProviderId]?.name ?? p.provider}
-              </Small>
-              {svc.tests.of(p.key) && <Small>{t('test.pairingLine', { name: svc.tests.of(p.key)?.name ?? '' })}</Small>}
-              <Small>{runText(svc.runner.lastRun(p.key), now, lang, t)}</Small>
-              <View style={s.row}>
-                <Button label={t('unpair.button')} kind="danger" busy={busy === `unpair-${p.key}`} onPress={() => unpair(p)} />
+      {!hcpOnly && (
+        <Card>
+          <Title>{t('targets.title')}</Title>
+          {pairings.length === 0 ? (
+            <Body muted>{t('targets.none')}</Body>
+          ) : (
+            pairings.map((p) => (
+              <View key={p.key} style={{ gap: 4, paddingVertical: 6, borderTopWidth: 1, borderColor: colors.line }}>
+                <Body>{p.target.name}</Body>
+                <Small>
+                  {hostOf(p.base)} · {svc.providers[p.provider as ProviderId]?.name ?? p.provider}
+                </Small>
+                {svc.tests.of(p.key) && <Small>{t('test.pairingLine', { name: svc.tests.of(p.key)?.name ?? '' })}</Small>}
+                <Small>{runText(svc.runner.lastRun(p.key), now, lang, t)}</Small>
+                <View style={s.row}>
+                  <Button label={t('unpair.button')} kind="danger" busy={busy === `unpair-${p.key}`} onPress={() => unpair(p)} />
+                </View>
               </View>
-            </View>
-          ))
-        )}
-        {pairings.length > 0 && (
-          <Button label={t('sync.now')} busy={busy === 'sync'} onPress={() => void act('sync', () => svc.runner.syncAll('manual'))} />
-        )}
-        <Small>{t('targets.plan')}</Small>
-      </Card>
+            ))
+          )}
+          {pairings.length > 0 && (
+            <Button label={t('sync.now')} busy={busy === 'sync'} onPress={() => void act('sync', () => svc.runner.syncAll('manual'))} />
+          )}
+          <Small>{t('targets.plan')}</Small>
+        </Card>
+      )}
 
-      {!shown.includes('demo') && (
+      {!shown.includes('demo') && !hcpOnly && (
         <Card>
           <Title>{t('demo.title')}</Title>
           <Body muted>{t('demo.text')}</Body>

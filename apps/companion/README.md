@@ -77,6 +77,22 @@ portal in a sign-in window - so that window lives here, in a small app that does
   *End test mode*; the scenario goes with that, with its pairing, or when its `valid_until` has passed
   (`Tests` of `@glmsync/provider-trackman`, shared with the browser clients). Each way it can fail has its sentence in German and English (wrong or expired code, no test
   account, an app without test mode, a provider this app lacks, no network, a real account refusing test data).
+- **Reads along on golf.de** for the handicap record (spec 1.10.0/1.11.0, [hcp.md](../../spec/hcp.md), *A client that
+  only observes*): a pair link with `kind=hcp` asks "Connect with *host*?" for the handicap record (provider `golfde`
+  only; no `return`: a handicap pairing names no return prefixes), then opens golf.de in the app's own window
+  (`src/ui/GolfdeView.tsx`) - golf.de's History Sheet, loaded as this web view is, nothing added; the player signs in
+  there. The extension's page script (`@glmsync/provider-golfde/page`) is injected before golf.de's own scripts, only
+  on the pages the extension reads too (`src/lib/golfdePage.ts`, `onReadPage`), and posts what golf.de's page loaded,
+  already without names and numbers; the app reads every message again strictly (`readGolfdeMessage`, only from
+  `www.golf.de`) and keeps it with the extension's `HcpClient` (`src/lib/hcp.ts`: the pairings in the secure store,
+  whose golf.de account the pages named only in memory). It sends a little after the last new page, at once on
+  *Done* or when the app goes to the back, or on *Send* (`HcpSender`); every batch after the target's plan (`manual`).
+  The window shows the extension's line (*20 results seen · 3 new for …*); the home page a card with each connection,
+  what it last answered, *Open golf.de*, *Send now*, *Send by itself*, *Disconnect*. A read link
+  `glmsync://read?kind=hcp` (spec 1.11.0, from a target's reminder that the record is due) opens the window - only
+  with a handicap pairing. What the app says plainly: Google or Apple sign-in often doesn't work in an app's window
+  (e-mail and password do); nothing happens in the background; golf.de's own app isn't read. The window keeps every
+  load in the app (`golfdeWindowRules`, as the Trackman window's).
 - **Demo**: a made-up player (`@glmsync/provider-demo`) for trying the app without an account, and
   for app reviews. Its "requests" go through the guard too, so counters and log behave as for real.
 - **Save as file**: a sync into an olmd file (the share sheet), planned gently by the file target -
@@ -92,6 +108,10 @@ portal in a sign-in window - so that window lives here, in a small app that does
 | Each pairing's import token | the secure store |
 | The rest of a pairing (address, name, limits, return prefixes), the guard's counts and log, the last run per pairing | app storage (AsyncStorage) |
 | A test scenario (made up, up to 64 MiB; test mode) | a file in the app's document folder, until the test ends; what the page shows of it (name, account, end) in app storage |
+| Each handicap pairing with its import token | the secure store (one entry, `glmsync.hcp.pairings`, in pieces where long) |
+| What golf.de's pages showed (results, the index; no names, no numbers), what each handicap target has from here, what it last answered | app storage |
+| Which golf.de account the pages of this run named, and results waiting for it | memory only (gone when the app ends, as a browser session is) |
+| golf.de's own sign-in | golf.de's cookies in the window's web view, on this phone; the app never reads them |
 
 Android backups leave the secure store out (`allowBackup: false`). A sign-in goes to the provider
 only; a target gets batches and nothing else (`src/lib/runner.test.ts` checks both directions). A
@@ -108,13 +128,15 @@ src/lib/            everything without a screen, tested with vitest: secrets, si
                     the Android sync service's rules (nudge), whether a new build is out (newBuild),
                     the wording
 src/ui/             the screens: App (links, opening, quiet renewal), Home, PairView, SignInView,
-                    FirstSyncView, SyncView, TestView, Licenses, TrackmanLoginView
+                    FirstSyncView, SyncView, TestView, Licenses, TrackmanLoginView, PairHcpView, GolfdeView,
+                    HcpCard
 src/platform.ts     the phone's parts: secure store, storage, files, share sheet
 src/background.ts   the background task
 src/nudge.ts        the headless task behind the Android sync service
 modules/glmsync-sync  the Android sync service (Kotlin, a local Expo module; its manifest adds the
                     service to the app)
-scripts/            licenses.mjs (the licences page), release.sh (builds and updates at Expo)
+scripts/            licenses.mjs (the licences page), release.sh (builds and updates at Expo),
+                    golfde-page.mjs (bundles the golf.de window's page script into src/lib/golfdePageScript.ts)
 ```
 
 ## Development
@@ -126,6 +148,11 @@ pnpm --filter @glmsync/companion bundle:check  # Metro bundles for Android and i
 pnpm --filter @glmsync/companion start         # Expo dev server (a development build; the
                                                # web view and the secure store need one)
 ```
+
+After a change to `@glmsync/provider-golfde`'s page script (or `src/lib/golfdePage.ts`, or
+`scripts/golfde-page.entry.ts`): `node apps/companion/scripts/golfde-page.mjs` writes `src/lib/golfdePageScript.ts`
+again; a test fails until it is. There is deliberately no npm script for it: `package.json`'s scripts are part of the
+app's native fingerprint, and a changed script keeps every update from the builds out there until a new build.
 
 The Expo packages follow the SDK together (Dependabot leaves them alone): upgrade them all at once
 with `npx expo install --fix` and a new build.

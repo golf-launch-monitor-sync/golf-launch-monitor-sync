@@ -5,6 +5,7 @@
     glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp][&return=<URL to go back to>]
     glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
     glmsync://test?[target=<target base URL>&]code=<test code>           (1.8.0, spec/test-mode.md)
+    glmsync://read?kind=hcp                                              (1.11.0, spec/hcp.md)
     Android: a bound service with the action glmsync.intent.action.SYNC, data glmsync://sync?target=…,
              extra glmsync.extra.REASON = open | manual
     https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp]
@@ -26,11 +27,13 @@ TARGET = re.compile(r"^(?:https://[A-Za-z0-9.-]+(?::\d{1,5})?|http://(?:localhos
                     r"(?:/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$")
 SCHEME = re.compile(r"^([a-z][a-z0-9+.-]*):")
 NEVER_RETURN = {"javascript", "data", "file", "vbscript", "about", "blob", "glmsync"}
-LINK = re.compile(r"^glmsync://(pair|sync|test)/?(?:\?([^#]*))?$")
+LINK = re.compile(r"^glmsync://(pair|sync|test|read)/?(?:\?([^#]*))?$")
 MAX_LEN = 2048
 # Which target API a pairing's base URL speaks (1.10.0): `lm` (the launch monitor one, also when no kind is given)
 # or `hcp` (spec/hcp.md). Any other is invalid: pairing with an API the client doesn't know would only be refused.
 KINDS = {"lm", "hcp"}
+# What a read link may open (1.11.0): only a client's way of reading along for the handicap record (spec/hcp.md).
+READ_KINDS = {"hcp"}
 BAD_ESCAPE = re.compile(r"%(?![0-9A-Fa-f]{2})")  # a '%' that starts no escape: invalid, not guessed at
 
 
@@ -119,6 +122,17 @@ def parse_link(url: str) -> dict[str, Any]:
         if not CODE.fullmatch(p["code"]):
             return {"ok": False, "error": "invalid:code"}
         return {"ok": True, "action": "test", **{k: p[k] for k in ("target", "code") if k in p}}
+    if action == "read":
+        # 1.11.0: open the client's way of reading along for `kind` (a companion app: its window on golf.de). It
+        # never pairs, sends nothing by itself and has no `return` (a handicap pairing names no return_prefixes).
+        p = _params(query, {"kind"})
+        if isinstance(p, str):
+            return {"ok": False, "error": p}
+        if "kind" not in p:
+            return {"ok": False, "error": "missing:kind"}
+        if p["kind"] not in READ_KINDS:
+            return {"ok": False, "error": "invalid:kind"}
+        return {"ok": True, "action": "read", "kind": p["kind"]}
     p = _params(query, {"target", "return"})
     if isinstance(p, str):
         return {"ok": False, "error": p}

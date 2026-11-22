@@ -42,4 +42,6 @@ Not read: a scorecard's holes. golf.de shows them only as a picture.
   them leaves the page script). Never a recorded answer.
 
 The clients put it together: the browser extension (`apps/extension`, `golfde-main.ts` and `golfde-relay.ts`, with
-`HcpClient` in `@glmsync/browser`), and later the companion app's window.
+`HcpClient` in `@glmsync/browser`), and the companion app's golf.de window (`apps/companion`, `GolfdeView`: the same
+page script, bundled into `src/lib/golfdePageScript.ts` and injected before golf.de's own scripts, with the same
+`HcpClient`).

@@ -7,7 +7,8 @@
  * Nothing here asks golf.de anything: what arrives in `see` is what golf.de's own page loaded in the player's tab,
  * already made into dgvhcp/1 results inside the page (no names, no numbers). Every batch goes through the target's
  * plan (`manual`: the player opened the page) and only what is new or changed for that target is sent - a target
- * keeps one import per batch, so the background gathers a few pages before it sends (`SEND_AFTER_MS`).
+ * keeps one import per batch, so the background gathers a few pages before it sends (`SEND_AFTER_MS`). The companion
+ * app holds one too, for its golf.de window (`apps/companion/src/lib/hcp.ts`).
  *
  * What it keeps:
  * - in the **vault**: the pairings with their import tokens (each goes to its own target only);

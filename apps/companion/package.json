@@ -13,8 +13,10 @@
     "postinstall": "node scripts/licenses.mjs"
   },
   "dependencies": {
+    "@glmsync/browser": "workspace:*",
     "@glmsync/core": "workspace:*",
     "@glmsync/provider-demo": "workspace:*",
+    "@glmsync/provider-golfde": "workspace:*",
     "@glmsync/provider-trackman": "workspace:*",
     "@glmsync/spec": "workspace:*",
     "@react-native-async-storage/async-storage": "2.2.0",

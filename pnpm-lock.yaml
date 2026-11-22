@@ -26,12 +26,18 @@ importers:
 
   apps/companion:
     dependencies:
+      '@glmsync/browser':
+        specifier: workspace:*
+        version: link:../../packages/browser
       '@glmsync/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@glmsync/provider-demo':
         specifier: workspace:*
         version: link:../../packages/provider-demo
+      '@glmsync/provider-golfde':
+        specifier: workspace:*
+        version: link:../../packages/provider-golfde
       '@glmsync/provider-trackman':
         specifier: workspace:*
         version: link:../../packages/provider-trackman

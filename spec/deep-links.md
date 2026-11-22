@@ -15,6 +15,7 @@ The scheme is open: any app may implement the receiving side. Reference:
 glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp][&return=<URL to go back to>]
 glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
 glmsync://test?[target=<target base URL>&]code=<test code>
+glmsync://read?kind=hcp
 https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp]
 ```
 
@@ -36,12 +37,19 @@ https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<i
 - **test** (since 1.8.0) hands a client the test code of a target's test account, for a target it is
   already paired with; `target` picks the pairing when there are several. It never pairs, and it has no
   `return` (a key `return` is ignored like any unknown one). What the code is for: [test-mode.md](test-mode.md).
+- **read** (since 1.11.0) opens a client's way of reading along for `kind` - today only `hcp`: the companion app's
+  window on the provider's page of the handicap record ([hcp.md](hcp.md), *A client that only observes*), where
+  the player signs in and opens their record themselves. A target links it from a reminder that the record is due.
+  It never pairs (without a handicap pairing the app says to pair first), sends nothing by itself and takes no
+  `target` or `return` (one window reads for every handicap pairing, and a handicap pairing names no
+  `return_prefixes`); such keys are ignored like any unknown one.
 
 ## Reading a link
 
 A link comes from outside and is read strictly; anything unexpected makes it invalid:
 
-- exactly `glmsync://pair`, `glmsync://sync` or `glmsync://test` (an optional `/` before `?`), no fragment;
+- exactly `glmsync://pair`, `glmsync://sync`, `glmsync://test` or `glmsync://read` (an optional `/` before `?`), no
+  fragment;
 - `key=value` pairs separated by `&`, percent- and `+`-decoded as UTF-8. A `%` that starts no valid
   escape, or bytes that aren't UTF-8, make the link invalid. A known key twice, or empty: invalid.
   Unknown keys are ignored (a later version may add some);
@@ -50,7 +58,7 @@ A link comes from outside and is read strictly; anything unexpected makes it inv
 - `code` (pair, test): 6–64 of `0-9 A-Z a-z -`;
 - `provider`: a lower-case id (`^[a-z][a-z0-9_-]{1,39}$`);
 - `kind`: `lm` or `hcp`, nothing else (`HCP` or a kind of a later version is invalid: pairing with an API the
-  client doesn't speak would only be refused);
+  client doesn't speak would only be refused); in a read link required, and only `hcp`;
 - `return` (sync, and pair since 1.2.0): an absolute URL — `https://host/…`, `http://` to this machine, or an app's own scheme
   written `scheme://…`; never `javascript:`, `data:`, `file:`, `vbscript:`, `about:`, `blob:` or
   `glmsync:`. At most 2048 characters for every link.

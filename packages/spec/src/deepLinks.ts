@@ -14,19 +14,24 @@ export type LinkResult =
   | { ok: true; action: 'sync'; target?: string; return?: string }
   /** Since 1.8.0: a test code for a pairing (spec/test-mode.md); never pairs, never jumps back. */
   | { ok: true; action: 'test'; target?: string; code: string }
+  /** Since 1.11.0: open the client's way of reading along for `kind` (spec/hcp.md); never pairs, sends nothing by itself. */
+  | { ok: true; action: 'read'; kind: ReadKind }
   | { ok: false; error: string };
 
 const MAX_LEN = 2048;
 /** Which target API a pairing speaks (1.10.0): `lm` (spec/target-api.md, also without a kind) or `hcp` (spec/hcp.md). */
 export type PairKind = 'lm' | 'hcp';
 const KINDS: ReadonlySet<string> = new Set<PairKind>(['lm', 'hcp']);
+/** What a read link may open (1.11.0): only the handicap record's reading along. */
+export type ReadKind = 'hcp';
+const READ_KINDS: ReadonlySet<string> = new Set<ReadKind>(['hcp']);
 const CODE = /^[0-9A-Za-z-]{6,64}$/;
 const PROVIDER = /^[a-z][a-z0-9_-]{1,39}$/;
 const TARGET =
   /^(?:https:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?|http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?)(?:\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$/;
 const SCHEME = /^([a-z][a-z0-9+.-]*):/;
 const NEVER_RETURN = new Set(['javascript', 'data', 'file', 'vbscript', 'about', 'blob', 'glmsync']);
-const LINK = /^glmsync:\/\/(pair|sync|test)\/?(?:\?([^#]*))?$/;
+const LINK = /^glmsync:\/\/(pair|sync|test|read)\/?(?:\?([^#]*))?$/;
 const BAD_ESCAPE = /%(?![0-9A-Fa-f]{2})/;
 // What Python's str.isspace() counts: JS's \s plus the separators \x1c-\x1f.
 const SPACE = /[\s\x1c-\x1f]/;
@@ -81,6 +86,7 @@ const PAIR_KEYS = new Set(['target', 'code', 'provider', 'kind']);
 const PAIR_LINK_KEYS = new Set(['target', 'code', 'provider', 'kind', 'return']);
 const SYNC_KEYS = new Set(['target', 'return']);
 const TEST_KEYS = new Set(['target', 'code']);
+const READ_KEYS = new Set(['kind']);
 
 function pair(p: Map<string, string>): LinkResult {
   const target = p.get('target');
@@ -117,7 +123,7 @@ function test(p: Map<string, string>): LinkResult {
   return { ok: true, action: 'test', ...(target === undefined ? {} : { target }), code };
 }
 
-/** `glmsync://pair?…`, `glmsync://sync?…` or (1.8.0) `glmsync://test?…`. */
+/** `glmsync://pair?…`, `glmsync://sync?…`, (1.8.0) `glmsync://test?…` or (1.11.0) `glmsync://read?kind=hcp`. */
 export function parseLink(url: unknown): LinkResult {
   if (typeof url !== 'string' || url.length > MAX_LEN) return { ok: false, error: 'invalid:link' };
   const m = LINK.exec(url);
@@ -130,6 +136,15 @@ export function parseLink(url: unknown): LinkResult {
   if (m[1] === 'test') {
     const p = params(query, TEST_KEYS);
     return typeof p === 'string' ? { ok: false, error: p } : test(p);
+  }
+  if (m[1] === 'read') {
+    // No target, no return: a handicap pairing names no return_prefixes, and one window reads for all of them.
+    const p = params(query, READ_KEYS);
+    if (typeof p === 'string') return { ok: false, error: p };
+    const kind = p.get('kind');
+    if (kind === undefined) return { ok: false, error: 'missing:kind' };
+    if (!READ_KINDS.has(kind)) return { ok: false, error: 'invalid:kind' };
+    return { ok: true, action: 'read', kind: kind as ReadKind };
   }
   const p = params(query, SYNC_KEYS);
   if (typeof p === 'string') return { ok: false, error: p };
@@ -171,6 +186,11 @@ export function pairLink(target: string, code: string, provider?: string, back?:
   if (kind) q.push(`kind=${kind}`);
   if (back) q.push(`return=${encodeURIComponent(back)}`);
   return `glmsync://pair?${q.join('&')}`;
+}
+
+/** A read link for the companion app (1.11.0): opens its window on the provider's page of the handicap record. */
+export function readLink(kind: ReadKind = 'hcp'): string {
+  return `glmsync://read?kind=${kind}`;
 }
 
 /** A test link for the companion app (1.8.0); `target` picks the pairing when the client has several. */
