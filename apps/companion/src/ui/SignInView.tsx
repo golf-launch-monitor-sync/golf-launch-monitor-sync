@@ -13,7 +13,7 @@
 import { translator } from '@glmsync/browser/i18n';
 import { whoLine } from '@glmsync/browser/wizard';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { lang, t } from '../i18n';
 import type { WhoAnswer } from '../lib/runner';
 import { DEMO_CREDENTIAL, type ProviderId, type Services } from '../lib/services';
@@ -39,12 +39,15 @@ export function SignInView({
   done,
   backTo,
   target,
+  test,
 }: {
   svc: Services;
   provider: ProviderId;
   done: (signedIn: boolean) => void;
   backTo?: string;
   target?: string | null;
+  /** Small, under the sign-in: *Enter a test code* instead (test mode); absent where no pairing could take one. */
+  test?: () => void;
 }) {
   const cancel = () => done(false);
   const [step, setStep] = useState<Step>(provider === 'demo' ? { name: 'checking' } : { name: 'window', fresh: false, key: 0 });
@@ -97,6 +100,11 @@ export function SignInView({
             <Small>{t('provider.trackman.unofficial')}</Small>
             {backTo && <Small>{t('signin.thenBack', { name: backTo })}</Small>}
             {passkey && <Body warn>{t('signin.passkey')}</Body>}
+            {test && (
+              <Pressable accessibilityRole="link" onPress={test}>
+                <Text style={[s.link, { fontSize: 13 }]}>{t('test.enter')}</Text>
+              </Pressable>
+            )}
           </View>
           <Button label={t('action.cancel')} kind="secondary" onPress={cancel} />
         </View>
@@ -115,17 +123,20 @@ export function SignInView({
       </WizardFrame>
     );
   } else if (step.name === 'confirm') {
+    // Step 4: only the account and yes or no (the demo's made-up player has no "no": its way out is *Cancel*).
     const facts = whoLine(step.who.activities, translator(lang), lang);
     content = (
       <WizardFrame view={w.view} lines={w.lines} banner={paired}>
-        {backTo && <Body muted>{t('signin.thenBack', { name: backTo })}</Body>}
         <Body>{step.who.player ?? t('signin.noName')}</Body>
         {facts && <Body muted>{facts}</Body>}
         {provider === 'demo' && <Body muted>{t('provider.demo.notice')}</Body>}
         {step.others.length > 0 && <Body warn>{t('signin.otherAccount', { targets: step.others.join(', ') })}</Body>}
         <Button label={t('signin.yes')} onPress={() => void yes(step.token, step.who)} busy={saving} />
-        {provider !== 'demo' && <Button label={t('signin.no')} kind="secondary" onPress={() => again(true)} disabled={saving} />}
-        <Button label={t('action.cancel')} kind="secondary" onPress={cancel} disabled={saving} />
+        {provider !== 'demo' ? (
+          <Button label={t('signin.no')} kind="secondary" onPress={() => again(true)} disabled={saving} />
+        ) : (
+          <Button label={t('action.cancel')} kind="secondary" onPress={cancel} disabled={saving} />
+        )}
       </WizardFrame>
     );
   } else {

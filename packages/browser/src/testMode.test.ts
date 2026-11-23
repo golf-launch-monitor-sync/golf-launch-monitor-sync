@@ -172,6 +172,8 @@ describe('a test after the yes', () => {
     expect(await w.client.fetchTest(CODE)).toEqual({ ok: true, id });
     let s = await w.client.status();
     expect(s.testAsking).toMatchObject({ id, target: 'Example App', name: 'Leon, never switched', who: { player: 'Leon (Test T17)', activities: { count: 25 } } });
+    // The icon asks the question, not for a Trackman sign-in: the code stood in for it.
+    expect(s.attention).toBe('confirm');
     expect(w.target.imports).toHaveLength(0);
     // "Is this your account?" was played back through the guard, under the scenario's own account.
     expect((await w.client.guard.counts(guardAccount('trackman', SUBJECT))).day).toBeGreaterThan(0);

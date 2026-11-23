@@ -51,9 +51,13 @@ test('pairs this page when there is no extension, then fetches by hand', async (
   await page.getByTestId('use-key').click();
   await expect(page.getByTestId('confirm')).toContainText('Alex Example');
   await expect(page.getByTestId('confirm')).toContainText('Newest activity on 15 Nov 2026');
-  await expect(page.getByTestId('unconfirmed')).toHaveText('Not yet connected with Example App – confirm your account');
+  // Only the account and yes or no: the title asks; no line above it, no key box, no test code, no file.
+  await expect(page.getByTestId('unconfirmed')).toHaveCount(0);
+  await expect(page.getByTestId('wizard').locator('button')).toHaveText(['Yes, that’s me', 'No']);
   await expect(page.getByTestId('fetch-now')).toHaveCount(0);
-  await expect(page.getByTestId('wizard').getByTestId('paste')).toHaveCount(0);
+  await expect(page.getByTestId('paste')).toHaveCount(0);
+  await expect(page.getByTestId('test-enter')).toHaveCount(0);
+  await expect(page.locator('#file')).toBeHidden();
   // The yes: the first sync right away, shown plainly; then done, and the overview below.
   await page.getByTestId('confirm-yes').click();
   await expect(page.getByTestId('wizard-brought')).toHaveText('2 sessions, 0 rounds fetched', { timeout: 60_000 });
@@ -101,7 +105,7 @@ test('connecting’s steps in German; a first sync that fails stays on its step 
   await page.getByTestId('paste').fill(world.key());
   await page.getByTestId('use-key').click();
   await expect(page.getByTestId('wizard-title')).toHaveText('Ist das dein Trackman-Konto?');
-  await expect(page.getByTestId('unconfirmed')).toHaveText('Noch nicht mit Example App verbunden – Konto bestätigen');
+  await expect(page.getByTestId('unconfirmed')).toHaveCount(0);
   await expect(page.getByTestId('confirm')).toContainText('Neueste Aktivität am 15. Nov. 2026');
 
   // The app is down for a moment: the first sync fails, the step says why and offers *Fetch now*.
@@ -194,7 +198,11 @@ test('the main view: *Connect new* says to start in the app; back to the list', 
 });
 
 test('the bookmark copies the key the portal keeps, or the one its next call carries', async ({ page, world }) => {
-  await page.goto(`${WEB}/app.html`);
+  // The bookmark is where the sign-in is: connecting's step 3.
+  await page.goto(pairUrl());
+  await page.getByTestId('allow').click();
+  await page.getByTestId('service-trackman').click();
+  await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'signin');
   const href = (await page.getByTestId('bookmarklet').getAttribute('href')) as string;
   expect(href.startsWith('javascript:')).toBe(true);
   const code = decodeURIComponent(href.slice('javascript:'.length));

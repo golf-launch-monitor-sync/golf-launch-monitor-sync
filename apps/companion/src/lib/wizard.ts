@@ -19,8 +19,21 @@ export function beforeYes(asking: boolean): WizardFacts {
   return { kind: 'lm', signedIn: asking, asking, confirmed: false, first: 'waiting', brought: null, more: null };
 }
 
+/** Step 4 about a target's made-up account (test mode, spec/test-mode.md): its test code stood in for the sign-in. */
+export function testAccount(): WizardFacts {
+  return { ...beforeYes(true), test: true };
+}
+
 /**
- * Steps 3 and 4: the first sync under way or through, and what the pairings' runs brought (the one that brought most
+ * The pairings a test code can be for, where a provider's sign-in is asked for (small, *Enter a test code*, under it):
+ * that provider's, not in test mode already. None: no test code there.
+ */
+export function testKeys(pairings: readonly { key: string; provider: string }[], provider: string, testing: (key: string) => boolean): string[] {
+  return pairings.filter((p) => p.provider === provider && !testing(p.key)).map((p) => p.key);
+}
+
+/**
+ * Steps 5 and 6: the first sync under way or through, and what the pairings' runs brought (the one that brought most
  * speaks for all - each gets the same account's data).
  */
 export function firstLoad(runs: readonly (LastRun | null)[], phase: 'running' | 'through'): WizardFacts {

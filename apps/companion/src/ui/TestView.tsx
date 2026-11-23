@@ -1,41 +1,46 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * Test mode (spec/test-mode.md): the connected app's test code, typed here or brought by its link (a QR code on its
- * test page opens one), for one of this phone's pairings - a test code never pairs. The scenario comes from that
- * app with the pairing's import token; "Is this your account?" asks about it as about a sign-in, through the guard,
- * and nothing is kept or synced before the yes. Then the first sync, as after signing in.
+ * Test mode (spec/test-mode.md): the connected app's test code instead of the provider's sign-in - the wizard's step 3
+ * (*Enter a test code*, small under the sign-in), typed here or brought by its link (a QR code on its test page opens
+ * one), for one of this phone's pairings; a test code never pairs. The scenario comes from that app with the pairing's
+ * import token; step 4, "Is this your account?", asks about its made-up account as about a sign-in, through the guard,
+ * with only the account and yes or no; nothing is kept or synced before the yes. Then the first sync, as after signing
+ * in. A wrong or expired code stays on step 3 with its sentence.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { TEST_CODE, type TestScenario } from '@glmsync/spec';
 import { translator } from '@glmsync/browser/i18n';
-import { whoLine } from '@glmsync/browser/wizard';
+import { stepParts, targetOf, whoLine } from '@glmsync/browser/wizard';
 import { lang, t } from '../i18n';
 import type { KeyedPairing } from '../lib/pairings';
 import type { WhoAnswer } from '../lib/runner';
 import type { Services } from '../lib/services';
-import { testErrorText, when } from '../lib/text';
+import { testErrorText } from '../lib/text';
+import { beforeYes, testAccount, wizardText } from '../lib/wizard';
 import type { Screen } from './App';
-import { Body, Button, Card, colors, s, Small, Title } from './parts';
+import { Body, Button, colors, s, Small } from './parts';
+import { WizardFrame } from './WizardFrame';
 
 type Step =
   | { name: 'enter'; error?: string }
   | { name: 'fetching' }
-  | { name: 'confirm'; pairing: KeyedPairing; scenario: TestScenario; who: WhoAnswer }
-  | { name: 'error'; text: string };
+  | { name: 'confirm'; pairing: KeyedPairing; scenario: TestScenario; who: WhoAnswer };
 
 /** A code as typed: spaces a tester may copy or type along are taken out (a code has none). */
 export const cleanCode = (typed: string) => typed.replace(/\s+/g, '');
 
-export function TestView({ svc, keys, code: linked, go }: { svc: Services; keys: string[]; code?: string; go: (s: Screen) => void }) {
+export function TestView({ svc, keys, code: linked, back, go }: { svc: Services; keys: string[]; code?: string; back?: { url: string; name: string }; go: (s: Screen) => void }) {
   const pairings = keys.map((k) => svc.pairings.get(k)).filter((p): p is KeyedPairing => !!p);
   const [code, setCode] = useState(linked ?? '');
   const [chosen, setChosen] = useState<string | null>(pairings.length === 1 ? (pairings[0] as KeyedPairing).key : null);
   const [step, setStep] = useState<Step>({ name: 'enter' });
   const [saving, setSaving] = useState(false);
   const home = () => go({ name: 'home' });
+  const service = svc.providers.trackman.name;
+  const target = back?.name ?? targetOf(pairings.map((p) => p.target.name));
 
   const fetchTest = useCallback(
     async (key: string, typed: string) => {
@@ -46,7 +51,7 @@ export function TestView({ svc, keys, code: linked, go }: { svc: Services; keys:
       }
       const pairing = svc.pairings.get(key);
       if (!pairing) {
-        setStep({ name: 'error', text: t('test.pairFirst') });
+        setStep({ name: 'enter', error: t('test.pairFirst') });
         return;
       }
       setStep({ name: 'fetching' });
@@ -55,7 +60,8 @@ export function TestView({ svc, keys, code: linked, go }: { svc: Services; keys:
         const who = await svc.runner.testWho(scenario);
         setStep({ name: 'confirm', pairing, scenario, who });
       } catch (e) {
-        setStep({ name: 'error', text: testErrorText(e, Date.now(), lang, t) });
+        // Still step 3: the code's sentence where it was typed.
+        setStep({ name: 'enter', error: testErrorText(e, Date.now(), lang, t) });
       }
     },
     [svc],
@@ -75,28 +81,27 @@ export function TestView({ svc, keys, code: linked, go }: { svc: Services; keys:
       await svc.runner.startTest(pairing.key, scenario, who.player);
     } catch {
       setSaving(false);
-      setStep({ name: 'error', text: t('test.notKept') });
+      setStep({ name: 'enter', error: t('test.notKept') });
       return;
     }
     // The first sync from the scenario now, while the app is in front; then the history a chunk at a time (App).
-    go({ name: 'first', target: pairing.base });
+    go({ name: 'first', target: pairing.base, ...(back ? { back } : {}) });
   }
 
   let content;
   if (pairings.length === 0) {
+    const w = wizardText(beforeYes(false), lang, { service, target: null });
     content = (
-      <Card>
-        <Title>{t('test.title')}</Title>
+      <WizardFrame view={w.view} lines={w.lines} banner={false}>
         <Body warn>{t('test.pairFirst')}</Body>
         <Button label={t('action.back')} kind="secondary" onPress={home} />
-      </Card>
+      </WizardFrame>
     );
   } else if (step.name === 'enter') {
+    // Step 3, the test code's field open in place of the sign-in.
+    const w = wizardText(beforeYes(false), lang, { service, target });
     content = (
-      <Card>
-        <Title>{t('test.title')}</Title>
-        <Body muted>{t('test.what')}</Body>
-        <Small>{t('test.codeLabel')}</Small>
+      <WizardFrame view={w.view} lines={{ ...w.lines, title: t('test.enter') }}>
         <TextInput
           value={code}
           onChangeText={setCode}
@@ -107,6 +112,8 @@ export function TestView({ svc, keys, code: linked, go }: { svc: Services; keys:
           maxLength={80}
           returnKeyType="go"
           accessibilityLabel={t('test.codeLabel')}
+          placeholder={t('test.codeLabel')}
+          placeholderTextColor={colors.muted}
           onSubmitEditing={() => chosen && void fetchTest(chosen, code)}
           style={{ color: colors.text, borderWidth: 1, borderColor: colors.line, borderRadius: 10, padding: 12, fontSize: 18, letterSpacing: 2 }}
         />
@@ -121,44 +128,38 @@ export function TestView({ svc, keys, code: linked, go }: { svc: Services; keys:
         {step.error && <Body warn>{step.error}</Body>}
         <Button label={t('test.fetch')} onPress={() => chosen && void fetchTest(chosen, code)} disabled={!chosen || !cleanCode(code)} />
         <Button label={t('action.cancel')} kind="secondary" onPress={home} />
-      </Card>
-    );
-  } else if (step.name === 'fetching') {
-    content = (
-      <Card>
-        <Title>{t('test.fetching')}</Title>
-        <Body muted>{t('signin.checkingWhy')}</Body>
-      </Card>
-    );
-  } else if (step.name === 'confirm') {
-    const now = Date.now();
-    const { pairing, scenario, who } = step;
-    const facts = whoLine(who.activities, translator(lang), lang);
-    content = (
-      <Card>
-        <View style={[s.row, { justifyContent: 'space-between', alignItems: 'center' }]}>
-          <Title>{t('signin.isThisYou')}</Title>
-          <Text style={s.badge}>{t('test.badge')}</Text>
-        </View>
-        <Body>{who.player ?? t('signin.noName')}</Body>
-        {/* The newest activity, no count (as for a real account: a number there read as data on its way). */}
-        {facts && <Body muted>{facts}</Body>}
-        <Body muted>{t('test.scenario', { name: scenario.name, target: pairing.target.name })}</Body>
-        <Small>{t('test.notice', { target: pairing.target.name })}</Small>
-        <Small>{t('test.until', { until: when(scenario.valid_until, now, lang, t) })}</Small>
-        <Button label={t('signin.yes')} onPress={() => void yes(pairing, scenario, who)} busy={saving} />
-        <Button label={t('action.cancel')} kind="secondary" onPress={home} disabled={saving} />
-      </Card>
+      </WizardFrame>
     );
   } else {
-    content = (
-      <Card>
-        <Title>{t('signin.failed')}</Title>
-        <Body warn>{step.text}</Body>
-        <Button label={t('action.retry')} onPress={() => setStep({ name: 'enter' })} />
-        <Button label={t('action.cancel')} kind="secondary" onPress={home} />
-      </Card>
-    );
+    // Step 4: only the account and yes or no (stepParts).
+    const f = testAccount();
+    const w = wizardText(f, lang, { service, target: step.name === 'confirm' ? step.pairing.target.name : target });
+    const parts = stepParts('account', f, { confirming: saving });
+    if (step.name === 'fetching') {
+      content = <WizardFrame view={w.view} lines={{ ...w.lines, title: t('test.fetching') }} spinning />;
+    } else {
+      const { pairing, scenario, who } = step;
+      const facts = whoLine(who.activities, translator(lang), lang);
+      content = (
+        <WizardFrame view={w.view} lines={w.lines}>
+          {parts.includes('who') && (
+            <>
+              <Text style={s.badge}>{t('test.badge')}</Text>
+              <Body>{who.player ?? t('signin.noName')}</Body>
+              {/* The newest activity, no count (as for a real account: a number there read as data on its way). */}
+              {facts && <Body muted>{facts}</Body>}
+              <Small>{t('test.scenario', { name: scenario.name, target: pairing.target.name })}</Small>
+            </>
+          )}
+          {parts.includes('answer') && (
+            <>
+              <Button label={t('signin.yes')} onPress={() => void yes(pairing, scenario, who)} busy={saving} />
+              <Button label={translator(lang)('confirm.no')} kind="secondary" onPress={() => setStep({ name: 'enter' })} disabled={saving} />
+            </>
+          )}
+        </WizardFrame>
+      );
+    }
   }
   return <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">{content}</ScrollView>;
 }

@@ -49,6 +49,11 @@ export interface WizardFacts {
   brought: { sessions: number; rounds: number } | { results: number } | null;
   /** The older history: how many sessions still to come, `true` when that isn't known, `false` when complete. */
   more: number | boolean | null;
+  /**
+   * The account is a target's made-up one (test mode, spec/test-mode.md): its test code stood in for the sign-in, and
+   * nothing about it looks at the provider's sign-in.
+   */
+  test?: boolean;
 }
 
 export interface WizardView {
@@ -131,6 +136,135 @@ export function wizardLines(v: WizardView, f: WizardFacts, t: T, w: WizardWords)
   };
 }
 
+/**
+ * What a step shows below the frame's title - its own content and nothing else: nothing of another step, no general
+ * note above or below it. On *Is this your account?* only the account and *Yes, that's me* / *No*.
+ *
+ * - `banner`: the big line before the yes (*Not yet connected with … – sign in at …*); the sign-in step's alone.
+ * - `trouble`: what went wrong with the sign-in (run out, another account, said no to one; golf.de signed out …).
+ * - `signinHow`: one line how to sign in (where the sign-in is a button; the web app's key box brings its own words).
+ * - `switch`: sign in with another account. `signin`: the service's sign-in (Trackman's portal, the web app's key box,
+ *   golf.de's page). `forget`: forget the sign-in kept here (another account than the app's).
+ * - `testCode`: small, *Enter a test code* - a target's test account instead of the sign-in (launch monitors only).
+ * - `unofficial`: not affiliated with the provider, where its sign-in is.
+ * - `who` + `answer`: the account named and the yes or no; `whoFailed` + `retry`: it couldn't be asked (ask again, or
+ *   no); `checking`: the answer is on its way.
+ * - `failed` + `fetch`: the first data failed, and trying again; `waitingHow`: golf.de's pages to open; `send`: what
+ *   golf.de's pages showed, sent now.
+ * - `progress`: what came and what is still to come. `back`: back to the app. `cancel`: stop connecting with the app.
+ */
+export type StepPart =
+  | 'banner'
+  | 'trouble'
+  | 'signinHow'
+  | 'switch'
+  | 'signin'
+  | 'forget'
+  | 'testCode'
+  | 'unofficial'
+  | 'who'
+  | 'answer'
+  | 'whoFailed'
+  | 'retry'
+  | 'checking'
+  | 'failed'
+  | 'waitingHow'
+  | 'fetch'
+  | 'send'
+  | 'progress'
+  | 'back'
+  | 'cancel';
+
+/** What a client knows besides the facts, for `stepParts`. Absent: no. */
+export interface StepSituation {
+  /** Step 3: something went wrong with the sign-in that the player must hear there. */
+  trouble?: boolean;
+  /** Step 3: the sign-in is a button (`button`) or a box of the client's own (`box`: the web app's key). */
+  signin?: 'button' | 'box';
+  /** Step 3: the way to another account (after a no, or another account signed in). */
+  switchAccount?: boolean;
+  /** Step 3: the sign-in kept here can be forgotten (another account than the app's). */
+  forget?: boolean;
+  /** Step 3: this client takes a test code instead of the sign-in. */
+  testCode?: boolean;
+  /** Step 4: the service named the account (no: it couldn't be asked). */
+  named?: boolean;
+  /** Step 4: the answer is on its way. */
+  confirming?: boolean;
+  /** Step 5 (golf.de): results seen and not sent yet. */
+  fresh?: boolean;
+  /** Steps 3 and 5: one app to stop connecting with. */
+  cancel?: boolean;
+}
+
+export function stepParts(step: WizardStep, f: WizardFacts, s: StepSituation = {}): StepPart[] {
+  const out: StepPart[] = [];
+  const add = (on: unknown, ...p: StepPart[]) => {
+    if (on) out.push(...p);
+  };
+  const lm = f.kind === 'lm';
+  switch (step) {
+    case 'pair':
+    case 'service':
+      // `offerWizard`'s own: the app's address and *Allow*, then the services.
+      return out;
+    case 'signin':
+      add(true, 'banner');
+      add(s.trouble, 'trouble');
+      add(!s.trouble && s.signin === 'button', 'signinHow');
+      add(s.switchAccount, 'switch');
+      add(s.signin, 'signin');
+      add(s.forget, 'forget');
+      add(lm && s.testCode, 'testCode');
+      add(lm, 'unofficial');
+      add(s.cancel, 'cancel');
+      return out;
+    case 'account':
+      add(s.named !== false, 'who', 'answer');
+      add(s.named === false, 'whoFailed', 'retry');
+      add(s.confirming, 'checking');
+      return out;
+    case 'load':
+      add(f.first === 'failed', 'failed');
+      add(!lm && f.first === 'waiting', 'waitingHow');
+      // A launch monitor tries again; golf.de's pages are opened again (and what they showed is sent).
+      add(lm && f.first === 'failed', 'fetch');
+      add(!lm && f.first !== 'running', 'signin');
+      add(!lm && s.fresh && f.first !== 'running', 'send');
+      add(true, 'progress');
+      add(s.cancel, 'cancel');
+      return out;
+    case 'done':
+      return ['progress', 'back'];
+  }
+}
+
+/**
+ * A launch monitor client's situation for `stepParts`. A test's steps know nothing of the provider's sign-in: no
+ * trouble with it, no other account, no way out but its own (a test ends on its card in the overview).
+ */
+export function statusSituation(
+  s: Pick<ClientStatus, 'key' | 'rejected' | 'pairings' | 'testAsking'>,
+  f: Pick<WizardFacts, 'test'>,
+  o: { client: 'extension' | 'web'; switchAccount: boolean; signinBox: boolean; testCode: boolean; confirming: boolean; target: string | null },
+): StepSituation {
+  const k = s.key;
+  const test = !!f.test;
+  const rejected = k.state === 'none' && s.rejected;
+  const out: StepSituation = {
+    trouble: !test && (k.state === 'expired' || k.state === 'other' || rejected),
+    switchAccount: !test && o.client === 'extension' && o.switchAccount && (k.state === 'other' || rejected),
+    forget: !test && k.state === 'other',
+    testCode: o.testCode,
+    named: test || k.state !== 'confirm' || !!k.who,
+    confirming: o.confirming,
+    cancel: !test && !!o.target && s.pairings.filter((p) => !p.test).length === 1,
+  };
+  if (o.client === 'extension') out.signin = 'button';
+  else if (o.signinBox) out.signin = 'box';
+  return out;
+}
+
 /** The app's name for the big line: the one app, or none named when there are several. */
 export function targetOf(names: readonly string[]): string | null {
   const distinct = [...new Set(names)];
@@ -164,29 +298,46 @@ type Pairing = ClientStatus['pairings'][number];
 const through = (p: Pairing) => !!p.last_synced_at || p.last?.status === 'not_due' || p.last?.status === 'busy';
 
 /**
- * A launch monitor client's state as the wizard's facts; null when there is nothing to set up: no app connected
- * (apps in test mode need no sign-in), or a connection that has brought data before and only needs a new sign-in
- * (the overview says "sign in again" - the wizard is for connecting, not for every week's renewal).
+ * A launch monitor client's state as the wizard's facts; null when there is nothing to set up.
+ *
+ * A test code fetched is step 4 about its made-up account, whatever else stands (the tester just typed it, in step
+ * 3). Then the account signed in, while one of its apps isn't set up (`factsOfAccount`). Then a pairing in test mode,
+ * whose code stood in for the sign-in: its first data and done - never the provider's sign-in.
  */
-export function factsOfStatus(s: Pick<ClientStatus, 'key' | 'pairings' | 'running'>, busy: ReadonlySet<string> = new Set()): WizardFacts | null {
-  const real = s.pairings.filter((p) => !p.test);
-  if (!real.length) return null;
-  const done = real.some(through);
-  const k = s.key.state;
-  if (done && k !== 'ready' && k !== 'confirm') return null;
-  const running = real.some((p) => busy.has(p.id) || s.running.includes(p.id));
-  // The pairing that brought the most speaks for all: each gets the same account's data.
-  const best = real.reduce((a, b) => ((b.brought?.sessions ?? 0) + (b.brought?.rounds ?? 0) > (a.brought?.sessions ?? 0) + (a.brought?.rounds ?? 0) ? b : a));
-  const failed = !done && real.some((p) => p.last?.status === 'failed');
+export function factsOfStatus(s: Pick<ClientStatus, 'key' | 'pairings' | 'running'> & Partial<Pick<ClientStatus, 'testAsking'>>, busy: ReadonlySet<string> = new Set()): WizardFacts | null {
+  if (s.testAsking) return { kind: 'lm', test: true, signedIn: true, asking: true, confirmed: false, first: 'waiting', brought: null, more: null };
+  const account = factsOfAccount(s, busy);
+  if (account) return account;
+  const tests = s.pairings.filter((p) => !!p.test);
+  if (!tests.length) return null;
+  return { ...firstData(tests, s.running, busy), kind: 'lm', test: true, signedIn: true, asking: false, confirmed: true };
+}
+
+/** How the first data of these pairings stands (the one that brought most speaks for all). */
+function firstData(list: readonly Pairing[], running: readonly string[], busy: ReadonlySet<string>): Pick<WizardFacts, 'first' | 'brought' | 'more'> {
+  const done = list.some(through);
+  const now = list.some((p) => busy.has(p.id) || running.includes(p.id));
+  const best = list.reduce((a, b) => ((b.brought?.sessions ?? 0) + (b.brought?.rounds ?? 0) > (a.brought?.sessions ?? 0) + (a.brought?.rounds ?? 0) ? b : a));
+  const failed = !done && list.some((p) => p.last?.status === 'failed');
   return {
-    kind: 'lm',
-    signedIn: k === 'confirm' || k === 'ready',
-    asking: k === 'confirm',
-    confirmed: k === 'ready',
-    first: done ? 'through' : running ? 'running' : failed ? 'failed' : 'waiting',
+    first: done ? 'through' : now ? 'running' : failed ? 'failed' : 'waiting',
     brought: best.brought ? { sessions: best.brought.sessions, rounds: best.brought.rounds } : null,
     more: best.history?.done === true ? false : best.history?.done === false ? (typeof best.left === 'number' ? best.left : true) : null,
   };
+}
+
+/**
+ * The provider account's connection as the wizard's facts (its pairings not in test mode); null when there is nothing
+ * to set up: no app connected for it, or a connection that has brought data before and only needs a new sign-in (the
+ * overview says "sign in again" - the wizard is for connecting, not for every week's renewal).
+ */
+export function factsOfAccount(s: Pick<ClientStatus, 'key' | 'pairings' | 'running'>, busy: ReadonlySet<string> = new Set()): WizardFacts | null {
+  const real = s.pairings.filter((p) => !p.test);
+  if (!real.length) return null;
+  const k = s.key.state;
+  if (real.some(through) && k !== 'ready' && k !== 'confirm') return null;
+  // Each app gets the same account's data.
+  return { ...firstData(real, s.running, busy), kind: 'lm', signedIn: k === 'confirm' || k === 'ready', asking: k === 'confirm', confirmed: k === 'ready' };
 }
 
 /** The handicap record's state as the wizard's facts; null without a connection, or once established (as above). */

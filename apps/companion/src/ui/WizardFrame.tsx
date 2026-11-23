@@ -2,8 +2,8 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
  * Connecting as steps, the phone's frame for them (the steps and their words are `@glmsync/browser`'s wizard, the same
- * in the extension and the web app): the big line before the yes, the steps with their progress, the step's title, and
- * the step's own content below.
+ * in the extension and the web app): the big line before the yes (step 3's alone: `stepParts`), the steps with their
+ * progress, the step's title, and the step's own content below.
  */
 
 import type { WizardLines, WizardView } from '@glmsync/browser/wizard';
@@ -14,7 +14,7 @@ import { Card, colors, s, Small, Title } from './parts';
 export function WizardFrame({ view, lines, banner = true, spinning, children }: { view: WizardView; lines: WizardLines; banner?: boolean; spinning?: boolean; children?: ReactNode }) {
   return (
     <Card>
-      {banner && lines.unconfirmed && (
+      {banner && lines.unconfirmed && view.step === 'signin' && (
         <Text style={{ color: colors.warn, fontSize: 17, fontWeight: '800' }} accessibilityRole="alert">
           {lines.unconfirmed}
         </Text>

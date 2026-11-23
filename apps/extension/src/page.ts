@@ -42,9 +42,9 @@ export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; on
   let askingEnd: string | null = null;
   let testConfirming = false;
   let last: ClientStatus | null = null;
-  // *Enter a test code* below the panel (test mode): drawn apart, so typing survives the panel's redraws.
+  // *Enter a test code* (test mode): drawn apart, so typing survives the panel's redraws; the panel puts it under the
+  // sign-in.
   const entryRoot = document.createElement('div');
-  root.after(entryRoot);
   const entry = testEntry(entryRoot, t, async (code, id) => {
     const r = await send(id ? { type: 'test-fetch', code, id } : { type: 'test-fetch', code });
     if (r.ok && r.status) draw(r.status);
@@ -55,7 +55,7 @@ export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; on
     last = s;
     // "Connected, the data is on its way" while the first sync after the yes runs.
     if (confirmed && s.key.state === 'ready' && !s.running.length && s.pairings.some((p) => p.last)) confirmed = false;
-    renderStatus(root, s, { t, lang, now: Date.now(), busy, client: 'extension', asking, confirming, confirmed, askingEnd, testConfirming, memory }, actions);
+    renderStatus(root, s, { t, lang, now: Date.now(), busy, client: 'extension', asking, confirming, confirmed, askingEnd, testConfirming, memory, testSlot: entryRoot }, actions);
     entry.update(s);
     opts.onStatus?.(s);
   };
@@ -128,7 +128,7 @@ export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; on
   };
   void refresh();
   const timer = setInterval(() => void refresh(), 3000);
-  return { refresh, stop: () => clearInterval(timer), entry: entryRoot };
+  return { refresh, stop: () => clearInterval(timer) };
 }
 
 /**

@@ -17,6 +17,7 @@ import { keepWake } from '../wake';
 import { t } from '../i18n';
 import { Once, readIncoming, type Incoming } from '../lib/links';
 import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
+import { testKeys } from '../lib/wizard';
 import { services } from '../platform';
 import { Home } from './Home';
 import { Licenses } from './Licenses';
@@ -45,8 +46,11 @@ export type Screen =
   | { name: 'sync'; link: { target?: string; return?: string } }
   /** Just signed in: the first sync shown as the wizard's steps 3 and 4, then (with `back`) *Back to …*. */
   | { name: 'first'; target?: string; back?: { url: string; name: string } }
-  /** Test mode (spec 1.8.0): a test code for one of `keys`' pairings, typed or from a link. */
-  | { name: 'test'; keys: string[]; code?: string }
+  /**
+   * Test mode (spec 1.8.0): a test code for one of `keys`' pairings instead of the sign-in, typed (step 3) or from a
+   * link; `back` as after a sign-in.
+   */
+  | { name: 'test'; keys: string[]; code?: string; back?: { url: string; name: string } }
   | { name: 'licenses' };
 
 /** Coming to the front again within this long asks the plans only once. */
@@ -287,6 +291,9 @@ function Main() {
   /** The app the data of a provider goes to, for the wizard's words (null: several, or none). */
   const targetFor = (provider: string) => (svc ? targetOf(svc.pairings.list().filter((p) => p.provider === provider).map((p) => p.target.name)) : null);
 
+  // Where Trackman's sign-in is asked for, small, a test code instead: for its pairings not in test mode.
+  const testable = svc ? testKeys(svc.pairings.list(), 'trackman', (k) => !!svc.tests.of(k)) : [];
+
   let body;
   if (broken) {
     body = (
@@ -314,6 +321,7 @@ function Main() {
         provider={screen.provider}
         target={targetFor(screen.provider)}
         {...(screen.back ? { backTo: screen.back.name } : {})}
+        {...(screen.provider === 'trackman' && testable.length ? { test: () => setScreen({ name: 'test', keys: testable, ...(screen.back ? { back: screen.back } : {}) }) } : {})}
         done={(signedIn) => {
           renewal.allowAgain();
           // Signed in: the first sync, and when paired from a link with a return, back to the target app once it is
@@ -328,7 +336,7 @@ function Main() {
   } else if (screen.name === 'first') {
     body = <FirstSyncView svc={svc} {...(screen.back ? { back: screen.back } : {})} target={targetFor('trackman')} sync={firstSync} through={firstThrough} done={firstDone} />;
   } else if (screen.name === 'test') {
-    body = <TestView svc={svc} keys={screen.keys} {...(screen.code ? { code: screen.code } : {})} go={setScreen} />;
+    body = <TestView svc={svc} keys={screen.keys} {...(screen.code ? { code: screen.code } : {})} {...(screen.back ? { back: screen.back } : {})} go={setScreen} />;
   } else if (screen.name === 'licenses') {
     body = <Licenses back={home} />;
   } else if (screen.name === 'new') {

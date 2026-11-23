@@ -33,7 +33,8 @@ test('pairs for the handicap record, reads along on golf.de, sends on Send, and 
   // account is known already: the step is its question, and nothing goes out before the answer.
   await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'account');
   await expect(connect.getByTestId('wizard-progress')).toHaveText('Step 4 of 6');
-  await expect(connect.getByTestId('unconfirmed')).toHaveText('Not yet connected with Example App – confirm your account');
+  // Only the account and yes or no: the title asks.
+  await expect(connect.getByTestId('unconfirmed')).toHaveCount(0);
   await expect(connect.getByTestId('finished')).toHaveCount(0);
   expect(world.hcp.tokens.size).toBe(1);
   expect(world.target.tokens.size).toBe(0); // the launch monitor API heard nothing

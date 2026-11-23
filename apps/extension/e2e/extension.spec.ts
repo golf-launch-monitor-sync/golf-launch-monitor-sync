@@ -74,8 +74,12 @@ test('pairs from the app’s page, takes the sign-in from the portal, asks, and 
   await expect(connect.getByTestId('wizard-progress')).toHaveText('Step 4 of 6');
   await expect(connect.getByTestId('confirm')).toContainText('Alex Example');
   await expect(connect.getByTestId('confirm')).toContainText('Newest activity on 15 Nov 2026 at Example Range');
-  // Before the yes nothing that looks like data on its way (a tester once took "150 activities" for synced).
-  await expect(connect.getByTestId('unconfirmed')).toHaveText('Not yet connected with Example App – confirm your account');
+  // Before the yes nothing that looks like data on its way (a tester once took "150 activities" for synced) - and on
+  // the step only the account and yes or no: the title asks, no line above it, no portal, no test code.
+  await expect(connect.getByTestId('unconfirmed')).toHaveCount(0);
+  await expect(connect.locator('#status [data-test="wizard"] button')).toHaveText(['Yes, that’s me', 'No']);
+  await expect(connect.getByTestId('open-portal')).toHaveCount(0);
+  await expect(connect.getByTestId('test-enter')).toHaveCount(0);
   await expect(connect.locator('main')).not.toContainText('activities');
   await expect(connect.getByTestId('counts')).toHaveCount(0);
   await expect(connect.getByTestId('last')).toHaveCount(0);

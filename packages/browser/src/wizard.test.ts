@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { ClientStatus } from './client.ts';
 import type { HcpView } from './hcp.ts';
 import { translator } from './i18n.ts';
-import { factsOfHcp, factsOfOffer, factsOfStatus, hcpWhoLine, targetOf, whoLine, wizardLines, wizardOf, type WizardFacts } from './wizard.ts';
+import { factsOfAccount, factsOfHcp, factsOfOffer, factsOfStatus, hcpWhoLine, statusSituation, stepParts, targetOf, whoLine, wizardLines, wizardOf, type StepPart, type WizardFacts } from './wizard.ts';
 
 const en = translator('en');
 const de = translator('de');
@@ -116,10 +116,29 @@ describe('the question’s facts', () => {
 });
 
 describe('a launch monitor client’s state as steps', () => {
-  it('nothing to set up without a real app connected', () => {
+  it('nothing to set up without an app connected', () => {
     expect(factsOfStatus(status({ state: 'none' }, []))).toBeNull();
-    const test = { name: 'S', player: null, valid_until: '2026-12-01T00:00:00Z', at: 0, counts: null };
-    expect(factsOfStatus(status({ state: 'none' }, [pairing({ test })]))).toBeNull();
+  });
+
+  it('a test code stands in for the sign-in: its account is step 4, its first data step 5 - never the sign-in', () => {
+    const test = { name: 'S', player: 'Leon', valid_until: '2026-12-01T00:00:00Z', at: 0, counts: null };
+    const who = { player: 'Leon', activities: null };
+    const asking = { id: 'p1', target: 'Example App', name: 'S', who, valid_until: '2026-12-01T00:00:00Z', at: 0 };
+    const step = (s: Parameters<typeof factsOfStatus>[0]) => {
+      const f = factsOfStatus(s);
+      return f ? [wizardOf(f).step, !!f.test] : null;
+    };
+    // Fetched: "Is this your account?" about the made-up one, also while the provider's sign-in is missing or run out.
+    expect(step({ ...status({ state: 'none' }), testAsking: asking })).toEqual(['account', true]);
+    expect(step({ ...status({ state: 'expired', until: 0 }), testAsking: asking })).toEqual(['account', true]);
+    // Said yes: the first data from the scenario, then done - whatever the provider's sign-in is.
+    expect(step(status({ state: 'none' }, [pairing({ test })]))).toEqual(['load', true]);
+    expect(step(status({ state: 'expired', until: 0 }, [pairing({ test })], ['p1']))).toEqual(['load', true]);
+    const through = pairing({ test, last_synced_at: '2026-11-23T10:00:00Z', brought: { sessions: 1, rounds: 1, shots: 9 }, history: { done: false }, left: 4 });
+    expect(factsOfStatus(status({ state: 'none' }, [through]))).toMatchObject({ test: true, first: 'through', brought: { sessions: 1, rounds: 1 }, more: 4 });
+    // The account's own connection being set up comes first; the account's facts never count a test's pairing.
+    expect(step(status({ state: 'none' }, [pairing({ id: 'a' }), pairing({ id: 'b', test })]))).toEqual(['signin', false]);
+    expect(factsOfAccount(status({ state: 'none' }, [pairing({ test })]))).toBeNull();
   });
 
   it('follows the sign-in, the question and the first sync', () => {
@@ -174,5 +193,71 @@ describe('the handicap record’s state as steps', () => {
     expect(factsOfHcp(view({ account: 'confirmed', pairings: [sent] }))).toMatchObject({ first: 'through', brought: { results: 12 } });
     // Established, and golf.de signed out since: no setup, the overview says it.
     expect(factsOfHcp(view({ account: 'none', pairings: [sent] }))).toBeNull();
+  });
+});
+
+describe('what a step shows: its own content, nothing else', () => {
+  const lm = facts();
+  const hcp = facts({ kind: 'hcp' });
+  const OTHER_STEPS: StepPart[] = ['banner', 'trouble', 'signinHow', 'switch', 'signin', 'forget', 'testCode', 'unofficial', 'failed', 'fetch', 'progress', 'back', 'cancel'];
+
+  it('sign in: the sign-in, small the test code instead, the way out', () => {
+    expect(stepParts('signin', lm, { signin: 'button', testCode: true, cancel: true })).toEqual(['banner', 'signinHow', 'signin', 'testCode', 'unofficial', 'cancel']);
+    // The web app's key box brings its own words.
+    expect(stepParts('signin', lm, { signin: 'box', testCode: true })).toEqual(['banner', 'signin', 'testCode', 'unofficial']);
+    // What went wrong is said instead of how; the way to another account before the portal.
+    expect(stepParts('signin', lm, { signin: 'button', trouble: true, switchAccount: true, testCode: true })).toEqual(['banner', 'trouble', 'switch', 'signin', 'testCode', 'unofficial']);
+    expect(stepParts('signin', lm, { signin: 'button', trouble: true, forget: true })).toEqual(['banner', 'trouble', 'signin', 'forget', 'unofficial']);
+    // golf.de: no test code, and nothing about launch monitors.
+    expect(stepParts('signin', hcp, { signin: 'button', testCode: true })).toEqual(['banner', 'signinHow', 'signin']);
+  });
+
+  it('your account: only the account and yes or no - also for a test, also with everything else at hand', () => {
+    const all = { signin: 'button', trouble: true, switchAccount: true, forget: true, testCode: true, cancel: true, fresh: true } as const;
+    for (const f of [lm, facts({ test: true }), hcp]) {
+      expect(stepParts('account', f, all)).toEqual(['who', 'answer']);
+      for (const p of OTHER_STEPS) expect(stepParts('account', f, { ...all, confirming: true })).not.toContain(p);
+    }
+    expect(stepParts('account', lm, { confirming: true })).toEqual(['who', 'answer', 'checking']);
+    // Couldn't be asked: try again (or no).
+    expect(stepParts('account', lm, { named: false })).toEqual(['whoFailed', 'retry']);
+  });
+
+  it('the first data, and done', () => {
+    expect(stepParts('load', facts({ first: 'running' }), { cancel: true, testCode: true, signin: 'button' })).toEqual(['progress', 'cancel']);
+    expect(stepParts('load', facts({ first: 'failed' }))).toEqual(['failed', 'fetch', 'progress']);
+    expect(stepParts('load', facts({ kind: 'hcp', first: 'waiting' }), { fresh: true })).toEqual(['waitingHow', 'signin', 'send', 'progress']);
+    expect(stepParts('load', facts({ kind: 'hcp', first: 'running' }), { fresh: true })).toEqual(['progress']);
+    expect(stepParts('done', lm, { cancel: true, testCode: true })).toEqual(['progress', 'back']);
+    expect(stepParts('pair', lm)).toEqual([]);
+  });
+});
+
+describe('a launch monitor client’s situation', () => {
+  const test = { name: 'S', player: 'Leon', valid_until: '2026-12-01T00:00:00Z', at: 0, counts: null };
+  const o = { client: 'extension' as const, switchAccount: true, signinBox: false, testCode: true, confirming: false, target: 'Example App' };
+  const of = (key: ClientStatus['key'], over: { rejected?: boolean; pairings?: P[] } = {}, f: Pick<WizardFacts, 'test'> = {}) =>
+    statusSituation({ key, rejected: over.rejected ?? false, pairings: over.pairings ?? [pairing()], testAsking: null }, f, o);
+
+  it('the sign-in’s trouble and the ways out of it', () => {
+    expect(of({ state: 'none' })).toMatchObject({ trouble: false, switchAccount: false, forget: false, signin: 'button', testCode: true, cancel: true });
+    expect(of({ state: 'expired', until: 0 })).toMatchObject({ trouble: true, switchAccount: false });
+    expect(of({ state: 'other', until: 0 })).toMatchObject({ trouble: true, switchAccount: true, forget: true });
+    expect(of({ state: 'none' }, { rejected: true })).toMatchObject({ trouble: true, switchAccount: true });
+    expect(of({ state: 'confirm', until: 0, who: null })).toMatchObject({ named: false });
+    expect(statusSituation({ key: { state: 'none' }, rejected: false, pairings: [pairing()], testAsking: null }, {}, { ...o, client: 'web', signinBox: true })).toMatchObject({ signin: 'box', switchAccount: false });
+    // Several apps: their own buttons end them.
+    expect(of({ state: 'none' }, { pairings: [pairing({ id: 'a' }), pairing({ id: 'b' })] }).cancel).toBe(false);
+  });
+
+  it('a test knows nothing of the provider’s sign-in', () => {
+    for (const key of [{ state: 'none' }, { state: 'expired', until: 0 }, { state: 'other', until: 0 }] as ClientStatus['key'][]) {
+      const s = of(key, { rejected: true, pairings: [pairing({ test })] }, { test: true });
+      expect(s).toMatchObject({ trouble: false, switchAccount: false, forget: false, named: true, cancel: false });
+      const shown = [...stepParts('account', facts({ test: true, signedIn: true, asking: true }), s), ...stepParts('load', facts({ test: true, signedIn: true, confirmed: true }), s), ...stepParts('done', facts({ test: true }), s)];
+      expect(shown).not.toContain('signin');
+      expect(shown).not.toContain('trouble');
+      expect(shown).not.toContain('switch');
+    }
   });
 });

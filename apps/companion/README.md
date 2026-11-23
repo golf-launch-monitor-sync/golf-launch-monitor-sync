@@ -39,7 +39,8 @@ portal in a sign-in window - so that window lives here, in a small app that does
   this your account?* (its name and newest activity - no count), the first
   data shown plainly (*10 sessions, 6 rounds fetched*, how much older data is still to come), and done. Paired but
   never signed in here, the home page says so big (*Not yet connected with … – sign in at Trackman*) instead of a card
-  that looks as if things were running. golf.de the same: *Is this your golf.de account?* (its handicap index) in the
+  that looks as if things were running. Each step only its own content (`stepParts`): on *Is this your account?* the
+  account and yes or no. golf.de the same: *Is this your golf.de account?* (its handicap index) in the
   window's bar and on the home page's card; nothing goes to an app before the yes.
 - **The first sync before going back**: after signing in the app stays in front showing that it fetches until the
   first sync is through (at most two minutes; `src/lib/firstSync.ts`): iOS suspends an app in the back within seconds,
@@ -76,7 +77,8 @@ portal in a sign-in window - so that window lives here, in a small app that does
 - **Shows the counts** ("requests today 14 of 300"), and **exports the guard's log** of the last 14 days
   (times, kinds, statuses, durations - never content) through the share sheet.
 - **Test mode** (spec 1.8.0, [test-mode.md](../../spec/test-mode.md)): for testing a connected app by hand, the
-  app's test code - typed under *Enter a test code* at the bottom of the page, or brought by its link
+  app's test code instead of the sign-in - *Enter a test code*, small under Trackman's sign-in (the sign-in window's
+  bar, step 3 on the home page, a connection's card while it isn't signed in), or brought by its link
   `glmsync://test?code=…` (a QR code on the app's test page opens it) - for one of this phone's pairings; a test code
   never pairs (without a pairing: "connect with the app first"). The scenario comes from that app with the pairing's
   import token (`GET /test-scenario`, the code in its header); "Is this your account?" asks about its made-up

@@ -2,7 +2,8 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import { describe, expect, it } from 'vitest';
 import type { LastRun } from './runner.ts';
-import { beforeYes, firstLoad, wizardText } from './wizard.ts';
+import { stepParts } from '@glmsync/browser/wizard';
+import { beforeYes, firstLoad, testAccount, testKeys, wizardText } from './wizard.ts';
 
 const run = (over: Partial<LastRun> = {}): LastRun => ({ at: 0, reason: 'connect', status: 'synced', ...over });
 const words = { service: 'Trackman', target: 'Example App' };
@@ -28,5 +29,20 @@ describe('connecting as steps on the phone', () => {
     const f = firstLoad([run({ status: 'failed', error: 'unreachable' })], 'through');
     expect(f.first).toBe('failed');
     expect(wizardText(f, 'en', words).view.step).toBe('load');
+  });
+
+  it('a test code: offered where Trackman’s sign-in is, for its pairings not in test mode; its account is step 4', () => {
+    const pairings = [
+      { key: 'a', provider: 'trackman' },
+      { key: 'b', provider: 'trackman' },
+      { key: 'c', provider: 'demo' },
+    ];
+    expect(testKeys(pairings, 'trackman', (k) => k === 'b')).toEqual(['a']);
+    expect(testKeys(pairings, 'trackman', () => true)).toEqual([]);
+    const f = testAccount();
+    expect(f.test).toBe(true);
+    expect(wizardText(f, 'de', words).view.step).toBe('account');
+    // Only the account and yes or no.
+    expect(stepParts('account', f, { signin: 'button', testCode: true, cancel: true })).toEqual(['who', 'answer']);
   });
 });

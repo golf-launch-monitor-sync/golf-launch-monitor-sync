@@ -24,8 +24,8 @@ background, while your browser is open — and reads your handicap record along 
 3. The steps go on in the connect page (and from the popup's row): open the Trackman portal (`portal.trackmangolf.com`)
    and sign in, or just open it if you are.
    The extension takes your sign-in from there and asks **"Is this your Trackman account?"** (the name, the newest
-   activity and where - no count) before anything is fetched; until the answer the page shows nothing that looks as if
-   it were running, only, big, *Not yet connected with … – confirm your account*. *Yes*: the first data, shown plainly
+   activity and where - no count, and on that step nothing else but *Yes, that's me* / *No*) before anything is
+   fetched; until the answer the page shows nothing that looks as if it were running. *Yes*: the first data, shown plainly
    (*2 sessions, 0 rounds fetched*, then how much older data is still to come), and **Back to …**, which closes the
    tab. *No* offers **Sign in with another Trackman account**: Trackman's own sign-out, then the portal to sign in
    with your own (in the same tab is fine: the extension keeps looking for the new sign-in for a while after the
@@ -34,14 +34,18 @@ background, while your browser is open — and reads your handicap record along 
    **!**, the app is told too, and opening the portal again is enough.
 5. The app's own page in this browser can ask the extension to **fetch now** and show where its sign-in stands
    ([the bridge](#the-bridge-on-the-apps-page)).
-6. **Test mode** (for testing a connected app by hand, [spec/test-mode.md](../../spec/test-mode.md)): *Enter a test
-   code* below the Trackman sign-in step or a connection's details in the popup, for a connected app's test account - the code its test page
-   shows, or its test link (`glmsync://test?…`, which a browser can't open: copy it in). The scenario comes from that
-   app with the connection's token; **"Is this your account?"** about its made-up account; then that connection syncs
+6. **Test mode** (for testing a connected app by hand, [spec/test-mode.md](../../spec/test-mode.md)): in step 3, small
+   under *Open the Trackman portal* (and under it in a connection's details while it isn't signed in), *Enter a test
+   code*, for a connected app's test account instead of the sign-in - the code its test page shows, or its test link
+   (`glmsync://test?…`, which a browser can't open: copy it in). A code that isn't right stays there with its
+   sentence. The scenario comes from that app with the connection's token; step 4, **"Is this your account?"** about
+   its made-up account (only the account and yes or no); then that connection syncs
    from it exactly as from Trackman (the plan, the guard under the scenario's own account, the first sync, the older
    history a chunk per alarm), every batch marked `test: true`, Trackman never asked and no Trackman sign-in needed.
    A card *Test mode – made-up data* with *End test mode*; the scenario lies in the extension's IndexedDB until then,
-   until the connection ends or its end date passes. The sign-in and other connections go on as before.
+   until the connection ends or its end date passes. The sign-in and other connections go on as before. A connection
+   in test mode never asks for the Trackman sign-in: not in the list, its details or on the icon. With a Trackman
+   account signed in here already, *Forget the sign-in here* first.
 
 The popup opens on *Connect new* and the **list of connections** (Trackman's account, golf.de's record, a connection
 in test mode), each with where it stands - *running*, *loading the history*, *run out – sign in again*, *test mode*,

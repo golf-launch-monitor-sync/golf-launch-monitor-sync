@@ -12,8 +12,8 @@
  * bookmark, pasted), *Is this you?*, the first sync right after the yes, shown plainly, and done - the overview then
  * follows below.
  *
- * Test mode (spec/test-mode.md): *Enter a test code* at the bottom, for testing a connected app with
- * its made-up scenario instead of a Trackman account.
+ * Test mode (spec/test-mode.md): small, under the sign-in (the wizard's step 3, the overview's sign-in), *Enter a test
+ * code*, for testing a connected app with its made-up scenario instead of a Trackman account.
  */
 
 import { connectionsOfStatus, sortConnections, type ClientStatus, type KeyOutcome, type TestOutcome } from '@glmsync/browser';
@@ -30,6 +30,8 @@ const newView = $('new');
 const detail = $('detail');
 const panel = $('status');
 const keyBox = $('key');
+// Shown only where the panel puts it (the sign-in), never on its own.
+keyBox.remove();
 const fileBox = $('file');
 const busy = new Set<string>();
 let asking: string | null = null;
@@ -58,9 +60,8 @@ function show(next: View): void {
 }
 for (const el of [newView, detail]) fill(el.querySelector('.back-link') as HTMLElement, backLink(t, () => show('list')));
 
-// *Enter a test code* below the panel, drawn apart from it (typing survives a redraw).
+// *Enter a test code*, drawn apart from the panel (typing survives a redraw), which puts it under the sign-in.
 const testRoot = h('div', {});
-panel.after(testRoot);
 const entry = testEntry(testRoot, t, async (code, id) => {
   const out = await client.fetchTest(code, id);
   await refresh();
@@ -86,13 +87,13 @@ function draw(s: ClientStatus): void {
   const notes = endedNotes(s.ended, t, lang, () => void client.clearEnded().then(refresh));
   renderConnections(listRoot, sortConnections(connectionsOfStatus(s, busy)), { t }, { add: () => show('new'), open: () => show('detail') });
   if (notes.length) listRoot.prepend(...notes);
-  renderStatus(panel, s, { t, lang, now: Date.now(), busy, client: 'web', asking, askingEnd, testConfirming, confirming, memory }, actions);
   drawKey(s);
-  // The key's box belongs to the wizard's first step while it stands there; otherwise above the panel, as before.
+  // The key's box and the test code go where the sign-in is (the panel says where): the wizard's step 3, or the
+  // overview's sign-in for an app connected to the account.
+  renderStatus(panel, s, { t, lang, now: Date.now(), busy, client: 'web', asking, askingEnd, testConfirming, confirming, memory, signinSlot: keyBox, testSlot: testRoot }, actions);
+  // While a step stands, only it: the file comes with the overview, and only for the Trackman account's data.
   const step = panel.querySelector('[data-test="wizard"]')?.getAttribute('data-step');
-  const at = step === 'signin' ? panel.querySelector('[data-test="wizard"]') : null;
-  if (at && keyBox.parentElement !== at) at.querySelector('[data-test="wizard-title"]')?.after(keyBox);
-  else if (!at && keyBox.nextElementSibling !== panel) panel.before(keyBox);
+  fileBox.hidden = (!!step && step !== 'done') || (!s.pairings.some((p) => !p.test) && s.key.state !== 'ready');
   drawFile(s);
   entry.update(s);
 }

@@ -39,8 +39,6 @@ let allowedAt: number | null = null;
 let choosing = false;
 /** What went wrong with the last answer of the background, said on the step. */
 let failure: string | null = null;
-/** *Enter a test code*, drawn below the launch monitor's panel. */
-let lmEntry: HTMLElement | null = null;
 const panels: { lm?: { refresh(): Promise<void> }; hcp?: { refresh(): Promise<void> } } = {};
 
 /** This tab, closed: by the browser's tab API (an extension page may close its own tab), else by the window. */
@@ -143,8 +141,6 @@ function draw(): void {
   // Steps 1 and 2 stand alone; then only the service asked for (the handicap record, or the launch monitor).
   const lmHidden = !!offer || isHcp() || (!!statusNow && !statusNow.pairings.length && !!hcpNow && hcpNow.pairings.length > 0);
   panel.hidden = lmHidden;
-  // *Enter a test code* belongs to the launch monitor's steps (below them).
-  if (lmEntry) lmEntry.hidden = lmHidden;
   hcpRoot.hidden = !!offer;
   // The steps end with their own *Back to …*; a window opened when everything was done already just says so.
   const now = !offer && !isHcp() && !memory.walked && finished(p, statusNow);
@@ -176,7 +172,6 @@ const lm = statusPanel(panel, {
   },
 });
 panels.lm = lm;
-lmEntry = lm.entry;
 panels.hcp = hcpPanel(hcpRoot, {
   back: () => void closeTab(),
   onView: (v) => {

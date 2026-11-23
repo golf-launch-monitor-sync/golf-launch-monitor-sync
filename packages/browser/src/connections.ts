@@ -13,7 +13,7 @@
 import type { ClientStatus } from './client.ts';
 import type { HcpView } from './hcp.ts';
 import type { T } from './i18n.ts';
-import { factsOfHcp, factsOfStatus, wizardOf, type ServiceKind } from './wizard.ts';
+import { factsOfAccount, factsOfHcp, wizardOf, type ServiceKind } from './wizard.ts';
 
 export type ConnectionState = 'setup' | 'running' | 'history' | 'expired' | 'other' | 'failed' | 'test';
 
@@ -63,7 +63,7 @@ export function connectionsOfStatus(s: Pick<ClientStatus, 'key' | 'pairings' | '
   const out: Connection[] = [];
   const real = s.pairings.filter((p) => !p.test);
   if (real.length) {
-    const facts = factsOfStatus(s, busy);
+    const facts = factsOfAccount(s, busy);
     const k = s.key.state;
     out.push({
       id: 'lm',

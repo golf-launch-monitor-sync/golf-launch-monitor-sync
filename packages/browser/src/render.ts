@@ -12,7 +12,7 @@ import { hcpLastText } from './hcpView.ts';
 import { formatDate, formatDateTime, formatTime, type Lang, type T } from './i18n.ts';
 import { historyText, lastText, noticeText } from './view.ts';
 import { connectionLine, type Connection } from './connections.ts';
-import { factsOfHcp, factsOfOffer, factsOfStatus, hcpWhoLine, targetOf, whoLine, wizardLines, wizardOf, type ServiceKind, type WizardFacts, type WizardLines, type WizardView } from './wizard.ts';
+import { factsOfHcp, factsOfOffer, factsOfStatus, hcpWhoLine, statusSituation, stepParts, targetOf, whoLine, wizardLines, wizardOf, type ServiceKind, type StepPart, type WizardFacts, type WizardLines, type WizardView } from './wizard.ts';
 
 type Child = Node | string | null | undefined | false;
 
@@ -83,6 +83,13 @@ export interface RenderContext {
    * below). Without it the page shows the overview as soon as the first data is through.
    */
   memory?: WizardMemory;
+  /**
+   * *Enter a test code*, the client's box (`testEntry`): the panel puts it under the sign-in - the wizard's step 3,
+   * the overview's sign-in - and nowhere else. Absent: this client takes no test codes.
+   */
+  testSlot?: HTMLElement;
+  /** The web app's own sign-in (the key box), put where the sign-in is; the extension has *Open the Trackman portal*. */
+  signinSlot?: HTMLElement;
 }
 
 /** What a page remembers of the wizard while it is open. */
@@ -92,64 +99,42 @@ export interface WizardMemory {
 
 export function renderStatus(root: HTMLElement, s: ClientStatus, c: RenderContext, a: Actions): void {
   const { t, lang, now } = c;
+  const refocus = keepFocus(root);
   const parts: Child[] = [];
 
-  parts.push(...endedNotes(s.ended, t, lang, a.clearEnded));
-
-  // A test code fetched: "Is this your account?" about its made-up account, before anything is synced.
-  const ta = s.testAsking;
-  if (ta) {
-    const w = ta.who;
-    const facts = whoLine(w.activities, t, lang);
-    const wait = c.testConfirming ? { disabled: '' } : {};
-    parts.push(
-      h(
-        'div',
-        { class: 'confirm test', 'data-test': 'test-confirm' },
-        h('h3', {}, t('test.confirmTitle'), ' ', h('span', { class: 'badge' }, t('test.badge'))),
-        h('p', { class: 'who' }, w.player ?? t('confirm.noName')),
-        facts ? h('p', { class: 'muted' }, facts) : null,
-        h('p', { class: 'muted' }, t('test.scenario', { name: ta.name, target: ta.target })),
-        h('p', { class: 'muted small' }, t('test.notice', { target: ta.target })),
-        h('p', { class: 'muted small' }, t('test.until', { date: formatDateTime(Date.parse(ta.valid_until), lang) })),
-        h(
-          'div',
-          { class: 'row' },
-          button(t('confirm.yes'), () => a.confirmTest(true), { class: 'primary', 'data-test': 'test-yes', ...wait }),
-          button(t('confirm.no'), () => a.confirmTest(false), { 'data-test': 'test-no', ...wait }),
-        ),
-        c.testConfirming ? h('p', { class: 'muted', role: 'status' }, t('confirm.checking')) : null,
-      ),
-    );
-  }
-
-  // Connecting, as steps (wizard.ts): until the first data is through it stands in place of the overview - which
-  // shows nothing that looks like data on its way before the yes. A page that walked the steps shows "done" with the
-  // overview below; one opened afterwards just the overview.
+  // Connecting, as steps (wizard.ts): until the first data is through they stand in place of the overview, each step
+  // with its own content only. A page that walked the steps shows "done" with the overview below; one opened
+  // afterwards just the overview.
   const facts = factsOfStatus(s, c.busy);
   const view = facts ? wizardOf(facts) : null;
   if (view && view.step !== 'done' && c.memory) c.memory.walked = true;
   const wizard = view && facts && (view.step !== 'done' || c.memory?.walked) ? { view, facts } : null;
-  if (wizard) parts.push(statusWizard(s, wizard.view, wizard.facts, c, a));
   if (wizard && wizard.view.step !== 'done') {
-    parts.push(h('p', { class: 'muted small unofficial' }, t('app.unofficial.trackman')));
-    fill(root, ...parts);
+    fill(root, statusWizard(s, wizard.view, wizard.facts, c, a));
+    refocus();
     return;
   }
 
-  // The sign-in.
+  parts.push(...endedNotes(s.ended, t, lang, a.clearEnded));
+  if (wizard) parts.push(statusWizard(s, wizard.view, wizard.facts, c, a));
+
+  // The sign-in, where it matters: an app connected to the provider's account, or a sign-in kept here. A connection
+  // in test mode never asks for it - its test code stood in.
   const k = s.key;
-  const key: Child[] = [h('h2', {}, t('key.title'))];
-  if (k.state === 'confirm') {
-    key.push(confirmPart(s, c, a));
-  } else if (k.state === 'ready') {
-    if (c.confirmed) key.push(h('p', { class: 'note', 'data-test': 'confirmed', role: 'status' }, t('confirm.done')));
-    key.push(h('p', { 'data-test': 'key-ready' }, t('key.ready', { date: formatDateTime(k.until, lang) })));
-    key.push(h('div', { class: 'row' }, button(t('key.forget'), a.forgetKey, { class: 'link' })));
-  } else {
-    key.push(...signInPart(s, c, a));
+  const real = s.pairings.filter((p) => !p.test);
+  if (real.length || k.state === 'ready' || k.state === 'confirm') {
+    const key: Child[] = [h('h2', {}, t('key.title'))];
+    if (k.state === 'confirm') {
+      key.push(confirmPart(s, c, a));
+    } else if (k.state === 'ready') {
+      if (c.confirmed) key.push(h('p', { class: 'note', 'data-test': 'confirmed', role: 'status' }, t('confirm.done')));
+      key.push(h('p', { 'data-test': 'key-ready' }, t('key.ready', { date: formatDateTime(k.until, lang) })));
+      key.push(h('div', { class: 'row' }, button(t('key.forget'), a.forgetKey, { class: 'link' })));
+    } else {
+      key.push(...signInPart(s, c, a));
+    }
+    parts.push(h('section', { class: 'key' }, ...key));
   }
-  parts.push(h('section', { class: 'key' }, ...key));
 
   // The targets.
   const targets: Child[] = [h('h2', {}, t('pairings.title'))];
@@ -166,7 +151,7 @@ export function renderStatus(root: HTMLElement, s: ClientStatus, c: RenderContex
         h('h3', {}, t('pairing.connected', { name: p.name }), ' ', h('span', { class: 'muted small' }, p.host)),
         h('p', { 'data-test': 'last' }, last ?? t('pairing.never')),
         notice ? h('p', { class: 'note warn', 'data-test': 'notice' }, notice) : null,
-        p.other_account ? h('p', { class: 'note warn' }, t('last.other_account', { name: p.name })) : null,
+        p.other_account && !p.test ? h('p', { class: 'note warn' }, t('last.other_account', { name: p.name })) : null,
         history ? h('p', { class: 'muted small', 'data-test': 'history' }, history) : null,
         p.test ? testCard(p.id, p.name, p.test, c, a) : null,
         c.asking === p.id
@@ -216,6 +201,26 @@ export function renderStatus(root: HTMLElement, s: ClientStatus, c: RenderContex
 
   parts.push(h('p', { class: 'muted small unofficial' }, t('app.unofficial.trackman')));
   fill(root, ...parts);
+  refocus();
+}
+
+/**
+ * The page is drawn afresh every few seconds, and the boxes the client keeps (a test code, the web app's key) move into
+ * the new drawing: the field being typed in keeps its focus and cursor.
+ */
+function keepFocus(root: HTMLElement): () => void {
+  const el = document.activeElement;
+  if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) || !root.contains(el)) return () => undefined;
+  const [from, to] = [el.selectionStart, el.selectionEnd];
+  return () => {
+    if (!el.isConnected || document.activeElement === el) return;
+    el.focus();
+    try {
+      if (from !== null && to !== null) el.setSelectionRange(from, to);
+    } catch {
+      // a field without a selection: the focus is enough
+    }
+  };
 }
 
 /** Connections an app ended since the player last looked: one line each, with *OK* (the overview and the list). */
@@ -233,19 +238,13 @@ export function endedNotes(ended: readonly { name: string; at: string; why: stri
 }
 
 /**
- * Not signed in, run out, or another account than the app's: what to do (the overview's and the wizard's sign-in step).
- * In the wizard a first sign-in says one line and has one button; what went wrong (run out, another account, said no)
- * is said as in the overview.
+ * The overview's sign-in, for an app connected to the account: not signed in, run out, or another account than the
+ * app's - what to do. Under *Open the Trackman portal*, small, *Enter a test code* (the client's box, `testSlot`).
  */
-function signInPart(s: ClientStatus, c: RenderContext, a: Actions, inWizard = false): Child[] {
+function signInPart(s: ClientStatus, c: RenderContext, a: Actions): Child[] {
   const { t } = c;
   const k = s.key;
   const out: Child[] = [];
-  if (inWizard && k.state === 'none' && !s.rejected) {
-    // The web app puts its own key box (the bookmark) into the step.
-    if (c.client === 'extension') out.push(h('p', { 'data-test': 'key-none' }, t('wizard.signinHow')), h('div', { class: 'row' }, button(t('key.openPortal'), a.openPortal, { class: 'primary', 'data-test': 'open-portal' })));
-    return out;
-  }
   const [line, hint] =
     k.state === 'expired' ? (['key.expired', 'key.expiredHint'] as const) : k.state === 'other' ? (['key.other', 'key.otherHint'] as const) : (['key.none', 'key.noneHint'] as const);
   // The player said no to the account signed in to the portal here, or the target has another one: the way
@@ -259,12 +258,13 @@ function signInPart(s: ClientStatus, c: RenderContext, a: Actions, inWizard = fa
     out.push(h('p', { class: 'muted small' }, t('key.switchHint')));
   } else if (c.client === 'extension') {
     out.push(h('div', { class: 'row' }, button(t('key.openPortal'), a.openPortal, { class: 'primary', 'data-test': 'open-portal' })));
-  }
+  } else if (c.signinSlot) out.push(c.signinSlot);
   if (k.state === 'other') out.push(h('div', { class: 'row' }, button(t('key.forget'), a.forgetKey, { class: 'link' })));
+  else if (c.testSlot) out.push(c.testSlot);
   return out;
 }
 
-/** "Is this your Trackman account?": the name and the newest activity - no count, which read as data on its way. */
+/** "Is this your Trackman account?" outside the steps: the name and the newest activity - no count. */
 function confirmPart(s: ClientStatus, c: RenderContext, a: Actions): HTMLElement {
   const { t, lang } = c;
   const k = s.key;
@@ -292,33 +292,118 @@ function confirmPart(s: ClientStatus, c: RenderContext, a: Actions): HTMLElement
   );
 }
 
-/** The launch monitor's steps: each step's own content inside the shared frame. */
+/**
+ * The launch monitor's steps, inside the shared frame: what `stepParts` says the step shows, nothing else. A test
+ * code stands in for the sign-in (step 3); its made-up account is step 4, its first data step 5 - never the
+ * provider's sign-in.
+ */
 function statusWizard(s: ClientStatus, view: WizardView, facts: WizardFacts, c: RenderContext, a: Actions): HTMLElement {
   const { t, lang, now } = c;
-  const real = s.pairings.filter((p) => !p.test);
-  const target = targetOf(real.map((p) => p.name));
+  const k = s.key;
+  const test = !!facts.test;
+  const asking = s.testAsking;
+  // The pairings this connection is about: the test's own, or the account's.
+  const mine = test ? s.pairings.filter((p) => !!p.test || p.id === asking?.id) : s.pairings.filter((p) => !p.test);
+  const target = test && asking ? asking.target : targetOf(mine.map((p) => p.name));
   const lines = wizardLines(view, facts, t, { service: s.provider.name, target });
+  const only = mine.length === 1 ? mine[0] : null;
+  const situation = statusSituation(s, facts, {
+    client: c.client,
+    switchAccount: !!a.switchAccount,
+    signinBox: !!c.signinSlot,
+    testCode: !!c.testSlot,
+    confirming: !!(test ? c.testConfirming : c.confirming),
+    target,
+  });
+  const parts = stepParts(view.step, facts, situation);
+  const has = (p: StepPart) => parts.includes(p);
+  const failedPairing = mine.find((x) => x.last?.status === 'failed') ?? mine[0];
+  const wait = situation.confirming ? { disabled: '' } : {};
+  const account: Child[] = [];
   const body: Child[] = [];
-  if (view.step === 'signin') body.push(...signInPart(s, c, a, true));
-  else if (view.step === 'account') {
-    const confirm = confirmPart(s, c, a);
-    // The frame's title asks already.
-    confirm.querySelector('h3')?.remove();
-    body.push(confirm);
-  } else if (view.step === 'load') {
-    if (facts.first === 'failed') {
-      const p = real.find((x) => x.last?.status === 'failed') ?? real[0];
-      const fetching = !!p && (c.busy.has(p.id) || s.running.includes(p.id));
-      if (p) {
-        body.push(h('p', { class: 'note warn', 'data-test': 'wizard-failed' }, lastText(p, t, lang, now) ?? ''));
-        body.push(h('div', { class: 'row' }, button(fetching ? t('pairing.fetching') : t('pairing.fetchNow'), () => a.fetchNow(p.id), { class: 'primary', 'data-test': 'fetch-now', ...(fetching ? { disabled: '' } : {}) })));
+  for (const part of parts) {
+    switch (part) {
+      case 'banner':
+        break; // the frame's
+      case 'trouble':
+        if (k.state === 'expired') body.push(h('p', { class: 'note warn', 'data-test': 'key-expired' }, t('key.expired')), c.client === 'extension' ? h('p', { class: 'muted' }, t('key.expiredHint')) : null);
+        else if (k.state === 'other') body.push(h('p', { class: 'note warn', 'data-test': 'key-other' }, t('key.other')), h('p', { class: 'muted' }, t('key.otherHint')));
+        else body.push(h('p', { class: 'note', 'data-test': 'rejected' }, t('confirm.rejected')));
+        break;
+      case 'signinHow':
+        body.push(h('p', { 'data-test': 'key-none' }, t('wizard.signinHow')));
+        break;
+      case 'switch':
+        body.push(h('div', { class: 'row' }, button(t('key.switch'), () => a.switchAccount?.(), { class: 'primary', 'data-test': 'switch-account' })), h('p', { class: 'muted small' }, t('key.switchHint')));
+        break;
+      case 'signin':
+        if (situation.signin === 'box' && c.signinSlot) body.push(c.signinSlot);
+        else body.push(h('div', { class: 'row' }, button(t('key.openPortal'), a.openPortal, { ...(has('switch') ? {} : { class: 'primary' }), 'data-test': 'open-portal' })));
+        break;
+      case 'forget':
+        body.push(h('div', { class: 'row' }, button(t('key.forget'), a.forgetKey, { class: 'link' })));
+        break;
+      case 'testCode':
+        if (c.testSlot) body.push(c.testSlot);
+        break;
+      case 'unofficial':
+        body.push(h('p', { class: 'muted small unofficial' }, t('app.unofficial.trackman')));
+        break;
+      case 'who': {
+        const w = test ? asking?.who : k.state === 'confirm' ? k.who : null;
+        const line = w ? whoLine(w.activities, t, lang) : null;
+        account.push(
+          test ? h('p', {}, h('span', { class: 'badge' }, t('test.badge'))) : null,
+          h('p', { class: 'who' }, w?.player ?? t('confirm.noName')),
+          line ? h('p', { class: 'muted' }, line) : null,
+          test && asking ? h('p', { class: 'muted' }, t('test.scenario', { name: asking.name, target: asking.target })) : null,
+        );
+        break;
       }
+      case 'answer':
+        account.push(
+          h(
+            'div',
+            { class: 'row' },
+            button(t('confirm.yes'), () => (test ? a.confirmTest(true) : a.confirm(true)), { class: 'primary', 'data-test': test ? 'test-yes' : 'confirm-yes', ...wait }),
+            button(t('confirm.no'), () => (test ? a.confirmTest(false) : a.confirm(false)), { 'data-test': test ? 'test-no' : 'confirm-no', ...wait }),
+          ),
+        );
+        break;
+      case 'whoFailed':
+        account.push(h('p', { class: 'note warn' }, t(k.state === 'confirm' && k.error === 'guard' ? 'confirm.guard' : 'confirm.unavailable')));
+        break;
+      case 'retry':
+        account.push(h('div', { class: 'row' }, button(t('confirm.retry'), a.retryWho, { 'data-test': 'confirm-retry' }), button(t('confirm.no'), () => a.confirm(false))));
+        break;
+      case 'checking':
+        account.push(h('p', { class: 'muted', 'data-test': 'confirm-checking', role: 'status' }, t('confirm.checking')));
+        break;
+      case 'failed':
+        if (failedPairing) body.push(h('p', { class: 'note warn', 'data-test': 'wizard-failed' }, lastText(failedPairing, t, lang, now) ?? ''));
+        break;
+      case 'fetch':
+        if (failedPairing) {
+          const fetching = c.busy.has(failedPairing.id) || s.running.includes(failedPairing.id);
+          body.push(h('div', { class: 'row' }, button(fetching ? t('pairing.fetching') : t('pairing.fetchNow'), () => a.fetchNow(failedPairing.id), { class: 'primary', 'data-test': 'fetch-now', ...(fetching ? { disabled: '' } : {}) })));
+        }
+        break;
+      case 'progress':
+        body.push(...progressLines(lines));
+        break;
+      case 'back':
+        body.push(...backPart(t, target, a.back, c.client === 'web'));
+        break;
+      case 'cancel':
+        if (only && target) body.push(...cancelPart(only, target, c, a));
+        break;
+      case 'waitingHow':
+      case 'send':
+        break; // golf.de's
     }
   }
-  body.push(...progressLines(lines));
-  if (view.step === 'done') body.push(...backPart(t, target, a.back, c.client === 'web'));
-  else body.push(...cancelPart(real, target, c, a));
-  return wizardFrame(view, lines, body, facts.first !== 'failed');
+  if (account.length) body.unshift(h('div', { class: test ? 'confirm test' : 'confirm', 'data-test': test ? 'test-confirm' : 'confirm' }, ...account));
+  return wizardFrame(view, has('banner') ? lines : { ...lines, unconfirmed: null }, body, facts.first !== 'failed');
 }
 
 /** The frame every service's steps share: the big line before the yes, the steps, where it stands, the step's title. */
@@ -335,7 +420,7 @@ export function wizardFrame(view: WizardView, lines: WizardLines, body: Child[],
   );
 }
 
-/** Steps 3 and 4: what came, and what is still to come. */
+/** Steps 5 and 6: what came, and what is still to come. */
 export function progressLines(lines: WizardLines): Child[] {
   return [
     lines.brought ? h('p', { class: 'brought', 'data-test': 'wizard-brought' }, lines.brought) : null,
@@ -343,7 +428,7 @@ export function progressLines(lines: WizardLines): Child[] {
   ];
 }
 
-/** Step 4: back to the app - a button where this page can take the player there, else the sentence that they can. */
+/** Step 6: back to the app - a button where this page can take the player there, else the sentence that they can. */
 export function backPart(t: T, target: string | null, back: (() => void) | undefined, web = false): Child[] {
   const name = target ?? t('wizard.yourApp');
   return [
@@ -352,11 +437,9 @@ export function backPart(t: T, target: string | null, back: (() => void) | undef
   ];
 }
 
-/** Steps 1 to 3: a way out (with one app; with several the overview's own buttons do it). */
-function cancelPart(real: ClientStatus['pairings'], target: string | null, c: RenderContext, a: Actions): Child[] {
+/** Steps 3 and 5: a way out (with one app; with several the overview's own buttons do it). */
+function cancelPart(only: ClientStatus['pairings'][number], target: string, c: RenderContext, a: Actions): Child[] {
   const { t } = c;
-  const only = real.length === 1 ? real[0] : null;
-  if (!only || !target) return [];
   if (c.asking === only.id) {
     return [
       h(
@@ -403,62 +486,84 @@ export function hcpWizard(v: HcpView, c: HcpWizardContext, a: HcpWizardActions):
   if (view.step === 'done' && !c.memory?.walked) return null;
   const target = targetOf(v.pairings.map((p) => p.name));
   const lines = wizardLines(view, facts, t, { service: 'golf.de', target });
-  const open = (primary: boolean) => button(t('connect.openHcp'), a.openGolfde, { ...(primary ? { class: 'primary' } : {}), 'data-test': 'hcp-open' });
+  const only = v.pairings.length === 1 ? v.pairings[0] : null;
+  const parts = stepParts(view.step, facts, {
+    trouble: v.account === 'rejected' || v.signed_out || v.waiting,
+    signin: 'button',
+    confirming: !!c.confirming,
+    fresh: v.fresh > 0,
+    cancel: !!only && !!target,
+  });
+  const wait = c.confirming ? { disabled: '' } : {};
+  const account: Child[] = [];
   const body: Child[] = [];
-  if (view.step === 'signin') {
-    if (v.account === 'rejected') body.push(h('p', { class: 'note warn', 'data-test': 'hcp-rejected' }, t('wizard.hcpRejected')));
-    else if (v.signed_out) body.push(h('p', { class: 'note' }, t('hcp.signedOut')));
-    else if (v.waiting) body.push(h('p', { class: 'note' }, t('hcp.waiting')));
-    body.push(h('p', {}, t('connect.nextHcp')), h('div', { class: 'row' }, open(true)));
-  } else if (view.step === 'account') {
-    const wait = c.confirming ? { disabled: '' } : {};
-    body.push(
-      h(
-        'div',
-        { class: 'confirm', 'data-test': 'hcp-confirm' },
-        h('p', { class: 'who' }, hcpWhoLine(v.index, t, lang)),
-        h('p', { class: 'muted small' }, t('wizard.hcpWhy')),
-        h(
-          'div',
-          { class: 'row' },
-          button(t('confirm.yes'), () => a.confirm(true), { class: 'primary', 'data-test': 'hcp-confirm-yes', ...wait }),
-          button(t('confirm.no'), () => a.confirm(false), { 'data-test': 'hcp-confirm-no', ...wait }),
-        ),
-        c.confirming ? h('p', { class: 'muted', role: 'status' }, t('confirm.checking')) : null,
-      ),
-    );
-  } else if (view.step === 'load') {
-    const failed = v.pairings.find((p) => p.last?.status === 'failed');
-    if (facts.first === 'failed' && failed) body.push(h('p', { class: 'note warn', 'data-test': 'wizard-failed' }, hcpLastText(failed, t, lang, now) ?? ''));
-    else if (facts.first === 'waiting') body.push(h('p', {}, t('wizard.hcpWaiting', { target: target ?? t('wizard.yourApp') })));
-    body.push(
-      h(
-        'div',
-        { class: 'row' },
-        facts.first === 'running' ? null : open(!v.fresh),
-        v.fresh && facts.first !== 'running' ? button(t('hcp.send'), a.send, { class: 'primary', 'data-test': 'hcp-send' }) : null,
-      ),
-    );
-  }
-  body.push(...progressLines(lines));
-  if (view.step === 'done') body.push(...backPart(t, target, a.back));
-  else {
-    const only = v.pairings.length === 1 ? v.pairings[0] : null;
-    if (only && target) {
-      body.push(
-        c.asking === only.id
-          ? h(
-              'div',
-              { class: 'note warn' },
-              t('hcp.disconnectAsk', { name: only.name }),
-              h('div', { class: 'row' }, button(t('hcp.disconnect'), () => a.disconnect(only.id), { class: 'primary', 'data-test': 'hcp-disconnect-yes' }), button(t('connect.cancel'), () => a.askDisconnect(null))),
-            )
-          : h('div', { class: 'row' }, button(t('wizard.cancel', { target }), () => a.askDisconnect(only.id), { class: 'link', 'data-test': 'hcp-disconnect' })),
-      );
+  for (const part of parts) {
+    switch (part) {
+      case 'trouble':
+        if (v.account === 'rejected') body.push(h('p', { class: 'note warn', 'data-test': 'hcp-rejected' }, t('wizard.hcpRejected')));
+        else body.push(h('p', { class: 'note' }, t(v.signed_out ? 'hcp.signedOut' : 'hcp.waiting')));
+        break;
+      case 'signinHow':
+        body.push(h('p', {}, t('connect.nextHcp')));
+        break;
+      case 'signin':
+        // On step 5 the button to send comes first once there is something to send.
+        body.push(h('div', { class: 'row' }, button(t('connect.openHcp'), a.openGolfde, { ...(parts.includes('send') ? {} : { class: 'primary' }), 'data-test': 'hcp-open' })));
+        break;
+      case 'who':
+        account.push(h('p', { class: 'who' }, hcpWhoLine(v.index, t, lang)));
+        break;
+      case 'answer':
+        account.push(
+          h(
+            'div',
+            { class: 'row' },
+            button(t('confirm.yes'), () => a.confirm(true), { class: 'primary', 'data-test': 'hcp-confirm-yes', ...wait }),
+            button(t('confirm.no'), () => a.confirm(false), { 'data-test': 'hcp-confirm-no', ...wait }),
+          ),
+        );
+        break;
+      case 'checking':
+        account.push(h('p', { class: 'muted', role: 'status' }, t('confirm.checking')));
+        break;
+      case 'failed': {
+        const failed = v.pairings.find((p) => p.last?.status === 'failed');
+        if (failed) body.push(h('p', { class: 'note warn', 'data-test': 'wizard-failed' }, hcpLastText(failed, t, lang, now) ?? ''));
+        break;
+      }
+      case 'waitingHow':
+        body.push(h('p', {}, t('wizard.hcpWaiting', { target: target ?? t('wizard.yourApp') })));
+        break;
+      case 'send':
+        body.push(h('div', { class: 'row' }, button(t('hcp.send'), a.send, { class: 'primary', 'data-test': 'hcp-send' })));
+        break;
+      case 'progress':
+        body.push(...progressLines(lines));
+        break;
+      case 'back':
+        body.push(...backPart(t, target, a.back));
+        break;
+      case 'cancel':
+        if (only && target) {
+          body.push(
+            c.asking === only.id
+              ? h(
+                  'div',
+                  { class: 'note warn' },
+                  t('hcp.disconnectAsk', { name: only.name }),
+                  h('div', { class: 'row' }, button(t('hcp.disconnect'), () => a.disconnect(only.id), { class: 'primary', 'data-test': 'hcp-disconnect-yes' }), button(t('connect.cancel'), () => a.askDisconnect(null))),
+                )
+              : h('div', { class: 'row' }, button(t('wizard.cancel', { target }), () => a.askDisconnect(only.id), { class: 'link', 'data-test': 'hcp-disconnect' })),
+          );
+        }
+        break;
+      default:
+        break; // a launch monitor's (the banner is the frame's)
     }
   }
+  if (account.length) body.unshift(h('div', { class: 'confirm', 'data-test': 'hcp-confirm' }, ...account));
   // Waiting for pages to be opened isn't "running": the spinner only while something is sent.
-  return { el: wizardFrame(view, lines, body, facts.first === 'running'), done: view.step === 'done' };
+  return { el: wizardFrame(view, parts.includes('banner') ? lines : { ...lines, unconfirmed: null }, body, facts.first === 'running'), done: view.step === 'done' };
 }
 
 export interface OfferContext {
@@ -568,8 +673,11 @@ function testCard(id: string, target: string, test: NonNullable<ClientStatus['pa
 }
 
 /**
- * *Enter a test code* at the bottom of a page (spec/test-mode.md): kept apart from the status panel, which is drawn
- * afresh every few seconds - typing must survive that. It redraws only when what it shows changes.
+ * *Enter a test code* (spec/test-mode.md): small, under the sign-in - a target's test account instead of the
+ * provider's. Opened, the field (the test link pasted works too); a code that is right goes on to *Is this your
+ * account?*, one that isn't stays here with its sentence. The client puts `root` into the panel as its `testSlot`; it
+ * is kept apart from the panel, which is drawn afresh every few seconds - typing survives that, and it redraws only
+ * when what it shows changes.
  */
 export function testEntry(
   root: HTMLElement,
@@ -614,8 +722,8 @@ export function testEntry(
     const sig = JSON.stringify([open, busy, error, chosen, !!s.testAsking, s.pairings.map((p) => [p.id, p.name])]);
     if (!force && sig === drawn) return;
     drawn = sig;
-    // While a test's question is open, it is answered in the panel first.
-    if (s.testAsking) {
+    // While a test's question is open it is the next step's; there is nothing to enter.
+    if (s.testAsking || !s.pairings.length) {
       fill(root);
       return;
     }
@@ -625,7 +733,7 @@ export function testEntry(
         draw(true);
         input.focus();
       };
-      fill(root, h('div', { class: 'row test-entry' }, button(t('test.enter'), enter, { class: 'link', 'data-test': 'test-enter' })));
+      fill(root, h('div', { class: 'row test-entry' }, button(t('test.enter'), enter, { class: 'link small', 'data-test': 'test-enter' })));
       return;
     }
     const several = s.pairings.length > 1;
@@ -641,11 +749,9 @@ export function testEntry(
     fill(
       root,
       h(
-        'section',
+        'div',
         { class: 'test-entry', 'data-test': 'test-entry' },
-        h('h2', {}, t('test.title')),
-        h('p', { class: 'muted small' }, t('test.what')),
-        s.pairings.length ? h('p', {}, input) : h('p', { class: 'note warn', 'data-test': 'test-error' }, t('test.error.unpaired')),
+        h('p', {}, input),
         several
           ? h(
               'div',
@@ -658,9 +764,7 @@ export function testEntry(
         h(
           'div',
           { class: 'row' },
-          s.pairings.length
-            ? button(busy ? t('test.fetching') : t('test.fetch'), () => void go(), { class: 'primary', 'data-test': 'test-fetch', ...(busy || (several && !chosen) ? { disabled: '' } : {}) })
-            : null,
+          button(busy ? t('test.fetching') : t('test.fetch'), () => void go(), { class: 'primary', 'data-test': 'test-fetch', ...(busy || (several && !chosen) ? { disabled: '' } : {}) }),
           button(t('connect.cancel'), cancel, { class: 'link', 'data-test': 'test-cancel' }),
         ),
       ),

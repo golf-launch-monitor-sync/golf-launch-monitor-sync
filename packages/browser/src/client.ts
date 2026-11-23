@@ -963,11 +963,14 @@ export class BrowserClient {
         counts = null;
       }
     }
-    let attention: ClientStatus['attention'] = null;
-    if (key.state === 'confirm') attention = 'confirm';
-    else if (key.state === 'other' || real.some((e) => e.other_account)) attention = 'other_account';
-    else if (real.length && (key.state === 'none' || key.state === 'expired')) attention = 'sign_in';
     const asking = await this.asking();
+    const testAsking = asking && entries.some((e) => e.id === asking.id) && !over(asking.valid_until, this.now()) ? asking : null;
+    // A test code just fetched is answered first, and its pairing needs no sign-in (its code stood in for it).
+    const signing = real.filter((e) => e.id !== testAsking?.id);
+    let attention: ClientStatus['attention'] = null;
+    if (key.state === 'confirm' || testAsking) attention = 'confirm';
+    else if (key.state === 'other' || signing.some((e) => e.other_account)) attention = 'other_account';
+    else if (signing.length && (key.state === 'none' || key.state === 'expired')) attention = 'sign_in';
     return {
       kind: this.opts.kind,
       provider: { id: this.provider.id, name: this.provider.name, ...(this.provider.notice ? { notice: this.provider.notice } : {}) },
@@ -978,7 +981,7 @@ export class BrowserClient {
         // In test mode the pairing is signed in with its scenario.
         return { ...e, host: hostOf(e.base), signin: test ? 'ready' : signinOf(key, e), ...(test ? { test } : {}) };
       }),
-      testAsking: asking && entries.some((e) => e.id === asking.id) && !over(asking.valid_until, this.now()) ? asking : null,
+      testAsking,
       running: [...this.active],
       player: key.state === 'ready' ? await this.player(subject) : null,
       ended: await readList<Farewell>(this.opts.storage, ENDED),

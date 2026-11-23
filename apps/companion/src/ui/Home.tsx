@@ -4,8 +4,8 @@
  * The main view: *Connect new* and the list of connections (Connections.tsx; one per provider account, per pairing in
  * test mode, and golf.de's record), each with where it stands. A row opens its details (`focus`): the provider's
  * sign-in (with how much was asked of the provider today), the apps it goes to and how their last sync went, fetching
- * now, the request log to export, *Enter a test code* - or the handicap record read along on golf.de (HcpCard), or a
- * test's card.
+ * now, the request log to export - or the handicap record read along on golf.de (HcpCard), or a test's card. Under
+ * Trackman's sign-in, small, *Enter a test code* instead; a connection in test mode never asks for the sign-in.
  */
 
 import type { GuardCounts } from '@glmsync/core';
@@ -23,7 +23,7 @@ import { countsText, errorText, runText, when } from '../lib/text';
 import { shareFile, version } from '../platform';
 import type { Screen } from './App';
 import { targetOf } from '@glmsync/browser/wizard';
-import { beforeYes, wizardText } from '../lib/wizard';
+import { beforeYes, testKeys, wizardText } from '../lib/wizard';
 import { connectionsOfApp } from '../lib/connections';
 import { BackToList, Connections } from './Connections';
 import { HcpCard, useHcpView } from './HcpCard';
@@ -153,6 +153,8 @@ export function Home({
   const toList = () => go({ name: 'home' });
   // The details' apps: the provider's pairings (its test pairings too), or the one in test mode.
   const focused = pairings.filter((p) => (lmFocus ? p.provider === lmFocus : p.key === testFocus));
+  // Under Trackman's sign-in, small, a test code instead (for its pairings not in test mode); nowhere else.
+  const testable = testKeys(pairings, 'trackman', (k) => !!svc.tests.of(k));
   const setupText = setup ? wizardText(beforeYes(false), lang, { service: svc.providers.trackman.name, target: targetOf(lmPairings.map((p) => p.target.name)) }) : null;
 
   return (
@@ -196,6 +198,7 @@ export function Home({
         <WizardFrame view={setupText.view} lines={setupText.lines}>
           <Small>{t('provider.trackman.unofficial')}</Small>
           <Button label={t('provider.signIn')} onPress={() => go({ name: 'signin', provider: 'trackman' })} />
+          {testable.length > 0 && <TestLink onPress={() => go({ name: 'test', keys: testable })} />}
         </WizardFrame>
       )}
 
@@ -247,6 +250,7 @@ export function Home({
                 <Body muted>{t('provider.signedOut')}</Body>
               )}
               {line && <Small>{line}</Small>}
+              {id === 'trackman' && (!valid || !signIn) && testable.length > 0 && <TestLink onPress={() => go({ name: 'test', keys: testable })} />}
               <View style={s.row}>
                 {(!valid || !signIn) && <Button label={had ? t('provider.signInAgain') : t('provider.signIn')} onPress={() => go({ name: 'signin', provider: id })} />}
                 {valid && (
@@ -307,11 +311,6 @@ export function Home({
       )}
 
       <View style={{ gap: 8, paddingBottom: 24 }}>
-        {lmFocus && focused.length > 0 && (
-          <Pressable accessibilityRole="link" onPress={() => go({ name: 'test', keys: focused.map((p) => p.key) })}>
-            <Text style={s.link}>{t('test.enter')}</Text>
-          </Pressable>
-        )}
         {!focus && (
           <>
             <Pressable accessibilityRole="link" onPress={() => go({ name: 'licenses' })}>
@@ -325,5 +324,14 @@ export function Home({
         )}
       </View>
     </ScrollView>
+  );
+}
+
+/** Small, under the sign-in: *Enter a test code* instead of it (test mode). */
+function TestLink({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="link" onPress={onPress}>
+      <Text style={[s.link, { fontSize: 13 }]}>{t('test.enter')}</Text>
+    </Pressable>
   );
 }
