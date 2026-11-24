@@ -73,7 +73,7 @@ describe('which messages are taken', () => {
 
   it('a bridge request only from a target’s page, read as strictly as the spec says', () => {
     const request = { glmsync: 'request', v: 1, id: 'r-1', ask: 'fetch', extra: 'ignored' };
-    expect(accept({ type: 'bridge', request }, 'target-page')).toEqual({ type: 'bridge', request: { id: 'r-1', ask: 'fetch' } });
+    expect(accept({ type: 'bridge', request }, 'target-page')).toEqual({ type: 'bridge', request: { id: 'r-1', ask: 'fetch', reason: 'manual' } });
     expect(accept({ type: 'bridge', request }, 'extension')).toBeNull();
     expect(accept({ type: 'bridge', request }, 'portal')).toBeNull();
     expect(accept({ type: 'bridge', request: { ...request, ask: 'unpair' } }, 'target-page')).toBeNull();

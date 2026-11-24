@@ -113,7 +113,8 @@ What it does, and doesn't:
 of each connected app's address - the address you allowed when connecting, so no new permission - registered at
 run time for those addresses only, top frame only, and removed with the connection. The app's page can ask where
 the extension stands (`state`: the sign-in, whether it is fetching) and to **fetch now** (`fetch`): a manual sync of
-that app's connection, the plan first and the guard as always, not again within 10 s, answered `started` and then
+that app's connection (since 0.8.0, spec 1.12.0, one with reason `open` when the app says you came back to it - the
+app's plan then decides), the plan first and the guard as always, not again within 10 s, answered `started` and then
 `finished` - or `signin`, `guard` (until when), `busy`, `unpaired`. The page never gets your sign-in, the import
 token, a name or an account. `bridge.ts` holds the logic (tested without a browser).
 

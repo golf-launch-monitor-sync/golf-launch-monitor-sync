@@ -62,7 +62,10 @@ A client reads it with [`is_wake`](reference/wake.py) and ignores every other pu
   ([planning.md](planning.md)), or the next chunk of the older history while it isn't done;
 - the last wake of that client was `gap_s` (**1200 s**, 20 minutes) ago or longer — the platforms advise two
   or three silent pushes an hour at most and throttle an app that gets more. A target can't tell a wake
-  the platform dropped from one the client ignored, so the gap holds either way;
+  the platform dropped from one the client ignored, so the gap holds either way. One exception (since
+  1.12.0, `back_at`): the first wake after the player came back to the target app
+  ([planning.md](planning.md), *When the player is there*) needs only `back_gap_s` (**300 s**) - it is the
+  wake the player waits for, and it comes once per return;
 - no time the client reported it can't fetch before has still to come (`notice.until` of a guard limit
   or the provider's pause, [olmd.md](olmd.md)).
 

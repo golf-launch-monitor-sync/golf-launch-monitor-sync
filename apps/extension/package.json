@@ -1,6 +1,6 @@
 {
   "name": "@glmsync/extension",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "license": "MIT",
   "description": "Golf Stats Sync as a browser extension (Manifest V3; Chrome, Edge, Firefox): syncs launch monitor data in the background when a target's plan says so, and reads the handicap record along on golf.de.",

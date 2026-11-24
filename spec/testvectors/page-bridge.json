@@ -1,6 +1,6 @@
 {
-  "$comment": "The browser extension's bridge on a paired target's page (spec/page-bridge.md; 1.5.0): read_request (what the extension takes from the page) and read_reply (what the page takes from the extension) -> the message read, or null when it is none of this protocol's.",
-  "spec_version": "1.11.0",
+  "$comment": "The browser extension's bridge on a paired target's page (spec/page-bridge.md; 1.5.0, a fetch's reason 1.12.0): read_request (what the extension takes from the page) and read_reply (what the page takes from the extension) -> the message read, or null when it is none of this protocol's.",
+  "spec_version": "1.12.0",
   "generated_by": "spec/reference/generate.py",
   "protocol": {
     "version": 1,
@@ -19,6 +19,10 @@
       "failed",
       "guard",
       "signin"
+    ],
+    "fetch_reasons": [
+      "manual",
+      "open"
     ]
   },
   "cases": [
@@ -32,7 +36,8 @@
       },
       "expected": {
         "id": "r-1",
-        "ask": "fetch"
+        "ask": "fetch",
+        "reason": "manual"
       }
     },
     {
@@ -58,7 +63,8 @@
       },
       "expected": {
         "id": "r-1",
-        "ask": "fetch"
+        "ask": "fetch",
+        "reason": "manual"
       }
     },
     {
@@ -74,7 +80,8 @@
       },
       "expected": {
         "id": "r-1",
-        "ask": "fetch"
+        "ask": "fetch",
+        "reason": "manual"
       }
     },
     {
@@ -157,7 +164,8 @@
       },
       "expected": {
         "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-        "ask": "fetch"
+        "ask": "fetch",
+        "reason": "manual"
       }
     },
     {
@@ -256,6 +264,112 @@
         }
       },
       "expected": null
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1",
+        "ask": "fetch",
+        "reason": "open"
+      },
+      "expected": {
+        "id": "r-1",
+        "ask": "fetch",
+        "reason": "open"
+      }
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1",
+        "ask": "fetch",
+        "reason": "manual"
+      },
+      "expected": {
+        "id": "r-1",
+        "ask": "fetch",
+        "reason": "manual"
+      }
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1",
+        "ask": "fetch",
+        "reason": "timer"
+      },
+      "expected": {
+        "id": "r-1",
+        "ask": "fetch",
+        "reason": "manual"
+      }
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1",
+        "ask": "fetch",
+        "reason": "Open"
+      },
+      "expected": {
+        "id": "r-1",
+        "ask": "fetch",
+        "reason": "manual"
+      }
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1",
+        "ask": "fetch",
+        "reason": null
+      },
+      "expected": {
+        "id": "r-1",
+        "ask": "fetch",
+        "reason": "manual"
+      }
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1",
+        "ask": "fetch",
+        "reason": [
+          "open"
+        ]
+      },
+      "expected": {
+        "id": "r-1",
+        "ask": "fetch",
+        "reason": "manual"
+      }
+    },
+    {
+      "rule": "read_request",
+      "input": {
+        "glmsync": "request",
+        "v": 1,
+        "id": "r-1",
+        "ask": "state",
+        "reason": "open"
+      },
+      "expected": {
+        "id": "r-1",
+        "ask": "state"
+      }
     },
     {
       "rule": "read_reply",

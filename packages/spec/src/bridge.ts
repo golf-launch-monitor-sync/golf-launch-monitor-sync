@@ -14,6 +14,11 @@ export type SignIn = (typeof SIGN_IN_STATES)[number];
 export const BRIDGE_ASKS = ['state', 'fetch'] as const;
 export type BridgeAsk = (typeof BRIDGE_ASKS)[number];
 
+/** Why a page asks for a fetch (spec 1.12.0): `manual` (the player tapped; also a request without a reason) or `open`
+ * (the player came back to the target app: the plan is asked with `reason=open`, so the target decides). */
+export const BRIDGE_FETCH_REASONS = ['manual', 'open'] as const;
+export type BridgeFetchReason = (typeof BRIDGE_FETCH_REASONS)[number];
+
 export const BRIDGE_OUTCOMES = ['synced', 'not_due', 'other_account', 'failed', 'guard', 'signin'] as const;
 export type BridgeOutcome = (typeof BRIDGE_OUTCOMES)[number];
 
@@ -24,10 +29,7 @@ export const BRIDGE_MARK = 'data-glmsync-bridge';
 /** Between two fetches a page starts for the same pairing, at least this long. */
 export const BRIDGE_FETCH_GAP_S = 10;
 
-export interface BridgeRequest {
-  id: string;
-  ask: BridgeAsk;
-}
+export type BridgeRequest = { id: string; ask: 'state' } | { id: string; ask: 'fetch'; reason: BridgeFetchReason };
 
 export type BridgeReply =
   | { id: string; answer: 'state'; signin: SignIn; fetching: boolean }
@@ -55,7 +57,9 @@ export function readBridgeRequest(data: unknown): BridgeRequest | null {
   if (!isObject(data) || data.glmsync !== 'request' || data.v !== BRIDGE_VERSION) return null;
   const rid = id(data.id);
   if (rid === null || !has(BRIDGE_ASKS, data.ask)) return null;
-  return { id: rid, ask: data.ask };
+  if (data.ask === 'state') return { id: rid, ask: 'state' };
+  // A reason this version doesn't know is the old meaning: a manual fetch (1.11.0 and earlier sent none).
+  return { id: rid, ask: 'fetch', reason: has(BRIDGE_FETCH_REASONS, data.reason) ? data.reason : 'manual' };
 }
 
 /** The extension's reply to a page; null when it is none this version knows. */

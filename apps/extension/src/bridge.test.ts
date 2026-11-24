@@ -30,7 +30,7 @@ function world() {
   const deps: BridgeDeps = {
     status: () => client.status(),
     guardHold: () => client.guardHold(),
-    run: (id) => client.run('manual', id),
+    run: (id, reason) => client.run(reason, id),
     now: clock.now,
     lastStarted: async (id) => started.get(id) ?? null,
     started: async (id, at) => void started.set(id, at),
@@ -70,14 +70,14 @@ describe('a page asks the extension', () => {
     const w = world();
     await paired(w);
     expect((await answer(w.deps, { id: 'r1', ask: 'state' }, 'https://app.example.org.evil.test')).reply).toEqual({ id: 'r1', answer: 'unpaired' });
-    expect((await answer(w.deps, { id: 'r2', ask: 'fetch' }, 'https://other.example')).reply).toEqual({ id: 'r2', answer: 'unpaired' });
+    expect((await answer(w.deps, { id: 'r2', ask: 'fetch', reason: 'manual' }, 'https://other.example')).reply).toEqual({ id: 'r2', answer: 'unpaired' });
   });
 
   it('says where the sign-in stands, and fetches nothing without one', async () => {
     const w = world();
     await paired(w);
     expect((await answer(w.deps, { id: 'r1', ask: 'state' }, ORIGIN)).reply).toEqual({ id: 'r1', answer: 'state', signin: 'none', fetching: false });
-    const out = await answer(w.deps, { id: 'r2', ask: 'fetch' }, ORIGIN);
+    const out = await answer(w.deps, { id: 'r2', ask: 'fetch', reason: 'manual' }, ORIGIN);
     expect(out.reply).toEqual({ id: 'r2', answer: 'signin', signin: 'none' });
     expect(out.finish).toBeUndefined();
     expect(w.target.asked).toHaveLength(0);
@@ -87,23 +87,33 @@ describe('a page asks the extension', () => {
     const w = world();
     await paired(w);
     await w.signIn();
-    const out = await answer(w.deps, { id: 'r1', ask: 'fetch' }, ORIGIN);
+    const out = await answer(w.deps, { id: 'r1', ask: 'fetch', reason: 'manual' }, ORIGIN);
     expect(out.reply).toEqual({ id: 'r1', answer: 'started' });
     expect(await out.finish?.()).toEqual({ id: 'r1', answer: 'finished', outcome: 'synced' });
     expect(w.target.asked.at(-1)).toMatchObject({ reason: 'manual', client: 'extension', signin: 'ready' });
     expect(w.target.sessions.has('A1')).toBe(true);
   });
 
+  it('asks the plan with reason open when the player came back to the target app (spec 1.12.0)', async () => {
+    const w = world();
+    await paired(w);
+    await w.signIn();
+    const out = await answer(w.deps, { id: 'r1', ask: 'fetch', reason: 'open' }, ORIGIN);
+    expect(out.reply).toEqual({ id: 'r1', answer: 'started' });
+    await out.finish?.();
+    expect(w.target.asked.at(-1)).toMatchObject({ reason: 'open', client: 'extension' });
+  });
+
   it('starts no second sync within ten seconds of the last a page started', async () => {
     const w = world();
     await paired(w);
     await w.signIn();
-    expect((await answer(w.deps, { id: 'r1', ask: 'fetch' }, ORIGIN)).reply).toEqual({ id: 'r1', answer: 'started' });
-    expect((await answer(w.deps, { id: 'r2', ask: 'fetch' }, ORIGIN)).reply).toEqual({ id: 'r2', answer: 'busy' });
+    expect((await answer(w.deps, { id: 'r1', ask: 'fetch', reason: 'manual' }, ORIGIN)).reply).toEqual({ id: 'r1', answer: 'started' });
+    expect((await answer(w.deps, { id: 'r2', ask: 'fetch', reason: 'manual' }, ORIGIN)).reply).toEqual({ id: 'r2', answer: 'busy' });
     w.clock.advance(9_999);
-    expect((await answer(w.deps, { id: 'r3', ask: 'fetch' }, ORIGIN)).reply).toEqual({ id: 'r3', answer: 'busy' });
+    expect((await answer(w.deps, { id: 'r3', ask: 'fetch', reason: 'manual' }, ORIGIN)).reply).toEqual({ id: 'r3', answer: 'busy' });
     w.clock.advance(1);
-    expect((await answer(w.deps, { id: 'r4', ask: 'fetch' }, ORIGIN)).reply).toEqual({ id: 'r4', answer: 'started' });
+    expect((await answer(w.deps, { id: 'r4', ask: 'fetch', reason: 'manual' }, ORIGIN)).reply).toEqual({ id: 'r4', answer: 'started' });
   });
 
   it('starts none while a sync of its pairing runs, and says so in its state', async () => {
@@ -120,7 +130,7 @@ describe('a page asks the extension', () => {
     const running = w.client.run('timer', id);
     await new Promise((done) => setTimeout(done, 0));
     expect((await answer(w.deps, { id: 'r1', ask: 'state' }, ORIGIN)).reply).toEqual({ id: 'r1', answer: 'state', signin: 'ready', fetching: true });
-    expect((await answer(w.deps, { id: 'r2', ask: 'fetch' }, ORIGIN)).reply).toEqual({ id: 'r2', answer: 'busy' });
+    expect((await answer(w.deps, { id: 'r2', ask: 'fetch', reason: 'manual' }, ORIGIN)).reply).toEqual({ id: 'r2', answer: 'busy' });
     release();
     await running;
   });
@@ -133,7 +143,7 @@ describe('a page asks the extension', () => {
     await w.client.run('manual');
     w.clock.advance(10_000);
     const asked = w.target.asked.length;
-    const out = await answer(w.deps, { id: 'r1', ask: 'fetch' }, ORIGIN);
+    const out = await answer(w.deps, { id: 'r1', ask: 'fetch', reason: 'manual' }, ORIGIN);
     expect(out.reply).toMatchObject({ id: 'r1', answer: 'guard' });
     expect(Date.parse((out.reply as { until: string }).until)).toBeGreaterThan(w.clock.t);
     expect(w.target.asked).toHaveLength(asked);

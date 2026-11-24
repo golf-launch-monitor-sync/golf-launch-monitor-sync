@@ -19,6 +19,9 @@ SERVICES = ("expo",)
 #: Between two wakes of the same client, at least this long (seconds): the platforms advise two or three
 #: silent pushes an hour at most, and throttle an app that gets more.
 GAP_S = 1200
+#: The first wake after the player came back to the target app (since 1.12.0) may come this long after the last
+#: one: it is the wake the player waits for, and it comes once per return.
+BACK_GAP_S = 300
 #: The whole of a wake's data. Nothing of the player, no id, no address: a wake only says "ask for the plan".
 PAYLOAD = {"kind": "lm_plan"}
 #: An address longer than this is no address.
@@ -52,7 +55,7 @@ def _time(v: Any) -> datetime | None:
     return t if t.tzinfo else t.replace(tzinfo=UTC)
 
 
-def should_wake(now: Any, signin: Any, due_at: Any, woken_at: Any, quiet_until: Any) -> bool:
+def should_wake(now: Any, signin: Any, due_at: Any, woken_at: Any, quiet_until: Any, back_at: Any = None) -> bool:
     """Whether a target wakes a client now.
 
     - `signin`: what the client last said of its provider sign-in; only a client that can fetch (`ready`)
@@ -63,6 +66,8 @@ def should_wake(now: Any, signin: Any, due_at: Any, woken_at: Any, quiet_until: 
       the platform dropped the last one (a target can't know).
     - `quiet_until`: a time the client reported it can't fetch before (a guard limit, the provider's pause);
       no wake until it has passed.
+    - `back_at` (since 1.12.0, optional): when the player last came back to the target app (planning.md,
+      *When the player is there*). Not woken since then: BACK_GAP_S is enough instead of GAP_S.
     """
     t = _time(now)
     if t is None or signin != "ready":
@@ -72,7 +77,9 @@ def should_wake(now: Any, signin: Any, due_at: Any, woken_at: Any, quiet_until: 
         return False
     if woken_at is not None:
         last = _time(woken_at)
-        if last is None or (t - last).total_seconds() < GAP_S:
+        back = _time(back_at) if back_at is not None else None
+        gap = BACK_GAP_S if back is not None and last is not None and last < back <= t else GAP_S
+        if last is None or (t - last).total_seconds() < gap:
             return False
     if quiet_until is not None:
         quiet = _time(quiet_until)

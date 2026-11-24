@@ -145,6 +145,49 @@ def plan_vectors() -> dict[str, Any]:
         cases.append({"rule": "is_due", "input": {"last_sync_at": None, "history_done": False, "reason": reason,
                                                  "now": "2026-11-16T10:00:00Z", "seed": "x"},
                       "expected": plan.is_due(None, False, reason, "2026-11-16T10:00:00Z", "x")})
+    # When the player is there (1.12.0). The first case: back after a session, the last sync 15 minutes ago - the
+    # regular rhythm says not yet, the return says now.
+    h_last = "2026-11-23T20:00:00Z"
+    h_seed = "player-1|" + h_last
+    back = "2026-11-23T20:15:00Z"
+    heres: list[tuple[str | None, Any, str]] = [
+        (h_last, {"back_at": back, "seen_at": back, "news_at": None}, "2026-11-23T20:15:00Z"),
+        (h_last, {"back_at": back, "seen_at": back, "news_at": None}, "2026-11-23T20:15:00.000Z"),
+        ("2026-11-23T20:14:00Z", {"back_at": back, "seen_at": back, "news_at": None}, "2026-11-23T20:15:30Z"),
+        ("2026-11-23T20:14:00Z", {"back_at": back, "seen_at": back, "news_at": None}, "2026-11-23T20:16:00Z"),
+        ("2026-11-23T20:15:10Z", {"back_at": back, "seen_at": "2026-11-23T20:19:00Z", "news_at": None},
+         "2026-11-23T20:20:09Z"),
+        ("2026-11-23T20:15:10Z", {"back_at": back, "seen_at": "2026-11-23T20:19:00Z", "news_at": None},
+         "2026-11-23T20:20:10Z"),
+        ("2026-11-23T20:15:10Z", {"back_at": back, "seen_at": "2026-11-23T20:19:00Z",
+                                  "news_at": "2026-11-23T20:15:10Z"}, "2026-11-23T20:21:00Z"),
+        ("2026-11-23T20:15:10Z", {"back_at": back, "seen_at": "2026-11-23T20:19:00Z",
+                                  "news_at": "2026-11-23T19:00:00Z"}, "2026-11-23T20:21:00Z"),
+        ("2026-11-23T20:15:10Z", {"back_at": back, "seen_at": "2026-11-23T20:05:00Z", "news_at": None},
+         "2026-11-23T20:21:00Z"),
+        ("2026-11-23T20:15:10Z", {"back_at": back, "seen_at": "2026-11-23T20:11:00Z", "news_at": None},
+         "2026-11-23T20:21:00Z"),
+        ("2026-11-23T20:42:00Z", {"back_at": back, "seen_at": "2026-11-23T20:44:00Z", "news_at": None},
+         "2026-11-23T20:44:30Z"),
+        ("2026-11-23T20:38:00Z", {"back_at": back, "seen_at": "2026-11-23T20:44:00Z", "news_at": None},
+         "2026-11-23T20:44:30Z"),
+        (h_last, {"back_at": back, "seen_at": back, "news_at": None}, "2026-11-23T20:45:00Z"),
+        (h_last, {"back_at": "2026-11-23T20:30:00Z", "seen_at": None, "news_at": None}, "2026-11-23T20:15:00Z"),
+        (h_last, {"back_at": None, "seen_at": back, "news_at": None}, "2026-11-23T20:15:00Z"),
+        (h_last, {"back_at": "soon", "seen_at": back}, "2026-11-23T20:15:00Z"),
+        (h_last, {"seen_at": back}, "2026-11-23T20:15:00Z"),
+        (h_last, {}, "2026-11-23T20:15:00Z"),
+        (h_last, None, "2026-11-23T20:15:00Z"),
+        (h_last, "back", "2026-11-23T20:15:00Z"),
+        (None, {"back_at": back, "seen_at": back}, "2026-11-23T20:15:00Z"),
+    ]
+    for lst, here, now in heres:
+        cases.append({"rule": "here_due_at", "input": {"last_sync_at": lst, "here": here, "now": now},
+                      "expected": plan.here_due_at(lst, here, now)})
+        for reason in plan.REASONS:
+            cases.append({"rule": "is_due", "input": {"last_sync_at": lst, "history_done": True, "reason": reason,
+                                                     "now": now, "seed": h_seed, "here": here},
+                          "expected": plan.is_due(lst, True, reason, now, h_seed, here)})
     retry = {"S1": {"t": "2026-11-01T09:00:00Z", "n": 1}, "S2": {"t": "2026-06-01T09:00:00Z", "n": 3},
              "S3": {"t": None, "n": 2}, "S4": {"t": "2025-01-01T09:00:00Z", "n": "x"}}
     for reason in plan.REASONS:
@@ -184,7 +227,8 @@ def plan_vectors() -> dict[str, Any]:
               {"t": 331, "op": "plan", "reason": "backfill"}, {"t": 360, "op": "plan", "reason": "timer"},
               {"t": 660, "op": "plan", "reason": "timer"}]
     cases.append({"rule": "leases", "input": {"events": events}, "expected": plan.leases(events)})
-    return doc("The reference planning rules of a target (spec/planning.md). Times compare as instants within "
+    return doc("The reference planning rules of a target (spec/planning.md; here_due_at and is_due's `here` since "
+               "1.12.0, a case without `here` has none). Times compare as instants within "
                "compare.time_tolerance_s; dict results compare without regard to key order.", cases,
                rules=plan.RULES, compare={"time_tolerance_s": 0.001})
 
@@ -380,7 +424,9 @@ def bridge_vectors() -> dict[str, Any]:
         {**req, "ask": "Fetch"}, {**req, "id": ""}, {**req, "id": "x" * 64}, {**req, "id": "x" * 65},
         {**req, "id": "r 1"}, {**req, "id": "r-1\n"}, {**req, "id": 7}, {k: v for k, v in req.items() if k != "id"},
         {k: v for k, v in req.items() if k != "ask"}, {k: v for k, v in req.items() if k != "v"},
-        ["glmsync", "request"], "fetch", None, {"glmsync-extension": req}]
+        ["glmsync", "request"], "fetch", None, {"glmsync-extension": req},
+        {**req, "reason": "open"}, {**req, "reason": "manual"}, {**req, "reason": "timer"}, {**req, "reason": "Open"},
+        {**req, "reason": None}, {**req, "reason": ["open"]}, {**req, "ask": "state", "reason": "open"}]
     cases: list[dict[str, Any]] = [{"rule": "read_request", "input": r, "expected": bridge.read_request(r)}
                                    for r in requests]
     rep = {"glmsync": "reply", "v": 1, "id": "r-1"}
@@ -404,11 +450,12 @@ def bridge_vectors() -> dict[str, Any]:
         {**rep, "v": 2, "answer": "started"}, {**rep, "glmsync": "request", "answer": "started"},
         {"glmsync": "reply", "v": 1, "answer": "started"}, {**rep, "id": "", "answer": "started"}, None, []]
     cases += [{"rule": "read_reply", "input": r, "expected": bridge.read_reply(r)} for r in replies]
-    return doc("The browser extension's bridge on a paired target's page (spec/page-bridge.md; 1.5.0): read_request "
+    return doc("The browser extension's bridge on a paired target's page (spec/page-bridge.md; 1.5.0, a fetch's reason "
+               "1.12.0): read_request "
                "(what the extension takes from the page) and read_reply (what the page takes from the extension) -> "
                "the message read, or null when it is none of this protocol's.", cases,
                protocol={"version": bridge.VERSION, "fetch_gap_s": bridge.FETCH_GAP_S, "sign_in": list(bridge.SIGN_IN),
-                         "outcomes": list(bridge.OUTCOMES)})
+                         "outcomes": list(bridge.OUTCOMES), "fetch_reasons": list(bridge.FETCH_REASONS)})
 
 
 def olmd_examples() -> dict[str, Any]:
@@ -727,16 +774,30 @@ def wake_vectors() -> dict[str, Any]:
         {**w, "quiet_until": now}, {**w, "quiet_until": "2026-11-21T17:00:00Z"}, {**w, "quiet_until": 5},
         {**w, "due_at": "2026-11-21T19:59:00+02:00"}, {**w, "due_at": "2026-11-21T20:00:01+02:00"},
         {**w, "now": "2026-11-21T19:00:00+01:00", "woken_at": "2026-11-21T17:41:00Z"},
-        {**w, "due_at": "2026-11-21 17:59:00"}, {**w, "now": None}, {**w, "now": "now"}]
+        {**w, "due_at": "2026-11-21 17:59:00"}, {**w, "now": None}, {**w, "now": "now"},
+        # Back to the target app (1.12.0): once per return, five minutes after the last wake are enough.
+        {**w, "woken_at": "2026-11-21T17:55:00Z", "back_at": "2026-11-21T17:59:30Z"},
+        {**w, "woken_at": "2026-11-21T17:55:01Z", "back_at": "2026-11-21T17:59:30Z"},
+        {**w, "woken_at": "2026-11-21T17:56:00Z", "back_at": "2026-11-21T17:59:30Z"},
+        {**w, "woken_at": "2026-11-21T17:55:00Z", "back_at": "2026-11-21T17:54:00Z"},
+        {**w, "woken_at": "2026-11-21T17:55:00Z", "back_at": "2026-11-21T18:00:30Z"},
+        {**w, "woken_at": "2026-11-21T17:55:00Z", "back_at": "just now"},
+        {**w, "woken_at": "2026-11-21T17:55:00Z", "back_at": None},
+        {**w, "woken_at": "2026-11-21T17:59:00Z", "back_at": "2026-11-21T17:59:30Z"},
+        {**w, "woken_at": None, "back_at": "2026-11-21T17:59:30Z"},
+        {**w, "woken_at": "2026-11-21T17:55:00Z", "back_at": "2026-11-21T17:59:30Z", "signin": "expired"},
+        {**w, "woken_at": "2026-11-21T17:55:00Z", "back_at": "2026-11-21T17:59:30Z", "due_at": None}]
     cases += [{"rule": "should_wake", "input": i, "expected": wake.should_wake(**i)} for i in whens]
     datas: list[Any] = [
         {"kind": "lm_plan"}, {"kind": "lm_plan", "experienceId": "@x/y"}, {"kind": "LM_PLAN"}, {"kind": "plan"},
         {"kind": ["lm_plan"]}, {}, {"body": {"kind": "lm_plan"}}, "lm_plan", None, []]
     cases += [{"rule": "is_wake", "input": d, "expected": wake.is_wake(d)} for d in datas]
     return doc("The wake (spec/wake.md, 1.9.0). read_wake: the body of PUT /wake -> {service, address} or null. "
-               "should_wake: {now, signin, due_at, woken_at, quiet_until} (RFC 3339 times or null) -> whether a "
+               "should_wake: {now, signin, due_at, woken_at, quiet_until, back_at (1.12.0, optional)} (RFC 3339 "
+               "times or null) -> whether a "
                "target wakes the client now. is_wake: a push's data object -> whether it is a wake.", cases,
-               wake={"services": list(wake.SERVICES), "gap_s": wake.GAP_S, "payload": wake.PAYLOAD,
+               wake={"services": list(wake.SERVICES), "gap_s": wake.GAP_S, "back_gap_s": wake.BACK_GAP_S,
+                     "payload": wake.PAYLOAD,
                      "address_max": wake.ADDRESS_MAX})
 
 

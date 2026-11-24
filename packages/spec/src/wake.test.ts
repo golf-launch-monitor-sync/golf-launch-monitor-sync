@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 import { describe, expect, it } from 'vitest';
-import { isWake, readWake, WAKE_ADDRESS_MAX, WAKE_GAP_S, WAKE_PAYLOAD, WAKE_SERVICES } from './wake.ts';
+import { isWake, readWake, WAKE_ADDRESS_MAX, WAKE_BACK_GAP_S, WAKE_GAP_S, WAKE_PAYLOAD, WAKE_SERVICES } from './wake.ts';
 import { readVectors } from './vectors.ts';
 
 type Case = { rule: string; input: unknown; expected: unknown };
@@ -17,6 +17,6 @@ describe('the wake answers the vectors', () => {
   });
 
   it('has the spec’s constants', () => {
-    expect(file.wake).toEqual({ services: [...WAKE_SERVICES], gap_s: WAKE_GAP_S, payload: WAKE_PAYLOAD, address_max: WAKE_ADDRESS_MAX });
+    expect(file.wake).toEqual({ services: [...WAKE_SERVICES], gap_s: WAKE_GAP_S, back_gap_s: WAKE_BACK_GAP_S, payload: WAKE_PAYLOAD, address_max: WAKE_ADDRESS_MAX });
   });
 });

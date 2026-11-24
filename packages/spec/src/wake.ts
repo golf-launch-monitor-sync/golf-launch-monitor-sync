@@ -11,6 +11,8 @@ export const WAKE_SERVICES = ['expo'] as const;
 export type WakeService = (typeof WAKE_SERVICES)[number];
 /** Between two wakes of the same client, at least this long (seconds). */
 export const WAKE_GAP_S = 1200;
+/** The first wake after the player came back to the target app may come this long after the last (spec 1.12.0). */
+export const WAKE_BACK_GAP_S = 300;
 /** The whole of a wake's data. */
 export const WAKE_PAYLOAD = { kind: 'lm_plan' } as const;
 export const WAKE_ADDRESS_MAX = 256;

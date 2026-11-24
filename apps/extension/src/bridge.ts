@@ -6,18 +6,19 @@
  * (bridge.test.ts); the background wires it to the client, the content script to the page.
  *
  * A page can start no more than *fetch now* would in the popup: a `manual` sync of its own target's pairing,
- * the plan first, the guard as always - and not again within BRIDGE_FETCH_GAP_S.
+ * or (spec 1.12.0) one with `reason=open` when the player came back to the target app - the plan first, the
+ * guard as always - and not again within BRIDGE_FETCH_GAP_S.
  */
 
 import type { ClientStatus, RunReport } from '@glmsync/browser';
-import { BRIDGE_FETCH_GAP_S, type BridgeOutcome, type BridgeReply, type BridgeRequest } from '@glmsync/spec';
+import { BRIDGE_FETCH_GAP_S, type BridgeFetchReason, type BridgeOutcome, type BridgeReply, type BridgeRequest } from '@glmsync/spec';
 
 export interface BridgeDeps {
   status(): Promise<ClientStatus>;
   /** When the guard lets the next provider request go, if it holds for long (ms); else null. */
   guardHold(): Promise<number | null>;
-  /** A manual sync of one pairing (the background's own run: icon, history alarm). */
-  run(id: string): Promise<RunReport>;
+  /** A sync of one pairing with the page's reason (the background's own run: icon, history alarm). */
+  run(id: string, reason: BridgeFetchReason): Promise<RunReport>;
   now(): number;
   /** When a page last started a fetch of this pairing (ms), and noting it. Kept by the caller. */
   lastStarted(id: string): Promise<number | null>;
@@ -96,7 +97,7 @@ export async function answer(deps: BridgeDeps, req: BridgeRequest, origin: strin
     reply: { id: req.id, answer: 'started' },
     finish: async () => {
       try {
-        return { id: req.id, answer: 'finished', ...finishedOf(await deps.run(p.id), p.id) };
+        return { id: req.id, answer: 'finished', ...finishedOf(await deps.run(p.id, req.reason), p.id) };
       } catch {
         return { id: req.id, answer: 'finished', outcome: 'failed' };
       }

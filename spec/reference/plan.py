@@ -50,11 +50,44 @@ def next_due_at(last_sync_at: str, seed: str) -> str:
     return iso(last + timedelta(minutes=lo + (hi - lo) * u))
 
 
-def is_due(last_sync_at: str | None, history_done: bool, reason: str, now: str, seed: str) -> bool:
+def here_due_at(last_sync_at: str | None, here: Any, now: str) -> str | None:
+    """When the player being there makes a regular sync due (since 1.12.0), or None. `here` is what the
+    target knows of its player, all times or null: `back_at` (they came back to the target app after
+    at least `away_s` away - a session typically lies behind them), `seen_at` (the target app was last
+    in front), `news_at` (the last sync that brought new sessions or rounds).
+
+    - Back, and no sync since: due `back_gap_s` after the last sync - straight away, as a rule.
+    - Still there (seen within `seen_s`), and no sync since the return brought anything: due
+      `stay_gap_s` after the last sync - the session may take a moment to reach the provider.
+    - Either only within `back_window_s` of the return; after that, or once something came, the regular
+      rhythm again: new data won't be there again so soon."""
+    if not isinstance(here, dict):
+        return None
+    last, t, back = parse(last_sync_at), parse(now), parse(here.get("back_at"))
+    if last is None or t is None or back is None or back > t:
+        return None
+    end = back + timedelta(seconds=RULES["back_window_s"])
+    if t >= end:
+        return None
+    if last < back:
+        return iso(last + timedelta(seconds=RULES["back_gap_s"]))
+    news, seen = parse(here.get("news_at")), parse(here.get("seen_at"))
+    if news is not None and news >= back:
+        return None
+    if seen is None or (t - seen).total_seconds() >= RULES["seen_s"]:
+        return None
+    due = last + timedelta(seconds=RULES["stay_gap_s"])
+    return iso(due) if due < end else None
+
+
+def is_due(last_sync_at: str | None, history_done: bool, reason: str, now: str, seed: str,
+           here: Any = None) -> bool:
     """`connect`: the player just connected or signed in again (due unless a sync ran within two
     minutes); `open`: the player's app was opened or came back to the front (due ten minutes after
     the last sync - typically straight after a session); `timer`: the regular rhythm; `manual`:
-    always; `backfill`: while the older history isn't done."""
+    always; `backfill`: while the older history isn't done. `here` (since 1.12.0, optional): what the
+    target knows of its player being there (`here_due_at`); it makes any reason but `backfill` due
+    sooner, never later."""
     if reason == "manual":
         return True
     if reason == "backfill":
@@ -67,6 +100,9 @@ def is_due(last_sync_at: str | None, history_done: bool, reason: str, now: str, 
     if reason == "connect":
         return (t - last).total_seconds() >= RULES["connect_gap_s"]
     if reason == "open" and (t - last).total_seconds() >= RULES["open_gap_s"]:
+        return True
+    soon = parse(here_due_at(last_sync_at, here, now))
+    if soon is not None and t >= soon:
         return True
     due = parse(next_due_at(last_sync_at, seed))  # type: ignore[arg-type]
     assert due is not None

@@ -30,6 +30,29 @@ due = last sync + (38 + 14 · u) minutes
 So syncs never run on the beat. `open` exists for the common case of coming back from a session:
 the player opens the app and expects what they just played.
 
+## When the player is there (since 1.12.0)
+
+A client only says `open` when *it* comes to the front; the player, though, comes back to the
+**target** app, and most clients can't tell (a browser extension, a phone app the system holds in the
+background). A target that knows its player is there may make a regular sync due sooner - for every
+reason but `backfill`, never later than the table above ([`here_due_at`](reference/plan.py), the
+`here` input of `is_due`):
+
+- **Back**: the player came back to the target app after at least `away_s` (10 minutes) away. Until a
+  sync has run since then, one is due `back_gap_s` (2 minutes) after the last - as a rule at once. A
+  session typically lies behind them, and they want to see it.
+- **Still there**: the target app was in front within `seen_s` (10 minutes), and no sync since the
+  return brought new sessions or rounds: due `stay_gap_s` (5 minutes) after the last sync - a session
+  may take a moment to reach the provider.
+- Both only within `back_window_s` (30 minutes) of the return. After that, and as soon as a sync since
+  the return brought something, the regular rhythm again: new data won't be there again so soon.
+
+The target keeps three times per player: `back_at` (the return), `seen_at` (in front last),
+`news_at` (the last sync that brought anything). How a target app tells that it was away is its own
+matter (per device, as a rule: the player may leave a computer's tab open and come back on the phone).
+Over an hour in which the player opens the target app once after a session, this costs at most a
+handful of syncs more than the regular rhythm; the guard holds as always.
+
 ## How far back
 
 `since` = now − `days`, with `days`:

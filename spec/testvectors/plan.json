@@ -1,6 +1,6 @@
 {
-  "$comment": "The reference planning rules of a target (spec/planning.md). Times compare as instants within compare.time_tolerance_s; dict results compare without regard to key order.",
-  "spec_version": "1.11.0",
+  "$comment": "The reference planning rules of a target (spec/planning.md; here_due_at and is_due's `here` since 1.12.0, a case without `here` has none). Times compare as instants within compare.time_tolerance_s; dict results compare without regard to key order.",
+  "spec_version": "1.12.0",
   "generated_by": "spec/reference/generate.py",
   "rules": {
     "$comment": "The reference planning rules of a target (spec/planning.md). Informative: a target may plan more gently; the load guard (spec/guard/limits.json) holds regardless.",
@@ -29,7 +29,12 @@
     "rounds_wanted_regular": 5,
     "rounds_wanted_days": 30,
     "rounds_wanted_history": 25,
-    "pace_floor": 0.5
+    "pace_floor": 0.5,
+    "away_s": 600,
+    "back_gap_s": 120,
+    "back_window_s": 1800,
+    "stay_gap_s": 300,
+    "seen_s": 600
   },
   "compare": {
     "time_tolerance_s": 0.001
@@ -583,6 +588,1863 @@
         "seed": "x"
       },
       "expected": true
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        },
+        "now": "2026-11-23T20:15:00Z"
+      },
+      "expected": "2026-11-23T20:02:00.000Z"
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        },
+        "now": "2026-11-23T20:15:00.000Z"
+      },
+      "expected": "2026-11-23T20:02:00.000Z"
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:15:00.000Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:15:00.000Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:15:00.000Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:15:00.000Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:15:00.000Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:14:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        },
+        "now": "2026-11-23T20:15:30Z"
+      },
+      "expected": "2026-11-23T20:16:00.000Z"
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:14:00Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:15:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:14:00Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:15:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:14:00Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:15:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:14:00Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:15:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:14:00Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:15:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:14:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        },
+        "now": "2026-11-23T20:16:00Z"
+      },
+      "expected": "2026-11-23T20:16:00.000Z"
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:14:00Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:16:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:14:00Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:16:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:14:00Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:16:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:14:00Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:16:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:14:00Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:16:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": null
+        },
+        "now": "2026-11-23T20:20:09Z"
+      },
+      "expected": "2026-11-23T20:20:10.000Z"
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:20:09Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:20:09Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:20:09Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:20:09Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:20:09Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": null
+        },
+        "now": "2026-11-23T20:20:10Z"
+      },
+      "expected": "2026-11-23T20:20:10.000Z"
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:20:10Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:20:10Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:20:10Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:20:10Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:20:10Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": "2026-11-23T20:15:10Z"
+        },
+        "now": "2026-11-23T20:21:00Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": "2026-11-23T20:15:10Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": "2026-11-23T20:15:10Z"
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": "2026-11-23T20:15:10Z"
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": "2026-11-23T20:15:10Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": "2026-11-23T20:15:10Z"
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": "2026-11-23T19:00:00Z"
+        },
+        "now": "2026-11-23T20:21:00Z"
+      },
+      "expected": "2026-11-23T20:20:10.000Z"
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": "2026-11-23T19:00:00Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": "2026-11-23T19:00:00Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": "2026-11-23T19:00:00Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": "2026-11-23T19:00:00Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:19:00Z",
+          "news_at": "2026-11-23T19:00:00Z"
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:05:00Z",
+          "news_at": null
+        },
+        "now": "2026-11-23T20:21:00Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:05:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:05:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:05:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:05:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:05:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:11:00Z",
+          "news_at": null
+        },
+        "now": "2026-11-23T20:21:00Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:11:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:11:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:11:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:11:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:15:10Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:21:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:11:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:42:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:44:00Z",
+          "news_at": null
+        },
+        "now": "2026-11-23T20:44:30Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:42:00Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:44:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:44:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:42:00Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:44:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:44:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:42:00Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:44:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:44:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:42:00Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:44:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:44:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:42:00Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:44:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:44:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:38:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:44:00Z",
+          "news_at": null
+        },
+        "now": "2026-11-23T20:44:30Z"
+      },
+      "expected": "2026-11-23T20:43:00.000Z"
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:38:00Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:44:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:44:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:38:00Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:44:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:44:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:38:00Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:44:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:44:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:38:00Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:44:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:44:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:38:00Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:44:30Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:44:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        },
+        "now": "2026-11-23T20:45:00Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:45:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:45:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:45:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:45:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:45:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:30:00Z",
+          "seen_at": null,
+          "news_at": null
+        },
+        "now": "2026-11-23T20:15:00Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:30:00Z",
+          "seen_at": null,
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:30:00Z",
+          "seen_at": null,
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:30:00Z",
+          "seen_at": null,
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:30:00Z",
+          "seen_at": null,
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:30:00Z",
+          "seen_at": null,
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": null,
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        },
+        "now": "2026-11-23T20:15:00Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": null,
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": null,
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": null,
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": null,
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": null,
+          "seen_at": "2026-11-23T20:15:00Z",
+          "news_at": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "soon",
+          "seen_at": "2026-11-23T20:15:00Z"
+        },
+        "now": "2026-11-23T20:15:00Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "soon",
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "soon",
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "soon",
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "soon",
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "soon",
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "here": {
+          "seen_at": "2026-11-23T20:15:00Z"
+        },
+        "now": "2026-11-23T20:15:00Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "here": {},
+        "now": "2026-11-23T20:15:00Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {}
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {}
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {}
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {}
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {}
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "here": null,
+        "now": "2026-11-23T20:15:00Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": null
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": null
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": null
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "here": "back",
+        "now": "2026-11-23T20:15:00Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": "back"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": "back"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": "back"
+      },
+      "expected": false
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": "back"
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": "2026-11-23T20:00:00Z",
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": "back"
+      },
+      "expected": false
+    },
+    {
+      "rule": "here_due_at",
+      "input": {
+        "last_sync_at": null,
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z"
+        },
+        "now": "2026-11-23T20:15:00Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": null,
+        "history_done": true,
+        "reason": "connect",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": null,
+        "history_done": true,
+        "reason": "open",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": null,
+        "history_done": true,
+        "reason": "timer",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": null,
+        "history_done": true,
+        "reason": "manual",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": true
+    },
+    {
+      "rule": "is_due",
+      "input": {
+        "last_sync_at": null,
+        "history_done": true,
+        "reason": "backfill",
+        "now": "2026-11-23T20:15:00Z",
+        "seed": "player-1|2026-11-23T20:00:00Z",
+        "here": {
+          "back_at": "2026-11-23T20:15:00Z",
+          "seen_at": "2026-11-23T20:15:00Z"
+        }
+      },
+      "expected": false
     },
     {
       "rule": "give_up",

@@ -217,7 +217,7 @@ async function bridge(m: Extract<Message, { type: 'bridge' }>, url: string | und
     {
       status: () => client.status(),
       guardHold: () => client.guardHold(),
-      run: (id) => run('manual', id),
+      run: (id, reason) => run(reason, id),
       now: Date.now,
       lastStarted: async (id) => (await bridgeStarted())[id] ?? null,
       started: async (id, at) => chrome.storage.session.set({ [BRIDGE_STARTED]: { ...(await bridgeStarted()), [id]: at } }),

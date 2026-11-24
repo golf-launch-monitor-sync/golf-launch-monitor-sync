@@ -19,5 +19,10 @@
   "rounds_wanted_regular": 5,
   "rounds_wanted_days": 30,
   "rounds_wanted_history": 25,
-  "pace_floor": 0.5
+  "pace_floor": 0.5,
+  "away_s": 600,
+  "back_gap_s": 120,
+  "back_window_s": 1800,
+  "stay_gap_s": 300,
+  "seen_s": 600
 }

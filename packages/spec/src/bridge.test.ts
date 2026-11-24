@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 import { describe, expect, it } from 'vitest';
-import { BRIDGE_FETCH_GAP_S, BRIDGE_OUTCOMES, BRIDGE_VERSION, bridgeMessage, readBridgeReply, readBridgeRequest, readSignIn, SIGN_IN_STATES } from './bridge.ts';
+import { BRIDGE_FETCH_GAP_S, BRIDGE_FETCH_REASONS, BRIDGE_OUTCOMES, BRIDGE_VERSION, bridgeMessage, readBridgeReply, readBridgeRequest, readSignIn, SIGN_IN_STATES } from './bridge.ts';
 import { readVectors } from './vectors.ts';
 
 type Case = { rule: string; input: unknown; expected: unknown };
@@ -22,7 +22,7 @@ describe('the page bridge answers the vectors', () => {
   });
 
   it('has the protocol’s constants', () => {
-    expect(file.protocol).toEqual({ version: BRIDGE_VERSION, fetch_gap_s: BRIDGE_FETCH_GAP_S, sign_in: [...SIGN_IN_STATES], outcomes: [...BRIDGE_OUTCOMES] });
+    expect(file.protocol).toEqual({ version: BRIDGE_VERSION, fetch_gap_s: BRIDGE_FETCH_GAP_S, sign_in: [...SIGN_IN_STATES], outcomes: [...BRIDGE_OUTCOMES], fetch_reasons: [...BRIDGE_FETCH_REASONS] });
   });
 
   it('reads back every reply it writes', () => {

@@ -1,12 +1,13 @@
 {
-  "$comment": "The wake (spec/wake.md, 1.9.0). read_wake: the body of PUT /wake -> {service, address} or null. should_wake: {now, signin, due_at, woken_at, quiet_until} (RFC 3339 times or null) -> whether a target wakes the client now. is_wake: a push's data object -> whether it is a wake.",
-  "spec_version": "1.11.0",
+  "$comment": "The wake (spec/wake.md, 1.9.0). read_wake: the body of PUT /wake -> {service, address} or null. should_wake: {now, signin, due_at, woken_at, quiet_until, back_at (1.12.0, optional)} (RFC 3339 times or null) -> whether a target wakes the client now. is_wake: a push's data object -> whether it is a wake.",
+  "spec_version": "1.12.0",
   "generated_by": "spec/reference/generate.py",
   "wake": {
     "services": [
       "expo"
     ],
     "gap_s": 1200,
+    "back_gap_s": 300,
     "payload": {
       "kind": "lm_plan"
     },
@@ -510,6 +511,138 @@
         "due_at": "2026-11-21T17:59:00Z",
         "woken_at": null,
         "quiet_until": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "2026-11-21T17:55:00Z",
+        "quiet_until": null,
+        "back_at": "2026-11-21T17:59:30Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "2026-11-21T17:55:01Z",
+        "quiet_until": null,
+        "back_at": "2026-11-21T17:59:30Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "2026-11-21T17:56:00Z",
+        "quiet_until": null,
+        "back_at": "2026-11-21T17:59:30Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "2026-11-21T17:55:00Z",
+        "quiet_until": null,
+        "back_at": "2026-11-21T17:54:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "2026-11-21T17:55:00Z",
+        "quiet_until": null,
+        "back_at": "2026-11-21T18:00:30Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "2026-11-21T17:55:00Z",
+        "quiet_until": null,
+        "back_at": "just now"
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "2026-11-21T17:55:00Z",
+        "quiet_until": null,
+        "back_at": null
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "2026-11-21T17:59:00Z",
+        "quiet_until": null,
+        "back_at": "2026-11-21T17:59:30Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": null,
+        "quiet_until": null,
+        "back_at": "2026-11-21T17:59:30Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "expired",
+        "due_at": "2026-11-21T17:59:00Z",
+        "woken_at": "2026-11-21T17:55:00Z",
+        "quiet_until": null,
+        "back_at": "2026-11-21T17:59:30Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "should_wake",
+      "input": {
+        "now": "2026-11-21T18:00:00Z",
+        "signin": "ready",
+        "due_at": null,
+        "woken_at": "2026-11-21T17:55:00Z",
+        "quiet_until": null,
+        "back_at": "2026-11-21T17:59:30Z"
       },
       "expected": false
     },

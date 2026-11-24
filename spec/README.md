@@ -9,7 +9,7 @@ Everything another implementation needs, in one place, independent of this proje
 | --- | --- | --- |
 | The format **olmd/1** | [olmd.md](olmd.md) | [olmd/olmd-1.schema.json](olmd/olmd-1.schema.json) |
 | The **target API** an app implements to receive data | [target-api.md](target-api.md) | [api/target-api.yaml](api/target-api.yaml) |
-| The **planning rules** a target keeps | [planning.md](planning.md) | [plan/rules.json](plan/rules.json) |
+| The **planning rules** a target keeps (when the player is there: since 1.12.0) | [planning.md](planning.md) | [plan/rules.json](plan/rules.json) |
 | The **load guard** every client keeps | [guard.md](guard.md) | [guard/limits.json](guard/limits.json) |
 | **Deep links** (the read link since 1.11.0), the pairing page and the Android sync service | [deep-links.md](deep-links.md) | — |
 | **Test mode**: a target's test scenarios, played back to the real provider code (since 1.8.0) | [test-mode.md](test-mode.md) | [api/target-api.yaml](api/target-api.yaml) (`/test-scenario`) |

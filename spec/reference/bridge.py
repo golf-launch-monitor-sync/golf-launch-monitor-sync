@@ -17,6 +17,9 @@ from typing import Any
 SIGN_IN = ("none", "confirm", "ready", "expired", "other")
 #: What a page may ask the extension.
 ASKS = ("state", "fetch")
+#: Why the page asks for a fetch (since 1.12.0): `manual` (the player tapped, the default) or `open` (the player came
+#: back to the target app; the extension asks the plan with `reason=open`, so the target decides).
+FETCH_REASONS = ("manual", "open")
 #: How a fetch the page started ended (the `finished` reply).
 OUTCOMES = ("synced", "not_due", "other_account", "failed", "guard", "signin")
 #: The bridge's protocol version: a message of another is not this protocol's.
@@ -56,14 +59,19 @@ def _signin(v: Any) -> str | None:
 
 
 def read_request(data: Any) -> dict[str, Any] | None:
-    """A page's request to the extension: {"glmsync": "request", "v": 1, "id", "ask"}. Unknown keys are
-    ignored (a later version may add some)."""
+    """A page's request to the extension: {"glmsync": "request", "v": 1, "id", "ask"}, a fetch with its
+    `reason` (since 1.12.0; missing or unknown: `manual`). Unknown keys are ignored (a later version may add
+    some)."""
     if not isinstance(data, dict) or data.get("glmsync") != "request" or not _is_one(data.get("v")):
         return None
     rid, ask = _id(data.get("id")), data.get("ask")
     if rid is None or not isinstance(ask, str) or ask not in ASKS:
         return None
-    return {"id": rid, "ask": ask}
+    if ask != "fetch":
+        return {"id": rid, "ask": ask}
+    # A reason this version doesn't know is the old meaning: a manual fetch (1.11.0 and earlier sent none).
+    reason = data.get("reason")
+    return {"id": rid, "ask": ask, "reason": reason if reason in FETCH_REASONS else "manual"}
 
 
 def read_reply(data: Any) -> dict[str, Any] | None:
