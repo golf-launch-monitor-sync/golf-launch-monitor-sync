@@ -44,9 +44,10 @@ portal in a sign-in window - so that window lives here, in a small app that does
   window's bar and on the home page's card; nothing goes to an app before the yes.
 - **The first sync before going back**: after signing in the app stays in front showing that it fetches until the
   first sync is through (at most two minutes; `src/lib/firstSync.ts`): iOS suspends an app in the back within seconds,
-  so a first sync left running behind a jump brought nothing. Then *Back to …* where the target named a way back (the
-  player taps it; the app doesn't jump), else the sentence that the rest comes by itself; the older history follows a
-  chunk at a time while the app is open.
+  so a first sync left running behind a jump brought nothing. The step says at once that the player is done
+  (*Done – fetching your data …*), with *Back to …* where the target named a way back (the player taps it; the app
+  doesn't jump), else *OK*, and the sentence that the rest comes by itself; going back sooner leaves the rest to the
+  phone and the target's wake. The older history follows a chunk at a time while the app is open.
 - **Syncs only when a target's plan says so**: on opening the app (`open`), after pairing or signing
   in (`connect`), on "fetch now" and on a sync link (`manual`), when a target app binds on Android
   (`open` or `manual`, as it says), and in the background (`timer`,

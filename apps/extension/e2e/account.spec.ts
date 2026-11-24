@@ -59,9 +59,18 @@ test('another account in the portal: no, sign out, sign in with your own in the 
   await portal.goto(`${PORTAL}account/callback`);
   await expect(connect.getByTestId('confirm-yes')).toBeVisible({ timeout: 30_000 });
 
-  // "Yes, that's me": the next step at once (the data on its way), then the data, then done - back to the app.
+  // "Yes, that's me": the next step at once, and it says the player is done here - *Back to …* while the data is
+  // still on its way (held at the app's import), not only after it (LMS-AS-4). Then the data, then done.
+  let release = () => {};
+  world.target.opts.hold = { '/import': new Promise<void>((done) => (release = done)) };
   await connect.getByTestId('confirm-yes').click();
-  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', /^(load|done)$/, { timeout: 5_000 });
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'load', { timeout: 5_000 });
+  await expect(connect.getByTestId('wizard-title')).toHaveText('Done – fetching your data …');
+  await expect(connect.getByTestId('wizard-back')).toHaveText('Back to Example App');
+  await expect(connect.getByTestId('wizard-back-hint')).toHaveText('You can go back to Example App now; the rest comes by itself.');
+  await expect(connect.getByTestId('disconnect')).toHaveCount(0);
+  release();
+  delete world.target.opts.hold;
   await expect(connect.getByTestId('wizard-brought')).toHaveText('2 sessions, 0 rounds fetched', { timeout: 60_000 });
   await expect(connect.getByTestId('last')).toContainText('2 new sessions', { timeout: 60_000 });
   expect(world.target.asked.at(-1)).toMatchObject({ reason: 'connect', client: 'extension', signin: 'ready' });

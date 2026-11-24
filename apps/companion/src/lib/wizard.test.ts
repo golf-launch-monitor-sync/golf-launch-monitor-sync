@@ -17,7 +17,9 @@ describe('connecting as steps on the phone', () => {
   it('the first sync, then done, with what came and what is still to come', () => {
     const running = wizardText(firstLoad([null], 'running'), 'de', words);
     expect(running.view.step).toBe('load');
-    expect(running.lines).toMatchObject({ title: 'Deine Daten werden geholt …', unconfirmed: null, brought: null });
+    // Done here at once, *Back to …* right there (LMS-AS-4): the rest comes by itself.
+    expect(running.lines).toMatchObject({ title: 'Fertig – deine Daten werden geholt …', unconfirmed: null, brought: null });
+    expect(stepParts('load', firstLoad([null], 'running'))).toEqual(['progress', 'back']);
     const done = wizardText(firstLoad([run({ total: { sessions: 10, rounds: 6 }, more: true })], 'through'), 'de', words);
     expect(done.view.step).toBe('done');
     expect(done.lines).toMatchObject({ brought: '10 Sessions, 6 Runden geholt', more: 'Ältere Daten kommen nach und nach.' });
@@ -29,6 +31,7 @@ describe('connecting as steps on the phone', () => {
     const f = firstLoad([run({ status: 'failed', error: 'unreachable' })], 'through');
     expect(f.first).toBe('failed');
     expect(wizardText(f, 'en', words).view.step).toBe('load');
+    expect(stepParts('load', f)).not.toContain('back');
   });
 
   it('a test code: offered where Trackman’s sign-in is, for its pairings not in test mode; its account is step 4', () => {

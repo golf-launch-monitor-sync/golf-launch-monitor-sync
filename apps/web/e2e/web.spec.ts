@@ -115,8 +115,19 @@ test('connecting’s steps in German; a first sync that fails stays on its step 
   await expect(page.getByTestId('wizard-failed')).toBeVisible({ timeout: 60_000 });
   await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'load');
   await expect(page.getByTestId('unconfirmed')).toHaveCount(0);
+  // Failed is not done: no way back offered yet.
+  await expect(page.getByTestId('wizard-title')).toHaveText('Deine Daten werden geholt …');
+  await expect(page.getByTestId('wizard-back-hint')).toHaveCount(0);
   delete opts.fail;
+  // Fetching again, held at the app's import: the step says the player is done here and may go back (LMS-AS-4).
+  let release = () => {};
+  world.target.opts.hold = { '/import': new Promise<void>((done) => (release = done)) };
   await page.getByTestId('fetch-now').click();
+  await expect(page.getByTestId('wizard-title')).toHaveText('Fertig – deine Daten werden geholt …', { timeout: 30_000 });
+  await expect(page.getByTestId('wizard-back-hint')).toHaveText('Du kannst jetzt zurück zu Example App. Der Rest kommt, solange diese Seite offen ist.');
+  await expect(page.getByTestId('wizard-failed')).toHaveCount(0);
+  release();
+  delete world.target.opts.hold;
   await expect(page.getByTestId('wizard-brought')).toHaveText('2 Sessions, 0 Runden geholt', { timeout: 60_000 });
   await expect(page.getByTestId('wizard-title')).toHaveText('Fertig');
   await context.close();

@@ -102,7 +102,9 @@ name is the one *Is this your account?* showed, kept once the player said yes (`
   how much of the older history is still to come (`Entry.left`, from olmd's `progress.sessions_left` of the last
   history chunk; core's `SyncOutcome.left`).
 - Done: *Back to …* (`Actions.back`: the extension's connect window closes its tab, the popup itself) or the sentence
-  that the player can go back.
+  that the player can go back. A launch monitor's player is done with the yes: its first data already says so
+  (*Done – fetching your data …*) and offers *Back to …* (`stepParts`' `back`; not while a failed first fetch waits,
+  nor golf.de's, whose results come only once its pages are opened).
 - Not a setup: no app connected, or a connection that brought data before and only needs a new sign-in (the overview
   says *sign in again*). A new account to answer about is asked about in the steps. A test code fetched comes first
   (`factsOfStatus`), then the account's own connection (`factsOfAccount`, which never counts a test's pairing), then a

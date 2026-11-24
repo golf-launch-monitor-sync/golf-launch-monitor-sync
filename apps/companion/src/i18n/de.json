@@ -56,7 +56,6 @@
   "sync.back": "Gleich geht es zurück.",
   "sync.done": "Fertig",
   "sync.stayed": "Die App, die dich hergeschickt hat, ist nicht mit diesem Handy verbunden, also bleibst du hier.",
-  "first.why": "Damit {name} gleich etwas zeigen kann.",
   "first.backNow": "Jetzt zurück zu {name}",
   "first.failed": "Das erste Holen hat nicht geklappt. Auf der Startseite steht, warum; es wird von selbst noch einmal versucht.",
   "demo.title": "Ausprobieren",

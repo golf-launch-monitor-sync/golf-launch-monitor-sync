@@ -25,9 +25,9 @@ background, while your browser is open — and reads your handicap record along 
    and sign in, or just open it if you are.
    The extension takes your sign-in from there and asks **"Is this your Trackman account?"** (the name, the newest
    activity and where - no count, and on that step nothing else but *Yes, that's me* / *No*) before anything is
-   fetched; until the answer the page shows nothing that looks as if it were running. *Yes*: the first data, shown plainly
-   (*2 sessions, 0 rounds fetched*, then how much older data is still to come), and **Back to …**, which closes the
-   tab. *No* offers **Sign in with another Trackman account**: Trackman's own sign-out, then the portal to sign in
+   fetched; until the answer the page shows nothing that looks as if it were running. *Yes*: you are done (*Done – fetching your data …*) and
+   **Back to …**, which closes the tab, is there at once; the first data shows plainly as it comes (*2 sessions, 0 rounds
+   fetched*, then how much older data is still to come), and goes on with the tab closed. *No* offers **Sign in with another Trackman account**: Trackman's own sign-out, then the portal to sign in
    with your own (in the same tab is fine: the extension keeps looking for the new sign-in for a while after the
    portal loads).
 4. From then on it runs by itself. About once a week Trackman's sign-in runs out: the icon shows

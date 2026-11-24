@@ -56,7 +56,6 @@
   "sync.back": "You'll be taken back in a moment.",
   "sync.done": "Done",
   "sync.stayed": "The app that sent you here isn't one this phone is connected with, so you stay here.",
-  "first.why": "So that {name} has something to show right away.",
   "first.backNow": "Back to {name} now",
   "first.failed": "The first fetch didn’t work. The home page says why; it is tried again by itself.",
   "demo.title": "Try it out",

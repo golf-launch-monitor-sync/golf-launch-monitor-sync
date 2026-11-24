@@ -61,7 +61,8 @@ not one per module, one button per step:
 4. **your account**: the service names it - *Is this your account?* - and nothing is fetched or sent before
    *Yes, that's me*;
 5. **the first data**, shown plainly (*10 sessions, 6 rounds fetched*, then *older data follows bit by bit,
-   about 140 sessions still to come*);
+   about 140 sessions still to come*); for a launch monitor you are done here already (*Done – fetching your
+   data …*), with *Back to …* right there - the rest comes by itself;
 6. **done**: *Back to …* where the client can take you there, else the sentence that you can go back and the
    rest comes by itself.
 

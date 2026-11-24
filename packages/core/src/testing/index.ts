@@ -55,6 +55,8 @@ export interface FakeTargetOptions {
   limits?: ImportLimits;
   /** The plan's body for each ask; default: always due, everything wanted. */
   plan?: (ask: PlanAsked, target: FakeTarget) => Record<string, unknown>;
+  /** A path whose answer waits until its promise settles (a first sync held under way, for the click checks). */
+  hold?: Record<string, Promise<unknown>>;
   /** A status to answer a path with instead (e.g. { '/import': 503 }). */
   fail?: Record<string, { status: number; body?: unknown; headers?: Record<string, string> }>;
   /** false: a target that offers no wake (answers 404 there, as one older than 1.9.0 does). */
@@ -108,6 +110,8 @@ export class FakeTarget {
     if (!url.startsWith(this.base)) return response(404, { error: { code: 'bad_request' } });
     const u = new URL(url);
     const path = u.pathname.slice(new URL(this.base).pathname.length);
+    const held = this.opts.hold?.[path];
+    if (held) await held.catch(() => undefined);
     const failing = this.opts.fail?.[path];
     if (failing) return response(failing.status, failing.body ?? { error: { code: 'bad_request', message: 'made to fail' } }, failing.headers);
     if (path === '/pair' && init.method === 'POST') {

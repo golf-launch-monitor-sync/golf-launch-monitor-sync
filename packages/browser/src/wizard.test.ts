@@ -70,7 +70,14 @@ describe('the steps', () => {
   it('the first data, shown plainly, then how much is still to come', () => {
     const t = (f: WizardFacts) => wizardLines(wizardOf(f), f, de, words);
     const yes = { signedIn: true, confirmed: true } as const;
-    expect(t(facts({ ...yes, first: 'running' }))).toMatchObject({ title: 'Deine Daten werden geholt …', unconfirmed: null, brought: null, more: null });
+    // With the yes the player is done here: the step says so at once, not only once the data is in (LMS-AS-4).
+    expect(t(facts({ ...yes, first: 'running' }))).toMatchObject({ title: 'Fertig – deine Daten werden geholt …', unconfirmed: null, brought: null, more: null });
+    expect(t(facts({ ...yes, first: 'waiting' })).title).toBe('Fertig – deine Daten werden geholt …');
+    expect(wizardLines(wizardOf(facts({ ...yes, first: 'running' })), facts({ ...yes, first: 'running' }), en, words).title).toBe('Done – fetching your data …');
+    // A first fetch that failed isn't done: the step stays on the data.
+    expect(t(facts({ ...yes, first: 'failed' })).title).toBe('Deine Daten werden geholt …');
+    // golf.de's results come only once its pages are opened: not done before that.
+    expect(t(facts({ ...yes, kind: 'hcp', first: 'waiting' })).title).toBe('Deine Ergebnisse …');
     expect(t(facts({ ...yes, first: 'running', brought: { sessions: 10, rounds: 6 } })).brought).toBe('10 Sessions, 6 Runden geholt');
     const done = t(facts({ ...yes, first: 'through', brought: { sessions: 10, rounds: 6 }, more: 140 }));
     expect(done).toMatchObject({ title: 'Fertig', brought: '10 Sessions, 6 Runden geholt', more: 'Ältere Daten kommen nach und nach – noch etwa 140 Sessions.' });
@@ -224,8 +231,14 @@ describe('what a step shows: its own content, nothing else', () => {
   });
 
   it('the first data, and done', () => {
-    expect(stepParts('load', facts({ first: 'running' }), { cancel: true, testCode: true, signin: 'button' })).toEqual(['progress', 'cancel']);
+    // A launch monitor's first data: done here, *Back to …* at once - not only after the data (LMS-AS-4). Nothing to
+    // cancel on a step that says it is done (the overview's own buttons end a connection).
+    expect(stepParts('load', facts({ first: 'running' }), { cancel: true, testCode: true, signin: 'button' })).toEqual(['progress', 'back']);
+    expect(stepParts('load', facts({ first: 'waiting' }), { cancel: true })).toEqual(['progress', 'back']);
+    expect(stepParts('load', facts({ test: true, first: 'running' }))).toEqual(['progress', 'back']);
+    // Failed: what went wrong and trying again - no *Back to …* while it isn't done.
     expect(stepParts('load', facts({ first: 'failed' }))).toEqual(['failed', 'fetch', 'progress']);
+    expect(stepParts('load', facts({ first: 'failed' }), { cancel: true })).toEqual(['failed', 'fetch', 'progress', 'cancel']);
     expect(stepParts('load', facts({ kind: 'hcp', first: 'waiting' }), { fresh: true })).toEqual(['waitingHow', 'signin', 'send', 'progress']);
     expect(stepParts('load', facts({ kind: 'hcp', first: 'running' }), { fresh: true })).toEqual(['progress']);
     expect(stepParts('done', lm, { cancel: true, testCode: true })).toEqual(['progress', 'back']);

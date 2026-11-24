@@ -108,7 +108,9 @@ export function wizardLines(v: WizardView, f: WizardFacts, t: T, w: WizardWords)
     service: () => t('wizard.title.service'),
     signin: () => t('wizard.title.signin', vars),
     account: () => t('wizard.title.account', vars),
-    load: () => t(f.kind === 'hcp' ? 'wizard.title.loadHcp' : 'wizard.title.load'),
+    // A launch monitor's player is done with the yes: the rest comes by itself (LMS-AS-4). golf.de's results come only
+    // once its pages are opened, and a first fetch that failed waits for the player too.
+    load: () => t(f.kind === 'hcp' ? 'wizard.title.loadHcp' : f.first === 'failed' ? 'wizard.title.load' : 'wizard.title.loadDone'),
     done: () => t('wizard.title.done'),
   };
   const title = titles[v.step]();
@@ -151,7 +153,10 @@ export function wizardLines(v: WizardView, f: WizardFacts, t: T, w: WizardWords)
  *   no); `checking`: the answer is on its way.
  * - `failed` + `fetch`: the first data failed, and trying again; `waitingHow`: golf.de's pages to open; `send`: what
  *   golf.de's pages showed, sent now.
- * - `progress`: what came and what is still to come. `back`: back to the app. `cancel`: stop connecting with the app.
+ * - `progress`: what came and what is still to come. `back`: back to the app - on a launch monitor's first data
+ *   already, since with the yes the player is done and the rest comes by itself (it said only *Fetching your data …*,
+ *   and a player waited there for nothing). `cancel`: stop connecting with the app (not beside `back`: a step that
+ *   says it is done offers no way to undo it; the overview's own buttons end a connection).
  */
 export type StepPart =
   | 'banner'
@@ -232,7 +237,8 @@ export function stepParts(step: WizardStep, f: WizardFacts, s: StepSituation = {
       add(!lm && f.first !== 'running', 'signin');
       add(!lm && s.fresh && f.first !== 'running', 'send');
       add(true, 'progress');
-      add(s.cancel, 'cancel');
+      add(lm && f.first !== 'failed', 'back');
+      add(s.cancel && !out.includes('back'), 'cancel');
       return out;
     case 'done':
       return ['progress', 'back'];
