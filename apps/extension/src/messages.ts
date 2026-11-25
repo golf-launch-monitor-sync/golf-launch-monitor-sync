@@ -10,7 +10,7 @@
 import type { ClientStatus, HcpView, PairOutcome, ProView, TestOutcome } from '@glmsync/browser';
 import type { progolftourRun } from '@glmsync/provider-tours';
 import type { Seen, TourView } from '@glmsync/browser/tours';
-import type { EtView } from './europeantour.ts';
+import type { EtView } from '@glmsync/browser/europeantour';
 import type { OcsSeen, OcsView } from './ocs-pages.ts';
 
 type TourStep = progolftourRun.Step;

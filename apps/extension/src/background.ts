@@ -12,8 +12,8 @@
  * And a pro's own world ranking page (`ProClient`, spec/prores.md): the page arrives from the content script there when
  * the player taps *Send*, read as the page showed it, and goes to the apps paired for it, each after its plan. Whether
  * a page is the player's is answered in the extension's own pages. The site is never asked anything. A tour's pages
- * the same way (the Pro Golf Tour: tours.ts; europeantour.com, a page per tour: europeantour.ts; the season pages of PGA Tour,
- * Korn Ferry, LPGA and Epson: season-content.ts, sent as the page showed them).
+ * the same way (the Pro Golf Tour: tours.ts; europeantour.com, a page per tour: `@glmsync/browser/europeantour`; the
+ * season pages of PGA Tour, Korn Ferry, LPGA and Epson: season-content.ts, sent as the page showed them).
  *
  * Woken by alarms, messages and the browser starting; it keeps nothing in memory that matters (a
  * Manifest V3 background may be stopped between events): everything is in chrome.storage.
@@ -22,7 +22,7 @@
 import { badge, BrowserClient, HcpClient, IdbBlobs, pickLang, ProClient, SEND_AFTER_MS, translator, type HcpView } from '@glmsync/browser';
 import { SITES } from '@glmsync/provider-rankings';
 import { TourKeeper } from '@glmsync/browser/tours';
-import { EtKeeper } from './europeantour.ts';
+import { EtKeeper } from '@glmsync/browser/europeantour';
 import { OcsKeeper } from './ocs-pages.ts';
 import { ocs } from '@glmsync/provider-tours';
 import { HISTORY_SHEET_URL, readSeen } from '@glmsync/provider-golfde';
@@ -73,7 +73,8 @@ const pro = new ProClient({
 });
 // The Pro Golf Tour's pages as the player opens them (`@glmsync/browser/tours`): what was read, *Fetch all*.
 const tours = new TourKeeper(storage);
-// His pages on europeantour.com as he opens them (europeantour.ts): DP World Tour and HotelPlanner Tour, merged.
+// His pages on europeantour.com as he opens them (`@glmsync/browser/europeantour`): DP World Tour and HotelPlanner
+// Tour, merged.
 const et = new EtKeeper(storage);
 // The LET's and LET Access Series' pages (ocs-pages.ts): her profile and her Order of Merit line, per tour.
 const ocsPages = new OcsKeeper(storage);

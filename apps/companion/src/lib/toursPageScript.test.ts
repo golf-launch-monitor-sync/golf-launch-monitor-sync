@@ -2,12 +2,12 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { progolftour } from '@glmsync/provider-tours';
-import { docOf, h, pgtLine, pgtProfile, pgtResult } from '@glmsync/provider-tours/testing';
+import { europeantour, progolftour } from '@glmsync/provider-tours';
+import { docOf, ET_TITLE, etOverview, etResults, etStats, h, pgtLine, pgtProfile, pgtResult } from '@glmsync/provider-tours/testing';
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error - a plain script of the build, without types
 import { moduleText, OUT } from '../../scripts/tours-page.mjs';
-import { READ_FUNCTION, readScript, readTourMessage, TABLE_WAIT_MS } from './toursPage.ts';
+import { READ_FUNCTION, readPickMessage, readScript, readTourMessage, TABLE_WAIT_MS } from './toursPage.ts';
 import { TOURS_PAGE_SCRIPT } from './toursPageScript.ts';
 
 describe('the tour window’s page script', () => {
@@ -65,8 +65,16 @@ function site(href: string, document: unknown) {
     for (const fn of due) fn();
   };
   /** The app's ask: the script it injects. */
-  const read = (who: string | null = null, ask = ASK) => runInNewContext(readScript(ask, who) as string, win);
+  const read = (who: string | null = null, ask = ASK, today: string | null = null) => runInNewContext(readScript(ask, who, today) as string, win);
   return { win, posted, asked, tick, read };
+}
+
+/** A made-up document that can be listened on, as the site's (`change` of its own select) and with its title. */
+function listened(doc: object, title: string) {
+  const heard: { type: string; fn: (e: { target?: unknown }) => void }[] = [];
+  const d = Object.assign(doc, { title, addEventListener: (type: string, fn: (e: { target?: unknown }) => void) => heard.push({ type, fn }) });
+  const fire = (target: unknown) => heard.filter((x) => x.type === 'change').forEach((x) => x.fn({ target }));
+  return { doc: d, fire };
 }
 
 describe('the page script in the tour’s page', () => {
@@ -137,5 +145,82 @@ describe('the page script in the tour’s page', () => {
     const odd = site(PROFILE, h('html', [h('h1', ['Lena Beispiel']), h('table', [h('tr', [h('th', ['A']), h('th', ['B']), h('th', ['C'])])])]));
     odd.read();
     expect(odd.posted.map((d) => JSON.parse(d).why)).toEqual(['changed_page']);
+  });
+});
+
+const ET_RESULTS = 'https://www.europeantour.com/players/jonas-beispiel-99002/results?tour=hotelplanner-tour';
+const TODAY = '2026-11-25';
+
+describe('the page script on europeantour.com', () => {
+  it('reads nothing until the app asks; then his page as it shows, with the day the app hands in', () => {
+    const { doc } = listened(docOf(etResults()), ET_TITLE);
+    const p = site(ET_RESULTS, doc);
+    expect(p.posted).toEqual([]);
+    p.read(null, ASK, TODAY);
+    expect(p.posted).toHaveLength(1);
+    const got = readTourMessage(ET_RESULTS, p.posted[0], ASK);
+    expect(got).toEqual({ ok: true, et: europeantour.checkRead(europeantour.readPage(etResults(), ET_TITLE, TODAY)) });
+    expect(got && 'et' in got ? got.et.tournaments.map((t) => [t.tour, t.rounds?.length]) : null).toEqual([
+      ['hotelplanner', 4], ['hotelplanner', 2], ['dp_world', 4], ['hotelplanner', 4],
+    ]);
+    expect(p.asked).toEqual([]); // it asked the site nothing of its own
+  });
+
+  it('only tournaments that ended before the day the app names', () => {
+    const { doc } = listened(docOf(etResults()), ET_TITLE);
+    const p = site(ET_RESULTS, doc);
+    p.read(null, ASK, '2026-10-01');
+    const got = readTourMessage(ET_RESULTS, p.posted[0], ASK);
+    expect(got && 'et' in got ? got.et.tournaments.map((t) => t.end) : null).toEqual(['2026-07-05', '2015-08-16']);
+  });
+
+  it('his overview and his statistics too, each a page of his', () => {
+    const o = site('https://www.europeantour.com/players/jonas-beispiel-99002/?tour=hotelplanner-tour', listened(docOf(etOverview()), 'Jonas BEISPIEL - Players - European Tour').doc);
+    o.read(null, ASK, TODAY);
+    expect(JSON.parse(o.posted[0] as string).read.rankings).toEqual({ hotelplanner: { source: 'tour:hotelplanner', as_of: TODAY, rank: 12, points: 1044.11, events: 18 } });
+    const st = site('https://www.europeantour.com/players/jonas-beispiel-99002/stats?tour=hotelplanner-tour', listened(docOf(etStats()), 'Stats - Jonas BEISPIEL - Players - European Tour').doc);
+    st.read(null, ASK, TODAY);
+    expect(JSON.parse(st.posted[0] as string).read.stats.map((x: { season: number }) => x.season)).toEqual([2026, 2025]);
+  });
+
+  it('waits a little for the table, then says the page changed; a page of the site that isn’t his is none to read', () => {
+    const p = site(ET_RESULTS, listened(docOf(etResults({ tables: [] })), ET_TITLE).doc);
+    p.read(null, ASK, TODAY);
+    expect(p.posted).toEqual([]); // waiting for the table
+    for (let waited = 0; waited <= TABLE_WAIT_MS; waited += 500) p.tick(500);
+    expect(p.posted.map((d) => JSON.parse(d).why)).toEqual(['changed_page']);
+    // A title that doesn't name him: the module doesn't know the page.
+    const q = site(ET_RESULTS, listened(docOf(etResults()), 'Something else').doc);
+    q.read(null, ASK, TODAY);
+    expect(q.posted.map((d) => JSON.parse(d).why)).toEqual(['changed_page']);
+    const r = site('https://www.europeantour.com/dpworld-tour/players/', listened(docOf(etResults()), ET_TITLE).doc);
+    r.read(null, ASK, TODAY);
+    expect(r.posted.map((d) => JSON.parse(d).why)).toEqual(['not_player_page']);
+  });
+
+  it('a pick in the page’s own select only says that he picked - nothing read, nothing of his', () => {
+    const { doc, fire } = listened(docOf(etResults()), ET_TITLE);
+    const p = site(ET_RESULTS, doc);
+    fire({ tagName: 'SELECT' });
+    expect(p.posted).toEqual([JSON.stringify({ glmsync: 'tour-page', picked: true })]);
+    expect(readPickMessage(ET_RESULTS, p.posted[0])).toBe(true);
+    // Any other change (a search box, a checkbox), or a pick on a page of the site that isn't his: nothing.
+    fire({ tagName: 'INPUT' });
+    fire(null);
+    fire({ tagName: { toLowerCase: () => 'select' } });
+    expect(p.posted).toHaveLength(1);
+    const listing = listened(docOf(etResults()), ET_TITLE);
+    const q = site('https://www.europeantour.com/dpworld-tour/players/', listing.doc);
+    listing.fire({ tagName: 'SELECT' });
+    expect(q.posted).toEqual([]);
+    // Without the app's bridge it stays out of the page's way.
+    delete p.win.ReactNativeWebView;
+    expect(() => fire({ tagName: 'SELECT' })).not.toThrow();
+  });
+
+  it('a document that can’t be listened on is read all the same', () => {
+    const p = site(ET_RESULTS, Object.assign(docOf(etResults()), { title: ET_TITLE }));
+    p.read(null, ASK, TODAY);
+    expect(readTourMessage(ET_RESULTS, p.posted[0], ASK)).toMatchObject({ ok: true });
   });
 });

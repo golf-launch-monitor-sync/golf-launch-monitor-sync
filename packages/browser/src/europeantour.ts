@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * What the extension keeps of a player's own pages on europeantour.com (DP World Tour, HotelPlanner Tour;
+ * What a client keeps of a player's own pages on europeantour.com (DP World Tour, HotelPlanner Tour;
  * `@glmsync/provider-tours`), between the pages he opens: what each of his pages showed (his ranks, his results with
- * their rounds of the seasons he picked, his season statistics), merged. Kept in the extension's own storage (no web
- * page reaches it), only of the player whose page he opened: another player's page replaces it all.
+ * their rounds of the seasons he picked, his season statistics), merged. Kept in the client's own storage (no web
+ * page reaches it: the extension's storage, the companion app's), only of the player whose page he opened: another
+ * player's page replaces it all. The extension's background holds one, the companion app's tour window another.
  *
- * Everything arrives from a content script and is read again strictly (`checkRead`). Pure apart from the storage it is
+ * Everything arrives from a page's script and is read again strictly (`checkRead`). Pure apart from the storage it is
  * handed, so it is tested without a browser. Unlike the Pro Golf Tour there is nothing to fetch: his results page
  * has the rounds, a season at a time, as he picks it.
  */

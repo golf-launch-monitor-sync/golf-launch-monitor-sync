@@ -208,7 +208,7 @@ function Main() {
           async (v) => {
             if (v.pairings.length) {
               setMessage(null);
-              // A pro's pages: the window of the page last sent from here (his tour profile or a world ranking's).
+              // A pro's pages: the window of the page last sent from here (his tour profile or page, or a world ranking's).
               const last = pro ? await svc.lastPage.get().catch(() => null) : null;
               const tour = tourSiteOf(last);
               setScreen(!pro ? { name: 'golfde' } : tour ? { name: 'tours', site: tour } : { name: 'rankings' });

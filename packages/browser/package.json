@@ -18,7 +18,8 @@
     "./style.css": "./src/style.css",
     "./pro": "./src/pro.ts",
     "./proView": "./src/proView.ts",
-    "./tours": "./src/tours.ts"
+    "./tours": "./src/tours.ts",
+    "./europeantour": "./src/europeantour.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

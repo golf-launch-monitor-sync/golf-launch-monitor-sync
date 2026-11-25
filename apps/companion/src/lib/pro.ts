@@ -45,8 +45,8 @@ const LAST_PAGE = 'glmsync/pro/lastPage';
 
 /**
  * The player's own page, last sent from this phone: the window opens there next time instead of the site's search. Only
- * an address of a player's page of a world ranking or his profile on a tour is kept, only on this phone, and it goes
- * when the player disconnects the last app for a pro's pages here.
+ * an address of a player's page of a world ranking or his profile or page on a tour is kept, only on this phone, and it
+ * goes when the player disconnects the last app for a pro's pages here.
  */
 export class LastPage {
   constructor(private readonly storage: Storage) {}

@@ -17,7 +17,7 @@
 import { pickLang, proLineOf, translator, type LinePhase, type ProView } from '@glmsync/browser';
 import { europeantour, snapshotOf, type TourSite } from '@glmsync/provider-tours';
 import type { Reply } from './messages.ts';
-import type { EtView } from './europeantour.ts';
+import type { EtView } from '@glmsync/browser/europeantour';
 
 const t = translator(pickLang(navigator.languages));
 /** How long a page may take to show its table (the site's scripts build it a moment after the page). */

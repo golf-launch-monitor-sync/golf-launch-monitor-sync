@@ -89,6 +89,11 @@ describe('the page kept for the window', () => {
     expect(await last.get()).toBeNull();
     await last.set('https://www.progolftour.de/player-profile/99001?year=2026');
     expect(await last.get()).toBe('https://www.progolftour.de/player-profile/99001?year=2026');
+    // His page on europeantour.com (either tour, any part), but not the site's list of players.
+    await last.set('https://www.europeantour.com/hotelplanner-tour/players/');
+    expect(await last.get()).toBe('https://www.progolftour.de/player-profile/99001?year=2026');
+    await last.set('https://www.europeantour.com/players/jonas-beispiel-99002/results?tour=hotelplanner-tour');
+    expect(await last.get()).toBe('https://www.europeantour.com/players/jonas-beispiel-99002/results?tour=hotelplanner-tour');
     await last.set(OWGR);
     await last.clear();
     expect(await last.get()).toBeNull();

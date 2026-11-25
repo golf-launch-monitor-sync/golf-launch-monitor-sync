@@ -13,14 +13,14 @@ import type { ProView } from '@glmsync/browser/pro';
 import { proLineOf, type LinePhase } from '@glmsync/browser/proView';
 import type { TourView } from '@glmsync/browser/tours';
 import { translator } from '@glmsync/browser/i18n';
-import type { TourSite } from '@glmsync/provider-tours';
-import { onProfile } from './toursPage.ts';
+import { europeantour, type TourSite } from '@glmsync/provider-tours';
+import { onEtPage, onProfile } from './toursPage.ts';
 import type { Lang } from './text.ts';
 
 export type { LinePhase };
 
 /** The app's own words (src/i18n), as the bar needs them. */
-export type AppText = (key: 'tours.find' | 'rankings.changed' | 'pro.pairFirst') => string;
+export type AppText = (key: 'tours.find' | 'tours.findEt' | 'rankings.changed' | 'pro.pairFirst') => string;
 
 export interface ToursBar {
   text: string;
@@ -53,4 +53,28 @@ export function toursBar(v: ProView | null, tour: TourView | null, site: TourSit
   if (!line) return { text: app('pro.pairFirst'), warn: true, ...none };
   const text = limit && phase !== 'reading' ? tr('tourLine.limit') : line.text;
   return { text, warn: line.warn, send: profile && line.send, fetchAll: profile && phase !== 'reading', stop: false, ask: false };
+}
+
+const ET_SITES: readonly TourSite[] = europeantour.TOURS.map((t) => europeantour.SITE[t]);
+
+/**
+ * The bar on europeantour.com (DP World Tour, HotelPlanner Tour): *Send* on any page of his, no *Fetch all* (his results
+ * page has the rounds). It speaks of the tour an app asks about, else of the one sent last, else of the address's - as
+ * the extension's line on the site does.
+ */
+export function etBar(v: ProView | null, url: string | null, phase: LinePhase, sent: TourSite | null, lang: Lang, app: AppText): ToursBar {
+  const tr = translator(lang);
+  if (!v) return { text: '', warn: false, ...none };
+  if (!v.pairings.length) return { text: app('pro.pairFirst'), warn: true, ...none };
+  if (v.question) {
+    const targets = v.question.targets.join(', ') || [...new Set(v.pairings.map((p) => p.name))].join(', ');
+    return { text: tr('pro.question', { site: v.question.siteName, name: v.question.name, targets }), warn: true, ...none, ask: true };
+  }
+  if (phase === 'changed_page') return { text: app('rankings.changed'), warn: true, ...none };
+  const page = onEtPage(url);
+  if (!page && phase === 'ready') return { text: app('tours.findEt'), warn: false, ...none };
+  const site = sent && ET_SITES.includes(sent) ? sent : europeantour.siteOfUrl(url);
+  const line = proLineOf(v, site, phase, tr);
+  if (!line) return { text: app('pro.pairFirst'), warn: true, ...none };
+  return { text: line.text, warn: line.warn, send: page && line.send, fetchAll: false, stop: false, ask: false };
 }

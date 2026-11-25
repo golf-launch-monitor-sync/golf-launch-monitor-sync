@@ -128,7 +128,8 @@ portal in a sign-in window - so that window lives here, in a small app that does
   (the site's page can't reach it) and on the connection's card. The window opens on the page last sent from here, else
   asks which ranking; it keeps every load in the app (`rankingsWindowRules`). A read link `glmsync://read?kind=pro`
   opens the window - only with a pairing of this kind. Nothing happens in the background.
-- **Sends a pro's tour pages** (spec 1.15.0, `site: tour:<key>`; today the Pro Golf Tour), with the same pairing: the
+- **Sends a pro's tour pages** (spec 1.15.0, `site: tour:<key>`; the Pro Golf Tour, and the DP World Tour and the
+  HotelPlanner Tour below), with the same pairing: the
   app's own window on the tour's site (`src/ui/ToursView.tsx`), opened from the home page's card (*Open Pro Golf Tour*),
   from the world ranking window's choice, or by a read link when the page last sent from here was his tour profile;
   it opens on that profile, else on the tour's Order of Merit, loaded as this web view is, nothing added. On his own
@@ -146,6 +147,16 @@ portal in a sign-in window - so that window lives here, in a small app that does
   sends what it read; a run of a window that is gone (the app was closed during it) ends when the window opens again.
   Nothing is read before his tap, and nothing happens in the background. The window keeps every load in the app
   (`tourWindowRules`).
+  **europeantour.com** (DP World Tour, HotelPlanner Tour; companion 0.5.0): one window for both tours (*Open DP World
+  Tour*, *Open HotelPlanner Tour* open the site's list of players of each; one page per player has both), the
+  extension's way there: once a page of his (`/players/<name>-<id>/…`) has loaded, the app asks the page script for a
+  read (`europeantour.readPage` with the player's day the app hands in) and keeps it merged in the extension's
+  `EtKeeper` (`@glmsync/browser/europeantour`); when he picks another season or tour in the page's own select, the page
+  script only posts that he picked (`readPickMessage`: nothing read, nothing of his) and the app asks for the read
+  1.5 s later. *Send*, on any page of his, reads it once more and sends a page per tour with something of it
+  (`src/lib/etSession.ts`). No *Fetch all*: his *Wins & Results* page has the rounds, a season at a time. A read is
+  taken only of the player whose page the window shows (`readTourMessage`), only with a connection for a pro's pages,
+  only while the window is open.
 - **Demo**: a made-up player (`@glmsync/provider-demo`) for trying the app without an account, and
   for app reviews. Its "requests" go through the guard too, so counters and log behave as for real.
 - **Save as file**: a sync into an olmd file (the share sheet), planned gently by the file target -
@@ -167,8 +178,9 @@ portal in a sign-in window - so that window lives here, in a small app that does
 | golf.de's own sign-in | golf.de's cookies in the window's web view, on this phone; the app never reads them |
 | Each pairing for a pro's pages with its import token | the secure store (one entry, `glmsync.pro.pairings`, in pieces where long) |
 | What each of those apps last answered, an open *Is this page yours?* with its page (a day at most), fingerprints of pages said to be the player's | app storage |
-| The address of the player's own ranking page or tour profile last sent from here (where the window opens next time) | app storage, until the player disconnects the last app for a pro's pages here |
+| The address of the player's own ranking page, tour profile or page on europeantour.com last sent from here (where the window opens next time) | app storage, until the player disconnects the last app for a pro's pages here |
 | His tour profile as last read, his own line of each tournament read, which tournament pages were opened when, the runs of *Fetch all* (the extension's `TourKeeper`) | app storage; another player's profile replaces it all |
+| What his pages on europeantour.com showed, merged: his ranks, his tournaments with their rounds of the seasons he picked, his season statistics (the extension's `EtKeeper`) | app storage; another player's page replaces it all |
 | The sites' cookies (a consent banner's choice) | the window's web view, on this phone |
 
 Android backups leave the secure store out (`allowBackup: false`). A sign-in goes to the provider

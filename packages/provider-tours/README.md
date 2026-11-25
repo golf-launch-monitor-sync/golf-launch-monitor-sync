@@ -124,10 +124,10 @@ of OCS (`ocs-let.com/tic/…`, `alps.ocs-ffg.com/tic/tmtic.cgi`) answers 404.
   page.
 
 The extension puts it together (`apps/extension`: `tours-content.ts`, `europeantour-content.ts`, `season-content.ts` and
-`ocs-content.ts` on the sites; `TourKeeper` of `@glmsync/browser/tours` and the extension's `europeantour.ts` and
-`ocs-pages.ts` keeping what was read;
-`ProClient` of `@glmsync/browser` sending it). The companion app the same
-in its own window (`apps/companion`: `ToursView` with the page script `scripts/tours-page.entry.ts`, `toursSession.ts`
-over the same `TourKeeper`, run and `ProClient`). A new tour joins the app's window with its module's reading in the
-page script and its pages in `src/lib/toursPage.ts`; the window shows only the sites it reads (`APP_TOURS`): DP World
-Tour, HotelPlanner Tour, the season pages, the LET and the LET Access Series are read in the extension only, so far.
+`ocs-content.ts` on the sites; `TourKeeper` of `@glmsync/browser/tours`, `EtKeeper` of `@glmsync/browser/europeantour`
+and the extension's `ocs-pages.ts` keeping what was read; `ProClient` of `@glmsync/browser` sending it). The companion
+app the same in its own window (`apps/companion`: `ToursView` with the page script `scripts/tours-page.entry.ts`;
+`toursSession.ts` over the same `TourKeeper`, run and `ProClient` for the Pro Golf Tour, `etSession.ts` over the same
+`EtKeeper` for europeantour.com). A new tour joins the app's window with its module's reading in the page script and its
+pages in `src/lib/toursPage.ts`; the window shows only the sites it reads (`APP_TOURS`): the season pages, the LET and
+the LET Access Series are read in the extension only, so far.

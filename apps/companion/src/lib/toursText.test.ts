@@ -3,7 +3,7 @@
 import type { ProView } from '@glmsync/browser/pro';
 import type { TourView } from '@glmsync/browser/tours';
 import { describe, expect, it } from 'vitest';
-import { toursBar, type AppText } from './toursText.ts';
+import { etBar, toursBar, type AppText } from './toursText.ts';
 
 const SITE = 'tour:pro_golf_tour' as const;
 const PROFILE = 'https://www.progolftour.de/player-profile/99001?year=2026';
@@ -52,5 +52,37 @@ describe('the tour window’s bar', () => {
     expect(toursBar(q, tour({ run: { done: 1, total: 2, tab: 1 } }), SITE, RESULT, 'done', false, 'en', app)).toMatchObject({ ask: true, stop: false, warn: true });
     expect(toursBar(view({ pairings: [] }), tour(), SITE, PROFILE, 'ready', false, 'en', app)).toMatchObject({ text: '[pro.pairFirst]', send: false });
     expect(toursBar(null, null, SITE, PROFILE, 'ready', false, 'en', app).text).toBe('');
+  });
+});
+
+const ET_RESULTS = 'https://www.europeantour.com/players/jonas-beispiel-99002/results?tour=hotelplanner-tour';
+const ET_OVERVIEW = 'https://www.europeantour.com/players/jonas-beispiel-99002/';
+
+describe('the tour window’s bar on europeantour.com', () => {
+  it('offers Send on any page of his, never Fetch all; elsewhere it says where his page is', () => {
+    for (const url of [ET_RESULTS, ET_OVERVIEW]) {
+      expect(etBar(view(), url, 'ready', null, 'en', app), url).toEqual({ text: 'Golf Stats Sync: send this page to Example App', warn: false, send: true, fetchAll: false, stop: false, ask: false });
+    }
+    for (const url of ['https://www.europeantour.com/hotelplanner-tour/players/', null]) {
+      expect(etBar(view(), url, 'ready', null, 'en', app), String(url)).toEqual({ text: '[tours.findEt]', warn: false, send: false, fetchAll: false, stop: false, ask: false });
+    }
+  });
+
+  it('speaks of the tour sent last, else of the address’s', () => {
+    const sentHp = view({ pairings: [pairing({ at: '2026-11-25T10:00:00Z', site: 'tour:hotelplanner', status: 'sent', tournaments: 3 })] });
+    expect(etBar(sentHp, ET_OVERVIEW, 'done', 'tour:hotelplanner', 'en', app)).toMatchObject({ text: 'Sent to Example App.', send: false });
+    // The overview without ?tour= is the DP World Tour's: without the tour sent last, nothing was sent of it.
+    expect(etBar(sentHp, ET_OVERVIEW, 'done', null, 'en', app)).toMatchObject({ send: true });
+    expect(etBar(sentHp, ET_RESULTS, 'done', null, 'de', app)).toMatchObject({ text: 'An Example App geschickt.', send: false });
+    expect(etBar(view(), ET_RESULTS, 'reading', null, 'en', app)).toMatchObject({ text: 'Reading the page …', send: false });
+    expect(etBar(view(), ET_RESULTS, 'error', null, 'en', app)).toMatchObject({ warn: true, send: true });
+  });
+
+  it('a page the module doesn’t know, a question, no connection', () => {
+    expect(etBar(view(), ET_RESULTS, 'changed_page', null, 'en', app)).toMatchObject({ text: '[rankings.changed]', warn: true, send: false });
+    const q = view({ question: { site: 'tour:dp_world', siteName: 'DP World Tour', name: 'Jonas Beispiel', targets: ['Example App'], at: '2026-11-25T10:00:00Z' } });
+    expect(etBar(q, ET_RESULTS, 'done', 'tour:hotelplanner', 'en', app)).toMatchObject({ ask: true, send: false, warn: true });
+    expect(etBar(view({ pairings: [] }), ET_RESULTS, 'ready', null, 'en', app)).toMatchObject({ text: '[pro.pairFirst]', send: false });
+    expect(etBar(null, ET_RESULTS, 'ready', null, 'en', app).text).toBe('');
   });
 });

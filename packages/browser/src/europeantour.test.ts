@@ -9,7 +9,7 @@ import { EtKeeper } from './europeantour.ts';
 const TODAY = '2026-11-25';
 const read = (snap = etResults(), title = ET_TITLE) => europeantour.readPage(snap, title, TODAY);
 
-describe('what the extension keeps of his pages on europeantour.com', () => {
+describe('what a client keeps of his pages on europeantour.com', () => {
   it('merges what his pages showed, and makes a page of each tour', async () => {
     const k = new EtKeeper(new MemoryStorage());
     expect(await k.view()).toEqual({ who: null, tournaments: {} });
