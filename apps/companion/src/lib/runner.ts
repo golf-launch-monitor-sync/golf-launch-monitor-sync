@@ -11,8 +11,12 @@
  * - the provider's sign-in goes to the provider only; a target gets batches and nothing else.
  *
  * One thing at a time: runs are queued, so a timer in the background and a "fetch now" from a target
- * app never fetch side by side (the plan's lease keeps different apps apart, this keeps one app's).
- * Nothing here throws at a timer: every way a run ends is recorded for the screen.
+ * app never fetch side by side (the plan's lease keeps different apps apart, this keeps one app's -
+ * which is why the target lets this app take its own lease over, spec 1.13.0). A "fetch now" while a
+ * sync is under way joins it instead of fetching the same sessions once more after it (SY-5); only if
+ * that one fetched nothing (not due, busy) does the tap fetch itself.
+ * Nothing here throws at a timer: every way a run ends is recorded for the screen; a plan that was
+ * busy or not due goes beside the last real result, never over it.
  */
 
 import {
@@ -31,6 +35,7 @@ import {
   type FileOut,
   type Guard,
   type GuardCounts,
+  type Holder,
   type ImportResult,
   type Provider,
   type ProviderContext,
@@ -73,7 +78,16 @@ export interface LastRun {
   total?: { sessions: number; rounds: number };
   /** Sessions of the older history still to come, as the last history chunk's provider could tell. */
   left?: number;
+  /** For a busy run: who holds the lease (spec 1.13.0). */
+  holder?: Holder;
+  /** A later run that fetched nothing (busy, not due), kept beside this one instead of over it. */
+  aside?: { at: number; status: 'busy' | 'not_due'; holder?: Holder };
 }
+
+export type SyncReport = { key: string; run: LastRun }[];
+
+/** A run that fetched nothing: it goes beside the last real one. */
+const idle = (status: RunStatus): status is 'busy' | 'not_due' => status === 'busy' || status === 'not_due';
 
 export interface RunnerOptions {
   pairings: Pairings;
@@ -104,6 +118,10 @@ const errorKind = (e: unknown) =>
 
 export class Runner {
   private queue: Promise<unknown> = Promise.resolve();
+  /** The sync queued or under way (the last one asked), for a tap to join. */
+  private pending: { reason: Reason; target?: string; done: Promise<SyncReport> } | null = null;
+  /** A tap's own sync, once it had to wait: a second tap joins it. */
+  private tapped: { target?: string; done: Promise<SyncReport> } | null = null;
   private aborter = new AbortController();
   private runs: Record<string, LastRun> = {};
   private loaded = false;
@@ -171,11 +189,21 @@ export class Runner {
     if (!this.loaded) await this.loadRuns();
     // What came adds up across runs, and how much is still to come stays until a chunk says otherwise.
     const before = this.runs[key];
+    if (idle(given.status) && before && !idle(before.status)) {
+      // Nothing fetched this time: what the last real run brought stays, this goes beside it.
+      const aside: NonNullable<LastRun['aside']> = { at: given.at, status: given.status as 'busy' | 'not_due' };
+      if (given.holder) aside.holder = given.holder;
+      return this.keep(key, { ...before, aside });
+    }
     const run: LastRun = { ...given };
     const total = before?.total ?? { sessions: 0, rounds: 0 };
     if (run.status === 'synced' && run.result) run.total = { sessions: total.sessions + run.result.sessions, rounds: total.rounds + run.result.rounds };
     else if (before?.total) run.total = before.total;
     if (run.left === undefined && before?.left !== undefined && !(run.reason === 'backfill' && run.status === 'synced' && !run.more)) run.left = before.left;
+    await this.keep(key, run);
+  }
+
+  private async keep(key: string, run: LastRun) {
     const runs = { ...this.runs, [key]: run };
     const keys = Object.keys(runs).sort((a, b) => (runs[b]?.at ?? 0) - (runs[a]?.at ?? 0));
     this.runs = Object.fromEntries(keys.slice(0, MAX_RUNS).map((k) => [k, runs[k] as LastRun]));
@@ -250,17 +278,63 @@ export class Runner {
     return new HttpTarget(p, { ...(this.opts.fetch ? { fetch: this.opts.fetch } : {}), now: this.now, signal: this.signal });
   }
 
-  /** A sync for each pairing (or each of one target), one after the other. */
-  syncAll(reason: Reason, only: { target?: string } = {}): Promise<{ key: string; run: LastRun }[]> {
-    return this.serial(async () => {
+  /** A sync for each pairing (or each of one target), one after the other. A manual one joins a sync under way. */
+  syncAll(reason: Reason, only: { target?: string } = {}): Promise<SyncReport> {
+    if (reason === 'manual') return this.tap(only);
+    return this.queued(reason, only);
+  }
+
+  /** The sync queued or under way, if any: what a tap now would wait for ("waiting for the fetch under way"). */
+  syncing(): { reason: Reason } | null {
+    return this.pending ? { reason: this.pending.reason } : null;
+  }
+
+  private queued(reason: Reason, only: { target?: string }): Promise<SyncReport> {
+    const done = this.serial(async () => {
       const pairings = only.target ? this.opts.pairings.ofTarget(only.target) : [...this.opts.pairings.list()];
-      const out: { key: string; run: LastRun }[] = [];
+      const out: SyncReport = [];
       for (const p of pairings) {
         const run = await this.syncOne(p, reason);
         out.push({ key: p.key, run });
       }
       return out;
     });
+    const mine = { reason, ...(only.target ? { target: only.target } : {}), done };
+    this.pending = mine;
+    this.tell();
+    const off = () => {
+      if (this.pending === mine) {
+        this.pending = null;
+        this.tell();
+      }
+    };
+    done.then(off, off);
+    return done;
+  }
+
+  /**
+   * "Fetch now": a tap while a sync of the same pairings is queued or under way waits for it and takes its outcome
+   * when it fetched (Reginald, 25 Nov: a tap fetched the same 8 sessions again while the first sync's batch was still
+   * on its way). Only when that one fetched nothing - not due, or another device holds the lease - does the tap ask a
+   * plan of its own, which is never busy. A second tap meanwhile joins the first.
+   */
+  private tap(only: { target?: string }): Promise<SyncReport> {
+    const same = (x: { target?: string } | null) => !!x && (x.target === undefined || x.target === only.target);
+    if (this.tapped && same(this.tapped)) return this.tapped.done;
+    const before = this.pending && same(this.pending) ? this.pending.done : null;
+    if (!before) return this.queued('manual', only);
+    const done = (async () => {
+      const out = await before.catch((): SyncReport => []);
+      if (out.length && out.every((o) => o.run.status === 'synced')) return out;
+      return this.queued('manual', only);
+    })();
+    const mine = { ...(only.target ? { target: only.target } : {}), done };
+    this.tapped = mine;
+    const off = () => {
+      if (this.tapped === mine) this.tapped = null;
+    };
+    done.then(off, off);
+    return done;
   }
 
   /** The pairing's test, if it has one that lasts: the scenario played back, and its made-up sign-in. */
@@ -302,6 +376,7 @@ export class Runner {
       generator: this.generator,
     });
     const run: LastRun = { at: this.now(), reason, status: outcome.status };
+    if (outcome.status === 'busy' && outcome.plan.holder) run.holder = outcome.plan.holder;
     // The target heard "ready" with the plan; its account is another one, which it hears too (no lease taken).
     if (outcome.status === 'other_account') await this.target(p).status('other').catch(() => undefined);
     if (outcome.status === 'synced') {

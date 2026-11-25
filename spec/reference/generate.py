@@ -219,16 +219,37 @@ def plan_vectors() -> dict[str, Any]:
     cases.append({"rule": "barren", "input": {"chunks": chunks}, "expected": plan.barren(chunks)})
     moved = [0, 0, 3, 0, 0, 0, 0, 0, 0, 2]
     cases.append({"rule": "shots_idle", "input": {"moved": moved}, "expected": plan.shots_idle(moved)})
-    events = [{"t": 0, "op": "plan", "reason": "timer"}, {"t": 10, "op": "plan", "reason": "open"},
-              {"t": 20, "op": "plan", "reason": "backfill"}, {"t": 30, "op": "plan", "reason": "backfill"},
-              {"t": 40, "op": "plan", "reason": "manual"}, {"t": 50, "op": "import", "reason": "timer"},
-              {"t": 60, "op": "plan", "reason": "timer"}, {"t": 299.9, "op": "plan", "reason": "connect"},
-              {"t": 320, "op": "plan", "reason": "backfill"}, {"t": 330, "op": "connect", "reason": "connect"},
-              {"t": 331, "op": "plan", "reason": "backfill"}, {"t": 360, "op": "plan", "reason": "timer"},
-              {"t": 660, "op": "plan", "reason": "timer"}]
+    # Two clients of one player: an extension (E) and a companion app (C).
+    ext, comp = {"client": "E", "kind": "extension"}, {"client": "C", "kind": "companion"}
+    events = [{"t": 0, "op": "plan", "reason": "timer", **ext}, {"t": 10, "op": "plan", "reason": "open", **comp},
+              {"t": 20, "op": "plan", "reason": "backfill", **comp}, {"t": 30, "op": "plan", "reason": "backfill", **ext},
+              {"t": 40, "op": "plan", "reason": "manual", **comp}, {"t": 50, "op": "import", "reason": "timer"},
+              {"t": 60, "op": "plan", "reason": "timer", **ext}, {"t": 299.9, "op": "plan", "reason": "connect", **comp},
+              {"t": 320, "op": "plan", "reason": "backfill", **ext}, {"t": 330, "op": "connect", "reason": "connect"},
+              {"t": 331, "op": "plan", "reason": "backfill", **ext}, {"t": 360, "op": "plan", "reason": "timer", **comp},
+              {"t": 660, "op": "plan", "reason": "timer", **ext}]
     cases.append({"rule": "leases", "input": {"events": events}, "expected": plan.leases(events)})
+    # The same client asking again takes its own lease over (1.13.0): a companion app's sync whose batch never
+    # arrived holds nobody up but others - not itself two and a half minutes later. The late import of its first
+    # plan releases nothing then; the import of the plan that holds the lease does.
+    events = [{"t": 0, "op": "plan", "reason": "open", **comp}, {"t": 150, "op": "plan", "reason": "open", **comp},
+              {"t": 160, "op": "plan", "reason": "timer", **ext}, {"t": 170, "op": "import", "reason": "open", "plan": 0},
+              {"t": 175, "op": "plan", "reason": "timer", **ext}, {"t": 180, "op": "import", "reason": "open", "plan": 1},
+              {"t": 185, "op": "plan", "reason": "timer", **ext}]
+    cases.append({"rule": "leases", "input": {"events": events}, "expected": plan.leases(events)})
+    # Two phones are two clients of one kind: each holds the other up.
+    events = [{"t": 0, "op": "plan", "reason": "timer", **comp},
+              {"t": 5, "op": "plan", "reason": "open", "client": "C2", "kind": "companion"}]
+    cases.append({"rule": "leases", "input": {"events": events}, "expected": plan.leases(events)})
+    lease = {"client": "C", "kind": "companion", "since": 100.0, "until": 400.0}
+    for ls, reason, now, client in [(None, "timer", 100.0, "E"), (lease, "timer", 200.0, "E"), (lease, "timer", 200.0, "C"),
+                                    (lease, "manual", 200.0, "E"), (lease, "open", 400.0, "E"),
+                                    ({"client": "C", "until": 400.0}, "open", 200.0, "E"), (lease, "open", 200.0, None),
+                                    ({"until": "soon"}, "timer", 200.0, "E")]:
+        cases.append({"rule": "holder", "input": {"lease": ls, "reason": reason, "now_s": now, "client": client},
+                      "expected": plan.holder(ls, reason, now, client)})
     return doc("The reference planning rules of a target (spec/planning.md; here_due_at and is_due's `here` since "
-               "1.12.0, a case without `here` has none). Times compare as instants within "
+               "1.12.0, a case without `here` has none; `holder`, and `leases` with clients and holders, since 1.13.0). Times compare as instants within "
                "compare.time_tolerance_s; dict results compare without regard to key order.", cases,
                rules=plan.RULES, compare={"time_tolerance_s": 0.001})
 

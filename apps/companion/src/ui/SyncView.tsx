@@ -34,6 +34,8 @@ export function SyncView({
 }) {
   const [runs, setRuns] = useState<{ name: string; run: LastRun }[] | null>(null);
   const [stayed, setStayed] = useState(false);
+  // A sync already under way when the link came: this one waits for it (SY-5) and says so.
+  const [joining] = useState(() => svc.runner.syncing() !== null);
   const started = useRef(false);
   const of = link.target ? svc.pairings.ofTarget(link.target) : svc.pairings.list();
 
@@ -77,7 +79,7 @@ export function SyncView({
   return (
     <ScrollView contentContainerStyle={s.scroll}>
       <Card>
-        <Title>{runs ? t('sync.done') : t('sync.running')}</Title>
+        <Title>{runs ? t('sync.done') : joining ? t('sync.joining') : t('sync.running')}</Title>
         {!runs && <Body muted>{t('sync.back')}</Body>}
         {runs?.map((r) => (
           <Body key={r.name}>

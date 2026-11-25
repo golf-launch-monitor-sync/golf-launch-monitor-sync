@@ -62,8 +62,9 @@ paths:
       description: |
         Every client asks this before it asks the provider anything. `due: false` means: don't
         fetch. A due plan holds a lease (`lease_until`) for its kind (a regular sync or a history
-        chunk): another client of the same player asking meanwhile gets `busy: true`. The import
-        with the plan's `plan_id` releases it. A target keeps at least the reference planning rules
+        chunk): another client of the same player asking meanwhile gets `busy: true` and the `holder`;
+        the same client asking again takes its own lease over (1.13.0). The import with the plan's
+        `plan_id` releases it. A target keeps at least the reference planning rules
         (spec/planning.md); the client's load guard holds regardless (spec/guard.md).
       parameters:
         - name: provider
@@ -380,6 +381,14 @@ components:
       properties:
         due: { type: boolean }
         busy: { type: boolean, description: Another client of the player holds the lease of this kind; ask again later. }
+        holder:
+          type: object
+          additionalProperties: false
+          required: [kind]
+          description: "With `busy` (since 1.13.0): the client holding the lease, so a client can say who is fetching. Never the asking client itself: that one takes its own lease over."
+          properties:
+            kind: { $ref: "#/components/schemas/ClientKind" }
+            since: { $ref: "#/components/schemas/Time" }
         wait_s: { type: number, minimum: 0, description: "For `backfill`: seconds until the next history chunk may go." }
         disconnected: { type: boolean, description: The player ended the connection in the target app; drop the provider sign-in and stop. }
         account_ref: { type: string, pattern: "^[A-Za-z0-9_-]{16,128}$", description: The provider account connected here. }

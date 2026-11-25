@@ -1,6 +1,6 @@
 {
   "$comment": "Trackman's answers (synthetic) -> olmd/1 batches. input.fetched: {sessions: [{activity, node}], scorecards, round_shots: [{id, holes}], shots_none}. Compare as JSON values; numbers exactly, except in rounds[].shots[] where a number may differ by compare.round_shot_tolerance (rounding to centimetres differs between languages at exact halves).",
-  "spec_version": "1.12.0",
+  "spec_version": "1.13.0",
   "generated_by": "spec/reference/generate.py",
   "compare": {
     "round_shot_tolerance": 0.011

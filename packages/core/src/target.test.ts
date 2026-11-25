@@ -179,6 +179,18 @@ describe('a plan, read from an untrusted target', () => {
     expect(readPlan({ due: true, disconnected: true }).due).toBe(false);
     expect(readPlan({ due: true, pace: Number.POSITIVE_INFINITY }).pace).toBe(1);
   });
+
+  it("names who holds the lease when it is busy (spec 1.13.0), and nothing it can't read", () => {
+    expect(readPlan({ due: false, busy: true, holder: { kind: 'extension', since: '2026-11-25T10:17:00Z' } }).holder).toEqual({
+      kind: 'extension',
+      since: '2026-11-25T10:17:00Z',
+    });
+    expect(readPlan({ busy: true, holder: { kind: 'companion' } }).holder).toEqual({ kind: 'companion' });
+    // A kind the spec doesn't know is "other"; a holder without busy, or one that is no object, is none.
+    expect(readPlan({ busy: true, holder: { kind: '<b>me</b>', since: 'later' } }).holder).toEqual({ kind: 'other' });
+    expect(readPlan({ due: true, holder: { kind: 'web' } }).holder).toBeUndefined();
+    expect(readPlan({ busy: true, holder: 'the extension' }).holder).toBeUndefined();
+  });
 });
 
 describe('Retry-After', () => {

@@ -45,7 +45,10 @@ A due plan carries a **lease** (`plan_id`, `lease_until`, five minutes) for its 
 client of the player fetches a regular sync, another asking for one gets `busy: true`; a history
 chunk and a regular sync don't hold each other up, and *fetch now* is never busy. The import that
 echoes the plan's id in `sync.plan_id` releases the lease; a client that gives up simply lets it run
-out.
+out. Since 1.13.0 the lease is the client's that took it: the same client asking again takes it over
+(it runs one sync at a time, so its earlier one has ended), and a busy plan names its `holder` - the
+kind of client and since when - so a client can say who is fetching ([planning.md](planning.md), *The
+lease*). A client never asks for a plan while a sync of its own of that kind runs.
 
 Independently of any plan, the client's **load guard** ([guard.md](guard.md)) caps what it asks of a
 provider: a faulty or hostile target can't make it hammer anyone.

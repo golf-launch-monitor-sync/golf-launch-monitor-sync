@@ -195,26 +195,62 @@ def lease_kind(reason: str) -> str:
     return "history" if reason == "backfill" else "sync"
 
 
-def leases(events: list[dict[str, Any]]) -> list[bool | None]:
+def holder(lease: dict[str, Any] | None, reason: str, now_s: float, client: str | None) -> dict[str, Any] | None:
+    """Who keeps a client from a plan of this kind (since 1.13.0): None when it may have one, else
+    the lease's holder as the plan names it, `{"kind", "since"}`. `lease`: the lease of the plan's
+    kind, `{"client", "kind", "since", "until"}` (seconds; `client` whatever the target knows a client
+    by, its import token as a rule). The lease belongs to the client that took it: the same client
+    asking again takes its own lease over - it runs its syncs one after the other, so its earlier
+    one has ended without an import (it gave up, or its batch never arrived), and to wait for that
+    one would be waiting for nothing. A manual sync is never held up."""
+    if reason == "manual" or not lease:
+        return None
+    try:
+        if float(lease.get("until") or 0) <= now_s:
+            return None
+    except (TypeError, ValueError):
+        return None
+    if client is not None and lease.get("client") == client:
+        return None
+    out: dict[str, Any] = {"kind": lease.get("kind") or "other"}
+    if lease.get("since") is not None:
+        out["since"] = lease["since"]
+    return out
+
+
+def leases(events: list[dict[str, Any]]) -> list[dict[str, Any] | None]:
     """The lease (5 minutes) of a due plan, per kind: while a plan of a kind is out, another client
-    asking for one of that kind is told `busy`. A regular sync and a history chunk don't hold each
-    other up, a manual sync is never busy (the player waits for an answer), and an import of that
-    kind - or a new connect - releases it. Events: {"t": seconds, "op": "plan" | "import" |
-    "connect", "reason"}; out: for each plan whether it was busy (None for the other events)."""
-    until: dict[str, float] = {}
-    out: list[bool | None] = []
-    for e in events:
+    asking for one of that kind is told `busy`, with who holds it and since when (1.13.0). A regular
+    sync and a history chunk don't hold each other up, a manual sync is never busy (the player waits
+    for an answer), the client holding a lease takes it over when it asks again (`holder`), and the
+    import answering the plan that holds it - or a new connect - releases it. An import names its
+    plan by the index of the plan's event (`plan`); one without names none and releases the kind's
+    lease, whoever holds it (a target that can't tell). An import of a plan whose lease was taken
+    over since releases nothing.
+
+    Events: {"t": seconds, "op": "plan" | "import" | "connect", "reason", "client", "kind", "plan"};
+    out: for each plan `{"busy": false}` or `{"busy": true, "holder": {...}}` (None for the other
+    events)."""
+    held: dict[str, dict[str, Any]] = {}
+    out: list[dict[str, Any] | None] = []
+    for i, e in enumerate(events):
         t, op = float(e["t"]), e["op"]
         if op == "connect":
-            until.clear()
+            held.clear()
             out.append(None)
         elif op == "import":
-            until.pop(lease_kind(e["reason"]), None)
+            kind = lease_kind(e["reason"])
+            lease = held.get(kind)
+            if lease is not None and (e.get("plan") is None or lease["plan"] == e["plan"]):
+                del held[kind]
             out.append(None)
         else:
             kind = lease_kind(e["reason"])
-            busy = e["reason"] != "manual" and until.get(kind, float("-inf")) > t
-            if not busy:
-                until[kind] = t + RULES["lease_s"]
-            out.append(busy)
+            who = holder(held.get(kind), e["reason"], t, e.get("client"))
+            if who is None:
+                held[kind] = {"client": e.get("client"), "kind": e.get("kind"), "since": t,
+                              "until": t + RULES["lease_s"], "plan": i}
+                out.append({"busy": False})
+            else:
+                out.append({"busy": True, "holder": who})
     return out

@@ -33,9 +33,16 @@ export interface RoundWanted {
 }
 
 /** A plan as the client reads it (spec/target-api.md, "The target plans, the client fetches"). */
+/** Who holds a busy plan's lease (spec 1.13.0): a kind of client, and since when. Never the asking client itself. */
+export interface Holder {
+  kind: ClientKind;
+  since?: string;
+}
+
 export interface Plan {
   due: boolean;
   busy?: boolean;
+  holder?: Holder;
   wait_s?: number;
   disconnected?: boolean;
   account_ref?: string;
@@ -113,6 +120,12 @@ export function readPlan(data: unknown): Plan {
   if (p.busy === true) {
     plan.busy = true;
     plan.due = false; // another client holds the lease: never both
+    const h = obj(p.holder);
+    if (h) {
+      const kind = CLIENT_KINDS.find((k) => k === h.kind) ?? 'other';
+      const since = when(h.since);
+      plan.holder = since ? { kind, since } : { kind };
+    }
   }
   if (p.disconnected === true) {
     plan.disconnected = true;

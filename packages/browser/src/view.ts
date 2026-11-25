@@ -5,7 +5,7 @@
  * Pure, so it is tested without a browser; `render.ts` puts it on a page.
  */
 
-import type { ImportResult, Notice } from '@glmsync/core';
+import type { Holder, ImportResult, Notice } from '@glmsync/core';
 import type { ClientStatus, Entry } from './client.ts';
 import { formatTime, formatWhen, type Lang, type T } from './i18n.ts';
 import type { MessageKey } from './messages.ts';
@@ -43,7 +43,7 @@ export function lastText(e: Entry, t: T, lang: Lang, now: number): string | null
       what = t('last.not_due', { name: e.name });
       break;
     case 'busy':
-      what = t('last.busy');
+      what = busyText(l.holder, t, lang);
       break;
     case 'other_account':
       what = t('last.other_account', { name: e.name });
@@ -61,7 +61,19 @@ export function lastText(e: Entry, t: T, lang: Lang, now: number): string | null
       return null;
   }
   const at = Date.parse(l.at);
-  return t('pairing.last', { when: Number.isFinite(at) ? formatWhen(at, now, lang) : '–', what });
+  const line = t('pairing.last', { when: Number.isFinite(at) ? formatWhen(at, now, lang) : '–', what });
+  if (!e.aside) return line;
+  const asideAt = Date.parse(e.aside.at);
+  return `${line} · ${t('pairing.last', { when: Number.isFinite(asideAt) ? formatWhen(asideAt, now, lang) : '–', what: busyText(e.aside.holder, t, lang) })}`;
+}
+
+/** Who is fetching, as the target named the lease's holder (spec 1.13.0); "another device" only when it didn't. */
+function busyText(holder: Holder | undefined, t: T, lang: Lang): string {
+  const kind = holder?.kind;
+  if (kind !== 'extension' && kind !== 'web' && kind !== 'companion') return t('last.busy');
+  const who = t(`last.who.${kind}` as MessageKey);
+  const since = holder?.since ? Date.parse(holder.since) : NaN;
+  return Number.isFinite(since) ? t('last.busy_since', { who, time: formatTime(since, lang) }) : t('last.busy_who', { who });
 }
 
 export function historyText(e: Entry, t: T): string | null {

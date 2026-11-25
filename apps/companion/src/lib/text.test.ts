@@ -147,3 +147,27 @@ describe('the sign-in window', () => {
     expect(isSignInPage('https://accounts.google.com.evil.example/')).toBe(false);
   });
 });
+
+describe('a run beside the last real one (SY-5)', () => {
+  const at = Date.parse('2026-11-25T10:16:00Z');
+  const later = Date.parse('2026-11-25T10:18:00Z');
+  const now = Date.parse('2026-11-25T10:20:00Z');
+  const synced: LastRun = { at, reason: 'open', status: 'synced', result: { sessions: 8, shots: 400, rounds: 0, round_shots: 0, duplicates: 0 } };
+  const tde = translator(de);
+
+  it('keeps what came, and says who is fetching beside it', () => {
+    const run: LastRun = { ...synced, aside: { at: later, status: 'busy', holder: { kind: 'extension', since: '2026-11-25T10:17:00Z' } } };
+    const line = runText(run, now, 'de', tde);
+    expect(line).toContain('8 neue Sessions');
+    expect(line).toMatch(/Browser-Erweiterung am Computer holt gerade, seit \d{2}:\d{2}/);
+    expect(runText({ ...synced, aside: { at: later, status: 'not_due' } }, now, 'en', t)).toMatch(/8 new sessions.*nothing due/);
+  });
+
+  it('names the kind that holds the lease, never "another device" when it knows', () => {
+    const busy = (kind: 'extension' | 'web' | 'companion' | 'other'): LastRun => ({ at: later, reason: 'timer', status: 'busy', holder: { kind } });
+    expect(runText(busy('companion'), now, 'de', tde)).toMatch(/Golf Stats Sync auf einem anderen Handy/);
+    expect(runText(busy('web'), now, 'de', tde)).toMatch(/Web-App/);
+    expect(runText(busy('other'), now, 'en', t)).toMatch(/another device of yours/);
+    expect(runText({ at: later, reason: 'timer', status: 'busy' }, now, 'en', t)).toMatch(/another device of yours/);
+  });
+});

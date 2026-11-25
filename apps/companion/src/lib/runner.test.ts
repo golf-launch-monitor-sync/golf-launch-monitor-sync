@@ -208,12 +208,77 @@ describe('a sync', () => {
     const s = setup();
     await paired(s);
     await s.services.signIns.set('trackman', s.token);
-    const [a, b] = await Promise.all([s.services.runner.syncAll('timer'), s.services.runner.syncAll('manual')]);
+    const [a, b] = await Promise.all([s.services.runner.syncAll('timer'), s.services.runner.syncAll('open')]);
     expect(a[0]?.run.result?.sessions).toBe(2);
     // The second ran after the first had imported: everything it found was known already.
     expect(b[0]?.run.result?.sessions ?? 0).toBe(0);
     const plans = s.target.received.filter((r) => r.url.includes('/plan')).length;
     expect(plans).toBe(2);
+  });
+
+  // Reginald, 25 Nov (11:16/11:18): the phone fetched 8 sessions, its batch took its time, and "Fetch now" meanwhile
+  // fetched the same 8 again (17 requests to Trackman instead of 9). A tap while a sync is under way joins it (SY-5).
+  it('a tap on "fetch now" while a sync is under way joins it: one plan, Trackman asked once', async () => {
+    let let_go: () => void = () => undefined;
+    const slow = new Promise<void>((r) => (let_go = r));
+    const s = setup();
+    s.target.opts.hold = { '/import': slow };
+    await paired(s);
+    await s.services.signIns.set('trackman', s.token);
+    const opened = s.services.runner.syncAll('open'); // the target app nudged it
+    await s.clock.sleep(0);
+    expect(s.services.runner.syncing()).toEqual({ reason: 'open' });
+    const tapped = s.services.runner.syncAll('manual');
+    const again = s.services.runner.syncAll('manual'); // and once more, impatiently
+    let_go();
+    const [o, t1, t2] = await Promise.all([opened, tapped, again]);
+    expect(o[0]?.run.result?.sessions).toBe(2);
+    expect(t1).toEqual(o);
+    expect(t2).toEqual(o);
+    expect(s.target.asked.map((a) => a.reason)).toEqual(['open']);
+    expect(s.tm.requests.filter((r) => JSON.stringify(r).includes('A1')).length).toBe(1);
+    expect(s.services.runner.syncing()).toBeNull();
+  });
+
+  it('a tap joins a sync that turns out not due, and then fetches itself', async () => {
+    const s = setup({ plan: (ask) => (ask.reason === 'manual' ? { due: true, plan_id: 'pl_m', known_ids: [], rounds: true, round_shots: true, max_sessions: 40 } : { due: false }) });
+    await paired(s);
+    await s.services.signIns.set('trackman', s.token);
+    const [o, t1] = await Promise.all([s.services.runner.syncAll('timer'), s.services.runner.syncAll('manual')]);
+    expect(o[0]?.run.status).toBe('not_due');
+    expect(t1[0]?.run.status).toBe('synced');
+    expect(s.target.asked.map((a) => a.reason)).toEqual(['timer', 'manual']);
+  });
+
+  // Reginald, 25 Nov: after "8 new sessions" the phone said only "another device of yours is fetching" - the result
+  // was gone, and the device was the phone itself. The last real result stays; a busy plan goes beside it, with who.
+  it('keeps the last real result when a later plan is busy or not due, and says who holds the lease', async () => {
+    let busy = false;
+    const s = setup({
+      plan: () =>
+        busy
+          ? { due: false, busy: true, holder: { kind: 'extension', since: '2026-11-16T10:17:00Z' } }
+          : { due: true, plan_id: 'pl_1', known_ids: [], rounds: true, round_shots: true, max_sessions: 40 },
+    });
+    const p = await paired(s);
+    await s.services.signIns.set('trackman', s.token);
+    // 11:16 and 11:18 in Berlin, on a day its made-up sign-in still holds.
+    s.clock.t = Date.parse('2026-11-16T10:16:00Z');
+    await s.services.runner.syncAll('open');
+    busy = true;
+    s.clock.t = Date.parse('2026-11-16T10:18:00Z');
+    const [r] = await s.services.runner.syncAll('timer');
+    expect(r?.run.status).toBe('busy');
+    expect(r?.run.holder).toEqual({ kind: 'extension', since: '2026-11-16T10:17:00Z' });
+    const last = s.services.runner.lastRun(p.key);
+    expect(last?.status).toBe('synced');
+    expect(last?.result?.sessions).toBe(2);
+    expect(last?.at).toBeLessThan(Date.parse('2026-11-16T10:17:00Z')); // the 11:16 run, not the 11:18 one
+    expect(last?.aside).toEqual({ at: Date.parse('2026-11-16T10:18:00Z'), status: 'busy', holder: { kind: 'extension', since: '2026-11-16T10:17:00Z' } });
+    // The next real run takes the aside away.
+    busy = false;
+    await s.services.runner.syncAll('manual');
+    expect(s.services.runner.lastRun(p.key)?.aside).toBeUndefined();
   });
 
   it('remembers how the last run ended across a restart', async () => {

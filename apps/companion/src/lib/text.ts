@@ -13,6 +13,7 @@ import {
   ProviderUnavailableError,
   TargetError,
   type GuardCounts,
+  type Holder,
 } from '@glmsync/core';
 import type { LastRun } from './runner.ts';
 import { TestModeError } from './tests.ts';
@@ -46,9 +47,27 @@ export function when(at: number | string, now: number, lang: Lang, t: T): string
   return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' }) + `, ${time}`;
 }
 
-/** What the last run of a pairing says, in a line. */
+/** Who holds the lease, as the plan named it (spec 1.13.0): never "another device" when the target says which. */
+function busyText(at: string, holder: Holder | undefined, lang: Lang, t: T): string {
+  const kind = holder?.kind;
+  if (kind !== 'extension' && kind !== 'web' && kind !== 'companion') return t('run.busy', { at });
+  const who = t(`run.who.${kind}`);
+  const d = holder?.since ? new Date(holder.since) : null;
+  if (!d || Number.isNaN(d.getTime())) return t('run.busyBy', { at, who });
+  const since = d.toLocaleTimeString(lang === 'de' ? 'de-DE' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+  return t('run.busyBySince', { at, who, since });
+}
+
+/** What the last run of a pairing says, in a line: a later one that fetched nothing beside it (SY-5). */
 export function runText(run: LastRun | null, now: number, lang: Lang, t: T): string {
   if (!run) return t('run.never');
+  const line = realText(run, now, lang, t);
+  if (!run.aside) return line;
+  const at = when(run.aside.at, now, lang, t);
+  return `${line} · ${run.aside.status === 'busy' ? busyText(at, run.aside.holder, lang, t) : t('run.notDue', { at })}`;
+}
+
+function realText(run: LastRun, now: number, lang: Lang, t: T): string {
   const at = when(run.at, now, lang, t);
   const until = run.until ? when(run.until, now, lang, t) : '';
   if (run.status === 'synced') {
@@ -66,7 +85,7 @@ export function runText(run: LastRun | null, now: number, lang: Lang, t: T): str
     return line;
   }
   if (run.status === 'not_due') return t('run.notDue', { at });
-  if (run.status === 'busy') return t('run.busy', { at });
+  if (run.status === 'busy') return busyText(at, run.holder, lang, t);
   if (run.status === 'signed_out') return t('run.signedOut', { at });
   if (run.status === 'other_account') return t('run.otherAccount', { at });
   if (run.status === 'disconnected' || run.status === 'unpaired') return t('run.disconnected', { at });

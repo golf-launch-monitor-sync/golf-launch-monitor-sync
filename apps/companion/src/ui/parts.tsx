@@ -42,12 +42,15 @@ export function Button({
   onPress,
   kind = 'primary',
   busy,
+  busyLabel,
   disabled,
 }: {
   label: string;
   onPress: () => void;
   kind?: 'primary' | 'secondary' | 'danger';
   busy?: boolean;
+  /** Said beside the spinner while busy, so a button that waits says what for (SY-5). */
+  busyLabel?: string;
   disabled?: boolean;
 }) {
   const off = disabled || busy;
@@ -58,7 +61,12 @@ export function Button({
       onPress={off ? undefined : onPress}
       style={({ pressed }) => [s.button, kind === 'primary' ? s.primary : s.secondary, kind === 'danger' && s.danger, (pressed || off) && s.pressed]}
     >
-      {busy ? (
+      {busy && busyLabel ? (
+        <View style={s.row}>
+          <ActivityIndicator color={kind === 'primary' ? colors.accentText : colors.text} />
+          <Text style={[s.buttonText, kind === 'primary' ? s.primaryText : s.secondaryText]}>{busyLabel}</Text>
+        </View>
+      ) : busy ? (
         <ActivityIndicator color={kind === 'primary' ? colors.accentText : colors.text} />
       ) : (
         <Text style={[s.buttonText, kind === 'primary' ? s.primaryText : s.secondaryText, kind === 'danger' && s.dangerText]}>{label}</Text>

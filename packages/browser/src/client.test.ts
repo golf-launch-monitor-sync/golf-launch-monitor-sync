@@ -11,7 +11,9 @@ import { FakeTarget, VirtualClock } from '@glmsync/core/testing';
 import { GRAPHQL_URL } from '@glmsync/provider-trackman';
 import { FakeTrackman, fakeToken } from '@glmsync/provider-trackman/testing';
 import { describe, expect, it } from 'vitest';
-import { BrowserClient, pairingId } from './client.ts';
+import { BrowserClient, pairingId, type Entry } from './client.ts';
+import { translator } from './i18n.ts';
+import { lastText } from './view.ts';
 
 const NOW = Date.parse('2026-11-16T09:00:00Z');
 const SUB = 'player-0001';
@@ -381,6 +383,47 @@ describe('the target ends it', () => {
     await w.client.confirm(true);
     expect((await w.client.run('manual')).outcomes[0]?.outcome).toMatchObject({ status: 'failed' });
     expect((await w.client.status()).pairings[0]?.last).toMatchObject({ status: 'failed', error: 'unavailable' });
+  });
+});
+
+describe('a lease another device holds (spec 1.13.0)', () => {
+  it('keeps the last real result and puts who is fetching beside it; the next real one takes it away', async () => {
+    let busy = false;
+    const w = world({
+      target: {
+        plan: (_ask, t) =>
+          busy
+            ? { due: false, busy: true, holder: { kind: 'companion', since: '2026-11-16T09:01:00Z' } }
+            : { due: true, plan_id: 'p1', known_ids: t.known(), rounds: false, round_shots: true, max_sessions: 40 },
+      },
+    });
+    await paired(w);
+    await w.client.setKey(w.token());
+    await w.client.confirm(true);
+    await w.client.run('timer');
+    busy = true;
+    w.clock.advance(120_000);
+    await w.client.run('timer');
+    let p = (await w.client.status()).pairings[0];
+    expect(p?.last).toMatchObject({ status: 'synced', result: { sessions: 2 } });
+    expect(p?.aside).toEqual({ at: new Date(w.clock.t).toISOString(), holder: { kind: 'companion', since: '2026-11-16T09:01:00Z' } });
+    expect(lastText(p as Entry, translator('de'), 'de', w.clock.t)).toMatch(/2 neue Sessions.* · .*Golf Stats Sync auf deinem Handy, seit \d\d:\d\d/);
+    busy = false;
+    w.clock.advance(3_600_000);
+    await w.client.run('manual');
+    p = (await w.client.status()).pairings[0];
+    expect(p?.aside).toBeUndefined();
+  });
+
+  it('busy before anything came: says who, as the target named it', async () => {
+    const w = world({ target: { plan: () => ({ due: false, busy: true, holder: { kind: 'web' } }) } });
+    await paired(w);
+    await w.client.setKey(w.token());
+    await w.client.confirm(true);
+    await w.client.run('timer');
+    const p = (await w.client.status()).pairings[0];
+    expect(p?.last).toMatchObject({ status: 'busy', holder: { kind: 'web' } });
+    expect(lastText(p as Entry, translator('en'), 'en', w.clock.t)).toMatch(/the web app is fetching right now\.$/);
   });
 });
 

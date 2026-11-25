@@ -90,6 +90,23 @@ of that kind meanwhile gets `busy`. The kinds don't hold each other up; `manual`
 player waits for an answer — at worst a session is fetched twice, and stored once). An import of
 that kind, or a new connect, releases the lease.
 
+**The lease belongs to the client that took it** (since 1.13.0; [`holder`](reference/plan.py)). The
+target keeps which client holds it (by its import token, as a rule) and since when:
+
+- The **same client** asking again for a plan of that kind takes its own lease over (a new plan id,
+  five minutes from now). A client runs its syncs one after the other, so its earlier one has ended
+  without an import: it gave up, or its batch never arrived. Waiting for that one is waiting for
+  nothing, and a client that told its player "another device is fetching" about itself would be wrong.
+- **Another client** is told `busy` with the `holder`: its kind (`extension`, `web`, `companion`, …)
+  and `since`, so it can say who is fetching ("the browser extension on your computer, since 11:17")
+  rather than guess. Two phones are two clients of one kind.
+- The import that echoes the plan id of the lease releases it; a late import of a plan whose lease was
+  taken over since releases nothing (the plan holding it is still out). An import without a plan id
+  releases the kind's lease, whoever holds it.
+
+A client therefore never asks for a plan while a sync of its own of that kind runs: a second "fetch
+now" joins the one under way (or waits for it) instead.
+
 ## Pace
 
 `pace` multiplies the client's pauses between provider requests (1 = normal) and is never below

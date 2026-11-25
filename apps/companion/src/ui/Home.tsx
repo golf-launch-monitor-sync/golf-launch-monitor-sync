@@ -292,7 +292,15 @@ export function Home({
               </View>
             ))
           )}
-          {focused.length > 0 && <Button label={t('sync.now')} busy={busy === 'sync'} onPress={() => void act('sync', () => svc.runner.syncAll('manual'))} />}
+          {focused.length > 0 && (
+            <Button
+              label={t('sync.now')}
+              busy={busy === 'sync'}
+              // A tap waits for a sync under way rather than fetching the same again (SY-5): it says which it does.
+              busyLabel={svc.runner.syncing()?.reason === 'manual' ? t('sync.running') : t('sync.joining')}
+              onPress={() => void act('sync', () => svc.runner.syncAll('manual'))}
+            />
+          )}
           <Small>{t('targets.plan')}</Small>
         </Card>
       )}

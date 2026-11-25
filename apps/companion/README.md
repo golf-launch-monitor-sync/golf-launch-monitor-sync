@@ -55,6 +55,12 @@ portal in a sign-in window - so that window lives here, in a small app that does
   app). Each asks the plan first; the provider is asked only when it is due, and never past the
   [load guard](../../spec/guard.md), whose counts outlive restarts. The older history comes a chunk at
   a time while the app is open (and one chunk per background wake), spaced as the target says.
+- **One sync at a time, and a tap joins it** (`src/lib/runner.ts`): "fetch now" or a sync link while a sync is
+  queued or under way waits for it and takes what it brought (*Waiting for the fetch under way …*); only if it
+  fetched nothing (not due, another device holds the lease) does the tap ask a plan of its own. A plan that is busy
+  or not due goes beside the last real result (*8 new sessions · 11:18: the browser extension on your computer is
+  fetching, since 11:17*), never over it: the target names who holds its lease (spec 1.13.0), and since the lease
+  is this app's own when it asks again, "another device" is never this phone.
 - **Can be woken on iOS** (spec 1.9.0, [wake.md](../../spec/wake.md)): iOS wakes a background app when it likes,
   so each paired target hears this phone's Expo push address (`PUT /wake`, `src/lib/wake.ts`; again when it changes
   and weekly, a target without a wake left be for a week). A target that can push to it sends a silent push

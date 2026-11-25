@@ -20,7 +20,9 @@ const outcome = await sync({ target: new HttpTarget(pairing), provider, credenti
 ## What it does, in order
 
 1. **The plan first, every time** (`GET /plan`): a request to the target, never to the provider.
-   Not due, busy (another client holds the lease) or disconnected: nothing is asked of the provider.
+   Not due, busy (another client holds the lease; since spec 1.13.0 the plan names its `holder`, the kind of
+   client and since when) or disconnected: nothing is asked of the provider. The lease is the client's that took
+   it: a client asking again takes its own over, so it runs one sync at a time.
 2. **Whose account**: `account_ref` from the target's salt and the provider account's subject; a
    plan naming another account ends the sync before the provider is asked anything.
 3. **The fetch**, by the provider module, every request through the guard at the plan's pace.

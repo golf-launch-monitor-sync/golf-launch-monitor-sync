@@ -1,6 +1,6 @@
 {
-  "$comment": "The reference planning rules of a target (spec/planning.md; here_due_at and is_due's `here` since 1.12.0, a case without `here` has none). Times compare as instants within compare.time_tolerance_s; dict results compare without regard to key order.",
-  "spec_version": "1.12.0",
+  "$comment": "The reference planning rules of a target (spec/planning.md; here_due_at and is_due's `here` since 1.12.0, a case without `here` has none; `holder`, and `leases` with clients and holders, since 1.13.0). Times compare as instants within compare.time_tolerance_s; dict results compare without regard to key order.",
+  "spec_version": "1.13.0",
   "generated_by": "spec/reference/generate.py",
   "rules": {
     "$comment": "The reference planning rules of a target (spec/planning.md). Informative: a target may plan more gently; the load guard (spec/guard/limits.json) holds regardless.",
@@ -4726,27 +4726,37 @@
           {
             "t": 0,
             "op": "plan",
-            "reason": "timer"
+            "reason": "timer",
+            "client": "E",
+            "kind": "extension"
           },
           {
             "t": 10,
             "op": "plan",
-            "reason": "open"
+            "reason": "open",
+            "client": "C",
+            "kind": "companion"
           },
           {
             "t": 20,
             "op": "plan",
-            "reason": "backfill"
+            "reason": "backfill",
+            "client": "C",
+            "kind": "companion"
           },
           {
             "t": 30,
             "op": "plan",
-            "reason": "backfill"
+            "reason": "backfill",
+            "client": "E",
+            "kind": "extension"
           },
           {
             "t": 40,
             "op": "plan",
-            "reason": "manual"
+            "reason": "manual",
+            "client": "C",
+            "kind": "companion"
           },
           {
             "t": 50,
@@ -4756,17 +4766,23 @@
           {
             "t": 60,
             "op": "plan",
-            "reason": "timer"
+            "reason": "timer",
+            "client": "E",
+            "kind": "extension"
           },
           {
             "t": 299.9,
             "op": "plan",
-            "reason": "connect"
+            "reason": "connect",
+            "client": "C",
+            "kind": "companion"
           },
           {
             "t": 320,
             "op": "plan",
-            "reason": "backfill"
+            "reason": "backfill",
+            "client": "E",
+            "kind": "extension"
           },
           {
             "t": 330,
@@ -4776,35 +4792,307 @@
           {
             "t": 331,
             "op": "plan",
-            "reason": "backfill"
+            "reason": "backfill",
+            "client": "E",
+            "kind": "extension"
           },
           {
             "t": 360,
             "op": "plan",
-            "reason": "timer"
+            "reason": "timer",
+            "client": "C",
+            "kind": "companion"
           },
           {
             "t": 660,
             "op": "plan",
-            "reason": "timer"
+            "reason": "timer",
+            "client": "E",
+            "kind": "extension"
           }
         ]
       },
       "expected": [
-        false,
-        true,
-        false,
-        true,
-        false,
+        {
+          "busy": false
+        },
+        {
+          "busy": true,
+          "holder": {
+            "kind": "extension",
+            "since": 0.0
+          }
+        },
+        {
+          "busy": false
+        },
+        {
+          "busy": true,
+          "holder": {
+            "kind": "companion",
+            "since": 20.0
+          }
+        },
+        {
+          "busy": false
+        },
         null,
-        false,
-        true,
-        false,
+        {
+          "busy": false
+        },
+        {
+          "busy": true,
+          "holder": {
+            "kind": "extension",
+            "since": 60.0
+          }
+        },
+        {
+          "busy": false
+        },
         null,
-        false,
-        false,
-        false
+        {
+          "busy": false
+        },
+        {
+          "busy": false
+        },
+        {
+          "busy": false
+        }
       ]
+    },
+    {
+      "rule": "leases",
+      "input": {
+        "events": [
+          {
+            "t": 0,
+            "op": "plan",
+            "reason": "open",
+            "client": "C",
+            "kind": "companion"
+          },
+          {
+            "t": 150,
+            "op": "plan",
+            "reason": "open",
+            "client": "C",
+            "kind": "companion"
+          },
+          {
+            "t": 160,
+            "op": "plan",
+            "reason": "timer",
+            "client": "E",
+            "kind": "extension"
+          },
+          {
+            "t": 170,
+            "op": "import",
+            "reason": "open",
+            "plan": 0
+          },
+          {
+            "t": 175,
+            "op": "plan",
+            "reason": "timer",
+            "client": "E",
+            "kind": "extension"
+          },
+          {
+            "t": 180,
+            "op": "import",
+            "reason": "open",
+            "plan": 1
+          },
+          {
+            "t": 185,
+            "op": "plan",
+            "reason": "timer",
+            "client": "E",
+            "kind": "extension"
+          }
+        ]
+      },
+      "expected": [
+        {
+          "busy": false
+        },
+        {
+          "busy": false
+        },
+        {
+          "busy": true,
+          "holder": {
+            "kind": "companion",
+            "since": 150.0
+          }
+        },
+        null,
+        {
+          "busy": true,
+          "holder": {
+            "kind": "companion",
+            "since": 150.0
+          }
+        },
+        null,
+        {
+          "busy": false
+        }
+      ]
+    },
+    {
+      "rule": "leases",
+      "input": {
+        "events": [
+          {
+            "t": 0,
+            "op": "plan",
+            "reason": "timer",
+            "client": "C",
+            "kind": "companion"
+          },
+          {
+            "t": 5,
+            "op": "plan",
+            "reason": "open",
+            "client": "C2",
+            "kind": "companion"
+          }
+        ]
+      },
+      "expected": [
+        {
+          "busy": false
+        },
+        {
+          "busy": true,
+          "holder": {
+            "kind": "companion",
+            "since": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "rule": "holder",
+      "input": {
+        "lease": null,
+        "reason": "timer",
+        "now_s": 100.0,
+        "client": "E"
+      },
+      "expected": null
+    },
+    {
+      "rule": "holder",
+      "input": {
+        "lease": {
+          "client": "C",
+          "kind": "companion",
+          "since": 100.0,
+          "until": 400.0
+        },
+        "reason": "timer",
+        "now_s": 200.0,
+        "client": "E"
+      },
+      "expected": {
+        "kind": "companion",
+        "since": 100.0
+      }
+    },
+    {
+      "rule": "holder",
+      "input": {
+        "lease": {
+          "client": "C",
+          "kind": "companion",
+          "since": 100.0,
+          "until": 400.0
+        },
+        "reason": "timer",
+        "now_s": 200.0,
+        "client": "C"
+      },
+      "expected": null
+    },
+    {
+      "rule": "holder",
+      "input": {
+        "lease": {
+          "client": "C",
+          "kind": "companion",
+          "since": 100.0,
+          "until": 400.0
+        },
+        "reason": "manual",
+        "now_s": 200.0,
+        "client": "E"
+      },
+      "expected": null
+    },
+    {
+      "rule": "holder",
+      "input": {
+        "lease": {
+          "client": "C",
+          "kind": "companion",
+          "since": 100.0,
+          "until": 400.0
+        },
+        "reason": "open",
+        "now_s": 400.0,
+        "client": "E"
+      },
+      "expected": null
+    },
+    {
+      "rule": "holder",
+      "input": {
+        "lease": {
+          "client": "C",
+          "until": 400.0
+        },
+        "reason": "open",
+        "now_s": 200.0,
+        "client": "E"
+      },
+      "expected": {
+        "kind": "other"
+      }
+    },
+    {
+      "rule": "holder",
+      "input": {
+        "lease": {
+          "client": "C",
+          "kind": "companion",
+          "since": 100.0,
+          "until": 400.0
+        },
+        "reason": "open",
+        "now_s": 200.0,
+        "client": null
+      },
+      "expected": {
+        "kind": "companion",
+        "since": 100.0
+      }
+    },
+    {
+      "rule": "holder",
+      "input": {
+        "lease": {
+          "until": "soon"
+        },
+        "reason": "timer",
+        "now_s": 200.0,
+        "client": "E"
+      },
+      "expected": null
     }
   ]
 }

@@ -39,6 +39,7 @@ import {
   type FileOut,
   type GuardCounts,
   type GuardLogExport,
+  type Holder,
   type ImportResult,
   type Notice,
   type Pairing,
@@ -77,6 +78,8 @@ export interface Last {
   /** For `failed`: what went wrong (a target's error code, or `error`). */
   error?: string;
   more?: boolean;
+  /** For `busy`: who holds the lease, as the target named it (spec 1.13.0). */
+  holder?: Holder;
 }
 
 export interface Entry {
@@ -98,6 +101,8 @@ export interface Entry {
   brought?: { sessions: number; rounds: number; shots: number };
   /** Sessions of the older history still to come, as the last history chunk's provider could tell. */
   left?: number;
+  /** A busy plan after the last real result: who is fetching, beside that result rather than over it (SY-5). */
+  aside?: { at: string; holder?: Holder };
 }
 
 export type KeyState =
@@ -792,8 +797,18 @@ export class BrowserClient {
           if (outcome.plan.history?.done) history.done = true;
           history.next_at = now + Math.max(BACKFILL_STEP_MS / 2, (outcome.plan.wait_s ?? BACKFILL_STEP_MS / 1000) * 1000);
         }
-        // A plan that wasn't due says nothing new about the last sync: keep what it said.
-        if (entry.last && entry.last.status === 'synced') return this.update(id, (e) => ({ ...e, ...(accountRef ? { account_ref: accountRef } : {}), history }));
+        if (outcome.status === 'busy' && outcome.plan.holder) last.holder = outcome.plan.holder;
+        // A plan that wasn't due says nothing new about the last sync: keep what it said. Another device fetching
+        // goes beside it, with who (spec 1.13.0); "not due" there is no news.
+        if (entry.last && entry.last.status === 'synced') {
+          const aside: Entry['aside'] = outcome.status === 'busy' ? { at, ...(last.holder ? { holder: last.holder } : {}) } : entry.aside;
+          return this.update(id, (e) => {
+            const next: Entry = { ...e, ...(accountRef ? { account_ref: accountRef } : {}), history };
+            if (aside) next.aside = aside;
+            else delete next.aside;
+            return next;
+          });
+        }
         break;
       case 'other_account':
         other = true;
@@ -828,6 +843,7 @@ export class BrowserClient {
     }
     await this.update(id, (e) => {
       const next: Entry = { ...e, last, history, other_account: other };
+      delete next.aside; // this one is the last word now
       if (accountRef) next.account_ref = accountRef;
       if (outcome.status === 'synced') {
         next.last_synced_at = at;
