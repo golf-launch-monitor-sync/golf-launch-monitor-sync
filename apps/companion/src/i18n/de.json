@@ -167,7 +167,7 @@
   "golfde.reload": "Neu laden",
   "pro.how": "Öffne deine eigene Seite der Weltrangliste hier in der App – die OWGR bei den Herren, die Rolex Rankings bei den Damen – und tippe oben auf „Schicken“. Die App liest, was die Seite dir zeigt (Rang, Punkte, Turniere), und schickt es an {name}. Die Seite selbst fragt sie nichts.",
   "pro.pairFirst": "Verbinde zuerst deine Weltrangliste: in der App, die sie bekommen soll, über „Mit Golf Stats Sync verbinden“.",
-  "pairPro.what": "Ab jetzt geht deine Seite der Weltrangliste, die du hier in der App schickst, an {host}: Rang, Punkte und Turniere.",
+  "pairPro.what": "Ab jetzt gehen die Seiten der Weltrangliste und deiner Tour, die du hier in der App schickst, an {host}: Rang, Punkte, Turniere und ihre Runden.",
   "pairPro.replaces": "Dieses Handy ist mit dieser App für die Weltrangliste schon verbunden: Die neue Verbindung ersetzt die alte.",
   "rankings.choose": "In welcher Weltrangliste stehst du?",
   "rankings.find": "Such deinen Namen und öffne deine eigene Seite; dann erscheint hier oben „Schicken“.",
@@ -176,5 +176,10 @@
   "rankings.done": "Fertig",
   "rankings.failed": "Die Seite hat nicht geladen. Prüf die Verbindung und versuch es noch einmal.",
   "rankings.reload": "Neu laden",
-  "pro.unofficial": "Inoffiziell: Golf Stats Sync ist nicht mit der OWGR, Rolex oder einer Tour verbunden und wird von ihnen nicht unterstützt."
+  "pro.unofficial": "Inoffiziell: Golf Stats Sync ist nicht mit der OWGR, Rolex oder einer Tour verbunden und wird von ihnen nicht unterstützt.",
+  "pro.cardTitle": "Weltrangliste und Tour",
+  "tours.how": "Deine Tour: Öffne dort dein eigenes Profil und tippe auf „Schicken“ für Rang und Punkte; „Alles holen“ öffnet nacheinander die Seiten deiner Turniere und bringt deine Runden. Von jeder Seite nimmt die App nur deine eigene Zeile und schickt sie an {name}.",
+  "tours.open": "{tour} öffnen",
+  "tours.orTour": "Oder deine Tour:",
+  "tours.find": "Öffne dein eigenes Profil (such deinen Namen in der Order of Merit); dann erscheinen hier oben „Schicken“ und „Alles holen“."
 }

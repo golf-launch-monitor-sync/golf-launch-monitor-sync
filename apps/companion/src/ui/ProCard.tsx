@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * A pro's world ranking pages on the home page (shown once an app is connected for them, or one ended its connection):
- * where to open them (OWGR, Rolex Rankings) here in the app, the question whether a page is the player's when an app
+ * A pro's world ranking and tour pages on the home page (shown once an app is connected for them, or one ended its
+ * connection): where to open them (OWGR, Rolex Rankings, each tour the app reads) here in the app, the question whether a page is the player's when an app
  * asks, the connected apps with what each last answered, *Disconnect*. The same parts as the extension's page, in the
  * app's words where those speak of the extension.
  */
@@ -10,11 +10,13 @@
 import type { ProView } from '@glmsync/browser/pro';
 import { proLastText } from '@glmsync/browser/proView';
 import { translator } from '@glmsync/browser/i18n';
+import { TOUR_SITES, type TourSite } from '@glmsync/provider-tours';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { lang, t } from '../i18n';
 import { hcpEnded } from '../lib/hcpText';
 import type { RankingSite } from '../lib/rankingsPage';
+import { WINDOW_TOURS } from '../lib/toursPage';
 import type { Services } from '../lib/services';
 import { Body, Button, Card, colors, s, Small, Title } from './parts';
 
@@ -34,7 +36,19 @@ export function useProView(svc: Services) {
   return { view, setView, refresh };
 }
 
-export function ProCard({ svc, view, setView, open }: { svc: Services; view: ProView; setView: (v: ProView) => void; open: (site: RankingSite) => void }) {
+export function ProCard({
+  svc,
+  view,
+  setView,
+  open,
+  openTour,
+}: {
+  svc: Services;
+  view: ProView;
+  setView: (v: ProView) => void;
+  open: (site: RankingSite) => void;
+  openTour: (site: TourSite) => void;
+}) {
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const tr = translator(lang);
@@ -73,7 +87,7 @@ export function ProCard({ svc, view, setView, open }: { svc: Services; view: Pro
   const names = [...new Set(view.pairings.map((p) => p.name))].join(', ');
   return (
     <Card>
-      <Title>{tr('pro.title')}</Title>
+      <Title>{t('pro.cardTitle')}</Title>
       <Small>{t('pro.unofficial')}</Small>
       {view.ended.map((e) => (
         <Body key={`${e.name}-${e.at}`} warn>
@@ -97,6 +111,12 @@ export function ProCard({ svc, view, setView, open }: { svc: Services; view: Pro
           <View style={s.row}>
             <Button label={tr('pro.openOwgr')} onPress={() => open('owgr')} />
             <Button label={tr('pro.openRolex')} kind="secondary" onPress={() => open('rolex')} />
+          </View>
+          <Body muted>{t('tours.how', { name: names })}</Body>
+          <View style={s.row}>
+            {WINDOW_TOURS.map((tour) => (
+              <Button key={tour} label={t('tours.open', { tour: TOUR_SITES[tour]?.name ?? tour })} kind="secondary" onPress={() => openTour(tour)} />
+            ))}
           </View>
         </>
       )}

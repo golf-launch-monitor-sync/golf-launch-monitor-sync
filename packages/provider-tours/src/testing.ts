@@ -5,7 +5,7 @@
  * tournaments, made-up numbers. Never a recorded page.
  */
 
-import type { Cell, Snapshot, Table } from './snapshot.ts';
+import type { Cell, DomElement, DomNode, Snapshot, Table } from './snapshot.ts';
 
 const PGT = 'https://www.progolftour.de';
 const cells = (...t: (string | Cell)[]): Cell[] => t.map((c) => (typeof c === 'string' ? { text: c } : c));
@@ -67,4 +67,82 @@ export function pgtResult(slug = 'sample-desert-open-2026', rows?: Cell[][], ove
     ],
     ...over,
   };
+}
+
+// A tiny DOM, enough for the selectors snapshotOf uses ("a b" as descendant, "a[href]", lists with commas): for the
+// tests of a page's script, which reads a document where the pure parts read a snapshot.
+class TextNode implements DomNode {
+  nodeType = 3;
+  constructor(public textContent: string) {}
+}
+
+export class El implements DomElement {
+  nodeType = 1;
+  parent: El | null = null;
+  nextElementSibling: El | null = null;
+  childNodes: (El | TextNode)[] = [];
+  constructor(public tagName: string, public attrs: Record<string, string> = {}, kids: (El | string)[] = []) {
+    let prev: El | null = null;
+    for (const k of kids) {
+      const n = typeof k === 'string' ? new TextNode(k) : k;
+      if (n instanceof El) {
+        n.parent = this;
+        if (prev) prev.nextElementSibling = n;
+        prev = n;
+      }
+      this.childNodes.push(n);
+    }
+  }
+  get textContent(): string {
+    return this.childNodes.map((n) => n.textContent).join('');
+  }
+  getAttribute(name: string): string | null {
+    return this.attrs[name] ?? null;
+  }
+  all(): El[] {
+    return this.childNodes.flatMap((n) => (n instanceof El ? [n, ...n.all()] : []));
+  }
+  private matches(sel: string): boolean {
+    const parts = sel.trim().split(/\s+/);
+    const one = (e: El, p: string) => {
+      const m = /^([a-z0-9]+)(\[([a-z]+)\])?$/.exec(p);
+      return !!m && e.tagName === m[1] && (!m[3] || e.getAttribute(m[3]) !== null);
+    };
+    if (!one(this, parts[parts.length - 1] ?? '')) return false;
+    let up = this.parent;
+    for (let i = parts.length - 2; i >= 0; i -= 1) {
+      while (up && !one(up, parts[i] ?? '')) up = up.parent;
+      if (!up) return false;
+      up = up.parent;
+    }
+    return true;
+  }
+  querySelectorAll(sel: string): El[] {
+    return this.all().filter((e) => sel.split(',').some((s) => e.matches(s)));
+  }
+}
+
+/** An element: `h('td', [h('a', { href }, ['text'])])`. */
+export const h = (tag: string, attrs: Record<string, string> | (El | string)[] = {}, kids: (El | string)[] = []): El =>
+  Array.isArray(attrs) ? new El(tag, {}, attrs) : new El(tag, attrs, kids);
+
+/**
+ * A made-up page's document from its snapshot, as a site might build it: the title as the h1, the lines as list items,
+ * the labelled values as a definition list, the tables with their heads, the links. `snapshotOf` of it reads back what
+ * the tour's module needs of the snapshot.
+ */
+export function docOf(snap: Snapshot): El {
+  const cell = (c: Cell, tag: string) => h(tag, c.href ? [h('a', { href: c.href }, [c.text])] : [c.text]);
+  const inTables = new Set(snap.tables.flatMap((t) => t.rows.flatMap((r) => r.map((c) => c.href ?? ''))));
+  return h('html', [
+    h('body', [
+      ...(snap.title ? [h('h1', [snap.title])] : []),
+      h('ul', snap.lines.map((l) => h('li', [l]))),
+      h('dl', Object.entries(snap.pairs).flatMap(([k, v]) => [h('dt', [k]), h('dd', [v])])),
+      ...snap.tables.map((t) =>
+        h('table', [h('thead', [h('tr', t.head.map((x) => h('th', [x])))]), h('tbody', t.rows.map((r) => h('tr', r.map((c) => cell(c, 'td')))))]),
+      ),
+      ...snap.links.filter((l) => !inTables.has(l)).map((l) => h('a', { href: l }, ['link'])),
+    ]),
+  ]);
 }

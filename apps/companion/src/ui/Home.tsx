@@ -212,7 +212,7 @@ export function Home({
 
       {focus === 'hcp' && hcpShown && hcp.view && <HcpCard svc={svc} view={hcp.view} setView={hcp.setView} open={() => go({ name: 'golfde' })} />}
 
-      {focus === 'pro' && proShown && pro.view && <ProCard svc={svc} view={pro.view} setView={pro.setView} open={(site) => go({ name: 'rankings', site })} />}
+      {focus === 'pro' && proShown && pro.view && <ProCard svc={svc} view={pro.view} setView={pro.setView} open={(site) => go({ name: 'rankings', site })} openTour={(site) => go({ name: 'tours', site })} />}
 
       {tests
         .filter((m) => testFocus === m.key)

@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * What the extension keeps of a player's own pages of the Pro Golf Tour (`@glmsync/provider-tours`), between the pages
- * he opens: his profile as last read, his line of each tournament's final result, which tournament pages were opened
- * when, and a *Fetch all* run. Kept in the extension's own storage (no web page reaches it), only of the profile he
- * opened himself: a profile of another player replaces it and everything read with it.
+ * What a client keeps of a player's own pages of the Pro Golf Tour (`@glmsync/provider-tours`), between the pages he
+ * opens: his profile as last read, his line of each tournament's final result, which tournament pages were opened when,
+ * and a *Fetch all* run. Kept in the client's own storage (no web page reaches it: the extension's storage, the
+ * companion app's), only of the profile he opened himself: a profile of another player replaces it and everything read
+ * with it. The extension's background holds one, the companion app's tour window another.
  *
- * Everything arrives from a content script and is read again strictly (`checkProfile`, `checkOwnLine`). Pure apart from
+ * A run belongs to the tab it was started in (`tab`: the extension's tab id; the companion app has one window and
+ * passes the same number every time), so only that tab is told its steps.
+ *
+ * Everything arrives from a page's script and is read again strictly (`checkProfile`, `checkOwnLine`). Pure apart from
  * the storage it is handed, so it is tested without a browser.
  */
 

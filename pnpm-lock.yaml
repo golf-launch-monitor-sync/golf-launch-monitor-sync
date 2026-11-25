@@ -41,6 +41,9 @@ importers:
       '@glmsync/provider-rankings':
         specifier: workspace:*
         version: link:../../packages/provider-rankings
+      '@glmsync/provider-tours':
+        specifier: workspace:*
+        version: link:../../packages/provider-tours
       '@glmsync/provider-trackman':
         specifier: workspace:*
         version: link:../../packages/provider-trackman

@@ -46,6 +46,13 @@ export function resultUrl(key: string): string {
   return `${ORIGIN}/tournament-details/${encodeURIComponent(key)}`;
 }
 
+/** His profile's id (and the season it shows, when the address names one) by its address; null for any other page. */
+export function profileOf(url: unknown): { id: string; season?: number } | null {
+  const m = typeof url === 'string' ? PROFILE.exec(url) : null;
+  if (!m?.[1]) return null;
+  return m[2] ? { id: m[1].toLowerCase(), season: Number(m[2]) } : { id: m[1].toLowerCase() };
+}
+
 /** Whether a run may open this address: a tournament's page or a profile, nothing else of the site. */
 export function mayOpen(url: unknown): boolean {
   return typeof url === 'string' && (RESULT.test(url) || PROFILE.test(url));

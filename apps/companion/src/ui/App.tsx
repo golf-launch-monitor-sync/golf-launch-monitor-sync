@@ -4,7 +4,7 @@
  * The app's frame: loads what the phone keeps, takes the links that open it, syncs when it comes to
  * the front (the plans decide whether anything is fetched), renews an expired Trackman sign-in quietly
  * where it may, sends what the golf.de window saw when the app goes to the back, and shows one view at a time.
- * A pro's world ranking pages (spec 1.15.0) have their pair link and their window too.
+ * A pro's world ranking and tour pages (spec 1.15.0) have their pair link and their windows too.
  */
 
 import * as Linking from 'expo-linking';
@@ -20,6 +20,8 @@ import { Once, readIncoming, type Incoming } from '../lib/links';
 import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
 import { testKeys } from '../lib/wizard';
 import type { RankingSite } from '../lib/rankingsPage';
+import { tourSiteOf } from '../lib/toursPage';
+import type { TourSite } from '@glmsync/provider-tours';
 import { services } from '../platform';
 import { Home } from './Home';
 import { Licenses } from './Licenses';
@@ -30,6 +32,7 @@ import { GolfdeView } from './GolfdeView';
 import { PairHcpView } from './PairHcpView';
 import { PairProView } from './PairProView';
 import { RankingsView } from './RankingsView';
+import { ToursView } from './ToursView';
 import { Body, Button, colors, s } from './parts';
 import { SignInView } from './SignInView';
 import { SyncView } from './SyncView';
@@ -50,6 +53,8 @@ export type Screen =
   | { name: 'pairPro'; link: Extract<Incoming, { kind: 'pair-pro' }> }
   /** The world ranking window: on `site`'s ranking, else the page last sent, else asking which. */
   | { name: 'rankings'; site?: RankingSite }
+  /** His tour's pages (a pro's pages too): the window on the tour's site. */
+  | { name: 'tours'; site: TourSite }
   | { name: 'signin'; provider: ProviderId; back?: { url: string; name: string } }
   | { name: 'sync'; link: { target?: string; return?: string } }
   /** Just signed in: the first sync shown as the wizard's steps 4 and 5, then (with `back`) *Back to …*. */
@@ -200,10 +205,13 @@ function Main() {
         // Only with a connection of that kind: without one there is nobody to send what was read to.
         const pro = incoming.what === 'pro';
         void (pro ? svc.pro.view() : svc.hcp.view()).then(
-          (v) => {
+          async (v) => {
             if (v.pairings.length) {
               setMessage(null);
-              setScreen(pro ? { name: 'rankings' } : { name: 'golfde' });
+              // A pro's pages: the window of the page last sent from here (his tour profile or a world ranking's).
+              const last = pro ? await svc.lastPage.get().catch(() => null) : null;
+              const tour = tourSiteOf(last);
+              setScreen(!pro ? { name: 'golfde' } : tour ? { name: 'tours', site: tour } : { name: 'rankings' });
             } else {
               setMessage(t(pro ? 'pro.pairFirst' : 'hcp.pairFirst'));
               setScreen({ name: 'home' });
@@ -333,7 +341,16 @@ function Main() {
   } else if (screen.name === 'pairPro') {
     body = <PairProView svc={svc} link={screen.link} go={setScreen} />;
   } else if (screen.name === 'rankings') {
-    body = <RankingsView svc={svc} {...(screen.site ? { site: screen.site } : {})} done={() => setScreen({ name: 'home', focus: 'pro' })} />;
+    body = (
+      <RankingsView
+        svc={svc}
+        {...(screen.site ? { site: screen.site } : {})}
+        tour={(site) => setScreen({ name: 'tours', site })}
+        done={() => setScreen({ name: 'home', focus: 'pro' })}
+      />
+    );
+  } else if (screen.name === 'tours') {
+    body = <ToursView svc={svc} site={screen.site} done={() => setScreen({ name: 'home', focus: 'pro' })} />;
   } else if (screen.name === 'signin') {
     body = (
       <SignInView

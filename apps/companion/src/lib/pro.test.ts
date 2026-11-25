@@ -84,6 +84,11 @@ describe('the page kept for the window', () => {
     // Something else in its place (an older version, a hand) isn't opened.
     await storage.set('glmsync/pro/lastPage', 'https://evil.test/players/1');
     expect(await last.get()).toBeNull();
+    // His profile on a tour too, but no other page of the tour.
+    await last.set('https://www.progolftour.de/tournament-details/sample-desert-open-2026');
+    expect(await last.get()).toBeNull();
+    await last.set('https://www.progolftour.de/player-profile/99001?year=2026');
+    expect(await last.get()).toBe('https://www.progolftour.de/player-profile/99001?year=2026');
     await last.set(OWGR);
     await last.clear();
     expect(await last.get()).toBeNull();

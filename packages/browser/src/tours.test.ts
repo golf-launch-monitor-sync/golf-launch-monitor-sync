@@ -12,7 +12,7 @@ const keeper = () => new TourKeeper(new MemoryStorage(), () => clock);
 const profile = (over = {}) => progolftour.readProfile(pgtProfile(over));
 const lineOf = (slug: string, ...r: number[]) => progolftour.ownLine(pgtResult(slug, [pgtLine('T6', 'Lena Beispiel', ...r)]), 'Lena Beispiel');
 
-describe('what the extension keeps of his Pro Golf Tour pages', () => {
+describe('what a client keeps of his Pro Golf Tour pages', () => {
   it('a line is taken only with his profile, and the page to send has its rounds', async () => {
     const k = keeper();
     await k.seen({ key: 'sample-desert-open-2026', line: lineOf('sample-desert-open-2026', 69, 70, 70) });

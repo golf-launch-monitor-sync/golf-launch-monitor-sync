@@ -11,7 +11,7 @@
  * sites nothing of its own, and nothing the page opens leaves the window (lib/rankingsPage.ts, `rankingsWindowRules`).
  *
  * The window opens on the page last sent from here, else on the chosen site's ranking (its search), else it asks which
- * ranking first.
+ * ranking first - or which tour, whose pages have a window of their own (ToursView).
  */
 
 import type { ProView } from '@glmsync/browser/pro';
@@ -19,6 +19,7 @@ import { translator } from '@glmsync/browser/i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { WebView, type WebViewMessageEvent, type WebViewNavigation } from 'react-native-webview';
+import { TOUR_SITES, type TourSite } from '@glmsync/provider-tours';
 import { lang, t } from '../i18n';
 import {
   ANSWER_MS,
@@ -33,11 +34,12 @@ import {
   type RankingSite,
 } from '../lib/rankingsPage';
 import { RANKINGS_PAGE_SCRIPT } from '../lib/rankingsPageScript';
+import { WINDOW_TOURS } from '../lib/toursPage';
 import { rankingsBar, type LinePhase } from '../lib/rankingsText';
 import type { Services } from '../lib/services';
 import { Body, Button, s, Small, Title } from './parts';
 
-export function RankingsView({ svc, site, done }: { svc: Services; site?: RankingSite; done: () => void }) {
+export function RankingsView({ svc, site, tour, done }: { svc: Services; site?: RankingSite; tour?: (site: TourSite) => void; done: () => void }) {
   const [view, setView] = useState<ProView | null>(null);
   /** Where the window opens: null while it is decided, '' to ask which ranking first. */
   const [start, setStart] = useState<string | null>(site ? SITES[site].start : null);
@@ -72,7 +74,8 @@ export function RankingsView({ svc, site, done }: { svc: Services; site?: Rankin
     load();
     if (!site) {
       void svc.lastPage.get().then((last) => {
-        if (live) setStart(last ?? '');
+        // Only a world ranking's page opens here (the page last sent may be his tour profile).
+        if (live) setStart(last && playerPageOf(last) ? last : '');
       });
     }
     return () => {
@@ -167,6 +170,10 @@ export function RankingsView({ svc, site, done }: { svc: Services; site?: Rankin
         <View style={{ gap: 6 }}>
           {start === '' && <Button label={tr('pro.openOwgr')} onPress={() => open('owgr')} />}
           {start === '' && <Button label={tr('pro.openRolex')} onPress={() => open('rolex')} />}
+          {start === '' && tour && <Small>{t('tours.orTour')}</Small>}
+          {start === '' &&
+            tour &&
+            WINDOW_TOURS.map((x) => <Button key={x} label={t('tours.open', { tour: TOUR_SITES[x]?.name ?? x })} kind="secondary" onPress={() => tour(x)} />)}
           {start !== '' && bar.ask && <Button label={tr('pro.yes')} busy={busy} onPress={() => void answer(true)} />}
           {start !== '' && bar.ask && <Button label={tr('pro.no')} kind="secondary" disabled={busy} onPress={() => void answer(false)} />}
           {start !== '' && bar.send && <Button label={tr('proLine.send')} onPress={send} />}

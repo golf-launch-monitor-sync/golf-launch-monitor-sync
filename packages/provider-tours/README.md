@@ -38,12 +38,15 @@ Other tours come as modules of their own, each with its terms noted here before 
 - `page.ts` - a tour's page as a client hands it on (`TourPage`), read again strictly where it arrives
   (`checkTourPage`), one prores/1 batch of it (`tourBatchOf`, cut to the format's limits), the tours read today
   (`TOUR_SITES`).
-- `progolftour.ts` - the profile (`readProfile`), his line of a final result (`ownLine`), what a read hands on
+- `progolftour.ts` - the profile (`readProfile`; `profileOf` by its address), his line of a final result (`ownLine`), what a read hands on
   (`siteRead`), the addresses a run may open (`mayOpen`), the strict re-reads of what a content script sends
   (`checkProfile`, `checkOwnLine`).
 - `progolftour-run.ts` - *Fetch all* as a value: `startRun`, `nextStep`, `seeRun`, `stopRun`, `mayStart`.
-- `testing.ts` - the tours' pages made up by hand in their shape (made-up players, made-up numbers). Never a recorded
-  page.
+- `testing.ts` - the tours' pages made up by hand in their shape (made-up players, made-up numbers), and a tiny DOM
+  (`h`, `docOf` of a snapshot) for the tests of a page's script. Never a recorded page.
 
-The extension puts it together (`apps/extension`: `tours-content.ts` on the site, `tours.ts` keeping what was read,
-`ProClient` of `@glmsync/browser` sending it). The companion app doesn't read tour pages yet.
+The extension puts it together (`apps/extension`: `tours-content.ts` on the site; `TourKeeper` of
+`@glmsync/browser/tours` keeping what was read; `ProClient` of `@glmsync/browser` sending it). The companion app the same
+in its own window (`apps/companion`: `ToursView` with the page script `scripts/tours-page.entry.ts`, `toursSession.ts`
+over the same `TourKeeper`, run and `ProClient`). A new tour joins the app's window with its module's reading in the
+page script and its pages in `src/lib/toursPage.ts`; `TOUR_SITES` already makes the window show its site.

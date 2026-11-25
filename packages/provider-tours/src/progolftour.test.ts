@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 import { describe, expect, it } from 'vitest';
-import { dayOf, mayOpen, ownLine, placeOf, readProfile, resultKey, resultUrl, siteRead, type OwnLine, type Profile } from './progolftour.ts';
+import { dayOf, mayOpen, ownLine, placeOf, profileOf, readProfile, resultKey, resultUrl, siteRead, type OwnLine, type Profile } from './progolftour.ts';
 import { pgtEntry, pgtLine, pgtProfile, pgtResult } from './testing.ts';
 
 const profile = (): Profile => {
@@ -128,6 +128,14 @@ describe('Pro Golf Tour: addresses', () => {
       expect(mayOpen(bad)).toBe(false);
     }
     expect(resultKey('https://www.progolftour.de/tournament-details/%E0%A4%A')).toBeNull();
+  });
+
+  it('names his profile by its address, and nothing else', () => {
+    expect(profileOf('https://www.progolftour.de/player-profile/99001?year=2026')).toEqual({ id: '99001', season: 2026 });
+    expect(profileOf('https://www.progolftour.de/player-profile/Velten-Meyer')).toEqual({ id: 'velten-meyer' });
+    for (const bad of [resultUrl('x'), 'https://evil.example/player-profile/1', 'http://www.progolftour.de/player-profile/1', null]) {
+      expect(profileOf(bad)).toBeNull();
+    }
   });
 
   it('days and places as the site writes them', () => {

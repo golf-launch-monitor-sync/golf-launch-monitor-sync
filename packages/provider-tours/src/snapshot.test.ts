@@ -1,60 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 import { describe, expect, it } from 'vitest';
-import { clean, column, nameKey, snapshotOf, type DomElement, type DomNode } from './snapshot.ts';
-
-// A tiny DOM, enough for the selectors snapshotOf uses ("a b" as descendant, "a[href]", lists with commas).
-class Text implements DomNode {
-  nodeType = 3;
-  constructor(public textContent: string) {}
-}
-class El implements DomElement {
-  nodeType = 1;
-  parent: El | null = null;
-  nextElementSibling: El | null = null;
-  childNodes: (El | Text)[] = [];
-  constructor(public tagName: string, public attrs: Record<string, string> = {}, kids: (El | string)[] = []) {
-    let prev: El | null = null;
-    for (const k of kids) {
-      const n = typeof k === 'string' ? new Text(k) : k;
-      if (n instanceof El) {
-        n.parent = this;
-        if (prev) prev.nextElementSibling = n;
-        prev = n;
-      }
-      this.childNodes.push(n);
-    }
-  }
-  get textContent(): string {
-    return this.childNodes.map((n) => n.textContent).join('');
-  }
-  getAttribute(name: string): string | null {
-    return this.attrs[name] ?? null;
-  }
-  all(): El[] {
-    return this.childNodes.flatMap((n) => (n instanceof El ? [n, ...n.all()] : []));
-  }
-  private matches(sel: string): boolean {
-    const parts = sel.trim().split(/\s+/);
-    const one = (e: El, p: string) => {
-      const m = /^([a-z0-9]+)(\[([a-z]+)\])?$/.exec(p);
-      return !!m && e.tagName === m[1] && (!m[3] || e.getAttribute(m[3]) !== null);
-    };
-    if (!one(this, parts[parts.length - 1] ?? '')) return false;
-    let up = this.parent;
-    for (let i = parts.length - 2; i >= 0; i -= 1) {
-      while (up && !one(up, parts[i] ?? '')) up = up.parent;
-      if (!up) return false;
-      up = up.parent;
-    }
-    return true;
-  }
-  querySelectorAll(sel: string): El[] {
-    return this.all().filter((e) => sel.split(',').some((s) => e.matches(s)));
-  }
-}
-const h = (tag: string, attrs: Record<string, string> | (El | string)[] = {}, kids: (El | string)[] = []) =>
-  Array.isArray(attrs) ? new El(tag, {}, attrs) : new El(tag, attrs, kids);
+import { clean, column, nameKey, snapshotOf } from './snapshot.ts';
+import * as progolftour from './progolftour.ts';
+import { docOf, h, pgtProfile, pgtResult } from './testing.ts';
 
 describe('a page as text', () => {
   const doc = h('html', [
@@ -97,5 +46,14 @@ describe('a page as text', () => {
     expect(column(['#'], 'Player')).toBe(-1);
     expect(nameKey('Jörg-Müller (AM)')).toBe(nameKey('JORG MULLER'));
     expect(nameKey("Anne-Marie O'Neill")).toBe('anne marie o neill');
+  });
+});
+
+describe('a made-up page as a document', () => {
+  it('reads back as the snapshot it was made of, for what the Pro Golf Tour module takes', () => {
+    const prof = pgtProfile();
+    expect(progolftour.readProfile(snapshotOf(docOf(prof), prof.url, progolftour.LABELS))).toEqual(progolftour.readProfile(prof));
+    const res = pgtResult();
+    expect(progolftour.ownLine(snapshotOf(docOf(res), res.url, progolftour.LABELS), 'Lena Beispiel')).toEqual(progolftour.ownLine(res, 'Lena Beispiel'));
   });
 });

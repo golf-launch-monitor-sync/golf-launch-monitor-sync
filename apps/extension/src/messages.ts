@@ -9,7 +9,7 @@
 
 import type { ClientStatus, HcpView, PairOutcome, ProView, TestOutcome } from '@glmsync/browser';
 import type { progolftourRun } from '@glmsync/provider-tours';
-import type { Seen, TourView } from './tours.ts';
+import type { Seen, TourView } from '@glmsync/browser/tours';
 
 type TourStep = progolftourRun.Step;
 import type { GuardLogExport } from '@glmsync/core';

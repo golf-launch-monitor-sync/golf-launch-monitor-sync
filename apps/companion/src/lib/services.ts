@@ -8,6 +8,7 @@
 
 import type { HcpClient } from '@glmsync/browser/hcp';
 import type { ProClient } from '@glmsync/browser/pro';
+import { TourKeeper } from '@glmsync/browser/tours';
 import { Guard, HttpTarget, type FetchLike, type FileOut, type Storage } from '@glmsync/core';
 import { demo } from '@glmsync/provider-demo';
 import { expiresAt, trackman } from '@glmsync/provider-trackman';
@@ -65,7 +66,9 @@ export interface Services {
   hcpSender: HcpSender;
   /** A pro's own world ranking pages, sent from the app's window on the player's tap, and their pairings (spec/prores.md). */
   pro: ProClient;
-  /** The player's page last sent from here: where the window opens next time. */
+  /** What the tour window read of his tour's pages, and its *Fetch all* run (the extension's keeper). */
+  tours: TourKeeper;
+  /** The player's page last sent from here (a world ranking's or his tour profile): where a window opens next time. */
   lastPage: LastPage;
   /** Reads what this phone keeps; call once before using the rest. */
   load(): Promise<void>;
@@ -139,6 +142,7 @@ export function makeServices(platform: Platform): Services {
     hcp,
     hcpSender: new HcpSender(hcp),
     pro,
+    tours: new TourKeeper(platform.storage, platform.now ?? Date.now),
     lastPage: new LastPage(platform.storage),
     async load() {
       await Promise.all([signIns.load(), pairings.load(), runner.loadRuns()]);

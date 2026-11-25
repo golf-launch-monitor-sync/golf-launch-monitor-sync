@@ -128,6 +128,24 @@ portal in a sign-in window - so that window lives here, in a small app that does
   (the site's page can't reach it) and on the connection's card. The window opens on the page last sent from here, else
   asks which ranking; it keeps every load in the app (`rankingsWindowRules`). A read link `glmsync://read?kind=pro`
   opens the window - only with a pairing of this kind. Nothing happens in the background.
+- **Sends a pro's tour pages** (spec 1.15.0, `site: tour:<key>`; today the Pro Golf Tour), with the same pairing: the
+  app's own window on the tour's site (`src/ui/ToursView.tsx`), opened from the home page's card (*Open Pro Golf Tour*),
+  from the world ranking window's choice, or by a read link when the page last sent from here was his tour profile;
+  it opens on that profile, else on the tour's Order of Merit, loaded as this web view is, nothing added. On his own
+  profile *Send* and *Fetch all* appear in the bar. A page script (`scripts/tours-page.entry.ts`, bundled into
+  `src/lib/toursPageScript.ts`) gives the page one function: called with a fresh ask, it reads with the extension's very
+  module (`@glmsync/provider-tours`) - on his profile his Order of Merit and his season's tournaments, on a tournament's
+  page only his own line of the final result (by his profile's name, which the app hands in) and the field's size; the
+  snapshot with everyone else's names never leaves the page script. *Send* reads the profile and sends his ranking with
+  every tournament whose rounds were read; *Fetch all* reads the profile, then opens his finished tournaments' pages one
+  by one in the window and reads his line on each, at the extension's pace and limits (`TOUR_CLICKS`: a pause of 6-10 s,
+  at most 30 pages, three runs a day), and sends once at the end. What the window does lives in `src/lib/toursSession.ts`
+  over the extension's own parts (`TourKeeper` of `@glmsync/browser/tours`, the run of `progolftourRun`, `ProClient`);
+  the bar's words in `src/lib/toursText.ts`. The app takes only an answer to its open ask, from the profile or the
+  tournament page the window shows, read again strictly (`readTourMessage`). *Stop* or closing the window ends a run and
+  sends what it read; a run of a window that is gone (the app was closed during it) ends when the window opens again.
+  Nothing is read before his tap, and nothing happens in the background. The window keeps every load in the app
+  (`tourWindowRules`).
 - **Demo**: a made-up player (`@glmsync/provider-demo`) for trying the app without an account, and
   for app reviews. Its "requests" go through the guard too, so counters and log behave as for real.
 - **Save as file**: a sync into an olmd file (the share sheet), planned gently by the file target -
@@ -149,7 +167,8 @@ portal in a sign-in window - so that window lives here, in a small app that does
 | golf.de's own sign-in | golf.de's cookies in the window's web view, on this phone; the app never reads them |
 | Each pairing for a pro's pages with its import token | the secure store (one entry, `glmsync.pro.pairings`, in pieces where long) |
 | What each of those apps last answered, an open *Is this page yours?* with its page (a day at most), fingerprints of pages said to be the player's | app storage |
-| The address of the player's own ranking page last sent from here (where the window opens next time) | app storage, until the player disconnects the last app for a pro's pages here |
+| The address of the player's own ranking page or tour profile last sent from here (where the window opens next time) | app storage, until the player disconnects the last app for a pro's pages here |
+| His tour profile as last read, his own line of each tournament read, which tournament pages were opened when, the runs of *Fetch all* (the extension's `TourKeeper`) | app storage; another player's profile replaces it all |
 | The sites' cookies (a consent banner's choice) | the window's web view, on this phone |
 
 Android backups leave the secure store out (`allowBackup: false`). A sign-in goes to the provider
@@ -168,15 +187,15 @@ src/lib/            everything without a screen, tested with vitest: secrets, si
                     the wording
 src/ui/             the screens: App (links, opening, quiet renewal), Home, PairView, SignInView,
                     FirstSyncView, SyncView, TestView, Licenses, TrackmanLoginView, PairHcpView, GolfdeView,
-                    HcpCard, PairProView, RankingsView, ProCard
+                    HcpCard, PairProView, RankingsView, ToursView, ProCard
 src/platform.ts     the phone's parts: secure store, storage, files, share sheet
 src/background.ts   the background task
 src/nudge.ts        the headless task behind the Android sync service
 modules/glmsync-sync  the Android sync service (Kotlin, a local Expo module; its manifest adds the
                     service to the app)
 scripts/            licenses.mjs (the licences page), release.sh (builds and updates at Expo),
-                    golfde-page.mjs and rankings-page.mjs (bundle the golf.de and world ranking windows' page
-                    scripts into src/lib/*PageScript.ts, with page-script.mjs)
+                    golfde-page.mjs, rankings-page.mjs and tours-page.mjs (bundle the golf.de, world ranking and
+                    tour windows' page scripts into src/lib/*PageScript.ts, with page-script.mjs)
 ```
 
 ## Development
@@ -192,7 +211,9 @@ pnpm --filter @glmsync/companion start         # Expo dev server (a development 
 After a change to `@glmsync/provider-golfde`'s page script (or `src/lib/golfdePage.ts`, or
 `scripts/golfde-page.entry.ts`): `node apps/companion/scripts/golfde-page.mjs` writes `src/lib/golfdePageScript.ts`
 again; a test fails until it is. The same for the world ranking window: after a change to `@glmsync/provider-rankings`,
-`src/lib/rankingsPage.ts` or `scripts/rankings-page.entry.ts`, `node apps/companion/scripts/rankings-page.mjs`. There is deliberately no npm script for it: `package.json`'s scripts are part of the
+`src/lib/rankingsPage.ts` or `scripts/rankings-page.entry.ts`, `node apps/companion/scripts/rankings-page.mjs`; for the
+tour window, after a change to `@glmsync/provider-tours`, `src/lib/toursPage.ts` or `scripts/tours-page.entry.ts`,
+`node apps/companion/scripts/tours-page.mjs`. There is deliberately no npm script for it: `package.json`'s scripts are part of the
 app's native fingerprint, and a changed script keeps every update from the builds out there until a new build.
 
 The Expo packages follow the SDK together (Dependabot leaves them alone): upgrade them all at once

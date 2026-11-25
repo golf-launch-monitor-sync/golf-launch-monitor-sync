@@ -18,6 +18,7 @@
     "@glmsync/provider-demo": "workspace:*",
     "@glmsync/provider-golfde": "workspace:*",
     "@glmsync/provider-rankings": "workspace:*",
+    "@glmsync/provider-tours": "workspace:*",
     "@glmsync/provider-trackman": "workspace:*",
     "@glmsync/spec": "workspace:*",
     "@react-native-async-storage/async-storage": "2.2.0",

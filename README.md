@@ -18,7 +18,8 @@ Syncs your golf data from **your own** accounts into apps of your choice, in ope
   you, and asks the site nothing of its own.
 - **A professional's tour** — the season's ranking and his tournaments with their rounds — from his own pages of a tour
   (today the Pro Golf Tour), in prores/1: his profile, and his own line of each tournament's final result (opened by
-  him, or by *Fetch all* on his tap). Nobody else's line leaves the page.
+  him, or by *Fetch all* on his tap), in the extension or the companion app's window. Nobody else's line leaves the
+  page.
 
 > **Unofficial.** This project is not affiliated with, endorsed by or supported by Trackman, any
 > other launch monitor maker, the Deutscher Golf Verband (DGV), golf.de, the OWGR, Rolex or any tour. It uses your own sign-in,

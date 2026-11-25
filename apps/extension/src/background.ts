@@ -19,7 +19,7 @@
 
 import { badge, BrowserClient, HcpClient, IdbBlobs, pickLang, ProClient, SEND_AFTER_MS, translator, type HcpView } from '@glmsync/browser';
 import { SITES } from '@glmsync/provider-rankings';
-import { TourKeeper } from './tours.ts';
+import { TourKeeper } from '@glmsync/browser/tours';
 import { HISTORY_SHEET_URL, readSeen } from '@glmsync/provider-golfde';
 import { bridgeMessage, type BridgeReply, type Reason } from '@glmsync/spec';
 import { PORTAL_URL, SIGN_OUT_URL } from '@glmsync/provider-trackman/portal';
@@ -66,7 +66,7 @@ const pro = new ProClient({
   name: __BROWSER__ === 'firefox' ? 'Golf Stats Sync for Firefox' : 'Golf Stats Sync for Chrome and Edge',
   version: VERSION,
 });
-// The Pro Golf Tour's pages as the player opens them (tours.ts): what was read, *Fetch all*.
+// The Pro Golf Tour's pages as the player opens them (`@glmsync/browser/tours`): what was read, *Fetch all*.
 const tours = new TourKeeper(storage);
 const localDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 

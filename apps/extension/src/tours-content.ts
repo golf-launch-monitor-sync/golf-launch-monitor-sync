@@ -17,7 +17,7 @@
 import { pickLang, proLineOf, translator, type LinePhase, type ProView } from '@glmsync/browser';
 import { progolftour, snapshotOf } from '@glmsync/provider-tours';
 import type { Reply } from './messages.ts';
-import type { TourView } from './tours.ts';
+import type { TourView } from '@glmsync/browser/tours';
 
 const t = translator(pickLang(navigator.languages));
 const SITE = progolftour.SITE;

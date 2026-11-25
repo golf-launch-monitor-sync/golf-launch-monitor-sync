@@ -17,7 +17,8 @@
     "./download": "./src/download.ts",
     "./style.css": "./src/style.css",
     "./pro": "./src/pro.ts",
-    "./proView": "./src/proView.ts"
+    "./proView": "./src/proView.ts",
+    "./tours": "./src/tours.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * What the app's page scripts are built with (scripts/golfde-page.mjs, scripts/rankings-page.mjs): one plain script,
- * kept as a string in a module of src/lib - a web view takes the script it injects as text, and Metro bundles no second
- * script for a page. Not minified, so anyone reads what runs in a site's page.
+ * What the app's page scripts are built with (scripts/golfde-page.mjs, scripts/rankings-page.mjs,
+ * scripts/tours-page.mjs): one plain script, kept as a string in a module of src/lib - a web view takes the script it
+ * injects as text, and Metro bundles no second script for a page. Not minified, so anyone reads what runs in a site's page.
  *
  * No npm script for them on purpose: the app's package.json scripts are part of its native fingerprint, and a new
  * script would keep the update from the builds out there.

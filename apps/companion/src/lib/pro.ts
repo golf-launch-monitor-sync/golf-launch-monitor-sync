@@ -12,6 +12,7 @@
 import type { FetchLike, Storage } from '@glmsync/core';
 import { ProClient } from '@glmsync/browser/pro';
 import { keptPage } from './rankingsPage.ts';
+import { keptTourPage } from './toursPage.ts';
 import { SlotSecrets } from './hcp.ts';
 import type { Secrets } from './secrets.ts';
 
@@ -44,22 +45,23 @@ const LAST_PAGE = 'glmsync/pro/lastPage';
 
 /**
  * The player's own page, last sent from this phone: the window opens there next time instead of the site's search. Only
- * an address of a player's page is kept, only on this phone, and it goes when the player disconnects the last app for
- * a pro's pages here.
+ * an address of a player's page of a world ranking or his profile on a tour is kept, only on this phone, and it goes
+ * when the player disconnects the last app for a pro's pages here.
  */
 export class LastPage {
   constructor(private readonly storage: Storage) {}
 
   async get(): Promise<string | null> {
     try {
-      return keptPage(await this.storage.get(LAST_PAGE));
+      const url = await this.storage.get(LAST_PAGE);
+      return keptPage(url) ?? keptTourPage(url);
     } catch {
       return null; // unreadable: the window starts at the site's search
     }
   }
 
   async set(url: string): Promise<void> {
-    const kept = keptPage(url);
+    const kept = keptPage(url) ?? keptTourPage(url);
     if (kept) await this.storage.set(LAST_PAGE, kept);
   }
 
