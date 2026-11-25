@@ -6,12 +6,22 @@
  * only on the pages the extension reads too, posting what it saw - no names, no numbers - to the app. It sends
  * golf.de nothing and changes nothing the page does. scripts/golfde-page.mjs bundles it into
  * src/lib/golfdePageScript.ts.
+ *
+ * For *Fetch all* (spec/hcp.md, clicking for the player) it also gives the page a step function the app calls
+ * (src/lib/fetchAll.ts): golf.de's own pager link or Scoring Record button, clicked as the player would. It reads no
+ * value and asks golf.de nothing; whoever calls it can only make golf.de's own page do what its own links do.
  */
 
+import { operate, type Place, type Root, type Step } from '@glmsync/provider-golfde/operate';
 import { watchPage, type PageWindow } from '@glmsync/provider-golfde/page';
+import { STEP_FUNCTION } from '../src/lib/fetchAll.ts';
 import { GOLFDE_MESSAGE, onReadPage, pageId } from '../src/lib/golfdePage.ts';
 
-declare const window: PageWindow & { ReactNativeWebView?: { postMessage(data: string): void } };
+declare const window: PageWindow & {
+  ReactNativeWebView?: { postMessage(data: string): void };
+  document: Root;
+  location: { hash: string; assign(url: string): void };
+};
 
 try {
   if (onReadPage(window.location.href)) {
@@ -23,12 +33,36 @@ try {
       return out;
     };
     const page = pageId(random);
-    watchPage(window, (seen) => {
+    const post = (seen: unknown) => {
       try {
         window.ReactNativeWebView?.postMessage(JSON.stringify({ glmsync: GOLFDE_MESSAGE, page, seen }));
       } catch {
         // never in the page's way
       }
+    };
+    watchPage(window, post);
+    const place: Place = {
+      get hash() {
+        return window.location.hash;
+      },
+      set hash(h: string) {
+        window.location.hash = h;
+      },
+      assign: (url: string) => window.location.assign(url),
+    };
+    Object.defineProperty(window, STEP_FUNCTION, {
+      value: (text: unknown) => {
+        try {
+          const step = JSON.parse(String(text)) as Step;
+          // Only the steps taken in the page; opening an address is the app's own (it checks it).
+          if (step?.do !== 'page' && step?.do !== 'click') return;
+          if (step.do === 'page' && (typeof step.cursor !== 'string' || step.cursor.length > 300)) return;
+          const seen = operate(step, window.document, place);
+          if (seen) post(seen);
+        } catch {
+          // never in the page's way
+        }
+      },
     });
   }
 } catch {

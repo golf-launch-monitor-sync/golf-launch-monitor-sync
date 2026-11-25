@@ -19,6 +19,8 @@ const view = (over: Partial<HcpView> = {}): HcpView => ({
   ended: [],
   account: 'confirmed',
   index: null,
+  fetch_all: 'no',
+  run: null,
   ...over,
 });
 

@@ -292,3 +292,171 @@ describe('settings and pairings', () => {
     expect(w.target.results.size).toBe(1);
   });
 });
+
+describe('Fetch all: the clicks the player would make, on their tap', () => {
+  const page = (nodes: Record<string, unknown>[], total: number, n: number, of: number) =>
+    reduce({ kind: 'graphql', op: 'GetHandicapHistorySheet' }, 200, historyAnswer(nodes, total, n, of)) as Seen;
+  const PAUSE = 6001; // the most a pause can be
+
+  async function ready() {
+    const w = await paired();
+    await w.client.see('p1', member());
+    await w.client.confirm(true);
+    return w;
+  }
+
+  it('only signed in, with the account confirmed and an app connected', async () => {
+    const w = await paired();
+    expect((await w.client.view()).fetch_all).toBe('no'); // no account named yet
+    await w.client.see('p1', member());
+    expect((await w.client.view()).fetch_all).toBe('no'); // not confirmed yet
+    expect((await w.client.startFetchAll('tab1')).run).toBeNull();
+    await w.client.confirm(true);
+    expect((await w.client.view()).fetch_all).toBe('ready');
+    await w.client.see('p1', { kind: 'signed_out' });
+    expect((await w.client.view()).fetch_all).toBe('no');
+    await w.client.see('p1', member());
+    expect((await w.client.view()).fetch_all).toBe('ready');
+    const none = world();
+    await none.client.see('p1', member());
+    expect((await none.client.view()).fetch_all).toBe('no'); // no app
+  });
+
+  it('a whole run: steps only for the page that started it, nothing sent until the end, then one send', async () => {
+    const w = await ready();
+    const nodes = Array.from({ length: 12 }, (_, i) => entry({ scorecardTournamentNumber: 6000 + i, tournamentDate: `2026-${String(10 - Math.floor(i / 2)).padStart(2, '0')}-0${(i % 2) + 1}T10:00:00+02:00` }));
+    let v = await w.client.startFetchAll('tab1');
+    expect(v).toMatchObject({ fetch_all: 'running', run: { phase: 'history' } });
+    expect((await w.client.runStep('tab2')).step).toEqual({ do: 'end' }); // another tab drives nothing
+    expect((await w.client.runStep('tab1')).step).toEqual({ do: 'open', url: 'https://www.golf.de/mein-bereich/handicap-history-sheet.html' });
+    await w.client.see('p2', member());
+    await w.client.see('p2', page(nodes.slice(0, 10), 12, 1, 2));
+    w.clock.advance(PAUSE);
+    expect((await w.client.runStep('tab1')).step).toMatchObject({ do: 'page' });
+    await w.client.see('p2', page(nodes.slice(10), 12, 2, 2));
+    w.clock.advance(PAUSE);
+    expect((await w.client.runStep('tab1')).step).toEqual({ do: 'click', what: 'scoring' });
+    await w.client.see('p2', scoring(nodes.slice(0, 5)));
+    expect(w.target.imports).toHaveLength(0); // nothing goes while it runs
+    const lists: string[] = [];
+    for (;;) {
+      w.clock.advance(PAUSE);
+      const turn = await w.client.runStep('tab1');
+      if (turn.step.do === 'end') {
+        v = turn.view;
+        break;
+      }
+      expect(turn.step.do).toBe('open');
+      const t = /#\/(\d+)\/ergebnisse$/.exec((turn.step as { url: string }).url)?.[1] as string;
+      lists.push(t);
+      const own = nodes.find((n) => String(n.scorecardTournamentNumber) === t);
+      await w.client.see('p3', reduce({ kind: 'results', tournament: t }, 200, resultsAnswer(own?.resultGuid as string)) as Seen);
+    }
+    expect(lists).toHaveLength(12);
+    expect(lists[0]).toBe('6001'); // newest first (2 October)
+    expect(v).toMatchObject({ fetch_all: 'ready', run: { phase: 'done', entries: 12, lists_done: 12, lists_total: 12 } });
+    // One send at the end, with every place.
+    expect(w.target.imports).toHaveLength(1);
+    expect(w.target.results.size).toBe(12);
+    expect([...w.target.results.values()].every((r) => r.place === 7 && r.field === 42)).toBe(true);
+    const text = JSON.stringify(w.target.received);
+    for (const p of Object.values(PERSONAL)) expect(text).not.toContain(p);
+
+    // The next run opens no list again: each has its place now.
+    w.clock.advance(60_000);
+    await w.client.startFetchAll('tab1');
+    await w.client.runStep('tab1');
+    await w.client.see('p4', page(nodes.slice(0, 10), 12, 1, 1));
+    w.clock.advance(PAUSE);
+    await w.client.runStep('tab1');
+    await w.client.see('p4', scoring([]));
+    w.clock.advance(PAUSE);
+    expect((await w.client.runStep('tab1')).step).toEqual({ do: 'end' });
+  });
+
+  it('stops when golf.de says signed out, and sends what it read so far', async () => {
+    const w = await ready();
+    await w.client.startFetchAll('tab1');
+    await w.client.runStep('tab1');
+    await w.client.see('p2', page([entry()], 30, 1, 3));
+    const v = await w.client.see('p2', { kind: 'signed_out' });
+    expect(v).toMatchObject({ fetch_all: 'no', run: { phase: 'stopped', why: 'signed_out' } });
+    expect(w.target.imports).toHaveLength(1);
+    expect((await w.client.runStep('tab1')).step).toEqual({ do: 'end' });
+  });
+
+  it('the player stops it: what was read goes out', async () => {
+    const w = await ready();
+    await w.client.startFetchAll('tab1');
+    await w.client.runStep('tab1');
+    await w.client.see('p2', page([entry()], 30, 1, 3));
+    const v = await w.client.cancelFetchAll();
+    expect(v).toMatchObject({ fetch_all: 'ready', run: { phase: 'stopped', why: 'cancelled' } });
+    expect(w.target.results.size).toBe(1);
+  });
+
+  it('a run its page left (the tab closed) ends by itself, and a new one may start', async () => {
+    const w = await ready();
+    await w.client.startFetchAll('tab1');
+    await w.client.runStep('tab1');
+    w.clock.advance(121_000);
+    const v = await w.client.view();
+    expect(v.fetch_all).toBe('ready');
+    expect((await w.client.startFetchAll('tab2')).run).toMatchObject({ phase: 'history', entries: 0 });
+    expect((await w.client.runStep('tab2')).step).toMatchObject({ do: 'open' });
+  });
+
+  it('a few runs a day, no more', async () => {
+    const w = await ready();
+    for (let i = 0; i < 3; i++) {
+      await w.client.startFetchAll('tab1');
+      await w.client.cancelFetchAll();
+    }
+    expect((await w.client.view()).fetch_all).toBe('limit');
+    expect((await w.client.startFetchAll('tab1')).run).toMatchObject({ why: 'cancelled' });
+    w.clock.advance(24 * 3600_000 + 1);
+    expect((await w.client.view()).fetch_all).toBe('ready');
+  });
+
+  it('the same golf.de tournament list isn’t opened again for a week', async () => {
+    const w = await ready();
+    const own = entry({ scorecardTournamentNumber: 5001 });
+    await w.client.startFetchAll('tab1');
+    await w.client.runStep('tab1');
+    await w.client.see('p2', page([own], 1, 1, 1));
+    w.clock.advance(PAUSE);
+    await w.client.runStep('tab1');
+    await w.client.see('p2', scoring([]));
+    w.clock.advance(PAUSE);
+    expect((await w.client.runStep('tab1')).step).toMatchObject({ do: 'open', url: expect.stringContaining('#/5001/') });
+    // No list came (none published yet): the run goes on and ends; the list waits a week.
+    w.clock.advance(30_000);
+    await w.client.runStep('tab1');
+    w.clock.advance(PAUSE);
+    expect((await w.client.runStep('tab1')).step).toEqual({ do: 'end' });
+    await w.client.startFetchAll('tab1');
+    await w.client.runStep('tab1');
+    await w.client.see('p3', page([own], 1, 1, 1));
+    w.clock.advance(PAUSE);
+    await w.client.runStep('tab1');
+    await w.client.see('p3', scoring([]));
+    w.clock.advance(PAUSE);
+    expect((await w.client.runStep('tab1')).step).toEqual({ do: 'end' });
+  });
+});
+
+describe('Fetch all: its page goes away', () => {
+  it('a closed tab ends its run (and only its own), and what was read goes out', async () => {
+    const w = await paired();
+    await w.client.see('p1', member());
+    await w.client.confirm(true);
+    await w.client.startFetchAll('tab:1');
+    await w.client.runStep('tab:1');
+    await w.client.see('p2', history([entry()], 30));
+    expect((await w.client.leaveFetchAll('tab:2')).fetch_all).toBe('running');
+    expect(w.target.imports).toHaveLength(0);
+    const v = await w.client.leaveFetchAll('tab:1');
+    expect(v).toMatchObject({ fetch_all: 'ready', run: { phase: 'stopped', why: 'cancelled' } });
+    expect(w.target.results.size).toBe(1);
+  });
+});

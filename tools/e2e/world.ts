@@ -85,28 +85,64 @@ export interface Portal {
 export class GolfDe {
   signedIn = true;
   readonly own = entry({ resultGuid: 'c0ffee00-0000-4000-8000-0000000e2e01' });
-  readonly nodes = [this.own, entry({ tournamentDate: '2026-09-12T10:00:00+02:00', ratedGrossResult: 88 }), entry({ tournamentType: 8, tournamentName: 'RPR: Max Markersmann', tournamentDate: '2026-08-02T10:00:00+02:00' })];
+  nodes = [this.own, entry({ tournamentDate: '2026-09-12T10:00:00+02:00', ratedGrossResult: 88 }), entry({ tournamentType: 8, tournamentName: 'RPR: Max Markersmann', tournamentDate: '2026-08-02T10:00:00+02:00' })];
+  /**
+   * The pages as golf.de's are built (spec/hcp.md, clicking for the player): the History Sheet a web component with an
+   * open shadow root, ten entries a page with its pager's links (`#/??first=10&after=<cursor>`) and the Scoring Record
+   * behind its button; the result list by `#/<tournament>/ergebnisse` on one page. Off: every page loads it all at
+   * once (the reading-along checks).
+   */
+  built = false;
   readonly apiSaw: { url: string; op: string | null; page: boolean }[] = [];
 
   /** golf.de's API, as the page's own requests reach it. */
   answer(url: string, body: string | null): unknown {
-    const op = body ? ((JSON.parse(body) as { operationName?: string }).operationName ?? null) : null;
+    const ask = body ? (JSON.parse(body) as { operationName?: string; variables?: { after?: string | null } }) : null;
+    const op = ask?.operationName ?? null;
     if (!this.signedIn && op) return { data: null, errors: [{ message: 'no', extensions: { code: 'AUTH_FAILED' } }] };
     if (op === 'GetMemberDetails') return memberAnswer();
-    if (op === 'GetHandicapHistorySheet') return historyAnswer(this.nodes, this.nodes.length);
-    if (op === 'GetScoringRecords') return scoringAnswer([this.own]);
-    if (/\/v1\.0\/tournaments\/5001\/results/.test(url)) return resultsAnswer(this.own.resultGuid as string);
+    if (op === 'GetHandicapHistorySheet') {
+      if (!this.built) return historyAnswer(this.nodes, this.nodes.length);
+      const after = ask?.variables?.after;
+      const from = after ? Number(/^cursor:(\d+)$/.exec(atob(after))?.[1] ?? 0) : 0;
+      return historyAnswer(this.nodes.slice(from, from + 10), this.nodes.length, from / 10 + 1, Math.ceil(this.nodes.length / 10));
+    }
+    if (op === 'GetScoringRecords') return scoringAnswer(this.built ? this.nodes.slice(0, 20) : [this.own]);
+    const list = /\/v1\.0\/tournaments\/(\d+)\/results/.exec(url)?.[1];
+    const mine = this.nodes.find((n) => String(n.scorecardTournamentNumber) === list && n.tournamentType !== 8);
+    if (mine) return resultsAnswer(mine.resultGuid as string);
     return { errors: [{ message: 'unknown' }] };
   }
 
   /** A made-up page of *Mein Bereich* or the result list: it asks golf.de's API itself, as golf.de's page does. */
   page(path: string): string {
     const header = JSON.stringify({ 'content-type': 'application/json', 'x-client-id': 'made-up-page-client-id', [GOLFDE_PAGE_HEADER]: '1' });
+    if (this.built) return this.builtPage(path, header);
     const gql = (op: string) => `fetch('https://api-v2.golf.de/graphql', { method: 'POST', credentials: 'include', headers: ${header}, body: JSON.stringify({ operationName: '${op}', query: 'query ${op} { me { id } }', variables: {} }) })`;
     const calls = path.startsWith('/sport/')
       ? `fetch('https://api-v2.golf.de/v1.0/tournaments/5001/results', { headers: ${header} })`
       : `${gql('GetMemberDetails')}.then(() => ${gql('GetHandicapHistorySheet')}).then(() => ${gql('GetScoringRecords')})`;
     return `<!doctype html><html><head><title>golf.de (made up)</title></head><body><h1>Made-up golf.de</h1><p>Alexandra Beispielspielerin</p><script>${calls};</script></body></html>`;
+  }
+
+  private builtPage(path: string, header: string): string {
+    const head = `const H = ${header}; const gql = (op, variables = {}) => fetch('https://api-v2.golf.de/graphql', { method: 'POST', credentials: 'include', headers: H, body: JSON.stringify({ operationName: op, query: 'query ' + op + ' { me { id } }', variables }) }).then((r) => r.json());`;
+    const script = path.startsWith('/sport/')
+      ? `${head}
+        const load = () => { const m = /^#\\/(\\d+)\\/ergebnisse$/.exec(location.hash); if (m) fetch('https://api-v2.golf.de/v1.0/tournaments/' + m[1] + '/results', { headers: H }); };
+        load(); window.addEventListener('hashchange', load);`
+      : `${head}
+        const host = document.createElement('my-handicap-history-sheet'); document.body.append(host);
+        const root = host.attachShadow({ mode: 'open' });
+        const after = () => { const m = /[?&]after=([^&]*)/.exec(location.hash); return m ? decodeURIComponent(m[1]) : null; };
+        const load = () => gql('GetHandicapHistorySheet', { first: 10, after: after() }).then((a) => {
+          const info = a.data.me.reports.handicapHistorySheet.pageInfo;
+          root.replaceChildren();
+          for (const c of info.forwardCursors) { const l = document.createElement('a'); l.href = '#/??first=10&after=' + encodeURIComponent(c.cursor); l.textContent = String(c.page); root.append(l); }
+          const b = document.createElement('button'); b.textContent = 'Scoring Record'; b.addEventListener('click', () => gql('GetScoringRecords')); root.append(b);
+        });
+        gql('GetMemberDetails').then(load); window.addEventListener('hashchange', load);`;
+    return `<!doctype html><html><head><title>golf.de (made up)</title></head><body><h1>Made-up golf.de</h1><p>Alexandra Beispielspielerin</p><script>${script}</script></body></html>`;
   }
 }
 

@@ -17,6 +17,22 @@ export interface Line {
   warn: boolean;
   /** Offer *Confirm*: the account the pages named waits for the player's yes (given in the extension's own page). */
   confirm?: boolean;
+  /** Offer *Fetch all*: signed in, the account confirmed, an app connected (spec/hcp.md, clicking for the player). */
+  fetchAll?: boolean;
+  /** Offer *Stop*: a run is under way. */
+  stop?: boolean;
+}
+
+/** What a run under way is at, as the line's text. */
+function runText(v: HcpView, t: T, name: string): string | null {
+  const r = v.run;
+  if (v.fetch_all !== 'running' || !r) return null;
+  if (r.phase === 'history') {
+    return r.total !== undefined ? t('line.runHistory', { name, done: Math.min(r.entries, r.total), total: r.total }) : t('line.runStart', { name });
+  }
+  if (r.phase === 'scoring') return t('line.runScoring', { name });
+  if (r.phase === 'lists') return t('line.runLists', { name, done: Math.min(r.lists_done + 1, r.lists_total), total: r.lists_total });
+  return null;
 }
 
 /** The line on golf.de's page; null when no app is connected (then the extension shows nothing there at all). */
@@ -31,14 +47,19 @@ export function lineOf(v: HcpView, t: T): Line | null {
   if (v.account === 'rejected') return { text: label('line.rejected'), send: false, warn: true };
   if (v.account === 'asking') return { text: label('line.confirm'), send: false, warn: true, confirm: true };
   if (!live.length) return { text: label('line.other'), send: false, warn: true };
+  const running = runText(v, t, name);
+  if (running) return { text: `${t('line.label')}: ${running}`, send: false, warn: false, stop: true };
   if (v.sending) return { text: label('line.sending'), send: false, warn: false };
+  const all = v.fetch_all === 'ready' ? { fetchAll: true } : {};
+  const why = v.run?.phase === 'stopped' ? v.run.why : undefined;
+  if (why && why !== 'cancelled') return { text: label(`line.runStopped.${why}`), send: v.fresh > 0, warn: true, ...all };
   if (v.signed_out && !v.seen) return { text: label('line.signedOut'), send: false, warn: false };
   if (v.waiting && !v.seen) return { text: label('line.waiting'), send: false, warn: false };
   const failed = live.find((p) => p.last?.status === 'failed');
   if (failed && v.fresh) return { text: label('line.failed', { error: errorText(failed.last?.error, t) }), send: true, warn: true };
-  if (!v.seen) return { text: label('line.none'), send: false, warn: false };
-  if (!v.fresh) return { text: label('line.all', { seen: v.seen }), send: false, warn: false };
-  return { text: label(v.auto ? 'line.freshAuto' : 'line.fresh', { seen: v.seen, fresh: v.fresh }), send: true, warn: false };
+  if (!v.seen) return { text: label('line.none'), send: false, warn: false, ...all };
+  if (!v.fresh) return { text: label('line.all', { seen: v.seen }), send: false, warn: false, ...all };
+  return { text: label(v.auto ? 'line.freshAuto' : 'line.fresh', { seen: v.seen, fresh: v.fresh }), send: true, warn: false, ...all };
 }
 
 /** What a target last answered, as one line; null before anything was sent. */

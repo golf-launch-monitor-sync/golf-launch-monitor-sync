@@ -7,7 +7,7 @@ What the browser extension ([`apps/extension`](../../apps/extension)) and the we
 
 ## `HcpClient`
 
-The handicap record read along on golf.de (spec/hcp.md, *A client that only observes*; the extension holds one). Three
+The handicap record read along on golf.de (spec/hcp.md, *A client that observes and clicks for the player*; the extension and the companion app hold one each). Three
 `Storage`s: the **vault** (the pairings' import tokens), **storage** (what each target last answered, the results seen -
 of one golf.de account - and a fingerprint of what each target has from here) and the **session** (which account the
 pages named; gone when the browser closes).
@@ -17,7 +17,10 @@ pages named; gone when the browser closes).
 | `offerPairing({target, code})` | `POST /pair` of a handicap target (`kind=hcp`), for `golfde`. |
 | `see(page, seen)` | What golf.de's page showed (`@glmsync/provider-golfde`'s `Seen`). Results go to the account their page named, else to the one the session's pages last named (unless golf.de said since that nobody is signed in), else they wait for their page to name it. Another account's record drops what was kept of the one before. |
 | `send()` | Per target: nothing new, nothing asked; else its plan (`manual`), then what it doesn't have yet, cut to its limits, the index with the first batch; a notice (`signed_out`, `changed_page`) once. A revoked token or an ended connection forgets the pairing and says so. |
-| `view()` | What the popup and the line on golf.de show (`lineOf`, `hcpLastText` in `hcpView.ts`). |
+| `startFetchAll(owner)` | *Fetch all* (spec 1.14.0), tapped on the page `owner` (the extension's tab, the app's window): only signed in, the account confirmed, an app connected, three times a day; the run lives in the session. |
+| `runStep(owner)` | The one step to take now (`@glmsync/provider-golfde`'s `nextStep`), only for the page that started the run. A run over is closed: the lists it opened are kept for a week, and what it read is sent - once, at the end (nothing goes by itself while it runs). |
+| `cancelFetchAll()`, `leaveFetchAll(owner)` | *Stop*, or the page went away (a run whose page hasn't asked for two minutes ends by itself too): closed as above. |
+| `view()` | What the popup and the line on golf.de show (`lineOf`, `hcpLastText` in `hcpView.ts`), with `fetch_all` and the run's progress. |
 
 ## `BrowserClient`
 

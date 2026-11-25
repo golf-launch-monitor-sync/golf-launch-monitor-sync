@@ -161,7 +161,7 @@
   "hcp.pairFirst": "Connect your handicap record first: in the app that should get it, choose to connect Golf Stats Sync.",
   "pairHcp.what": "From now on, the handicap record you open on golf.de here in this app goes to {host}. Your golf.de sign-in stays on this phone.",
   "pairHcp.replaces": "This phone is already connected with that app for the handicap record: the new connection replaces the old one.",
-  "golfde.hint": "Open your History Sheet and Scoring Record – the app reads along. Sign in with e-mail and password; Google or Apple often don’t work in here.",
+  "golfde.hint": "Sign in, then tap “Fetch all”: the app opens your History Sheet, Scoring Record and result lists for you and reads along. Sign in with e-mail and password; Google or Apple often don’t work in here.",
   "golfde.done": "Done",
   "golfde.failed": "golf.de didn’t load. Check the connection and try again.",
   "golfde.reload": "Load again"

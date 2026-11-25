@@ -9,6 +9,7 @@
 
 import type { ClientStatus, HcpView, PairOutcome, TestOutcome } from '@glmsync/browser';
 import type { GuardLogExport } from '@glmsync/core';
+import type { Step } from '@glmsync/provider-golfde';
 import type { BridgeReply, BridgeRequest } from '@glmsync/spec';
 
 export type FromPortal = { type: 'portal-key'; token: string };
@@ -20,7 +21,17 @@ export type FromPairPage = { type: 'pair-offer'; fragment: string } | { type: 'p
  * which only brings the connect window to the front - the yes itself is given there, in the extension's own page,
  * never on golf.de's (whose scripts reach the line).
  */
-export type FromGolfde = { type: 'golfde-seen'; page: string; seen: unknown } | { type: 'golfde-line' } | { type: 'golfde-send' } | { type: 'golfde-confirm' };
+export type FromGolfde =
+  | { type: 'golfde-seen'; page: string; seen: unknown }
+  | { type: 'golfde-line' }
+  | { type: 'golfde-send' }
+  | { type: 'golfde-confirm' }
+  /** *Fetch all* tapped on the line; the tab that tapped drives the run (spec/hcp.md, clicking for the player). */
+  | { type: 'golfde-fetch-all' }
+  /** The tab asks for the run's next step (only the tab that started it gets one). */
+  | { type: 'golfde-step' }
+  /** *Stop* on the line. */
+  | { type: 'golfde-stop' };
 export type FromPage =
   | { type: 'status' }
   | { type: 'run'; id?: string }
@@ -68,7 +79,7 @@ export interface Pending {
 }
 
 export type Reply =
-  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView }
+  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step }
   | { ok: false; error: string };
 
 /** What the pairing page's content script hands on to the page (no code, nothing secret). */

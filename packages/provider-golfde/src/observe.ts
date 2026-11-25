@@ -46,9 +46,20 @@ export interface PlaceLine {
   list: 'net' | 'gross';
 }
 
+/** Which tournament a result of the History Sheet belongs to: what tells the result list to open for its place. */
+export interface ListLink {
+  ref: string;
+  tournament: string;
+}
+
 export type Seen =
   | { kind: 'member'; subject: string; index?: { value: number; low?: number } }
-  | { kind: 'history'; results: HcpResult[]; total?: number }
+  /**
+   * A page of the History Sheet. `page` is its number and `next` golf.de's own cursor of the page after it (opaque,
+   * passed on as the page got it, never built), `links` the tournament of each result: what a client that clicks for
+   * the player needs to go on (spec/hcp.md). None of them is personal, and none goes into a batch.
+   */
+  | { kind: 'history'; results: HcpResult[]; total?: number; page?: number; next?: string; links?: ListLink[] }
   | { kind: 'scoring'; results: HcpResult[] }
   | { kind: 'places'; tournament: string; lines: PlaceLine[] }
   | { kind: 'signed_out' }
@@ -139,6 +150,39 @@ function placesOf(body: unknown, tournament: string): Seen {
   return { kind: 'places', tournament, lines };
 }
 
+const CURSOR = /^[A-Za-z0-9+/=_.:-]{1,300}$/;
+
+function cursorOf(v: unknown): { cursor: string; page: number } | null {
+  const c = obj(v);
+  const page = c?.page;
+  if (!c || typeof c.cursor !== 'string' || !CURSOR.test(c.cursor)) return null;
+  return typeof page === 'number' && Number.isInteger(page) && page >= 1 && page <= 10_000 ? { cursor: c.cursor, page } : null;
+}
+
+/** This page's number and golf.de's cursor of the next one (`RelativePageInfo`), as far as the answer says them. */
+function pagingOf(info: unknown): { page?: number; next?: string } {
+  const i = obj(info);
+  const current = cursorOf(i?.currentCursor);
+  if (!i || !current) return {};
+  const forward = (Array.isArray(i.forwardCursors) ? i.forwardCursors : []).map(cursorOf).filter((c): c is { cursor: string; page: number } => !!c && c.page > current.page);
+  forward.sort((a, b) => a.page - b.page);
+  const next = forward[0];
+  return next ? { page: current.page, next: next.cursor } : { page: current.page };
+}
+
+/** The tournament of each entry (golf.de's number of it, which its result list's address carries), by the result's id. */
+function linksOf(nodes: unknown[]): ListLink[] {
+  const out: ListLink[] = [];
+  for (const n of nodes) {
+    const e = obj(n);
+    const ref = typeof e?.resultGuid === 'string' ? e.resultGuid.trim() : '';
+    const t = e?.scorecardTournamentNumber;
+    const tournament = typeof t === 'number' && Number.isInteger(t) && t > 0 ? String(t) : typeof t === 'string' ? t.trim() : '';
+    if (ref && ref.length <= 100 && /^[0-9]{1,12}$/.test(tournament)) out.push({ ref, tournament });
+  }
+  return out;
+}
+
 /**
  * What the page script makes of one answer it watches (`status` its HTTP status, `body` its parsed JSON); null when
  * there is nothing to say (an answer golf.de's page will show as an error itself, an empty one).
@@ -166,8 +210,13 @@ export function reduce(watch: Watch, status: number, body: unknown): Seen | null
       if (!sheet || !Array.isArray(sheet.nodes)) return { kind: 'changed_page', what: watch.op };
       const results = mapped(sheet.nodes, 'history');
       if (!results) return { kind: 'changed_page', what: watch.op };
+      const out: Extract<Seen, { kind: 'history' }> = { kind: 'history', results };
       const total = sheet.totalCount;
-      return typeof total === 'number' && Number.isInteger(total) && total >= 0 ? { kind: 'history', results, total } : { kind: 'history', results };
+      if (typeof total === 'number' && Number.isInteger(total) && total >= 0) out.total = total;
+      Object.assign(out, pagingOf(sheet.pageInfo));
+      const links = linksOf(sheet.nodes);
+      if (links.length) out.links = links;
+      return out;
     }
     case 'GetScoringRecords': {
       if (!Array.isArray(rep.scoringRecords)) return { kind: 'changed_page', what: watch.op };
@@ -251,7 +300,19 @@ export function readSeen(raw: unknown): Seen | null {
     case 'history': {
       const list = results(s.results);
       if (!list) return null;
-      return typeof s.total === 'number' && Number.isInteger(s.total) && s.total >= 0 ? { kind: 'history', results: list, total: s.total } : { kind: 'history', results: list };
+      const out: Extract<Seen, { kind: 'history' }> = { kind: 'history', results: list };
+      if (typeof s.total === 'number' && Number.isInteger(s.total) && s.total >= 0) out.total = s.total;
+      if (typeof s.page === 'number' && Number.isInteger(s.page) && s.page >= 1 && s.page <= 10_000) out.page = s.page;
+      if (typeof s.next === 'string' && CURSOR.test(s.next)) out.next = s.next;
+      if (Array.isArray(s.links) && s.links.length <= 50) {
+        const links: ListLink[] = [];
+        for (const l of s.links) {
+          const o = obj(l);
+          if (o && typeof o.ref === 'string' && o.ref && o.ref.length <= 100 && typeof o.tournament === 'string' && /^[0-9]{1,12}$/.test(o.tournament)) links.push({ ref: o.ref, tournament: o.tournament });
+        }
+        if (links.length) out.links = links;
+      }
+      return out;
     }
     case 'scoring': {
       const list = results(s.results);

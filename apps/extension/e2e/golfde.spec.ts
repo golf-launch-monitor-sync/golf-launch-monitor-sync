@@ -6,7 +6,7 @@
  * on the page, *Send*, and the popup. The extension must never ask golf.de anything itself.
  */
 
-import { PERSONAL } from '../../../packages/provider-golfde/src/testing.ts';
+import { entry, PERSONAL } from '../../../packages/provider-golfde/src/testing.ts';
 import { GOLFDE_HISTORY, GOLFDE_RESULTS, HCP_CODE, HCP_TARGET, pairUrl } from '../../../tools/e2e/world.ts';
 import { chooseService, connectWindow, expect, popup, test } from './fixture.ts';
 
@@ -127,4 +127,105 @@ test('not my account: nothing of it is kept or sent, and the line says so', asyn
   await expect(page.getByTestId('golfde-line')).toContainText('not your account – nothing goes to Example App');
   await page.waitForTimeout(1000);
   expect(world.hcp.imports).toHaveLength(0);
+});
+
+test('Fetch all: one tap after signing in, and the extension does the clicks - golf.de’s own links and button, nothing asked by itself', async ({ context, world, extensionId }) => {
+  test.setTimeout(120_000);
+  const day = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+  // Twelve results on two pages of the History Sheet: a tournament of two rounds, two more, a registered private round,
+  // and seven from three years ago (their lists aren't opened).
+  world.golfde.built = true;
+  world.golfde.nodes = [
+    entry({ scorecardTournamentNumber: 5103, tournamentDate: day(10) }),
+    entry({ scorecardTournamentNumber: 5101, tournamentRound: 2, tournamentDate: day(40) }),
+    entry({ scorecardTournamentNumber: 5101, tournamentRound: 1, tournamentDate: day(41) }),
+    entry({ scorecardTournamentNumber: 5102, tournamentDate: day(200) }),
+    entry({ scorecardTournamentNumber: 5199, tournamentType: 8, tournamentName: `RPR: ${PERSONAL.marker}`, tournamentDate: day(300) }),
+    ...Array.from({ length: 7 }, (_, i) => entry({ scorecardTournamentNumber: 4000 + i, tournamentDate: day(1100 + i * 7) })),
+  ];
+
+  const pairPage = await context.newPage();
+  const windowOpens = connectWindow(context, extensionId);
+  await pairPage.goto(`${pairUrl(HCP_TARGET, HCP_CODE)}&kind=hcp`);
+  const connect = await windowOpens;
+  await chooseService(connect, 'golfde');
+  const page = await context.newPage();
+  await page.goto(GOLFDE_HISTORY);
+  // Before the yes to the account: no Fetch all.
+  await expect(page.getByTestId('golfde-confirm')).toBeVisible();
+  await expect(page.getByTestId('golfde-fetch-all')).toHaveCount(0);
+  await expect(connect.getByTestId('hcp-confirm')).toContainText('Handicap index 8.1');
+  await connect.getByTestId('hcp-confirm-yes').click();
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'done', { timeout: 30_000 });
+  // Page 1 (ten results) went with the yes.
+  await expect.poll(() => world.hcp.results.size).toBe(10);
+  const before = world.hcp.imports.length;
+  const asked = world.golfde.apiSaw.length;
+
+  await page.getByTestId('golfde-fetch-all').click();
+  const line = page.getByTestId('golfde-line');
+  await expect(line).toContainText('fetching all for Example App');
+  await expect(page.getByTestId('golfde-stop')).toBeVisible();
+  // Done: every page, the Scoring Record, three result lists - then one send with all of it.
+  await expect(line).toContainText('12 results seen · Example App has them all', { timeout: 90_000 });
+  expect(world.hcp.imports.length - before).toBe(1);
+  expect(world.hcp.results.size).toBe(12);
+  const placed = [...world.hcp.results.values()].filter((r) => r.place !== undefined);
+  expect(placed).toHaveLength(3);
+  // What golf.de's API saw since the tap: only its page's own requests, in the order a player's clicks make them.
+  const saw = world.golfde.apiSaw.slice(asked);
+  expect(saw.every((r) => r.page)).toBe(true);
+  expect(saw.map((r) => r.op ?? new URL(r.url).pathname)).toEqual([
+    'GetMemberDetails',
+    'GetHandicapHistorySheet',
+    'GetHandicapHistorySheet',
+    'GetScoringRecords',
+    '/v1.0/tournaments/5103/results',
+    '/v1.0/tournaments/5101/results',
+    '/v1.0/tournaments/5102/results',
+  ]);
+  // The tab is on the last list; nothing of anyone's name went to the app.
+  expect(page.url()).toContain('#/5102/ergebnisse');
+  const sent = JSON.stringify(world.hcp.received);
+  for (const v of Object.values(PERSONAL)) expect(sent).not.toContain(v);
+
+  // Again at once: the History Sheet is read again, but no list is opened a second time.
+  const again = world.golfde.apiSaw.length;
+  await page.getByTestId('golfde-fetch-all').click();
+  await expect(line).toContainText('fetching all');
+  await expect(line).toContainText('has them all', { timeout: 60_000 });
+  expect(world.golfde.apiSaw.slice(again).some((r) => r.url.includes('/results'))).toBe(false);
+});
+
+test('Fetch all stops when golf.de signs the player out, and on Stop', async ({ context, world, extensionId }) => {
+  test.setTimeout(120_000);
+  const day = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+  world.golfde.built = true;
+  world.golfde.nodes = Array.from({ length: 25 }, (_, i) => entry({ scorecardTournamentNumber: 6000 + i, tournamentDate: day(5 + i) }));
+  const pairPage = await context.newPage();
+  const windowOpens = connectWindow(context, extensionId);
+  await pairPage.goto(`${pairUrl(HCP_TARGET, HCP_CODE)}&kind=hcp`);
+  const connect = await windowOpens;
+  await chooseService(connect, 'golfde');
+  const page = await context.newPage();
+  await page.goto(GOLFDE_HISTORY);
+  await connect.getByTestId('hcp-confirm-yes').click();
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'done', { timeout: 30_000 });
+
+  // Stop: ends at once, what was read goes out.
+  await page.getByTestId('golfde-fetch-all').click();
+  await expect(page.getByTestId('golfde-stop')).toBeVisible();
+  await page.getByTestId('golfde-stop').click();
+  const line = page.getByTestId('golfde-line');
+  await expect(line).not.toContainText('fetching all');
+  await expect(page.getByTestId('golfde-fetch-all')).toBeVisible();
+
+  // Signed out on the way: stopped, and the line says why.
+  await page.getByTestId('golfde-fetch-all').click();
+  await expect(line).toContainText('fetching all');
+  world.golfde.signedIn = false;
+  await expect(line).toContainText('stopped: not signed in on golf.de any more', { timeout: 60_000 });
+  const n = world.golfde.apiSaw.length;
+  await page.waitForTimeout(8000);
+  expect(world.golfde.apiSaw.length).toBe(n); // nothing more clicked
 });

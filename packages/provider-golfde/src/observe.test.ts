@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import { describe, expect, it } from 'vitest';
 import { GRAPHQL_URL, ownLine, readResult, readSeen, reduce, SESSION_URL, watchOf, type Seen } from './observe.ts';
-import { AUTH_FAILED, entry, historyAnswer, memberAnswer, PERSONAL, resultsAnswer, scoringAnswer } from './testing.ts';
+import { AUTH_FAILED, cursorOf, entry, historyAnswer, memberAnswer, PERSONAL, resultsAnswer, scoringAnswer } from './testing.ts';
 
 const gql = (op: string) => JSON.stringify({ operationName: op, query: `query ${op} { me { id } }`, variables: {} });
 
@@ -78,12 +78,32 @@ describe('what it makes of an answer', () => {
   });
 
   it('an empty History Sheet is no changed page', () => {
-    expect(reduce(op('GetHandicapHistorySheet'), 200, historyAnswer([], 0))).toEqual({ kind: 'history', results: [], total: 0 });
+    expect(reduce(op('GetHandicapHistorySheet'), 200, historyAnswer([], 0))).toEqual({ kind: 'history', results: [], total: 0, page: 1 });
   });
 
   it('nothing for an error golf.de’s page shows itself', () => {
     expect(reduce(op('GetHandicapHistorySheet'), 500, null)).toBeNull();
     expect(reduce(op('GetHandicapHistorySheet'), 200, { errors: [{ message: 'boom' }] })).toBeNull();
+  });
+
+  it('a page of the History Sheet: its number, golf.de’s cursor of the next one and each result’s tournament (for Fetch all)', () => {
+    const a = entry({ scorecardTournamentNumber: 5001 });
+    const b = entry({ scorecardTournamentNumber: '5002' });
+    const c = entry({ scorecardTournamentNumber: null });
+    const seen = reduce(op('GetHandicapHistorySheet'), 200, historyAnswer([a, b, c], 37, 2, 4));
+    expect(seen).toMatchObject({ kind: 'history', page: 2, next: cursorOf(3) });
+    expect((seen as Extract<Seen, { kind: 'history' }>).links).toEqual([
+      { ref: a.resultGuid, tournament: '5001' },
+      { ref: b.resultGuid, tournament: '5002' },
+    ]);
+    // The last page has no next one; a cursor golf.de's page couldn't have sent is not passed on.
+    expect(reduce(op('GetHandicapHistorySheet'), 200, historyAnswer([a], 37, 4, 4))).not.toHaveProperty('next');
+    const odd = historyAnswer([a], 37, 1, 2) as { data: { me: { reports: { handicapHistorySheet: { pageInfo: { forwardCursors: unknown[] } } } } } };
+    odd.data.me.reports.handicapHistorySheet.pageInfo.forwardCursors = [{ cursor: 'has spaces <script>', page: 2 }];
+    expect(reduce(op('GetHandicapHistorySheet'), 200, odd)).not.toHaveProperty('next');
+    // Nothing of it names anyone.
+    const text = JSON.stringify(seen);
+    for (const v of Object.values(PERSONAL)) expect(text).not.toContain(v);
   });
 });
 
@@ -91,6 +111,13 @@ describe('what a page posted, read again', () => {
   it('passes what the page script makes', () => {
     const seen = reduce({ kind: 'graphql', op: 'GetHandicapHistorySheet' }, 200, historyAnswer([entry()], 1));
     expect(readSeen(JSON.parse(JSON.stringify(seen)))).toEqual(seen);
+  });
+
+  it('a page’s number, cursor and links, read strictly', () => {
+    const r = { played_on: '2026-10-03', par: 72 };
+    expect(readSeen({ kind: 'history', results: [r], page: 2, next: 'abc=', links: [{ ref: 'g', tournament: '5001' }] })).toEqual({ kind: 'history', results: [r], page: 2, next: 'abc=', links: [{ ref: 'g', tournament: '5001' }] });
+    expect(readSeen({ kind: 'history', results: [r], page: 0, next: 'a b', links: [{ ref: 'g', tournament: '50x1' }, { ref: '', tournament: '1' }] })).toEqual({ kind: 'history', results: [r] });
+    expect(readSeen({ kind: 'history', results: [r], links: new Array(51).fill({ ref: 'g', tournament: '1' }) })).toEqual({ kind: 'history', results: [r] });
   });
 
   it('drops a field nobody mapped, and a marker’s name', () => {

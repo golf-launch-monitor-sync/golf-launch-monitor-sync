@@ -66,9 +66,12 @@ export function makeHcp(opts: {
   });
 }
 
-/** Whether something waits to go by itself: new results, sending by itself on, and a target of this account. */
+/**
+ * Whether something waits to go by itself: new results, sending by itself on, and a target of this account - not while
+ * a run of *Fetch all* goes on (it sends once at its end).
+ */
 export function sendDue(v: HcpView): boolean {
-  return v.auto && v.fresh > 0 && v.pairings.some((p) => !p.other_account);
+  return v.fetch_all !== 'running' && v.auto && v.fresh > 0 && v.pairings.some((p) => !p.other_account);
 }
 
 type Timers = { set: (fn: () => void, ms: number) => unknown; clear: (handle: unknown) => void };

@@ -7,7 +7,31 @@ import { translator } from './i18n.ts';
 
 const t = translator('en');
 const pairing = { id: 'a', base: 'https://app.example.org/hcp/v1', host: 'app.example.org', name: 'Example App', paired_at: '2026-11-21T19:00:00Z' };
-const view = (over: Partial<HcpView> = {}): HcpView => ({ pairings: [pairing], auto: true, seen: 0, fresh: 0, waiting: false, signed_out: false, changed_page: false, sending: false, ended: [], account: 'confirmed', index: null, ...over });
+const view = (over: Partial<HcpView> = {}): HcpView => ({ pairings: [pairing], auto: true, seen: 0, fresh: 0, waiting: false, signed_out: false, changed_page: false, sending: false, ended: [], account: 'confirmed', index: null, fetch_all: 'no', run: null, ...over });
+
+describe('Fetch all on the line', () => {
+  const run = (over: Partial<NonNullable<HcpView['run']>> = {}): HcpView['run'] => ({ phase: 'history', entries: 0, lists_done: 0, lists_total: 0, ...over });
+
+  it('offers it where it may run, and nowhere else', () => {
+    expect(lineOf(view({ fetch_all: 'ready', seen: 20 }), t)).toMatchObject({ fetchAll: true });
+    expect(lineOf(view({ fetch_all: 'ready' }), t)).toMatchObject({ fetchAll: true });
+    expect(lineOf(view({ fetch_all: 'limit', seen: 20 }), t)).not.toHaveProperty('fetchAll');
+    expect(lineOf(view({ fetch_all: 'ready', account: 'asking' }), t)).not.toHaveProperty('fetchAll');
+  });
+
+  it('says how far a run is, with Stop', () => {
+    expect(lineOf(view({ fetch_all: 'running', run: run() }), t)).toEqual({ text: 'Golf Stats Sync: fetching all for Example App – History Sheet …', send: false, warn: false, stop: true });
+    expect(lineOf(view({ fetch_all: 'running', run: run({ entries: 20, total: 37 }) }), t)?.text).toBe('Golf Stats Sync: fetching all for Example App – History Sheet, 20 of 37');
+    expect(lineOf(view({ fetch_all: 'running', run: run({ phase: 'scoring' }) }), t)?.text).toContain('Scoring Record');
+    expect(lineOf(view({ fetch_all: 'running', run: run({ phase: 'lists', lists_done: 3, lists_total: 12 }) }), t)?.text).toContain('result list 4 of 12');
+  });
+
+  it('says why a run stopped (not when the player stopped it)', () => {
+    expect(lineOf(view({ fetch_all: 'ready', seen: 5, fresh: 2, run: run({ phase: 'stopped', why: 'signed_out' }) }), t)).toMatchObject({ warn: true, send: true, fetchAll: true, text: 'Golf Stats Sync: stopped: not signed in on golf.de any more' });
+    expect(lineOf(view({ seen: 5, run: run({ phase: 'stopped', why: 'changed_page' }) }), t)?.text).toContain('what was read so far goes to Example App');
+    expect(lineOf(view({ seen: 5, run: run({ phase: 'stopped', why: 'cancelled' }) }), t)?.text).toContain('has them all');
+  });
+});
 
 describe('the line on golf.de', () => {
   it('shows nothing without a connected app', () => {

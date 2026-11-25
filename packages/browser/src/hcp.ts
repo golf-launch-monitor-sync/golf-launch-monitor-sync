@@ -41,7 +41,24 @@ import {
   type HcpResult,
   type Storage,
 } from '@glmsync/core';
-import { batchOf, ownLine, parts, PROVIDER_ID, type Seen } from '@glmsync/provider-golfde';
+import {
+  batchOf,
+  cancelRun,
+  CLICKS,
+  nextStep,
+  ownLine,
+  parts,
+  PROVIDER_ID,
+  readRun,
+  running,
+  runView,
+  seeRun,
+  startRun,
+  type RunState,
+  type RunView,
+  type Seen,
+  type Step,
+} from '@glmsync/provider-golfde';
 import type { Farewell, PairOutcome } from './client.ts';
 
 /** How long after the last new thing seen the background sends by itself: a few pages make one import. */
@@ -58,6 +75,13 @@ const SENT = 'glmsync/hcp/sent/';
 const SETTINGS = 'glmsync/hcp/settings';
 const ENDED = 'glmsync/hcp/ended';
 const SESSION = 'glmsync/hcp/session';
+/** *Fetch all* (spec/hcp.md): the run (session), the result lists opened lately and the runs of the last day (storage). */
+const RUN = 'glmsync/hcp/run';
+const OPENED = 'glmsync/hcp/opened';
+const RUNS = 'glmsync/hcp/runs';
+/** A run whose page hasn't asked for its next step for this long was left (the tab closed, the player went elsewhere). */
+export const RUN_LEFT_MS = 120_000;
+const DAY_MS = 24 * 3600_000;
 /** The golf.de accounts the player said were theirs, and those they said weren't (fingerprints of the subject). */
 const ACCOUNTS = 'glmsync/hcp/accounts';
 const MAX_ACCOUNTS = 20;
@@ -118,6 +142,28 @@ export interface HcpView {
   account: 'none' | 'asking' | 'confirmed' | 'rejected';
   /** While asking: the account's handicap index as its page showed it, to tell whose it is. */
   index: { value: number; as_of: string } | null;
+  /**
+   * *Fetch all*: `ready` (signed in on golf.de, the account confirmed, an app connected: the button), `running`,
+   * `limit` (enough runs today), or `no` (not now: not signed in, no account yet or not confirmed, no app).
+   */
+  fetch_all: 'ready' | 'running' | 'limit' | 'no';
+  /** The run under way, or the last one of this session (what it read, how it ended). */
+  run: RunView | null;
+}
+
+/** A run as it is kept: the run, which page drives it, when that page last asked, and whether it is closed. */
+interface KeptRun {
+  run: RunState;
+  owner: string;
+  asked: number;
+  /** Over and what it read sent (once). */
+  closed?: boolean;
+}
+
+/** What a page that may drive a run hears: the step to take, and the view to show. */
+export interface RunTurn {
+  step: Step;
+  view: HcpView;
 }
 
 interface Kept {
@@ -433,6 +479,138 @@ export class HcpClient {
       }
       await this.saveSession(s);
       await this.keep(k);
+      // A run under way hears it too: it moves on, or stops (signed out, another account, a page that changed).
+      const kr = await this.keptRun();
+      if (kr && running(kr.run)) {
+        const run = seeRun(kr.run, seen, at);
+        if (run !== kr.run) await this.saveRun({ ...kr, run });
+        if (!running(run)) await this.closeRun();
+      }
+      return this.viewNow();
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Fetch all: the clicks the player would make, on their tap (spec/hcp.md)
+  // -------------------------------------------------------------------------
+
+  private async keptRun(): Promise<KeptRun | null> {
+    const raw = await read<Partial<KeptRun>>(this.opts.session, RUN, {});
+    const run = readRun(raw.run);
+    if (!run || typeof raw.owner !== 'string' || typeof raw.asked !== 'number') return null;
+    return { run, owner: raw.owner, asked: raw.asked, ...(raw.closed ? { closed: true } : {}) };
+  }
+
+  private async saveRun(kr: KeptRun): Promise<void> {
+    await this.opts.session.set(RUN, JSON.stringify(kr));
+  }
+
+  /** Starts of the last day (a few runs a day at most: spec/hcp/clicks.json `runs_per_day`). */
+  private async runsToday(): Promise<number[]> {
+    const v = await read<unknown>(this.opts.storage, RUNS, []);
+    const now = this.now();
+    return (Array.isArray(v) ? v : []).filter((t): t is number => typeof t === 'number' && t <= now && now - t < DAY_MS);
+  }
+
+  /** The result lists opened lately, by tournament (the day each was opened). */
+  private async opened(): Promise<Record<string, string>> {
+    const v = await read<Record<string, unknown>>(this.opts.storage, OPENED, {});
+    const from = today(this.now() - CLICKS.list_again_days * DAY_MS);
+    return Object.fromEntries(Object.entries(v).filter((e): e is [string, string] => typeof e[1] === 'string' && e[1] >= from));
+  }
+
+  /**
+   * A run is over: what it opened is kept (not opened again for a while), and what it read goes out now - one send at
+   * the end, not one per page (it waited for this). Inside `serial`.
+   */
+  private async closeRun(): Promise<void> {
+    const kr = await this.keptRun();
+    if (!kr || kr.closed) return;
+    const run = running(kr.run) ? cancelRun(kr.run, this.now()) : kr.run;
+    const day = today(this.now());
+    const opened = await this.opened();
+    for (const t of run.opened) opened[t] = day;
+    await this.opts.storage.set(OPENED, JSON.stringify(Object.fromEntries(Object.entries(opened).slice(-500))));
+    await this.saveRun({ ...kr, run, closed: true });
+    await this.sendAll();
+  }
+
+  /** A run under way, or null; one left by its page (`RUN_LEFT_MS`) is closed here as cancelled. */
+  private async liveRun(): Promise<KeptRun | null> {
+    const kr = await this.keptRun();
+    if (!kr || !running(kr.run)) return null;
+    if (this.now() - kr.asked < RUN_LEFT_MS) return kr;
+    await this.saveRun({ ...kr, run: cancelRun(kr.run, this.now()) });
+    await this.closeRun();
+    return null;
+  }
+
+  private async fetchAllNow(k: Kept): Promise<HcpView['fetch_all']> {
+    const kr = await this.keptRun();
+    if (kr && running(kr.run) && this.now() - kr.asked < RUN_LEFT_MS) return 'running';
+    const s = await this.session();
+    const live = (await this.entries()).some((e) => !e.other_account);
+    if (!live || !k.subject || s.signed_out || k.signed_out || (await this.accountOf(k)) !== 'confirmed') return 'no';
+    return (await this.runsToday()).length >= CLICKS.runs_per_day ? 'limit' : 'ready';
+  }
+
+  /**
+   * The player tapped *Fetch all* on a page (`owner`: which page drives the run - the extension's tab, the app's
+   * window). Only signed in on golf.de, with the account confirmed and an app connected, a few times a day; else the
+   * view says why not. The run's first step is the page's to ask for (`runStep`).
+   */
+  startFetchAll(owner: string): Promise<HcpView> {
+    return this.serial(async () => {
+      await this.liveRun();
+      const k = await this.kept();
+      if ((await this.fetchAllNow(k)) !== 'ready' || !k.subject) return this.viewNow();
+      const now = this.now();
+      const placed = Object.values(k.results)
+        .filter((r) => r.ref && r.place !== undefined)
+        .map((r) => r.ref as string);
+      const run = startRun({ subject: k.subject, now, today: today(now), placed, recent: Object.keys(await this.opened()) });
+      await this.opts.storage.set(RUNS, JSON.stringify([...(await this.runsToday()), now]));
+      await this.saveRun({ run, owner, asked: now });
+      return this.viewNow();
+    });
+  }
+
+  /**
+   * The page `owner` asks what to do now. Only the page that started the run gets steps; any other hears `end`. A run
+   * that just ended is closed (its read sent) before the answer.
+   */
+  runStep(owner: string): Promise<RunTurn> {
+    return this.serial(async () => {
+      const kr = await this.liveRun();
+      if (!kr || kr.owner !== owner) return { step: { do: 'end' } as Step, view: await this.viewNow() };
+      const now = this.now();
+      const { state, step } = nextStep(kr.run, now);
+      await this.saveRun({ ...kr, run: state, asked: now });
+      if (!running(state)) await this.closeRun();
+      return { step, view: await this.viewNow() };
+    });
+  }
+
+  /** The page that drives a run went away (its tab closed): the run ends, and what it read goes out. */
+  leaveFetchAll(owner: string): Promise<HcpView> {
+    return this.serial(async () => {
+      const kr = await this.keptRun();
+      if (kr && kr.owner === owner && running(kr.run)) {
+        await this.saveRun({ ...kr, run: cancelRun(kr.run, this.now()) });
+        await this.closeRun();
+      }
+      return this.viewNow();
+    });
+  }
+
+  /** The player cancels the run (or its page went away): what it read so far goes out. */
+  cancelFetchAll(): Promise<HcpView> {
+    return this.serial(async () => {
+      const kr = await this.keptRun();
+      if (kr && running(kr.run)) {
+        await this.saveRun({ ...kr, run: cancelRun(kr.run, this.now()) });
+        await this.closeRun();
+      }
       return this.viewNow();
     });
   }
@@ -486,14 +664,19 @@ export class HcpClient {
   /** Send what each target doesn't have yet (and a notice it hasn't heard), each batch after its plan. */
   send(): Promise<HcpView> {
     return this.serial(async () => {
-      this.sending = true;
-      try {
-        for (const p of await this.pairings()) await this.sendOne(p);
-      } finally {
-        this.sending = false;
-      }
+      await this.sendAll();
       return this.viewNow();
     });
+  }
+
+  /** `send` inside `serial`. */
+  private async sendAll(): Promise<void> {
+    this.sending = true;
+    try {
+      for (const p of await this.pairings()) await this.sendOne(p);
+    } finally {
+      this.sending = false;
+    }
   }
 
   private async sendOne(p: HcpPairing): Promise<void> {
@@ -576,11 +759,14 @@ export class HcpClient {
   // -------------------------------------------------------------------------
 
   view(): Promise<HcpView> {
-    return this.viewNow();
+    return this.serial(async () => {
+      await this.liveRun(); // a run its page left ends here, and sends what it read
+      return this.viewNow();
+    });
   }
 
   private async viewNow(): Promise<HcpView> {
-    const [entries, k, s] = [await this.entries(), await this.kept(), await this.session()];
+    const [entries, k, s, kr] = [await this.entries(), await this.kept(), await this.session(), await this.keptRun()];
     const account = await this.accountOf(k);
     let fresh = 0;
     for (const e of entries) {
@@ -601,6 +787,8 @@ export class HcpClient {
       ended: Array.isArray(ended) ? (ended as Farewell[]) : [],
       account,
       index: account === 'asking' && k.index ? { value: k.index.value, as_of: k.index.as_of } : null,
+      fetch_all: await this.fetchAllNow(k),
+      run: kr ? runView(kr.run) : null,
     };
   }
 

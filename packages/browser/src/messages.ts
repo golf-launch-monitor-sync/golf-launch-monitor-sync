@@ -285,6 +285,17 @@ export const en = {
   'line.confirm': 'not yet connected with {name} – confirm your account',
   'line.confirmButton': 'Confirm',
   'line.rejected': 'not your account – nothing goes to {name}',
+  'line.fetchAll': 'Fetch all',
+  'line.stop': 'Stop',
+  'line.runStart': 'fetching all for {name} – History Sheet …',
+  'line.runHistory': 'fetching all for {name} – History Sheet, {done} of {total}',
+  'line.runScoring': 'fetching all for {name} – Scoring Record …',
+  'line.runLists': 'fetching all for {name} – result list {done} of {total}',
+  'line.runStopped.signed_out': 'stopped: not signed in on golf.de any more',
+  'line.runStopped.other_account': 'stopped: another golf.de account is signed in',
+  'line.runStopped.changed_page': 'stopped: golf.de didn’t answer as expected – what was read so far goes to {name}',
+  'hcp.fetchAllHow': 'Fetch all: sign in on golf.de and tap “Fetch all” on its page. Golf Stats Sync then opens your History Sheet (every page), the Scoring Record and the result lists of your tournaments of the last two years for you, with a pause between pages, and reads along. It only operates golf.de’s own page: it asks golf.de nothing of its own.',
+  'hcp.fetchAllLimit': 'Fetch all has run often enough today; tomorrow again.',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -569,4 +580,15 @@ export const de: Record<MessageKey, string> = {
   'line.confirm': 'noch nicht mit {name} verbunden – Konto bestätigen',
   'line.confirmButton': 'Bestätigen',
   'line.rejected': 'nicht dein Konto – an {name} geht nichts',
+  'line.fetchAll': 'Alles holen',
+  'line.stop': 'Abbrechen',
+  'line.runStart': 'holt alles für {name} – History Sheet …',
+  'line.runHistory': 'holt alles für {name} – History Sheet, {done} von {total}',
+  'line.runScoring': 'holt alles für {name} – Scoring Record …',
+  'line.runLists': 'holt alles für {name} – Ergebnisliste {done} von {total}',
+  'line.runStopped.signed_out': 'abgebrochen: bei golf.de nicht mehr angemeldet',
+  'line.runStopped.other_account': 'abgebrochen: ein anderes golf.de-Konto ist angemeldet',
+  'line.runStopped.changed_page': 'abgebrochen: golf.de hat nicht wie erwartet geantwortet – was schon gelesen ist, geht an {name}',
+  'hcp.fetchAllHow': 'Alles holen: melde dich bei golf.de an und tippe dort auf „Alles holen“. Golf Stats Sync öffnet dann für dich dein History Sheet (alle Seiten), den Scoring Record und die Ergebnislisten deiner Turniere der letzten zwei Jahre, mit einer Pause zwischen den Seiten, und liest mit. Es bedient nur die Seite von golf.de: es fragt golf.de selbst nichts.',
+  'hcp.fetchAllLimit': 'Alles holen lief heute oft genug; morgen wieder.',
 };

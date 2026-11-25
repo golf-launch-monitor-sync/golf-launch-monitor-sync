@@ -54,6 +54,7 @@ const hcp = new HcpClient({
   version: VERSION,
 });
 const HCP_SEND = 'hcp-send';
+const HCP_RUN = 'hcp-run';
 const t = () => translator(pickLang(navigator.languages));
 
 // ---------------------------------------------------------------------------
@@ -126,6 +127,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === TIMER) void run('timer');
   else if (alarm.name === BACKFILL) void run('backfill');
   else if (alarm.name === HCP_SEND) void hcp.send().catch(() => undefined);
+  else if (alarm.name === HCP_RUN) void hcp.view().then(watchRun).catch(() => undefined);
 });
 
 // ---------------------------------------------------------------------------
@@ -137,6 +139,11 @@ chrome.alarms.onAlarm.addListener((alarm) => {
  * player wants to say when. Each new page moves the moment on.
  */
 async function scheduleHcp(v: HcpView): Promise<void> {
+  // A run of *Fetch all* sends once at its end, not page by page.
+  if (v.fetch_all === 'running') {
+    await chrome.alarms.clear(HCP_SEND).catch(() => false);
+    return;
+  }
   if (v.auto && v.fresh > 0 && v.pairings.some((p) => !p.other_account)) {
     // Alarms go no sooner than 30 s anyway.
     await chrome.alarms.create(HCP_SEND, { when: Date.now() + Math.max(SEND_AFTER_MS, 30_000) });
@@ -150,6 +157,37 @@ async function golfdeSeen(page: string, raw: unknown): Promise<Reply> {
   await scheduleHcp(v).catch(() => undefined);
   if (v.account === 'asking') await refreshIcon();
   return { ok: true, hcp: v };
+}
+
+/** Which tab drives a run of *Fetch all*: only the one that tapped. */
+const tabOwner = (tabId: number | undefined) => (typeof tabId === 'number' ? `tab:${tabId}` : null);
+
+/**
+ * While a run goes on, a look every minute: a run whose tab stopped asking (the player went elsewhere in it) ends and
+ * sends what it read. A closed tab ends its run at once (below).
+ */
+async function watchRun(v: HcpView): Promise<void> {
+  if (v.fetch_all === 'running') await chrome.alarms.create(HCP_RUN, { periodInMinutes: 1 });
+  else await chrome.alarms.clear(HCP_RUN).catch(() => false);
+}
+
+async function golfdeRun(m: { type: 'golfde-fetch-all' | 'golfde-step' | 'golfde-stop' }, tabId: number | undefined): Promise<Reply> {
+  const owner = tabOwner(tabId);
+  if (!owner) return { ok: false, error: 'no tab' };
+  if (m.type === 'golfde-fetch-all') {
+    const v = await hcp.startFetchAll(owner);
+    await scheduleHcp(v).catch(() => undefined);
+    await watchRun(v).catch(() => undefined);
+    return { ok: true, hcp: v };
+  }
+  if (m.type === 'golfde-stop') {
+    const v = await hcp.cancelFetchAll();
+    await watchRun(v).catch(() => undefined);
+    return { ok: true, hcp: v };
+  }
+  const turn = await hcp.runStep(owner);
+  if (turn.step.do === 'end') await watchRun(turn.view).catch(() => undefined);
+  return { ok: true, hcp: turn.view, step: turn.step };
 }
 
 async function hcpSendNow(): Promise<Reply> {
@@ -456,6 +494,10 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
       if (m.yes && v.account === 'confirmed') void hcpSendNow().catch(() => undefined);
       return { ok: true, hcp: v };
     }
+    case 'golfde-fetch-all':
+    case 'golfde-step':
+    case 'golfde-stop':
+      return golfdeRun(m, from.tabId);
     case 'golfde-confirm':
       // From golf.de's page: only the connect window comes to the front, where the player answers.
       await openConnectWindow(near);
@@ -477,6 +519,12 @@ chrome.runtime.onMessage.addListener((raw, sender, reply) => {
   if (!m) return false; // not ours to answer
   handle(m, nearOf(sender.tab), { url: sender.url, tabId: sender.tab?.id }).then(reply, (e: unknown) => reply({ ok: false, error: e instanceof Error ? e.message : String(e) } satisfies Reply));
   return true; // answered asynchronously
+});
+
+// A run of *Fetch all* whose tab closes ends there, and what it read goes out.
+chrome.tabs.onRemoved.addListener((tabId) => {
+  const owner = tabOwner(tabId);
+  if (owner) void hcp.leaveFetchAll(owner).then(watchRun).catch(() => undefined);
 });
 
 void ensureTimer();

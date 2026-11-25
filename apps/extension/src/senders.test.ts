@@ -45,6 +45,12 @@ describe('who sent a message', () => {
     expect(accept({ type: 'hcp-confirm', yes: 'yes' }, 'extension')).toBeNull();
     // From golf.de only the way to that page.
     expect(accept({ type: 'golfde-confirm' }, 'golfde')).toEqual({ type: 'golfde-confirm' });
+    // Fetch all: only from golf.de's page (the tab that tapped drives it), never from anywhere else.
+    for (const type of ['golfde-fetch-all', 'golfde-step', 'golfde-stop'] as const) {
+      expect(accept({ type }, 'golfde')).toEqual({ type });
+      expect(accept({ type }, 'target-page')).toBeNull();
+      expect(accept({ type }, 'extension')).toBeNull();
+    }
     expect(accept({ type: 'golfde-confirm' }, 'target-page')).toBeNull();
   });
 

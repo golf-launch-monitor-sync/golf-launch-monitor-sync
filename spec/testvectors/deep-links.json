@@ -1,6 +1,6 @@
 {
   "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, sync, (1.8.0) test or (1.11.0) read; kind (1.10.0) lm or hcp, only where the link names it (read: always, and only hcp). parse_sync_intent (the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> {ok: true, target, reason} or {ok: false, error}.",
-  "spec_version": "1.13.0",
+  "spec_version": "1.14.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {

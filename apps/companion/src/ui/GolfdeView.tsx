@@ -9,6 +9,11 @@
  * The page loads as this phone's web view is: its own engine and user agent, nothing added. The app sends golf.de
  * nothing of its own; the sign-in stays in this window, on this phone. Nothing the page opens leaves the window
  * (lib/golfdePage.ts, `golfdeWindowRules`).
+ *
+ * *Fetch all* (spec/hcp.md, clicking for the player): once signed in and the account confirmed, one tap and the window
+ * does the clicks - every page of the History Sheet, the Scoring Record, the result lists of the last two years -
+ * with a pause between pages (lib/fetchAll.ts); *Stop*, *Done* or the app going to the back ends it, and what was read
+ * goes out once at the end.
  */
 
 import type { HcpView } from '@glmsync/browser/hcp';
@@ -18,6 +23,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { lang, t } from '../i18n';
+import { Driver, WINDOW_OWNER } from '../lib/fetchAll';
 import { golfdeWindowRules, HISTORY_SHEET_URL, openInGolfdeWindow, readGolfdeMessage } from '../lib/golfdePage';
 import { GOLFDE_PAGE_SCRIPT } from '../lib/golfdePageScript';
 import { hcpLine } from '../lib/hcpText';
@@ -33,6 +39,15 @@ export function GolfdeView({ svc, done }: { svc: Services; done: () => void }) {
   const [note, setNote] = useState<string | null>(null);
   const [key, setKey] = useState(0);
   const web = useRef<WebView<object>>(null);
+  const driver = useRef<Driver | null>(null);
+  if (!driver.current) {
+    driver.current = new Driver({
+      hcp: svc.hcp,
+      inject: (script) => web.current?.injectJavaScript(script),
+      sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+      show: setView,
+    });
+  }
 
   const refresh = useCallback(async () => {
     try {
@@ -49,8 +64,27 @@ export function GolfdeView({ svc, done }: { svc: Services; done: () => void }) {
     return () => {
       off();
       clearInterval(timer);
+      // The window goes: a run of Fetch all ends with it, and what it read goes out.
+      driver.current?.stop();
+      void svc.hcp.cancelFetchAll().catch(() => undefined);
     };
   }, [svc, refresh]);
+
+  function fetchAll() {
+    svc.hcp.startFetchAll(WINDOW_OWNER).then(
+      (v) => {
+        setView(v);
+        setNote(null);
+        if (v.fetch_all === 'running') void driver.current?.drive();
+      },
+      () => setNote(t('error.generic')),
+    );
+  }
+
+  function stopFetchAll() {
+    driver.current?.stop();
+    svc.hcp.cancelFetchAll().then(setView, () => setNote(t('error.generic')));
+  }
 
   function onMessage(e: WebViewMessageEvent) {
     const msg = readGolfdeMessage(e.nativeEvent.url, e.nativeEvent.data);
@@ -72,7 +106,9 @@ export function GolfdeView({ svc, done }: { svc: Services; done: () => void }) {
   }
 
   function close() {
-    // Leaving golf.de: what waits goes now (behind the jump home a timer may never fire).
+    // Leaving golf.de: a run ends, and what waits goes now (behind the jump home a timer may never fire).
+    driver.current?.stop();
+    void svc.hcp.cancelFetchAll().catch(() => undefined);
     void svc.hcpSender.flush();
     done();
   }
@@ -102,6 +138,8 @@ export function GolfdeView({ svc, done }: { svc: Services; done: () => void }) {
         <View style={{ gap: 6 }}>
           {line?.confirm && <Button label={tr('confirm.yes')} onPress={() => void answer(true)} />}
           {line?.confirm && <Button label={tr('confirm.no')} kind="secondary" onPress={() => void answer(false)} />}
+          {line?.fetchAll && <Button label={tr('line.fetchAll')} onPress={fetchAll} />}
+          {line?.stop && <Button label={tr('line.stop')} kind="secondary" onPress={stopFetchAll} />}
           {line?.send && <Button label={t('hcp.send')} onPress={() => void svc.hcpSender.now()} disabled={!!view?.sending} />}
           <Button label={t('golfde.done')} kind="secondary" onPress={close} />
         </View>

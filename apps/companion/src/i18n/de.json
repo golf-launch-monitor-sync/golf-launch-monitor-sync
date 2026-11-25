@@ -161,7 +161,7 @@
   "hcp.pairFirst": "Verbinde zuerst dein Stammblatt: in der App, die es bekommen soll, über „Mit Golf Stats Sync verbinden“.",
   "pairHcp.what": "Ab jetzt geht dein Stammblatt, das du hier in der App auf golf.de öffnest, an {host}. Deine Anmeldung bei golf.de bleibt auf diesem Handy.",
   "pairHcp.replaces": "Dieses Handy ist mit dieser App fürs Stammblatt schon verbunden: Die neue Verbindung ersetzt die alte.",
-  "golfde.hint": "Öffne dein History Sheet und deinen Scoring Record – die App liest mit. Melde dich mit E-Mail und Passwort an; Google oder Apple gehen hier oft nicht.",
+  "golfde.hint": "Melde dich an und tippe auf „Alles holen“: die App öffnet für dich dein History Sheet, den Scoring Record und die Ergebnislisten und liest mit. Melde dich mit E-Mail und Passwort an; Google oder Apple gehen hier oft nicht.",
   "golfde.done": "Fertig",
   "golfde.failed": "golf.de hat nicht geladen. Prüf die Verbindung und versuch es noch einmal.",
   "golfde.reload": "Neu laden"

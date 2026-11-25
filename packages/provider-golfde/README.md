@@ -28,6 +28,18 @@ strictly (`readSeen`), and keeps of a result list only the line of a result the 
 
 Not read: a scorecard's holes. golf.de shows them only as a picture.
 
+## Fetch all: the clicks, on the player's tap
+
+Since spec 1.14.0 ([spec/hcp.md](../../spec/hcp.md), *Clicking for the player*). Signed in on golf.de, with the account
+confirmed and an app connected, the player may tap *Fetch all*: the client then does the clicks a person would - every
+page of the History Sheet (golf.de's own pager link, or the address that link has, with the cursor golf.de's page
+received), the Scoring Record (golf.de's own button), and the result lists of the player's club tournaments of the
+last two years that lack a place, at most 50, newest first (the address golf.de's own pages use,
+`clubturniere.html#/<n>/ergebnisse`). A pause of 3-6 s after each page's answer, three runs a day, a list not again
+within a week ([spec/hcp/clicks.json](../../spec/hcp/clicks.json)). It stops on *signed out*, another account, a page
+that doesn't answer as known or a button that isn't there, and on *Stop*; what it read goes once, at the end. golf.de's
+page asks what it asks; this module still sends golf.de nothing of its own.
+
 ## Pieces
 
 - `mapping.ts` — an entry of the History Sheet or the Scoring Record as a dgvhcp/1 result; the account's id and index.
@@ -38,6 +50,10 @@ Not read: a scorecard's holes. golf.de shows them only as a picture.
   (`readSeen`), the player's own line of a result list (`ownLine`).
 - `page.ts` — the page script: wraps `fetch` and `XMLHttpRequest` to look at those answers; never in the page's way.
 - `batch.ts` — dgvhcp/1 batches, cut to a target's limits.
+- `clicks.ts` — *Fetch all*: the run as a value (`startRun`, `seeRun`, `nextStep`), which lists to open (`listsOf`).
+- `steps.ts` — the steps and the only addresses a run may open (`mayOpen`).
+- `operate.ts` — taking a step in golf.de's page: its pager link, its Scoring Record button (open shadow roots
+  included), an address of `mayOpen`; written against the little of the DOM it needs.
 - `testing.ts` — golf.de's answers made up by hand in their shape (with made-up names, so the tests can show none of
   them leaves the page script). Never a recorded answer.
 

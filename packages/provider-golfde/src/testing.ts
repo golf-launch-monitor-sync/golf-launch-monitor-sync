@@ -98,8 +98,16 @@ export function entry(over: Record<string, unknown> = {}): Record<string, unknow
   };
 }
 
-/** A made-up page of the History Sheet (ten entries a page on golf.de). */
-export function historyAnswer(nodes: Record<string, unknown>[], totalCount = nodes.length) {
+/** A made-up cursor of the History Sheet's page `page` (golf.de's are opaque Base64; these only look alike). */
+export const cursorOf = (page: number): string => btoa(`cursor:${(page - 1) * 10}`);
+
+/** A made-up page of the History Sheet (ten entries a page on golf.de); `page` of `pages`, with the pager's cursors. */
+export function historyAnswer(nodes: Record<string, unknown>[], totalCount = nodes.length, page = 1, pages = 1) {
+  const pc = (n: number) => ({ __typename: 'PageCursor', cursor: cursorOf(n), page: n });
+  const forward = [];
+  for (let n = page + 1; n <= Math.min(pages, page + 3); n++) forward.push(pc(n));
+  const backward = [];
+  for (let n = Math.max(1, page - 3); n < page; n++) backward.push(pc(n));
   return {
     data: {
       me: {
@@ -108,7 +116,7 @@ export function historyAnswer(nodes: Record<string, unknown>[], totalCount = nod
             __typename: 'HandicapHistoryRecordConnection',
             nodes,
             totalCount,
-            pageInfo: { __typename: 'RelativePageInfo', currentCursor: { cursor: 'Y3Vyc29yOjA=', page: 1 }, forwardCursors: [], backwardCursors: [], firstPageCursors: [], lastPageCursors: [] },
+            pageInfo: { __typename: 'RelativePageInfo', currentCursor: pc(page), forwardCursors: forward, backwardCursors: backward, firstPageCursors: [pc(1)], lastPageCursors: [pc(pages)] },
           },
         },
       },

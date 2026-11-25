@@ -9,8 +9,9 @@ Syncs your golf data from **your own** accounts into apps of your choice, in ope
   monitor's cloud account (Trackman first), in [olmd/1](spec/olmd.md).
 - **Your handicap record** — the History Sheet, the Scoring Record and your own place in a result
   list — from golf.de, the German Golf Association's site, in [dgvhcp/1](spec/hcp.md). The extension
-  and the companion app (in its own golf.de window) only read along while **you** open these pages: they send
-  golf.de nothing of their own.
+  and the companion app (in its own golf.de window) only read along while **you** open these pages - or,
+  once you signed in and tap *Fetch all*, click through them for you at a person's pace: they send golf.de
+  nothing of their own.
 
 > **Unofficial.** This project is not affiliated with, endorsed by or supported by Trackman, any
 > other launch monitor maker, the Deutscher Golf Verband (DGV) or golf.de. It uses your own sign-in,
@@ -97,7 +98,9 @@ And, as a rule for every line of code here:
 - **nothing on a server**: no sign-in, token or password of yours is ever sent to or kept on a
   server, ours or anyone's;
 - **golf.de: reads only what golf.de's own page loaded in your tab; sends no request of its own.**
-  Nothing happens unless you open the page; names of other players never leave it.
+  Nothing happens unless you open the page or tap *Fetch all* there - then it clicks golf.de's own links
+  and buttons for you, as you would, with a pause between pages ([spec/hcp.md](spec/hcp.md)); golf.de's
+  page asks what it asks. Names of other players never leave the page.
 
 ## Repository
 

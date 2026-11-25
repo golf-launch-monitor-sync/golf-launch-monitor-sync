@@ -7,8 +7,12 @@
  * - `mapping`  golf.de's entries as dgvhcp/1 results, by a whitelist (names and numbers never copied)
  * - `observe`  which answers the page script looks at, what it makes of them, and reading that again outside the page
  * - `batch`    dgvhcp/1 batches of what was seen, cut to a target's limits
+ * - `clicks`   *Fetch all*: the clicks a run makes for the player on golf.de's own page, and when
+ * - `operate`  taking such a step in the page
  */
 
 export * from './batch.ts';
 export * from './mapping.ts';
 export * from './observe.ts';
+export * from './clicks.ts';
+export * from './operate.ts';

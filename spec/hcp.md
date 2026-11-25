@@ -11,8 +11,10 @@ clients do, and hands it to a target the player paired.
 
 Everything in [README.md](README.md) *Roles* holds: the sign-in stays in the client, a client reads
 only when the target's plan says so, and never past its load guard. Since 1.10.0 a client may also
-**only observe** the provider's own page ([below](#a-client-that-only-observes-the-providers-page)): it
+**only observe** the provider's own page ([below](#a-client-that-observes-and-clicks-for-the-player)): it
 then asks the provider nothing at all, and the plan comes before sending instead of before reading.
+Since 1.14.0 such a client may, on the player's tap, **click for the player** on that page (*Fetch all*):
+it operates the provider's own page as the player would and still asks the provider nothing itself.
 
 | | Machine-readable |
 | --- | --- |
@@ -107,24 +109,24 @@ come with the next read (`notice: partial`).
 Errors are `{"error": {"code", "message"}}` with the codes of the launch monitor API; `429` carries
 `Retry-After`.
 
-## A client that only observes the provider's page
+## A client that observes and clicks for the player
 
-Since 1.10.0. Some providers answer their own web pages only with credentials of their own web app (a
+Since 1.10.0 (observing), 1.14.0 (clicking for the player, [below](#clicking-for-the-player-fetch-all)). Some providers answer their own web pages only with credentials of their own web app (a
 client id built into the page): a client sending that would pose as the provider's app, which the
 project's rules forbid (*no disguise*, *no borrowed client id*). Such a provider is read **only by
 observing**: the player opens the provider's pages in their own browser, signed in as always, and the
 client reads the answers the page itself received - in the player's tab or the companion app's window.
 
 - **No request of its own.** The client never sends anything to the provider: not a page, not a query,
-  not the next page of a list. What the player didn't open, it doesn't read. With nothing asked of
-  the provider, there is nothing for a load guard to hold back.
+  not the next page of a list. What the player didn't open - or tap *Fetch all* for (below) - it doesn't
+  read. The provider's own page asks what it asks, with its own credentials, as it does for the player.
 - **Only the answers it knows**, only what it maps: the page script looks at the few answers named in
   the provider module (the record, the account's own details, a result list) and turns them into
   dgvhcp/1 **inside the page**. Names, card and member numbers and everything not mapped never leave the
   page's own context; of a result list only the player's own line is kept (by the provider's id of the
   result, which the record named).
-- **Nothing by itself.** No timer, no background reading. The target can't make it read: when the
-  record is due, the target app reminds the player instead (with a link to the provider's page; on a phone,
+- **Nothing by itself.** No timer, no background reading, nothing the player didn't tap for. The target
+  can't make it read: when the record is due, the target app reminds the player instead (with a link to the provider's page; on a phone,
   since 1.11.0, the read link `glmsync://read?kind=hcp` that opens the companion app's window there,
   [deep-links.md](deep-links.md)).
 - **The plan before sending, not before reading.** Every batch still goes through `GET /plan`, with the
@@ -142,3 +144,40 @@ client reads the answers the page itself received - in the player's tab or the c
 - **Notices**: `signed_out` when the page's own answer says the player isn't signed in (once, not on every
   page), `changed_page` when an answer it looks at no longer has the shape it knows (it then reads none of
   it). `partial` and `guard_limit` don't arise.
+
+### Clicking for the player (*Fetch all*)
+
+Since 1.14.0. Opening every page of a long record, then each tournament's result list for the player's
+place, is many clicks; the player may hand them to the client. After they signed in on the provider's
+page themselves, one tap on *Fetch all* (in the client's line on the page, or the companion app's
+window) and the client does the clicks a person would, one after the other:
+
+1. the History Sheet, then each next page of it, by the page's own pager (its link, or the same
+   address that link has; the cursor is the one the page received, passed on, never built);
+2. the Scoring Record, by the page's own button;
+3. the result lists of the player's own tournaments of the **last two years**, **at most 50**, newest
+   first - only club tournaments (no registered private round), only those without a place yet with
+   this client, none opened in the last seven days - each by the address the provider's own pages
+   use for it.
+
+What it may and may not do:
+
+- **It only operates the provider's page**: its links, its buttons, the addresses its own links have.
+  The page's own scripts load what they load, with their own credentials; the client reads along as
+  above and **still sends the provider nothing of its own** - no request, no header, no client id.
+- **Only on the player's tap**, signed in, with the account confirmed as theirs and a target paired;
+  never by a timer, a plan or a target. A target can't start it.
+- **A person's pace** ([hcp/clicks.json](hcp/clicks.json), normative; no option loosens it, the numbers
+  move down after a measurement, never up without one): a pause of 3-6 s after each page's answer
+  before the next click, at most 60 pages of the History Sheet and 50 result lists a run, three runs a
+  day, the same list not again within seven days.
+- **It stops** when the page says the player isn't signed in (`signed_out`), when another account
+  shows, when a page doesn't answer as known within 30 s or the thing to click isn't there
+  (`changed_page`; a result list may simply not exist - three missing in a row count as a changed page),
+  when the player taps *Stop*, closes the page or leaves it. Progress is shown while it runs.
+- **One send at the end**: nothing goes to the target while a run is under way; at its end (or when it
+  stops) what it read goes as usual, through the plan with `manual`.
+
+The rule is implemented once, in `@glmsync/provider-golfde` (`clicks.ts`: the run as a value, moved on by
+what the page showed and by time; `operate.ts`: the step taken in the page), and used by the extension
+and the companion app alike.

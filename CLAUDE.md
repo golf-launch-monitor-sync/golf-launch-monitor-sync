@@ -41,8 +41,10 @@ format, the target API, the planning rules, the load guard and the deep links.
 - **A client fetches only when a target's plan says so** (`GET /plan` first, every time), and never
   past the guard.
 - **golf.de: reads only what golf.de's own page loaded in the player's tab; sends no request of its
-  own** ([spec/hcp.md](spec/hcp.md), *A client that only observes*). Its API wants golf.de's own client
-  id: never sent. No timer, no paging by itself; names and card numbers never leave the page script.
+  own** ([spec/hcp.md](spec/hcp.md), *A client that observes and clicks for the player*). Its API wants
+  golf.de's own client id: never sent. No timer; paging and opening pages only on the player's tap
+  (*Fetch all*), by golf.de's own links and buttons, at the pace of `spec/hcp/clicks.json`; names and card
+  numbers never leave the page script.
 - The README's **"unofficial, not affiliated with or endorsed by …"** stays, and a provider's name is
   never part of the project's name or logo.
 

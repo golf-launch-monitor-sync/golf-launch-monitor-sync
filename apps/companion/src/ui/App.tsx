@@ -256,7 +256,11 @@ function Main() {
       else {
         if (next) clearTimeout(next);
         // What the golf.de window saw goes before iOS stops the app (a timer may never fire behind it).
-        if (state === 'background') void svc.hcpSender.flush();
+        if (state === 'background') {
+          // A run of Fetch all doesn't go on in the back (the phone stops the app): it ends and sends what it read.
+          void svc.hcp.cancelFetchAll().catch(() => undefined);
+          void svc.hcpSender.flush();
+        }
       }
     });
     return () => {
