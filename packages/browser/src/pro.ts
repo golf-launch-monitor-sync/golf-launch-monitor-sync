@@ -5,7 +5,7 @@
  * read on their tap (`send`). The extension's background holds one.
  *
  * Nothing here asks a ranking's site anything: a page arrives already read, as the page showed it in the player's tab
- * (`@glmsync/provider-rankings`), and is read again strictly here. Every batch goes through the target's plan
+ * (`@glmsync/provider-rankings`, `@glmsync/provider-tours`), and is read again strictly here. Every batch goes through the target's plan
  * (`manual`: the player tapped) and is one page.
  *
  * Whose page it is: the target compares the page's name with the player's and answers `other_player` when they
@@ -31,7 +31,8 @@ import {
   type HcpPairing,
   type Storage,
 } from '@glmsync/core';
-import { batchOf, checkPage, SITES, subjectOf, type ProPage, type RankingSite } from '@glmsync/provider-rankings';
+import type { ProSite } from '@glmsync/spec';
+import { checkProPage, proBatchOf, proSubjectOf, siteNameOf, type AnyProPage } from './proPages.ts';
 import { PRO_PROVIDER } from '@glmsync/spec';
 import type { Farewell, PairOutcome } from './client.ts';
 
@@ -57,7 +58,7 @@ export interface ProClientOptions {
 
 export interface ProLast {
   at: string;
-  site: RankingSite;
+  site: ProSite;
   /**
    * `sent`; `not_due`: the app wanted nothing just now (or another device of the player was sending); `other_player`:
    * the page names someone else - the player is asked; `rejected`: the player said it isn't theirs; `other_account`:
@@ -79,7 +80,7 @@ export interface ProEntry {
 
 /** The open question: a page whose name a target didn't find to be the player's. */
 export interface ProQuestion {
-  site: RankingSite;
+  site: ProSite;
   /** The site as the player calls it. */
   siteName: string;
   /** The name the page writes. */
@@ -96,7 +97,7 @@ export interface ProView {
 }
 
 interface Waiting {
-  page: ProPage;
+  page: AnyProPage;
   targets: string[];
   at: number;
 }
@@ -115,7 +116,7 @@ export function proPairingId(base: string): string {
 }
 
 /** What is kept of a page the player said is theirs: a fingerprint of its site and id. */
-const pagePrint = (page: Pick<ProPage, 'site' | 'id'>) => base64url(sha256(utf8(`glmsync-pro-page|${subjectOf(page)}`))).slice(0, 22);
+const pagePrint = (page: Pick<AnyProPage, 'site' | 'id'>) => base64url(sha256(utf8(`glmsync-pro-page|${proSubjectOf(page)}`))).slice(0, 22);
 
 async function read<T>(s: Storage, key: string, fallback: T): Promise<T> {
   try {
@@ -166,7 +167,7 @@ export class ProClient {
 
   private async waiting(): Promise<Waiting | null> {
     const w = await read<Partial<Waiting> | null>(this.opts.storage, QUESTION, null);
-    const page = checkPage(w?.page);
+    const page = checkProPage(w?.page);
     if (!w || !page || typeof w.at !== 'number' || this.now() - w.at > QUESTION_MS) return null;
     return { page, targets: Array.isArray(w.targets) ? w.targets.filter((t): t is string => typeof t === 'string') : [], at: w.at };
   }
@@ -255,7 +256,7 @@ export class ProClient {
    */
   send(raw: unknown): Promise<ProView> {
     return this.serial(async () => {
-      const page = checkPage(raw);
+      const page = checkProPage(raw);
       if (!page) return this.viewNow();
       const confirmed = (await this.confirmed()).includes(pagePrint(page));
       const asking: string[] = [];
@@ -267,7 +268,7 @@ export class ProClient {
       else {
         const w = await this.waiting();
         // A page that went where it was asked about answers that question.
-        if (w && subjectOf(w.page) === subjectOf(page)) await this.opts.storage.remove(QUESTION);
+        if (w && proSubjectOf(w.page) === proSubjectOf(page)) await this.opts.storage.remove(QUESTION);
       }
       return this.viewNow();
     });
@@ -294,7 +295,7 @@ export class ProClient {
   }
 
   /** One page to one app, after its plan. True: the app asks whether the page is the player's. */
-  private async sendTo(p: HcpPairing, page: ProPage, confirmed: boolean): Promise<boolean> {
+  private async sendTo(p: HcpPairing, page: AnyProPage, confirmed: boolean): Promise<boolean> {
     const id = proPairingId(p.base);
     const at = new Date(this.now()).toISOString();
     const target = new HcpTarget(p, this.targetOpts());
@@ -308,8 +309,8 @@ export class ProClient {
         await this.setLast(id, { at, site: page.site, status: 'not_due' });
         return false;
       }
-      const batch = batchOf(page, {
-        account_ref: accountRefOf(p.account_salt, PRO_PROVIDER, subjectOf(page)),
+      const batch = proBatchOf(page, {
+        account_ref: accountRefOf(p.account_salt, PRO_PROVIDER, proSubjectOf(page)),
         generated_at: at,
         generator: { name: this.opts.name, version: this.opts.version },
         ...(plan.plan_id ? { plan_id: plan.plan_id } : {}),
@@ -352,7 +353,7 @@ export class ProClient {
       question: w
         ? {
             site: w.page.site,
-            siteName: SITES[w.page.site].name,
+            siteName: siteNameOf(w.page.site),
             name: w.page.name,
             targets: w.targets.map((t) => names.get(t)).filter((n): n is string => !!n),
             at: new Date(w.at).toISOString(),

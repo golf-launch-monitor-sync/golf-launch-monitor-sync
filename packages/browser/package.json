@@ -27,6 +27,7 @@
     "@glmsync/provider-trackman": "workspace:*",
     "@glmsync/spec": "workspace:*",
     "@glmsync/provider-golfde": "workspace:*",
-    "@glmsync/provider-rankings": "workspace:*"
+    "@glmsync/provider-rankings": "workspace:*",
+    "@glmsync/provider-tours": "workspace:*"
   }
 }

@@ -11,6 +11,9 @@
  *   loaded there (spec/hcp.md). Not golf.de's API: the extension sends golf.de nothing of its own.
  * - **The world rankings** (OWGR, Rolex Rankings): only a player's own page, to read what it shows when the player taps
  *   *Send* there (spec/prores.md). Nothing else of the sites, and no request to them.
+ * - **A tour's site** (the Pro Golf Tour): the player's profile and his tournaments' pages, to read his ranking and his
+ *   own line of a final result (spec/prores.md), and on his *Fetch all* to open those pages as their links do. No
+ *   request to the site of its own.
  * - **A target**: asked for when the player connects one (`optional_host_permissions`), one address
  *   at a time - never every site up front.
  * - No `tabs`, no `webRequest`, no `<all_urls>`. `scripting` only to reach a pairing page that was
@@ -19,6 +22,7 @@
 
 import { PAGE_MATCHES as GOLFDE_MATCHES } from '@glmsync/provider-golfde';
 import { PAGE_MATCHES as RANKING_MATCHES } from '@glmsync/provider-rankings';
+import { progolftour } from '@glmsync/provider-tours';
 
 export type Browser = 'chrome' | 'firefox';
 
@@ -76,6 +80,7 @@ export function manifest(browser: Browser, version: string, testHosts: string[] 
       { matches: GOLFDE_MATCHES, js: ['golfde-relay.js'], run_at: 'document_start', all_frames: false },
       // A player's own page of a world ranking: the line with *Send*; it reads the page only on that tap.
       { matches: [...RANKING_MATCHES], js: ['rankings-content.js'], run_at: 'document_idle', all_frames: false },
+      { matches: [...progolftour.PAGE_MATCHES], js: ['tours-content.js'], run_at: 'document_idle', all_frames: false },
     ],
     content_security_policy: { extension_pages: CSP },
   };

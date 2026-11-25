@@ -19,6 +19,7 @@
 
 import { badge, BrowserClient, HcpClient, IdbBlobs, pickLang, ProClient, SEND_AFTER_MS, translator, type HcpView } from '@glmsync/browser';
 import { SITES } from '@glmsync/provider-rankings';
+import { TourKeeper } from './tours.ts';
 import { HISTORY_SHEET_URL, readSeen } from '@glmsync/provider-golfde';
 import { bridgeMessage, type BridgeReply, type Reason } from '@glmsync/spec';
 import { PORTAL_URL, SIGN_OUT_URL } from '@glmsync/provider-trackman/portal';
@@ -65,6 +66,17 @@ const pro = new ProClient({
   name: __BROWSER__ === 'firefox' ? 'Golf Stats Sync for Firefox' : 'Golf Stats Sync for Chrome and Edge',
   version: VERSION,
 });
+// The Pro Golf Tour's pages as the player opens them (tours.ts): what was read, *Fetch all*.
+const tours = new TourKeeper(storage);
+const localDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** His tour page as read so far, to every app paired for a pro's pages (each after its plan). */
+async function sendTour(): Promise<Reply> {
+  const page = await tours.page(localDay());
+  const v = page ? await pro.send(page) : await pro.view();
+  await refreshIcon();
+  return { ok: true, pro: v, tour: await tours.view() };
+}
 const HCP_SEND = 'hcp-send';
 const HCP_RUN = 'hcp-run';
 const t = () => translator(pickLang(navigator.languages));
@@ -533,6 +545,34 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
     }
     case 'ranking-answer':
       // From the site's page: only the connect window comes to the front, where the player answers.
+      await openConnectWindow(near);
+      return { ok: true, pro: await pro.view() };
+    case 'tour-seen':
+      return { ok: true, pro: await pro.view(), tour: await tours.seen(m.seen) };
+    case 'tour-line':
+      return { ok: true, pro: await pro.view(), tour: await tours.view() };
+    case 'tour-send':
+      return sendTour();
+    case 'tour-fetch-all': {
+      if (from.tabId === undefined) return { ok: false, error: 'no_tab' };
+      const fetch = await tours.fetchAll(from.tabId, localDay());
+      return { ok: true, fetch, pro: await pro.view(), tour: await tours.view() };
+    }
+    case 'tour-step': {
+      if (from.tabId === undefined) return { ok: false, error: 'no_tab' };
+      const step = await tours.step(from.tabId);
+      // The run just ended: what it read goes out once, now (the player's tap on *Fetch all* asked for it).
+      if (step?.do === 'end') {
+        const r = await sendTour();
+        return r.ok ? { ...r, step } : r;
+      }
+      return step ? { ok: true, step, tour: await tours.view() } : { ok: true, tour: await tours.view() };
+    }
+    case 'tour-stop':
+      await tours.stop();
+      return sendTour();
+    case 'tour-answer':
+      // From the tour's page: only the connect window comes to the front, where the player answers.
       await openConnectWindow(near);
       return { ok: true, pro: await pro.view() };
     case 'pro-answer': {

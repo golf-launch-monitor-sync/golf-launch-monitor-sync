@@ -6,7 +6,8 @@
  * sits on someone else's page.
  */
 
-import { SITES, type RankingSite } from '@glmsync/provider-rankings';
+import type { ProSite } from '@glmsync/spec';
+import { siteNameOf } from './proPages.ts';
 import { formatWhen, type Lang, type T } from './i18n.ts';
 import type { ProEntry, ProView } from './pro.ts';
 import { errorText } from './view.ts';
@@ -29,7 +30,7 @@ export interface ProLine {
 const names = (v: ProView) => [...new Set(v.pairings.map((p) => p.name))].join(', ');
 
 /** The line on a ranking's page; null when no app is connected for it (then the extension shows nothing there). */
-export function proLineOf(v: ProView, site: RankingSite, phase: LinePhase, t: T): ProLine | null {
+export function proLineOf(v: ProView, site: ProSite, phase: LinePhase, t: T): ProLine | null {
   if (!v.pairings.length) return null;
   const targets = names(v);
   if (phase === 'reading') return { text: t('proLine.reading'), send: false, answer: false, warn: false };
@@ -55,7 +56,7 @@ export function proLastText(e: ProEntry, t: T, lang: Lang, now: number): string 
   if (!l) return null;
   const at = Date.parse(l.at);
   const when = Number.isFinite(at) ? formatWhen(at, now, lang) : '–';
-  const site = SITES[l.site]?.name ?? l.site;
+  const site = siteNameOf(l.site);
   switch (l.status) {
     case 'sent':
       return t('pro.last.sent', { when, site, count: l.tournaments ?? 0 });

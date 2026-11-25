@@ -62,6 +62,40 @@ function owgrPage(): string {
 <script>setTimeout(() => { document.getElementById('events').innerHTML = ${JSON.stringify(table)}; }, 800);</script></body></html>`;
 }
 
+/** A made-up player's profile on the Pro Golf Tour (made-up name, made-up tournaments). */
+export const PGT_PROFILE = 'https://www.progolftour.de/player-profile/99001?year=2026';
+
+/** The made-up Pro Golf Tour profile: the head with the Order of Merit, the season's tournaments (no rounds). */
+function pgtProfilePage(): string {
+  const row = (start: string, end: string, slug: string, name: string, pos: string, points: string) =>
+    `<tr><td></td><td>${start}</td><td>—</td><td>${end}</td><td><a href="/tournament-details/${slug}">${name} <i>&#xE001;</i></a></td><td>${pos}</td><td>€ 1.00</td><td>${points}</td></tr>`;
+  return `<!doctype html><html><head><title>Players detail page - PGT (EN)</title></head><body>
+<h2>Beispiel</h2><h3>Lena</h3><h1>Lena Beispiel <button>Year 2026</button></h1>
+<div><div>Order of Merit</div><div><i>&#xE002;</i> 7th</div></div><div><div>Season points</div><div>17,290.60</div></div>
+<table><thead><tr><th></th><th>Start</th><th></th><th>End</th><th>Tournament</th><th>Position</th><th>Prize money</th><th>Score</th></tr></thead><tbody>
+${row('02.03.2026', '04.03.2026', 'sample-desert-open-2026', 'Sample Desert Open 2026', 'T6', '1,027.50')}
+${row('16.06.2026', '18.06.2026', 'beispiel-k%C3%B6ln-classic-2026', 'Beispiel Köln Classic 2026', 'MC', '—')}
+</tbody></table></body></html>`;
+}
+
+/** A made-up tournament's page: its facts at once, the final result a moment later (put in by the page's script). */
+function pgtResultPage(slug: string): string {
+  const desert = slug === 'sample-desert-open-2026';
+  const line = (pos: string, name: string, r: number[]) => `<tr><td></td><td>${pos}</td><td></td><td>${name}</td><td>-1</td><td>-2</td><td>F</td>${[0, 1, 2].map((i) => `<td>${r[i] ?? ''}</td>`).join('')}<td>${r.reduce((a, b) => a + b, 0)}</td><td>—</td><td>1.00</td></tr>`;
+  const rows = desert
+    ? [line('1', 'Otto Erfunden', [66, 67, 68]), line('T6', 'Lena Beispiel', [69, 70, 70]), line('T6', 'Max Ausgedacht', [70, 70, 69])]
+    : [line('1', 'Otto Erfunden', [66, 67, 68]), line('MC', 'Lena Beispiel', [74, 76])];
+  const table = `<table><thead><tr>${['', '#', '', 'Player', 'Today', 'To Par', 'Hole', 'R1', 'R2', 'R3', 'Total', 'Prize money', 'Score'].map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+  const id = desert ? 5101 : 5102;
+  return `<!doctype html><html><head><title>Tournament - PGT (EN)</title></head><body>
+<h3>${desert ? 'Sample Desert Open 2026' : 'Beispiel Köln Classic 2026'}</h3>
+<dl><dt>Golfclub:</dt><dd><i>&#xE003;</i>Sample Golf Club<i>&#xE004;</i>Road 1, 12345 Sampletown, ${desert ? 'Egypt' : 'Germany'}</dd><dt>Date:</dt><dd>${desert ? '02.03.2026 - 04.03.2026' : '16.06.2026 - 18.06.2026'}</dd></dl>
+<ul><li><a href="/tournament-details/${slug}?tab=livescoring&tournament=${id}#livescoring-${id}">Final result</a></li></ul>
+<h3>Final result ${desert ? 'Sample Desert Open 2026' : 'Beispiel Köln Classic 2026'}</h3><ul><li><i>&#xE005;</i>Sample Golf Club PAR 71</li></ul>
+<div id="result">…</div>
+<script>setTimeout(() => { document.getElementById('result').innerHTML = ${JSON.stringify(table)}; }, 600);</script></body></html>`;
+}
+
 export function pairUrl(target = TARGET, code = CODE): string {
   return `${WEB}/pair#target=${encodeURIComponent(target)}&code=${code}`;
 }
@@ -180,6 +214,8 @@ export class World {
   readonly pro = new FakeProTarget({ base: PRO_TARGET });
   /** Every request that reached owgr.com: only the pages the player opened, never one of the extension's. */
   readonly owgrSaw: { url: string; type: string }[] = [];
+  /** Every request that reached progolftour.de: only the pages opened (by the player, or by Fetch all as its links do). */
+  readonly pgtSaw: { url: string; type: string }[] = [];
   readonly portal: Portal = { token: null, mode: 'storage' };
   /** How often Trackman's sign-out page was opened. */
   signOuts = 0;
@@ -247,6 +283,14 @@ export class World {
       const path = new URL(req.url()).pathname;
       const body = path.startsWith('/playerprofile/') ? owgrPage() : '<!doctype html><title>Official World Golf Ranking - Ranking</title><h1>World ranking (made up)</h1>';
       return route.fulfill({ status: 200, body, headers: { 'content-type': 'text/html' } });
+    });
+    // The made-up Pro Golf Tour: a player's profile and two tournaments' pages.
+    await context.route('https://www.progolftour.de/**', (route) => {
+      const req = route.request();
+      this.pgtSaw.push({ url: req.url(), type: req.resourceType() });
+      const path = decodeURIComponent(new URL(req.url()).pathname);
+      const body = path.startsWith('/player-profile/') ? pgtProfilePage() : path.startsWith('/tournament-details/') ? pgtResultPage(path.slice(20)) : '<!doctype html><title>PGT</title><h1>Pro Golf Tour (made up)</h1>';
+      return route.fulfill({ status: 200, body, headers: { 'content-type': 'text/html; charset=utf-8' } });
     });
     // The made-up golf.de: its pages, and its API as the pages' own requests reach it.
     await context.route('https://www.golf.de/**', (route) => route.fulfill({ status: 200, body: this.golfde.page(new URL(route.request().url()).pathname), headers: { 'content-type': 'text/html' } }));

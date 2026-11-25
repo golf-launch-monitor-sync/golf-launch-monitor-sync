@@ -23,7 +23,7 @@ const DIST = join(HERE, 'dist');
 /** The click checks' fake target, granted at install in their build only (dist-e2e/). */
 export const E2E_HOSTS = ['https://app.example.org/*'];
 
-const ENTRIES = ['background', 'portal-main', 'portal-relay', 'pair-content', 'bridge-content', 'golfde-main', 'golfde-relay', 'rankings-content', 'popup', 'connect'];
+const ENTRIES = ['background', 'portal-main', 'portal-relay', 'pair-content', 'bridge-content', 'golfde-main', 'golfde-relay', 'rankings-content', 'tours-content', 'popup', 'connect'];
 
 export async function buildFor(browser, { e2e = false } = {}) {
   const out = join(e2e ? join(HERE, 'dist-e2e') : DIST, browser);

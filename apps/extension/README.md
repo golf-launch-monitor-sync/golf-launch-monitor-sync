@@ -7,7 +7,7 @@ background, while your browser is open — reads your handicap record along on g
 ([below](#the-handicap-record-on-golfde)), and sends a pro's own world ranking page when you tap *Send* on it
 ([below](#a-pros-world-ranking-page)). Manifest V3; Chrome, Edge and Firefox.
 
-> **Unofficial.** Not affiliated with, endorsed by or supported by Trackman, the DGV, golf.de, the OWGR or Rolex. It reads
+> **Unofficial.** Not affiliated with, endorsed by or supported by Trackman, the DGV, golf.de, the OWGR, Rolex or any tour. It reads
 > your own Trackman account with your own sign-in, the way Trackman's web portal does, and on golf.de only
 > what golf.de's own page loaded in your tab.
 
@@ -135,6 +135,26 @@ What it does, and doesn't:
   writes goes along for the app's check and is kept nowhere here.
 - **No rounds**: a world ranking has none; the app takes rounds from the tours.
 - The companion app doesn't read these pages yet (it refuses `kind=pro` links rather than take them for another kind).
+
+### A tour's pages: the Pro Golf Tour
+
+Since 0.14.0 (the module is [`@glmsync/provider-tours`](../../packages/provider-tours/README.md)), with the same
+connection as the world rankings (`kind=pro`).
+
+1. Open your own profile on **progolftour.de** (*Players*, or the *Order of Merit*). The line says *Golf Stats Sync:
+   send this page to …* with **Send** and **Fetch all**.
+2. The profile shows your Order of Merit and your season's tournaments, but no rounds; the rounds are on each
+   tournament's page. Open one yourself, or tap **Fetch all**: it opens the pages of your finished tournaments of that
+   season one by one in the same tab, with a pause of several seconds between them (above the site's crawl delay),
+   at most 30, three runs a day, and **Stop** ends it.
+3. On each tournament's page only your own line is taken (place, R1-R3, how many played) - by the name of your profile;
+   nobody else's line leaves the page. *Send* (and the end of *Fetch all*) sends your rank and points and every finished
+   tournament whose rounds were read; a tournament without its rounds isn't sent.
+
+`tours-content.ts` runs on `progolftour.de` in the extension's own world and reads nothing until an app is connected
+for a pro's pages. It keeps only the profile you opened last (another player's profile replaces it, with everything read
+for it) and your lines, in the extension's own storage. It sends the site nothing; *Fetch all* opens the site's own
+addresses as its links do.
 
 ## The bridge on the app's page
 
