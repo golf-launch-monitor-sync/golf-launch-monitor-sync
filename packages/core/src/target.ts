@@ -68,6 +68,7 @@ export interface Target {
 const CODES: ReadonlySet<string> = new Set([
   'bad_request', 'code_invalid', 'token_invalid', 'other_account', 'disconnected', 'too_large', 'invalid_batch',
   'rate_limited', 'provider_unknown', 'test_data', 'test_unavailable', 'not_test_account', 'code_expired',
+  'other_player',
 ]);
 
 /** A target's answer that is no success, as a `TargetError` (shared with the handicap target API, hcp.ts). */

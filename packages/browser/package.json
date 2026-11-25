@@ -15,7 +15,8 @@
     "./i18n": "./src/i18n.ts",
     "./render": "./src/render.ts",
     "./download": "./src/download.ts",
-    "./style.css": "./src/style.css"
+    "./style.css": "./src/style.css",
+    "./pro": "./src/pro.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
@@ -24,6 +25,7 @@
     "@glmsync/core": "workspace:*",
     "@glmsync/provider-trackman": "workspace:*",
     "@glmsync/spec": "workspace:*",
-    "@glmsync/provider-golfde": "workspace:*"
+    "@glmsync/provider-golfde": "workspace:*",
+    "@glmsync/provider-rankings": "workspace:*"
   }
 }

@@ -13,8 +13,9 @@
  *
  * The code is taken out of the address as soon as it was used, so it doesn't stay in the history.
  *
- * The handicap record (kind=hcp, spec/hcp.md) is read along on golf.de's own pages: only the extension can do that,
- * so for it this page offers the extension and no way by hand.
+ * The handicap record (kind=hcp, spec/hcp.md) is read along on golf.de's own pages, and a pro's world ranking page
+ * (kind=pro, spec/prores.md) in the player's own tab: only the extension can do that, so for them this page offers the
+ * extension and no way by hand.
  */
 
 import { BrowserClient, canHaveExtension, INSTALL_URL, storeFor } from '@glmsync/browser';
@@ -158,11 +159,13 @@ function byHand(target: { target: string; code: string; provider?: string }): vo
   fill(without, h('h2', {}, t('pair.withoutTitle')), h('p', { class: 'muted small' }, t('pair.without')), frame);
 }
 
-function noExtension(target: { target: string; code: string; provider?: string; kind?: 'hcp' }, possible: boolean, waiting: boolean): void {
+function noExtension(target: { target: string; code: string; provider?: string; kind?: 'hcp' | 'pro' }, possible: boolean, waiting: boolean): void {
   if (extensionMode) return;
-  const hcp = target.kind === 'hcp';
+  // golf.de's record and a pro's world ranking pages are read in the player's own tab: only the extension can.
+  const hcp = target.kind === 'hcp' || target.kind === 'pro';
+  const needs = target.kind === 'pro' ? t('pair.proNeedsExtension') : t('pair.hcpNeedsExtension');
   if (possible) {
-    line(hcp ? t('pair.hcpNeedsExtension') : t('pair.noExtension'));
+    line(hcp ? needs : t('pair.noExtension'));
     const store = storeFor(navigator.userAgent);
     install.hidden = false;
     fill(install,
@@ -171,10 +174,10 @@ function noExtension(target: { target: string; code: string; provider?: string; 
       store ? null : h('p', { class: 'muted small' }, t('pair.notInStores')),
     );
   } else {
-    line(hcp ? t('pair.hcpNeedsExtension') : t('pair.noExtensionHere'));
+    line(hcp ? needs : t('pair.noExtensionHere'));
     install.hidden = true;
   }
-  // golf.de can only be read along by the extension: no connecting this page instead.
+  // golf.de and a pro's pages can only be read by the extension: no connecting this page instead.
   if (hcp) {
     without.hidden = true;
     return;

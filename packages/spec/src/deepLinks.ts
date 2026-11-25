@@ -19,12 +19,15 @@ export type LinkResult =
   | { ok: false; error: string };
 
 const MAX_LEN = 2048;
-/** Which target API a pairing speaks (1.10.0): `lm` (spec/target-api.md, also without a kind) or `hcp` (spec/hcp.md). */
-export type PairKind = 'lm' | 'hcp';
-const KINDS: ReadonlySet<string> = new Set<PairKind>(['lm', 'hcp']);
-/** What a read link may open (1.11.0): only the handicap record's reading along. */
-export type ReadKind = 'hcp';
-const READ_KINDS: ReadonlySet<string> = new Set<ReadKind>(['hcp']);
+/**
+ * Which target API a pairing speaks (1.10.0): `lm` (spec/target-api.md, also without a kind), `hcp` (spec/hcp.md) or
+ * (1.15.0) `pro`: the handicap target API for a professional's own pages (spec/prores.md).
+ */
+export type PairKind = 'lm' | 'hcp' | 'pro';
+const KINDS: ReadonlySet<string> = new Set<PairKind>(['lm', 'hcp', 'pro']);
+/** What a read link may open (1.11.0): the handicap record's reading along, and (1.15.0) a professional's pages. */
+export type ReadKind = 'hcp' | 'pro';
+const READ_KINDS: ReadonlySet<string> = new Set<ReadKind>(['hcp', 'pro']);
 const CODE = /^[0-9A-Za-z-]{6,64}$/;
 const PROVIDER = /^[a-z][a-z0-9_-]{1,39}$/;
 const TARGET =
@@ -178,7 +181,8 @@ export function returnAllowed(url: string, prefixes: readonly string[]): boolean
 
 /**
  * A pairing link for the companion app; `back`: where it jumps once paired (checked there against the target's
- * return_prefixes, like a sync link's `return`). `kind` (1.10.0): `hcp` for a handicap target (spec/hcp.md).
+ * return_prefixes, like a sync link's `return`). `kind` (1.10.0): `hcp` for a handicap target (spec/hcp.md), `pro` (1.15.0)
+ * for a professional's pages (spec/prores.md).
  */
 export function pairLink(target: string, code: string, provider?: string, back?: string, kind?: PairKind): string {
   const q = [`target=${encodeURIComponent(target)}`, `code=${encodeURIComponent(code)}`];
@@ -188,7 +192,7 @@ export function pairLink(target: string, code: string, provider?: string, back?:
   return `glmsync://pair?${q.join('&')}`;
 }
 
-/** A read link for the companion app (1.11.0): opens its window on the provider's page of the handicap record. */
+/** A read link for the companion app (1.11.0): opens its window on the handicap record's page, or (1.15.0) a pro's pages. */
 export function readLink(kind: ReadKind = 'hcp'): string {
   return `glmsync://read?kind=${kind}`;
 }

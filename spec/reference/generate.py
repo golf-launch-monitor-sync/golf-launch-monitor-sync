@@ -28,6 +28,8 @@ import deeplinks  # noqa: E402
 import guard  # noqa: E402
 import hcp  # noqa: E402
 import plan  # noqa: E402
+import cases_prores  # noqa: E402
+import prores  # noqa: E402
 import testmode  # noqa: E402
 import trackman  # noqa: E402
 import values  # noqa: E402
@@ -394,14 +396,17 @@ def deep_link_vectors() -> dict[str, Any]:
              "glmsync://read?kind=HCP", "glmsync://read?kind=", "glmsync://read?kind=hcp&kind=hcp",
              f"glmsync://read?kind=hcp&target={t}&return=exampleapp%3A%2F%2Fback", "glmsync://read?kind=hcp#frag",
              "glmsync://read?kind=hcp\n", "GLMSYNC://read?kind=hcp", "glmsync://reads?kind=hcp",
-             "glmsync://read?kind=hcp%ZZ"]
+             "glmsync://read?kind=hcp%ZZ",
+             # 1.15.0: a professional's own pages (spec/prores.md)
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=pro&kind=pro", f"glmsync://pair?target={t}&code=K7M2PQ9X&kind=PRO",
+             "glmsync://read?kind=pro", "glmsync://read?kind=pro&kind=hcp"]
     cases: list[dict[str, Any]] = [{"rule": "parse_link", "input": u, "expected": deeplinks.parse_link(u)} for u in links]
     frags = [f"#target={t}&code=K7M2PQ9X", f"target={t}&code=K7M2PQ9X&provider=demo", "#code=K7M2PQ9X", "#",
              f"#target={t}&code=K7M2PQ9X&target={t}",
              f"#target={t}&code=K7M2PQ9X&return=exampleapp%3A%2F%2Fprofile",
              f"#target={t}&code=K7M2PQ9X&kind=hcp", f"#target={t}&code=K7M2PQ9X&kind=lm",
              f"#kind=hcp&target={t}&code=K7M2PQ9X&provider=golfde", f"#target={t}&code=K7M2PQ9X&kind=other",
-             f"#target={t}&code=K7M2PQ9X&kind=hcp&kind=hcp"]
+             f"#target={t}&code=K7M2PQ9X&kind=hcp&kind=hcp", f"#target={t}&code=K7M2PQ9X&kind=pro"]
     cases += [{"rule": "parse_pair_fragment", "input": f, "expected": deeplinks.parse_pair_fragment(f)} for f in frags]
     prefixes = ["https://app.example.org/", "exampleapp://", "https://app.example.net"]
     for u in ["https://app.example.org/profile", "https://app.example.org.evil.test/", "exampleapp://synced",
@@ -421,8 +426,8 @@ def deep_link_vectors() -> dict[str, Any]:
                "expected": deeplinks.parse_sync_intent(d, r)} for d, r in intents]
     return doc("Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> "
                "{ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, "
-               "sync, (1.8.0) test or (1.11.0) read; kind (1.10.0) lm or hcp, only where the link names it (read: "
-               "always, and only hcp). parse_sync_intent "
+               "sync, (1.8.0) test or (1.11.0) read; kind (1.10.0) lm, hcp or (1.15.0) pro, only where the link names it "
+               "(read: always, and only hcp or pro). parse_sync_intent "
                "(the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> "
                "{ok: true, target, reason} or {ok: false, error}.", cases)
 
@@ -766,6 +771,76 @@ def dgvhcp_examples() -> dict[str, Any]:
                cases)
 
 
+# A professional's own pages (spec/prores.md, 1.15.0)
+NAMES = [["Lena Musterfrau", "Lena Musterfrau", "the same"], ["MUSTERFRAU, Lena", "Lena Musterfrau", "surname first, upper case"], ["Lena Musterfrau", "Lena Marie Musterfrau", "a middle name only here"], ["MÜLLER Anna-Lena", "Anna Lena Mueller", "umlaut and hyphen"], ["Inés García", "Ines Garcia", "accents"], ["Lena Beispiel", "Lena Musterfrau", "another surname"], ["Musterfrau", "Lena Musterfrau", "one part is not enough"], ["Max Musterfrau", "Lena Musterfrau", "another first name"], ["Lena Musterfrau", "", "no name in the Caddie"]]
+
+
+def prores_examples() -> dict[str, Any]:
+    cases = cases_prores.draft()
+    by = {c["name"]: c for c in cases}
+    # A world ranking names a week, not a day (1.15.0): the draft's world ranking page now says so.
+    w = by["a_world_ranking_page"]["batch"]["tournaments"][0]
+    w.pop("start")
+    w["week"] = "2026-W43"
+    by["tournament_without_start"]["why"] = "A tournament with neither its start nor its week: left out with its rounds."
+    ref = cases_prores.REF
+
+    def page(site: str, name: str, **rest: Any) -> dict[str, Any]:
+        return {"format": "prores/1", "provider": "pro", "site": site, "account_ref": ref,
+                "generated_at": "2026-11-25T18:00:00Z", "generator": {"name": "Golf Stats Sync", "version": "0.13.0"},
+                "sync": {"plan_id": "p-7", "reason": "manual"}, "player": {"name": name}, **rest}
+
+    owgr = page("owgr", "Max Mustermann",
+                rankings=[{"source": "owgr", "rank": 412, "points": 0.9871, "events": 40, "as_of": "2026-11-25"}],
+                tournaments=[
+                    {"ref": "owgr-90012", "tour": "dp_world", "name": "Musterstadt Open", "week": "2026-W40", "place": 17,
+                     "tied": True, "points": 2.16597},
+                    {"ref": "owgr-90007", "tour": "hotelplanner", "name": "Beispiel Challenge", "week": "2026-W39",
+                     "place": 1, "points": 12.5},
+                    {"ref": "owgr-89950", "name": "A Major Somewhere", "week": "2026-W29", "result": "MC"}])
+    rolex = page("rolex", "Lena Musterfrau",
+                 rankings=[{"source": "rolex", "rank": 87, "points": 1.42, "events": 38, "as_of": "2026-11-25"}],
+                 tournaments=[
+                     {"ref": "rolex-7001", "tour": "lpga", "name": "Beispiel Classic", "week": "2026-W47", "place": 36,
+                      "tied": True, "points": 2.2},
+                     {"ref": "rolex-6950", "tour": "let", "name": "Musterland Masters", "week": "2026-W20", "place": 7,
+                      "tied": True, "points": 2.34},
+                     {"ref": "rolex-6901", "tour": "lpga", "name": "Exemple Open", "week": "2026-W40", "result": "MC"}])
+    rounds_without_start = page("owgr", "Max Mustermann", tournaments=[
+        {"ref": "owgr-1", "week": "2026-W40", "place": 3, "rounds": [{"round_no": 1, "gross": 70}]}])
+    no_such_week = page("owgr", "Max Mustermann", tournaments=[{"ref": "owgr-2", "week": "2026-W54", "place": 3}])
+    cases += [
+        {"name": "owgr_page", "why": "The OWGR's page of the player: his rank, average points and divisor, his tournaments "
+         "by week with place and points won, no rounds (a world ranking has none; a major names no tour).",
+         "valid": True, "batch": owgr, "expect": {"rows": 0, "rankings": 1, "events": 3, "stats": 0}},
+        {"name": "rolex_page", "why": "The Rolex Rankings' page of the player: the same, the cut as MC.",
+         "valid": True, "batch": rolex, "expect": {"rows": 0, "rankings": 1, "events": 3, "stats": 0}},
+        {"name": "rounds_without_start", "why": "Rounds of a tournament known only by its week: the rounds can't be "
+         "placed on days, so they cost (counted failed); the tournament stays.", "valid": False,
+         "batch": rounds_without_start, "expect": {"rows": 0, "rankings": 0, "events": 1, "stats": 0}},
+        {"name": "no_such_week", "why": "A week no year has: the tournament is left out.", "valid": False,
+         "batch": no_such_week, "expect": {"rows": 0, "rankings": 0, "events": 0, "stats": 0}},
+    ]
+    places = ["T17", "17T", "36T", "1", " 2 ", "t3", "MC", "CUT", "cut", "WD", "RTD", "DQ", "DSQ", "DNS", "BP", "-",
+              "\u2014", "", "0", "T0", "1000", "T1000", "999", "12.5", "T-5", "3T T", "E", None, 17]
+    rules = [{"rule": "place_of", "input": x, "expected": prores.place_of(x)} for x in places]
+    tours = [("owgr", "DPWT"), ("owgr", "PGAT"), ("owgr", "KFT"), ("owgr", "Maj"), ("owgr", "dpwt"), ("owgr", " PGAT "),
+             ("owgr", "LPGA"), ("rolex", "LPGA"), ("rolex", "LET"), ("rolex", "LETAS"), ("rolex", "IGF"),
+             ("rolex", "JLPGA"), ("tour:let", "LET"), ("owgr", None), (None, "DPWT")]
+    rules += [{"rule": "tour_of", "input": {"site": a, "code": b}, "expected": prores.tour_of(a, b)} for a, b in tours]
+    weeks = ["2026-W47", "2026-W01", "2026-W53", "2020-W53", "2026-W00", "2026-W54", "2026-w47", "2026-47", "26-W47",
+             "2026-W7", None]
+    rules += [{"rule": "iso_week", "input": x, "expected": prores.iso_week(x)} for x in weeks]
+    return doc("prores/1 batches that must (valid: true) or must not validate against spec/prores/prores-1.schema.json, "
+               "and what a target keeps of each (expect: rows = rounds with a score, rankings, events = tournaments, "
+               "stats = snapshots, values = statistics of the first; refused: invalid or too_large). rules: place_of "
+               "(a page's finish -> {place, tied} or {result}, else null), tour_of (a world ranking's tour column -> a "
+               "tour key or null), iso_week. names: whether a page's name is the player's (every part of the shorter "
+               "among the other's, at least two).", cases, rules=rules,
+               names=[{"page": a, "player": b, "same": prores.same_name(a, b), "why": why} for a, b, why in NAMES],
+               tour_codes=prores.TOUR_CODES)
+
+
 def wake_vectors() -> dict[str, Any]:
     tok = "ExponentPushToken[" + "a1B2c3D4e5F6g7H8i9J0kL" + "]"
     bodies: list[Any] = [
@@ -836,6 +911,7 @@ FILES = {
     "test-scenario.json": test_scenario_vectors,
     "hcp-plan.json": hcp_plan_vectors,
     "dgvhcp-examples.json": dgvhcp_examples,
+    "prores-examples.json": prores_examples,
     "wake.json": wake_vectors,
 }
 

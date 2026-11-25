@@ -9,6 +9,8 @@ import { PORTAL_URL } from '@glmsync/provider-trackman/portal';
 import type { ClientStatus, TestError, TestOutcome } from './client.ts';
 import type { HcpView } from './hcp.ts';
 import { hcpLastText } from './hcpView.ts';
+import type { ProView } from './pro.ts';
+import { proLastText } from './proView.ts';
 import { formatDate, formatDateTime, formatTime, type Lang, type T } from './i18n.ts';
 import { historyText, lastText, noticeText } from './view.ts';
 import { connectionLine, type Connection } from './connections.ts';
@@ -606,7 +608,7 @@ export function offerWizard(c: OfferContext, a: OfferActions): HTMLElement {
     const several = choices.length > 1;
     body.push(
       h('p', { 'data-test': 'offer-what' }, t('wizard.pairWhat', { host: c.host ?? '' })),
-      several ? h('p', { class: 'muted small' }, t(c.kind === 'hcp' ? 'wizard.serviceHcp' : 'wizard.serviceLm')) : null,
+      several ? h('p', { class: 'muted small' }, t(c.kind === 'hcp' ? 'wizard.serviceHcp' : c.kind === 'pro' ? 'wizard.servicePro' : 'wizard.serviceLm')) : null,
       h('div', { class: 'row services' }, ...choices.map((x) => button(x.label, () => a.choose(x.id), { class: 'primary', 'data-test': `service-${x.id}`, ...(working ? { disabled: '' } : {}) }))),
       several && c.kind === 'lm' ? h('p', { class: 'muted small' }, t('wizard.serviceMore')) : null,
       working ? h('p', { class: 'muted', role: 'status', 'data-test': 'working' }, t('connect.working')) : h('div', { class: 'row' }, button(t('connect.cancel'), a.cancel, { class: 'link', 'data-test': 'cancel' })),
@@ -785,3 +787,59 @@ export function testEntry(
 }
 
 export { PORTAL_URL };
+
+export interface ProDetailsContext {
+  t: T;
+  lang: Lang;
+  now: number;
+  /** The pairing whose disconnecting is being asked about. */
+  asking: string | null;
+  /** The answer to the question is on its way. */
+  answering: boolean;
+}
+
+export interface ProDetailsActions {
+  open(site: 'owgr' | 'rolex'): void;
+  answer(yes: boolean): void;
+  askDisconnect(id: string | null): void;
+  disconnect(id: string): void;
+}
+
+/**
+ * A professional's pages (spec/prores.md): where to open them, the question whether a page is theirs (asked here, in
+ * the extension's own page, never on the site's), and each connected app with its last answer.
+ */
+export function proDetails(v: ProView, c: ProDetailsContext, a: ProDetailsActions): HTMLElement {
+  const { t } = c;
+  const targets = [...new Set(v.pairings.map((p) => p.name))].join(', ');
+  const q = v.question;
+  const wait = c.answering ? { disabled: '' } : {};
+  return h(
+    'div',
+    { 'data-test': 'pro' },
+    h('h2', {}, t('pro.title')),
+    q
+      ? h('div', { class: 'confirm', 'data-test': 'pro-question', role: 'alert' },
+          h('p', {}, h('strong', {}, t('pro.question', { site: q.siteName, name: q.name, targets: q.targets.join(', ') || targets }))),
+          h('p', { class: 'muted small' }, t('pro.questionWhy')),
+          h('div', { class: 'row' },
+            button(t('pro.yes'), () => a.answer(true), { class: 'primary', 'data-test': 'pro-yes', ...wait }),
+            button(t('pro.no'), () => a.answer(false), { 'data-test': 'pro-no', ...wait })))
+      : null,
+    h('p', {}, t('pro.how', { target: targets || t('wizard.yourApp') })),
+    h('p', { class: 'muted small' }, t('pro.find')),
+    h('div', { class: 'row' },
+      button(t('pro.openOwgr'), () => a.open('owgr'), { 'data-test': 'pro-open-owgr' }),
+      button(t('pro.openRolex'), () => a.open('rolex'), { 'data-test': 'pro-open-rolex' })),
+    ...v.pairings.map((p) =>
+      h('div', { class: 'pairing', 'data-test': 'pro-pairing' },
+        h('p', {}, h('strong', {}, t('pro.connected', { name: p.name })), ` · ${p.host}`),
+        h('p', { class: 'muted small', 'data-test': 'pro-last' }, proLastText(p, t, c.lang, c.now) ?? t('pro.none')),
+        c.asking === p.id
+          ? h('div', { class: 'note' }, h('p', {}, t('pro.disconnectAsk', { name: p.name })),
+              h('div', { class: 'row' },
+                button(t('pro.disconnect'), () => a.disconnect(p.id), { class: 'primary', 'data-test': 'pro-disconnect-yes' }),
+                button(t('connect.cancel'), () => a.askDisconnect(null))))
+          : h('div', { class: 'row' }, button(t('pro.disconnect'), () => a.askDisconnect(p.id), { 'data-test': 'pro-disconnect' })))),
+  );
+}

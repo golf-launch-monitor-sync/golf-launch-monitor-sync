@@ -1,0 +1,390 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://golf-launch-monitor-sync.github.io/schemas/prores-1.schema.json",
+  "title": "A professional's own results, ranks and season statistics, version 1 (prores/1)",
+  "description": "A batch of what one page of a tour or a world ranking shows about the player himself, read in his own browser: his tournaments with their rounds, his ranks, his season statistics. Days as YYYY-MM-DD, weeks as ISO weeks YYYY-Www, times RFC 3339 with zone. Unknown values are left out, never null. Never another player's name or score. See spec/prores.md. SPDX-License-Identifier: MIT. Copyright (c) 2026 Reginald Stadlbauer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "provider",
+    "site",
+    "account_ref",
+    "generated_at",
+    "player"
+  ],
+  "properties": {
+    "format": {
+      "const": "prores/1"
+    },
+    "provider": {
+      "const": "pro",
+      "description": "The handicap target API's provider of this kind (pairing with kind=pro)."
+    },
+    "site": {
+      "$ref": "#/$defs/site"
+    },
+    "account_ref": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{16,128}$",
+      "description": "Which player page, without naming it: the account_ref rule of spec/olmd.md over '<site>:<the page's player id>' with the target's account_salt."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        }
+      }
+    },
+    "sync": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "reason": {
+          "enum": [
+            "connect",
+            "open",
+            "timer",
+            "manual"
+          ]
+        }
+      }
+    },
+    "player": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "description": "Whose page it is, for the target's check; the target compares and keeps nothing of it.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "description": "The player's name as the page writes it."
+        },
+        "confirmed": {
+          "type": "boolean",
+          "description": "The player confirmed in the tool that the page is his although its name differs."
+        }
+      }
+    },
+    "rankings": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/ranking"
+      }
+    },
+    "tournaments": {
+      "type": "array",
+      "maxItems": 300,
+      "items": {
+        "$ref": "#/$defs/tournament"
+      }
+    },
+    "stats": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "$ref": "#/$defs/stats"
+      }
+    },
+    "notice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "signed_out",
+            "guard_limit",
+            "partial",
+            "changed_page"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    }
+  },
+  "$defs": {
+    "site": {
+      "type": "string",
+      "pattern": "^(owgr|rolex|tour:(pro_golf_tour|alps|hotelplanner|dp_world|korn_ferry|pga_tour|let_access|let|epson|lpga|other))$",
+      "description": "The page read: a world ranking (owgr, rolex) or a tour (tour:<key>)."
+    },
+    "tour": {
+      "enum": [
+        "pro_golf_tour",
+        "alps",
+        "hotelplanner",
+        "dp_world",
+        "korn_ferry",
+        "pga_tour",
+        "let_access",
+        "let",
+        "epson",
+        "lpga",
+        "other"
+      ]
+    },
+    "day": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "ranking": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "as_of"
+      ],
+      "anyOf": [
+        {
+          "properties": {
+            "rank": true
+          },
+          "required": [
+            "rank"
+          ]
+        },
+        {
+          "properties": {
+            "points": true
+          },
+          "required": [
+            "points"
+          ]
+        }
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "pattern": "^(owgr|rolex|tour:(pro_golf_tour|alps|hotelplanner|dp_world|korn_ferry|pga_tour|let_access|let|epson|lpga|other))$",
+          "description": "owgr, rolex, or the season ranking of a tour (tour:<key>)."
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "points": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000000,
+          "description": "The ranking's points as its page leads with them: a world ranking's average points, a tour's season points."
+        },
+        "events": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 999,
+          "description": "Tournaments counted: a world ranking's divisor where it shows one, else its events."
+        },
+        "as_of": {
+          "$ref": "#/$defs/day",
+          "description": "The day the page names for its ranking, else the day it was read."
+        }
+      }
+    },
+    "tournament": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ref"
+      ],
+      "properties": {
+        "ref": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.:-]{1,100}$",
+          "description": "The tournament's id on the page (stable between reads), prefixed by nothing the target has to know."
+        },
+        "tour": {
+          "$ref": "#/$defs/tour"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "venue": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "country": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "start": {
+          "$ref": "#/$defs/day",
+          "description": "The first day of the tournament; required for rounds (they are counted from it)."
+        },
+        "end": {
+          "$ref": "#/$defs/day"
+        },
+        "week": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-W(0[1-9]|[1-4][0-9]|5[0-3])$",
+          "description": "The ISO week the tournament ended in (YYYY-Www), where the page names a week and no day (a world ranking's). Rounds need the start."
+        },
+        "place": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999,
+          "description": "His place (T18: 18 and tied)."
+        },
+        "tied": {
+          "type": "boolean"
+        },
+        "result": {
+          "enum": [
+            "MC",
+            "WD",
+            "DQ",
+            "DNS"
+          ],
+          "description": "Missed cut, withdrawn, disqualified, did not start: then no place."
+        },
+        "field": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999
+        },
+        "points": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000000,
+          "description": "Points the tournament brought him in the page's ranking: a tour's season ranking, or the world ranking's points won."
+        },
+        "rounds": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/round"
+          }
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "start": true
+          },
+          "required": [
+            "start"
+          ]
+        },
+        {
+          "properties": {
+            "week": true
+          },
+          "required": [
+            "week"
+          ]
+        }
+      ],
+      "dependentRequired": {
+        "rounds": [
+          "start"
+        ]
+      }
+    },
+    "round": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "round_no"
+      ],
+      "properties": {
+        "round_no": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "played_on": {
+          "$ref": "#/$defs/day",
+          "description": "Only where the page names the day; else the target counts from the start."
+        },
+        "gross": {
+          "type": "integer",
+          "minimum": 9,
+          "maximum": 250,
+          "description": "His strokes; a round without a score is left out."
+        },
+        "par": {
+          "type": "integer",
+          "minimum": 27,
+          "maximum": 80
+        },
+        "holes": {
+          "enum": [
+            9,
+            18
+          ]
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "season",
+        "as_of",
+        "values"
+      ],
+      "properties": {
+        "tour": {
+          "$ref": "#/$defs/tour"
+        },
+        "season": {
+          "type": "integer",
+          "minimum": 1990,
+          "maximum": 2100
+        },
+        "as_of": {
+          "$ref": "#/$defs/day"
+        },
+        "values": {
+          "type": "object",
+          "maxProperties": 80,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]{1,39}$"
+          },
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "The season's statistics as key and value, metric (spec/prores.md, Statistics)."
+        }
+      }
+    }
+  }
+}

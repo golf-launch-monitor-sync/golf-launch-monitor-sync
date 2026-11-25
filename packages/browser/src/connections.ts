@@ -6,12 +6,13 @@
  * signed in, the last fetch failed, or test mode. A row opens its details (the overview as before).
  *
  * Pure, so it is tested without a browser: each client turns its own state into `ConnectionFacts` (the browser
- * clients through `connectionsOfStatus` and `connectionOfHcp`, the companion app its own), `connectionState` decides,
+ * clients through `connectionsOfStatus`, `connectionOfHcp` and `connectionOfPro`, the companion app its own), `connectionState` decides,
  * `connectionLine` says it.
  */
 
 import type { ClientStatus } from './client.ts';
 import type { HcpView } from './hcp.ts';
+import type { ProView } from './pro.ts';
 import type { T } from './i18n.ts';
 import { factsOfAccount, factsOfHcp, wizardOf, type ServiceKind } from './wizard.ts';
 
@@ -100,6 +101,28 @@ export function connectionOfHcp(v: Pick<HcpView, 'pairings' | 'account' | 'sendi
       setup: !!facts && wizardOf(facts).step !== 'done',
       test: false,
       signIn: v.signed_out ? 'expired' : 'ok',
+      failed: v.pairings.some((p) => p.last?.status === 'failed'),
+      history: false,
+    }),
+  };
+}
+
+/**
+ * A professional's pages' connection (the world rankings, spec/prores.md), if an app is connected for it: not set up
+ * until a page went (or while an app asks whether a page is the player's), failed when the last send did.
+ */
+export function connectionOfPro(v: Pick<ProView, 'pairings' | 'question'>, service: string): Connection | null {
+  if (!v.pairings.length) return null;
+  return {
+    id: 'pro',
+    kind: 'pro',
+    service,
+    account: null,
+    targets: names(v.pairings),
+    state: connectionState({
+      setup: !!v.question || !v.pairings.some((p) => p.last?.status === 'sent'),
+      test: false,
+      signIn: 'ok',
       failed: v.pairings.some((p) => p.last?.status === 'failed'),
       history: false,
     }),

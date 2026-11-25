@@ -12,11 +12,11 @@ The scheme is open: any app may implement the receiving side. Reference:
 ## Links
 
 ```
-glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp][&return=<URL to go back to>]
+glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp|pro][&return=<URL to go back to>]
 glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
 glmsync://test?[target=<target base URL>&]code=<test code>
-glmsync://read?kind=hcp
-https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp]
+glmsync://read?kind=hcp|pro
+https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp|pro]
 ```
 
 - **pair** opens the companion app (on a phone) with what it needs to call `POST /pair`. On a
@@ -30,14 +30,17 @@ https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<i
   1.2.0 ignores it, so a target says where to go back to in its own words as well.
 - **kind** (since 1.10.0, pair and the pairing page): which target API the base URL speaks - `lm` (the launch
   monitor one, [target-api.md](target-api.md); also what a link without `kind` means) or `hcp` (the handicap
-  one, [hcp.md](hcp.md)). A client older than 1.10.0 ignores the key and pairs for launch monitor data, which a
-  handicap target refuses (`provider_unknown`), so nothing half-paired remains.
+  one, [hcp.md](hcp.md)), and since 1.15.0 `pro`: the handicap one for a professional's own pages
+  ([prores.md](prores.md)). A client older than 1.10.0 ignores the key and pairs for launch monitor data, which a
+  handicap target refuses (`provider_unknown`), so nothing half-paired remains; one of 1.10.0 to 1.14.0 refuses `pro`
+  (`invalid:kind`).
 - **sync** asks the companion app to fetch now (it still asks the target's plan first) and then to
   jump back to `return`. `target` picks the pairing when there are several.
 - **test** (since 1.8.0) hands a client the test code of a target's test account, for a target it is
   already paired with; `target` picks the pairing when there are several. It never pairs, and it has no
   `return` (a key `return` is ignored like any unknown one). What the code is for: [test-mode.md](test-mode.md).
-- **read** (since 1.11.0) opens a client's way of reading along for `kind` - today only `hcp`: the companion app's
+- **read** (since 1.11.0) opens a client's way of reading along for `kind` - `hcp`, and since 1.15.0 `pro` (the
+  window on the player's own world ranking and tour pages, [prores.md](prores.md)). For `hcp`: the companion app's
   window on the provider's page of the handicap record ([hcp.md](hcp.md), *A client that only observes*), where
   the player signs in and opens their record themselves. A target links it from a reminder that the record is due.
   It never pairs (without a handicap pairing the app says to pair first), sends nothing by itself and takes no
@@ -57,8 +60,8 @@ A link comes from outside and is read strictly; anything unexpected makes it inv
   (development); no user info, no query, no fragment;
 - `code` (pair, test): 6–64 of `0-9 A-Z a-z -`;
 - `provider`: a lower-case id (`^[a-z][a-z0-9_-]{1,39}$`);
-- `kind`: `lm` or `hcp`, nothing else (`HCP` or a kind of a later version is invalid: pairing with an API the
-  client doesn't speak would only be refused); in a read link required, and only `hcp`;
+- `kind`: `lm`, `hcp` or (1.15.0) `pro`, nothing else (`HCP` or a kind of a later version is invalid: pairing with an
+  API the client doesn't speak would only be refused); in a read link required, and only `hcp` or `pro`;
 - `return` (sync, and pair since 1.2.0): an absolute URL — `https://host/…`, `http://` to this machine, or an app's own scheme
   written `scheme://…`; never `javascript:`, `data:`, `file:`, `vbscript:`, `about:`, `blob:` or
   `glmsync:`. At most 2048 characters for every link.

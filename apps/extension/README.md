@@ -3,10 +3,11 @@
 # Golf Stats Sync — browser extension
 
 Syncs your launch monitor data from your own Trackman account into an app of your choice, in the
-background, while your browser is open — and reads your handicap record along on golf.de while you open it
-([below](#the-handicap-record-on-golfde)). Manifest V3; Chrome, Edge and Firefox.
+background, while your browser is open — reads your handicap record along on golf.de while you open it
+([below](#the-handicap-record-on-golfde)), and sends a pro's own world ranking page when you tap *Send* on it
+([below](#a-pros-world-ranking-page)). Manifest V3; Chrome, Edge and Firefox.
 
-> **Unofficial.** Not affiliated with, endorsed by or supported by Trackman, the DGV or golf.de. It reads
+> **Unofficial.** Not affiliated with, endorsed by or supported by Trackman, the DGV, golf.de, the OWGR or Rolex. It reads
 > your own Trackman account with your own sign-in, the way Trackman's web portal does, and on golf.de only
 > what golf.de's own page loaded in your tab.
 
@@ -106,6 +107,34 @@ What it does, and doesn't:
 - **Whose record**: the account *Mein Bereich* names (its stable number, sent only as `account_ref`); another account's
   record drops what was kept of the one before, and goes to no app that has another.
 - **Not read**: a scorecard's holes (golf.de shows them only as a picture).
+
+## A pro's world ranking page
+
+Since 0.13.0 ([spec/prores.md](../../spec/prores.md); the module is
+[`@glmsync/provider-rankings`](../../packages/provider-rankings/README.md)).
+
+1. In the app, choose to connect Golf Stats Sync for the world ranking. It opens the same pairing page, with
+   `kind=pro`; the connect page offers *Connect world ranking*, which is the yes.
+2. Open your own page on the **OWGR** (men) or the **Rolex Rankings** (women) - the connect page has a button to each
+   site's ranking, where you search for your name. A small line at the bottom of your page says *Golf Stats Sync: send
+   this page to …* with **Send**.
+3. *Send* reads the page as it shows it (OWGR's table comes a moment after the page; the extension waits for it): your
+   rank, average points, divisor, and your tournaments by week with tour, place and points. It goes to the app after
+   its plan (`manual`), one page a batch; the line says *Sent to …*.
+4. If the app knows you by another name than the page writes, it asks (`other_player`); the line says so with
+   **Answer**, which only brings the connect page to the front: *Is this page yours?* is answered there, in the
+   extension's own page, out of reach of the site's scripts. A yes sends the page again, and that page from then on,
+   marked confirmed.
+
+What it does, and doesn't:
+
+- **It sends the sites nothing.** `rankings-content.ts` runs only on a player's page (`owgr.com/playerprofile/*`,
+  `rolexrankings.com/players/*`) in the extension's own world, reads nothing until you tap *Send*, and then only the
+  document the site's own scripts built. No timer, nothing in the background; the app reminds you instead.
+- **Whose page**: the site's id of the player (from the address) goes only into the `account_ref`; the name the page
+  writes goes along for the app's check and is kept nowhere here.
+- **No rounds**: a world ranking has none; the app takes rounds from the tours.
+- The companion app doesn't read these pages yet (it refuses `kind=pro` links rather than take them for another kind).
 
 ## The bridge on the app's page
 

@@ -9,6 +9,8 @@
  * - **The web app's pairing page**: to pick up a pairing code from its fragment.
  * - **golf.de**: the player's *Mein Bereich* and a tournament's result list, to read along with what golf.de's own page
  *   loaded there (spec/hcp.md). Not golf.de's API: the extension sends golf.de nothing of its own.
+ * - **The world rankings** (OWGR, Rolex Rankings): only a player's own page, to read what it shows when the player taps
+ *   *Send* there (spec/prores.md). Nothing else of the sites, and no request to them.
  * - **A target**: asked for when the player connects one (`optional_host_permissions`), one address
  *   at a time - never every site up front.
  * - No `tabs`, no `webRequest`, no `<all_urls>`. `scripting` only to reach a pairing page that was
@@ -16,6 +18,7 @@
  */
 
 import { PAGE_MATCHES as GOLFDE_MATCHES } from '@glmsync/provider-golfde';
+import { PAGE_MATCHES as RANKING_MATCHES } from '@glmsync/provider-rankings';
 
 export type Browser = 'chrome' | 'firefox';
 
@@ -71,6 +74,8 @@ export function manifest(browser: Browser, version: string, testHosts: string[] 
       // golf.de: before the page's own scripts, so their first answers are seen; reads along, sends nothing.
       { matches: GOLFDE_MATCHES, js: ['golfde-main.js'], run_at: 'document_start', world: 'MAIN', all_frames: false },
       { matches: GOLFDE_MATCHES, js: ['golfde-relay.js'], run_at: 'document_start', all_frames: false },
+      // A player's own page of a world ranking: the line with *Send*; it reads the page only on that tap.
+      { matches: [...RANKING_MATCHES], js: ['rankings-content.js'], run_at: 'document_idle', all_frames: false },
     ],
     content_security_policy: { extension_pages: CSP },
   };
@@ -85,9 +90,9 @@ export function manifest(browser: Browser, version: string, testHosts: string[] 
         update_url: FIREFOX_UPDATE_URL,
         // Content scripts in the page's world (128), the data consent below (140, an ESR).
         strict_min_version: '140.0',
-        // What leaves the browser: launch monitor data the player fetches from their own account, and the
-        // handicap record golf.de's page showed them, to the app they connect. Nothing goes to the project or
-        // anyone else.
+        // What leaves the browser: launch monitor data the player fetches from their own account, the handicap
+        // record golf.de's page showed them, and their own world ranking page when they tap Send there - to the app
+        // they connect. Nothing goes to the project or anyone else.
         data_collection_permissions: { required: ['websiteContent'] },
       },
       // Firefox for Android knows the data consent from 142.

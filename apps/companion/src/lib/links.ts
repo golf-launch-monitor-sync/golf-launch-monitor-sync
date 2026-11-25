@@ -42,6 +42,9 @@ export function hostOf(target: string): string {
 export function readIncoming(url: unknown, providers: readonly string[], pairings: readonly KeyedPairing[]): Incoming {
   const link = parseLink(url);
   if (!link.ok) return { kind: 'invalid', error: link.error };
+  // A pro's world ranking pages (spec 1.15.0, kind=pro) aren't read in this app yet: refused rather than taken for
+  // another kind (a launch monitor pairing, golf.de's window).
+  if ((link.action === 'pair' || link.action === 'read') && link.kind === 'pro') return { kind: 'invalid', error: 'unsupported:kind' };
   if (link.action === 'read') return { kind: 'read' };
   if (link.action === 'pair' && link.kind === 'hcp') {
     const provider = link.provider ?? GOLFDE;

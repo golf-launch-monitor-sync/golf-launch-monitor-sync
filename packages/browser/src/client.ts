@@ -550,10 +550,10 @@ export class BrowserClient {
    * The pairing page's fragment, read strictly (spec/deep-links.md); null when it isn't one. `kind` (1.10.0): `hcp` for
    * a handicap target (the extension's `HcpClient` pairs it), left out for launch monitor data.
    */
-  static readFragment(fragment: string): { target: string; code: string; provider?: string; kind?: 'hcp' } | null {
+  static readFragment(fragment: string): { target: string; code: string; provider?: string; kind?: 'hcp' | 'pro' } | null {
     const r = parsePairFragment(fragment);
     if (!r.ok || r.action !== 'pair') return null;
-    return { target: r.target, code: r.code, ...(r.provider ? { provider: r.provider } : {}), ...(r.kind === 'hcp' ? { kind: 'hcp' as const } : {}) };
+    return { target: r.target, code: r.code, ...(r.provider ? { provider: r.provider } : {}), ...(r.kind === 'hcp' || r.kind === 'pro' ? { kind: r.kind } : {}) };
   }
 
   /** POST /pair with the code; pairing the same target again replaces the old pairing (and ends its token). */

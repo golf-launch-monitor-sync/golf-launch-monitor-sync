@@ -229,3 +229,4 @@ export class FakeTarget {
   };
 }
 export * from './hcp.ts';
+export * from './pro.ts';

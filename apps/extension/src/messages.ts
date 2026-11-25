@@ -7,7 +7,7 @@
  * on golf.de, everything else only from the extension's own pages.
  */
 
-import type { ClientStatus, HcpView, PairOutcome, TestOutcome } from '@glmsync/browser';
+import type { ClientStatus, HcpView, PairOutcome, ProView, TestOutcome } from '@glmsync/browser';
 import type { GuardLogExport } from '@glmsync/core';
 import type { Step } from '@glmsync/provider-golfde';
 import type { BridgeReply, BridgeRequest } from '@glmsync/spec';
@@ -32,6 +32,15 @@ export type FromGolfde =
   | { type: 'golfde-step' }
   /** *Stop* on the line. */
   | { type: 'golfde-stop' };
+/**
+ * From rankings-content.ts on a player's own page of a world ranking (spec/prores.md): the line, *Send* with the page
+ * as it showed it (read again strictly by the background), and *Answer*, which only brings the extension's own page to
+ * the front - the answer whether the page is the player's is given there, never on the site's page.
+ */
+export type FromRanking =
+  | { type: 'ranking-line'; site: 'owgr' | 'rolex' }
+  | { type: 'ranking-send'; page: object }
+  | { type: 'ranking-answer' };
 export type FromPage =
   | { type: 'status' }
   | { type: 'run'; id?: string }
@@ -60,9 +69,16 @@ export type FromPage =
   | { type: 'hcp-clear-ended' }
   /** The answer to "Is this your golf.de account?" (the connect window, the popup). */
   | { type: 'hcp-confirm'; yes: boolean }
-  | { type: 'open-golfde' };
+  | { type: 'open-golfde' }
+  | { type: 'pro-status' }
+  /** The answer to "Is this page yours?" (the connect window, the popup). */
+  | { type: 'pro-answer'; yes: boolean }
+  | { type: 'pro-unpair'; id: string }
+  | { type: 'pro-clear-ended' }
+  /** Where the player finds their page: the site's own ranking (it has a search). */
+  | { type: 'open-ranking'; site: 'owgr' | 'rolex' };
 
-export type Message = FromPortal | FromPairPage | FromTargetPage | FromGolfde | FromPage;
+export type Message = FromPortal | FromPairPage | FromTargetPage | FromGolfde | FromRanking | FromPage;
 
 /** A pairing offered by the web app's page, waiting for the player's yes in the connect window. */
 export interface Pending {
@@ -70,8 +86,9 @@ export interface Pending {
   host: string;
   code: string;
   provider?: string;
-  /** Which target API (1.10.0): `hcp` for the handicap record read along on golf.de; none: launch monitor data. */
-  kind?: 'lm' | 'hcp';
+  /** Which target API (1.10.0): `hcp` for the handicap record read along on golf.de, `pro` (1.15.0) for a pro's world
+   * ranking pages; none: launch monitor data. */
+  kind?: 'lm' | 'hcp' | 'pro';
   at: number;
   state: 'asking' | 'working' | 'paired' | 'failed' | 'cancelled';
   name?: string;
@@ -79,7 +96,7 @@ export interface Pending {
 }
 
 export type Reply =
-  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step }
+  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step; pro?: ProView }
   | { ok: false; error: string };
 
 /** What the pairing page's content script hands on to the page (no code, nothing secret). */

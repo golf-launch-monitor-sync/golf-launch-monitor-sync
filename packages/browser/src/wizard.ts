@@ -25,8 +25,8 @@ import { formatDate, type Lang, type T } from './i18n.ts';
 export type WizardStep = 'service' | 'signin' | 'account' | 'load' | 'done';
 export const WIZARD_STEPS: readonly WizardStep[] = ['service', 'signin', 'account', 'load', 'done'];
 
-/** The services a pairing of a kind can connect: today one each, later more launch monitors. */
-export type ServiceKind = 'lm' | 'hcp';
+/** The services a pairing of a kind can connect: today one each, later more launch monitors; `pro` (spec 1.15.0) a pro's pages. */
+export type ServiceKind = 'lm' | 'hcp' | 'pro';
 
 export interface WizardFacts {
   /** `lm`: a launch monitor's account (sessions, rounds, an older history); `hcp`: a handicap record (results). */
@@ -381,7 +381,7 @@ export function factsOfOffer(_state: OfferState, kind: ServiceKind): WizardFacts
 export function serviceChoices(kind: ServiceKind, services: readonly { id: string; name: string }[], t: T, own?: string): { id: string; label: string }[] {
   if (services.length === 1) {
     const one = services[0] as { id: string; name: string };
-    return [{ id: one.id, label: own ?? t(kind === 'hcp' ? 'wizard.connectHcp' : 'wizard.connectLm') }];
+    return [{ id: one.id, label: own ?? t(kind === 'hcp' ? 'wizard.connectHcp' : kind === 'pro' ? 'wizard.connectPro' : 'wizard.connectLm') }];
   }
   return services.map((x) => ({ id: x.id, label: x.name }));
 }

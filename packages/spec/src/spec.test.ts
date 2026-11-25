@@ -6,8 +6,10 @@ import { parse } from 'yaml';
 import schema from '../../../spec/olmd/olmd-1.schema.json' with { type: 'json' };
 import hcpSchema from '../../../spec/hcp/dgvhcp-1.schema.json' with { type: 'json' };
 import hcpRules from '../../../spec/hcp/rules.json' with { type: 'json' };
+import proSchema from '../../../spec/prores/prores-1.schema.json' with { type: 'json' };
+import proTours from '../../../spec/prores/tours.json' with { type: 'json' };
 import { makeAjv } from './check.ts';
-import { GUARD_LIMITS, PLAN_RULES, REASONS, SIGN_IN_STATES, validateBatch } from './index.ts';
+import { GUARD_LIMITS, isoWeek, placeOf, PLAN_RULES, PRORES_MAX, REASONS, SIGN_IN_STATES, TOUR_CODES, tourOf, validateBatch, weekOf } from './index.ts';
 import { SPEC_DIR, readVectors, specVersion } from './vectors.ts';
 
 describe('the vectors', () => {
@@ -153,7 +155,8 @@ describe('the handicap record (1.6.0)', () => {
     expect(Object.keys(hcp.paths).sort()).toEqual(['/import', '/pair', '/plan', '/status', '/token']);
     expect(hcp.security).toEqual([{ importToken: [] }]);
     expect(hcp.paths['/pair'].post.security).toEqual([]);
-    expect(hcp.paths['/import'].post.requestBody.content['application/json'].schema.$ref).toBe('../hcp/dgvhcp-1.schema.json');
+    expect(hcp.paths['/import'].post.requestBody.content['application/json'].schema.oneOf.map((x: { $ref: string }) => x.$ref))
+      .toEqual(['../hcp/dgvhcp-1.schema.json', '../prores/prores-1.schema.json']);
     expect(hcp.components.schemas.Reason.enum).toEqual(hcpSchema.properties.sync.properties.reason.enum);
     expect(hcp.components.schemas.Limits.properties.max_results.maximum).toBe(hcpSchema.properties.results.maxItems);
     expect(hcpRules.max_results).toBe(hcpSchema.properties.results.maxItems);
@@ -175,9 +178,48 @@ describe('the handicap record (1.6.0)', () => {
     }
   });
 
-  it('keeps the error codes of the launch monitor API', () => {
+  it('keeps the error codes of the launch monitor API, and one of its own for a pro’s page (1.15.0)', () => {
     const lm = parse(readFileSync(`${SPEC_DIR}api/target-api.yaml`, 'utf8'));
     expect(hcp.components.schemas.Error.properties.error.properties.code.enum)
-      .toEqual(lm.components.schemas.Error.properties.error.properties.code.enum);
+      .toEqual([...lm.components.schemas.Error.properties.error.properties.code.enum, 'other_player']);
+  });
+});
+
+describe('a professional’s pages (1.15.0)', () => {
+  type Example = { name: string; valid: boolean; batch: unknown };
+  type Rule = { rule: string; input: unknown; expected: unknown };
+  const vectors = readVectors<Example>('prores-examples.json') as unknown as { cases: Example[]; rules: Rule[]; tour_codes: unknown };
+  const checkPro = makeAjv().compile(proSchema);
+
+  it.each(vectors.cases.map((c) => [c.name, c] as const))('%s', (_, c) => {
+    expect([c.name, checkPro(c.batch)]).toEqual([c.name, c.valid]);
+  });
+
+  it.each(vectors.rules.map((r, i) => [`${r.rule} #${i}`, r] as const))('%s', (_, r) => {
+    const i = r.input as { site: unknown; code: unknown };
+    const got = r.rule === 'place_of' ? placeOf(r.input) : r.rule === 'tour_of' ? tourOf(i.site, i.code) : isoWeek(r.input);
+    expect([r.input, got]).toEqual([r.input, r.expected]);
+  });
+
+  it('reads the tours of the spec, and wrote the vectors with them', () => {
+    const { $comment: _, ...codes } = proTours;
+    expect(TOUR_CODES).toEqual(codes);
+    expect(vectors.tour_codes).toEqual(codes);
+  });
+
+  it('caps a batch as the schema does', () => {
+    expect(proSchema.properties.tournaments.maxItems).toBe(PRORES_MAX.tournaments);
+    expect(proSchema.properties.rankings.maxItems).toBe(PRORES_MAX.rankings);
+    expect(proSchema.properties.stats.maxItems).toBe(PRORES_MAX.stats);
+  });
+
+  it('knows the ISO week of a day', () => {
+    expect(weekOf('2026-11-22')).toBe('2026-W47');
+    expect(weekOf('2026-11-23')).toBe('2026-W48');
+    expect(weekOf('2027-01-01')).toBe('2026-W53');
+    expect(weekOf('2021-01-03')).toBe('2020-W53');
+    expect(weekOf('2024-12-30')).toBe('2025-W01');
+    expect(weekOf('2026-02-30')).toBeNull();
+    expect(weekOf('22.11.2026')).toBeNull();
   });
 });

@@ -5,17 +5,19 @@
  * where it came from (`sender.url`, which the browser sets): the Trackman key only from the portal,
  * a pairing code only from the web app's pairing page, a bridge request only from a page's top frame
  * (the background then checks its origin is a paired target's: bridge.ts), what golf.de's page showed only
- * from the top frame of a page on golf.de, and the rest only from the extension's own pages. Pure, so it is
+ * from the top frame of a page on golf.de, a world ranking's page only from the top frame of a player's page there, and
+ * the rest only from the extension's own pages. Pure, so it is
  * tested without a browser.
  */
 
 import { PORTAL_ORIGIN } from '@glmsync/provider-trackman/portal';
 import { PAIR_PATH, WEB_APP_ORIGIN } from '@glmsync/browser';
 import { PAGE_ORIGIN as GOLFDE_ORIGIN } from '@glmsync/provider-golfde';
+import { playerPageOf } from '@glmsync/provider-rankings';
 import { readBridgeRequest } from '@glmsync/spec';
 import type { Message } from './messages.ts';
 
-export type Source = 'portal' | 'pair-page' | 'golfde' | 'target-page' | 'extension' | 'other';
+export type Source = 'portal' | 'pair-page' | 'golfde' | 'ranking' | 'target-page' | 'extension' | 'other';
 
 export interface SenderLike {
   id?: string | undefined;
@@ -42,6 +44,8 @@ export function sourceOf(sender: SenderLike, extensionId: string, extensionOrigi
   if (`${u.protocol}//${u.host}` === extensionOrigin.replace(/\/$/, '')) return 'extension';
   // golf.de's page (the relay content script): only its top frame, where the extension's scripts run.
   if (u.origin === GOLFDE_ORIGIN && sender.tab && sender.frameId === 0) return 'golfde';
+  // A player's own page of a world ranking (rankings-content.ts): only its top frame, only such a page.
+  if (playerPageOf(u.href) && sender.tab && sender.frameId === 0) return 'ranking';
   // The bridge's content script, on some site's page: only its top frame, never the project's own site.
   if ((u.protocol === 'https:' || u.protocol === 'http:') && sender.tab && sender.frameId === 0 && u.origin !== WEB_APP_ORIGIN) return 'target-page';
   return 'other';
@@ -83,6 +87,14 @@ const FROM: Record<Message['type'], Source> = {
   'hcp-clear-ended': 'extension',
   'hcp-confirm': 'extension',
   'open-golfde': 'extension',
+  'ranking-line': 'ranking',
+  'ranking-send': 'ranking',
+  'ranking-answer': 'ranking',
+  'pro-status': 'extension',
+  'pro-answer': 'extension',
+  'pro-unpair': 'extension',
+  'pro-clear-ended': 'extension',
+  'open-ranking': 'extension',
 };
 
 /** A message of a known kind, with fields of the right type, from where that kind may come; else null. */
@@ -121,6 +133,17 @@ export function accept(raw: unknown, source: Source): Message | null {
       // A service is a lower-case id (spec/deep-links.md, `provider`).
       if (m.provider === undefined) return { type };
       return typeof m.provider === 'string' && /^[a-z][a-z0-9_-]{1,39}$/.test(m.provider) ? { type, provider: m.provider } : null;
+    case 'ranking-line':
+      return m.site === 'owgr' || m.site === 'rolex' ? { type, site: m.site } : null;
+    case 'ranking-send':
+      // The page itself is read again strictly by the background (checkPage); here only its frame.
+      return m.page && typeof m.page === 'object' && !Array.isArray(m.page) ? { type, page: m.page } : null;
+    case 'pro-answer':
+      return typeof m.yes === 'boolean' ? { type, yes: m.yes } : null;
+    case 'pro-unpair':
+      return typeof m.id === 'string' && m.id.length <= 64 ? { type, id: m.id } : null;
+    case 'open-ranking':
+      return m.site === 'owgr' || m.site === 'rolex' ? { type, site: m.site } : null;
     case 'golfde-seen':
       // The seen itself is read again strictly by the background (readSeen); here only its frame.
       return typeof m.page === 'string' && /^[0-9a-f]{8,64}$/.test(m.page) && m.seen && typeof m.seen === 'object' ? { type, page: m.page, seen: m.seen } : null;

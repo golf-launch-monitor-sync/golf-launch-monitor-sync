@@ -1,0 +1,18 @@
+{
+  "name": "@glmsync/provider-rankings",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Reads the player's own page of the world rankings (OWGR, Rolex Women's World Golf Rankings) as the page shows it, on the player's tap, and turns it into prores/1. Sends the sites nothing of its own.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@glmsync/spec": "workspace:*"
+  }
+}

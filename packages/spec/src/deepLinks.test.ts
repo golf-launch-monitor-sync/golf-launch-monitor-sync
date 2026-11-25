@@ -29,6 +29,7 @@ describe('a test link (1.8.0)', () => {
   it('reads back as what went in, with and without the target', () => {
     expect(parseLink(testLink('T7K2-M9QX'))).toEqual({ ok: true, action: 'test', code: 'T7K2-M9QX' });
     expect(parseLink(readLink())).toEqual({ ok: true, action: 'read', kind: 'hcp' });
+    expect(parseLink(readLink('pro'))).toEqual({ ok: true, action: 'read', kind: 'pro' });
     expect(parseLink(testLink('T7K2-M9QX', 'https://app.example.org/lm/v1'))).toEqual({ ok: true, action: 'test', target: 'https://app.example.org/lm/v1', code: 'T7K2-M9QX' });
   });
 

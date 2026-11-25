@@ -1,0 +1,21 @@
+{
+  "$comment": "What a world ranking's own page writes in the tour column of a player's tournaments, and the tour of prores/1 it is (spec/prores.md). A code not listed is no tour: the tournament then names none (OWGR's 'Maj', a major, is on the tours' own pages). Seen on owgr.com and rolexrankings.com; add a code when a page shows it. SPDX-License-Identifier: MIT. Copyright (c) 2026 Reginald Stadlbauer.",
+  "owgr": {
+    "DPWT": "dp_world",
+    "PGAT": "pga_tour",
+    "KFT": "korn_ferry",
+    "CHA": "hotelplanner",
+    "HPT": "hotelplanner",
+    "ALPS": "alps",
+    "PGT": "pro_golf_tour",
+    "PGTG": "pro_golf_tour"
+  },
+  "rolex": {
+    "LPGA": "lpga",
+    "LET": "let",
+    "LETAS": "let_access",
+    "LETA": "let_access",
+    "EPSON": "epson",
+    "EPS": "epson"
+  }
+}

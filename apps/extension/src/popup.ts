@@ -7,15 +7,19 @@
  * *Connect new* opens the connect window at its first step.
  */
 
-import { connectionOfHcp, connectionsOfStatus, sortConnections, type ClientStatus, type HcpView } from '@glmsync/browser';
+import { connectionOfHcp, connectionOfPro, connectionsOfStatus, sortConnections, type ClientStatus, type HcpView, type ProView } from '@glmsync/browser';
 import { backLink, endedNotes, fill, h, renderConnections } from '@glmsync/browser/render';
-import { hcpPanel, heading, lang, send, statusPanel, t } from './page.ts';
+import { hcpPanel, heading, lang, proPanel, send, statusPanel, t } from './page.ts';
 
 heading('app.name');
 
-type View = 'list' | 'lm' | 'hcp';
+type View = 'list' | 'lm' | 'hcp' | 'pro';
 const listRoot = document.getElementById('list') as HTMLElement;
-const boxes: Record<Exclude<View, 'list'>, HTMLElement> = { lm: document.getElementById('lm') as HTMLElement, hcp: document.getElementById('hcp-box') as HTMLElement };
+const boxes: Record<Exclude<View, 'list'>, HTMLElement> = {
+  lm: document.getElementById('lm') as HTMLElement,
+  hcp: document.getElementById('hcp-box') as HTMLElement,
+  pro: document.getElementById('pro-box') as HTMLElement,
+};
 const notes = h('div', {});
 const rows = h('div', {});
 listRoot.append(notes, rows);
@@ -23,6 +27,8 @@ listRoot.append(notes, rows);
 let view: View = 'list';
 let status: ClientStatus | null = null;
 let hcpView: HcpView | null = null;
+let proView: ProView | null = null;
+let proFirst = true;
 let first = true;
 /** *Connect new* couldn't open its window (said until the next try). */
 let openFailed = false;
@@ -39,13 +45,15 @@ for (const el of Object.values(boxes)) fill(el.querySelector('.back-link') as HT
 function drawList(): void {
   if (view !== 'list') return;
   const hcpRow = hcpView ? connectionOfHcp(hcpView) : null;
-  const list = sortConnections([...(status ? connectionsOfStatus(status) : []), ...(hcpRow ? [hcpRow] : [])]);
+  const proRow = proView ? connectionOfPro(proView, t('pro.service')) : null;
+  const list = sortConnections([...(status ? connectionsOfStatus(status) : []), ...(hcpRow ? [hcpRow] : []), ...(proRow ? [proRow] : [])]);
   // An app that ended its connection leaves the list: the line says so here too.
   fill(
     notes,
     openFailed ? h('p', { class: 'note warn', role: 'alert', 'data-test': 'open-failed' }, t('last.failed', { error: t('error.error') })) : null,
     ...(status ? endedNotes(status.ended, t, lang, () => void send({ type: 'clear-ended' }).then(() => lm.refresh())) : []),
     ...(hcpView ? endedNotes(hcpView.ended, t, lang, () => void send({ type: 'hcp-clear-ended' }).then(() => hcp.refresh())) : []),
+    ...(proView ? endedNotes(proView.ended, t, lang, () => void send({ type: 'pro-clear-ended' }).then(() => pro.refresh())) : []),
   );
   renderConnections(rows, list, { t }, {
     add: () =>
@@ -54,7 +62,7 @@ function drawList(): void {
         if (r.ok) window.close();
         else drawList();
       }),
-    open: (id) => show(id === 'hcp' ? 'hcp' : 'lm'),
+    open: (id) => show(id === 'hcp' ? 'hcp' : id === 'pro' ? 'pro' : 'lm'),
   });
 }
 
@@ -78,3 +86,14 @@ const hcp = hcpPanel(document.getElementById('hcp') as HTMLElement, {
   },
 });
 show('list');
+const pro = proPanel(document.getElementById('pro') as HTMLElement, {
+  onOpen: () => window.close(),
+  back: () => window.close(),
+  onView: (v) => {
+    proView = v;
+    // An app asks whether a page is the player's: the popup opens on the question (once, as it opens).
+    if (proFirst && v.question) show('pro');
+    proFirst = false;
+    drawList();
+  },
+});

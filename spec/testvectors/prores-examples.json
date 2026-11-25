@@ -1,0 +1,2374 @@
+{
+  "$comment": "prores/1 batches that must (valid: true) or must not validate against spec/prores/prores-1.schema.json, and what a target keeps of each (expect: rows = rounds with a score, rankings, events = tournaments, stats = snapshots, values = statistics of the first; refused: invalid or too_large). rules: place_of (a page's finish -> {place, tied} or {result}, else null), tour_of (a world ranking's tour column -> a tour key or null), iso_week. names: whether a page's name is the player's (every part of the shorter among the other's, at least two).",
+  "spec_version": "1.15.0",
+  "generated_by": "spec/reference/generate.py",
+  "rules": [
+    {
+      "rule": "place_of",
+      "input": "T17",
+      "expected": {
+        "place": 17,
+        "tied": true
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": "17T",
+      "expected": {
+        "place": 17,
+        "tied": true
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": "36T",
+      "expected": {
+        "place": 36,
+        "tied": true
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": "1",
+      "expected": {
+        "place": 1
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": " 2 ",
+      "expected": {
+        "place": 2
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": "t3",
+      "expected": {
+        "place": 3,
+        "tied": true
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": "MC",
+      "expected": {
+        "result": "MC"
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": "CUT",
+      "expected": {
+        "result": "MC"
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": "cut",
+      "expected": {
+        "result": "MC"
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": "WD",
+      "expected": {
+        "result": "WD"
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": "RTD",
+      "expected": {
+        "result": "WD"
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": "DQ",
+      "expected": {
+        "result": "DQ"
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": "DSQ",
+      "expected": {
+        "result": "DQ"
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": "DNS",
+      "expected": {
+        "result": "DNS"
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": "BP",
+      "expected": null
+    },
+    {
+      "rule": "place_of",
+      "input": "-",
+      "expected": null
+    },
+    {
+      "rule": "place_of",
+      "input": "—",
+      "expected": null
+    },
+    {
+      "rule": "place_of",
+      "input": "",
+      "expected": null
+    },
+    {
+      "rule": "place_of",
+      "input": "0",
+      "expected": null
+    },
+    {
+      "rule": "place_of",
+      "input": "T0",
+      "expected": null
+    },
+    {
+      "rule": "place_of",
+      "input": "1000",
+      "expected": null
+    },
+    {
+      "rule": "place_of",
+      "input": "T1000",
+      "expected": null
+    },
+    {
+      "rule": "place_of",
+      "input": "999",
+      "expected": {
+        "place": 999
+      }
+    },
+    {
+      "rule": "place_of",
+      "input": "12.5",
+      "expected": null
+    },
+    {
+      "rule": "place_of",
+      "input": "T-5",
+      "expected": null
+    },
+    {
+      "rule": "place_of",
+      "input": "3T T",
+      "expected": null
+    },
+    {
+      "rule": "place_of",
+      "input": "E",
+      "expected": null
+    },
+    {
+      "rule": "place_of",
+      "input": null,
+      "expected": null
+    },
+    {
+      "rule": "place_of",
+      "input": 17,
+      "expected": null
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": "owgr",
+        "code": "DPWT"
+      },
+      "expected": "dp_world"
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": "owgr",
+        "code": "PGAT"
+      },
+      "expected": "pga_tour"
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": "owgr",
+        "code": "KFT"
+      },
+      "expected": "korn_ferry"
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": "owgr",
+        "code": "Maj"
+      },
+      "expected": null
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": "owgr",
+        "code": "dpwt"
+      },
+      "expected": "dp_world"
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": "owgr",
+        "code": " PGAT "
+      },
+      "expected": "pga_tour"
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": "owgr",
+        "code": "LPGA"
+      },
+      "expected": null
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": "rolex",
+        "code": "LPGA"
+      },
+      "expected": "lpga"
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": "rolex",
+        "code": "LET"
+      },
+      "expected": "let"
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": "rolex",
+        "code": "LETAS"
+      },
+      "expected": "let_access"
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": "rolex",
+        "code": "IGF"
+      },
+      "expected": null
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": "rolex",
+        "code": "JLPGA"
+      },
+      "expected": null
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": "tour:let",
+        "code": "LET"
+      },
+      "expected": null
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": "owgr",
+        "code": null
+      },
+      "expected": null
+    },
+    {
+      "rule": "tour_of",
+      "input": {
+        "site": null,
+        "code": "DPWT"
+      },
+      "expected": null
+    },
+    {
+      "rule": "iso_week",
+      "input": "2026-W47",
+      "expected": true
+    },
+    {
+      "rule": "iso_week",
+      "input": "2026-W01",
+      "expected": true
+    },
+    {
+      "rule": "iso_week",
+      "input": "2026-W53",
+      "expected": true
+    },
+    {
+      "rule": "iso_week",
+      "input": "2020-W53",
+      "expected": true
+    },
+    {
+      "rule": "iso_week",
+      "input": "2026-W00",
+      "expected": false
+    },
+    {
+      "rule": "iso_week",
+      "input": "2026-W54",
+      "expected": false
+    },
+    {
+      "rule": "iso_week",
+      "input": "2026-w47",
+      "expected": false
+    },
+    {
+      "rule": "iso_week",
+      "input": "2026-47",
+      "expected": false
+    },
+    {
+      "rule": "iso_week",
+      "input": "26-W47",
+      "expected": false
+    },
+    {
+      "rule": "iso_week",
+      "input": "2026-W7",
+      "expected": false
+    },
+    {
+      "rule": "iso_week",
+      "input": null,
+      "expected": false
+    }
+  ],
+  "names": [
+    {
+      "page": "Lena Musterfrau",
+      "player": "Lena Musterfrau",
+      "same": true,
+      "why": "the same"
+    },
+    {
+      "page": "MUSTERFRAU, Lena",
+      "player": "Lena Musterfrau",
+      "same": true,
+      "why": "surname first, upper case"
+    },
+    {
+      "page": "Lena Musterfrau",
+      "player": "Lena Marie Musterfrau",
+      "same": true,
+      "why": "a middle name only here"
+    },
+    {
+      "page": "MÜLLER Anna-Lena",
+      "player": "Anna Lena Mueller",
+      "same": true,
+      "why": "umlaut and hyphen"
+    },
+    {
+      "page": "Inés García",
+      "player": "Ines Garcia",
+      "same": true,
+      "why": "accents"
+    },
+    {
+      "page": "Lena Beispiel",
+      "player": "Lena Musterfrau",
+      "same": false,
+      "why": "another surname"
+    },
+    {
+      "page": "Musterfrau",
+      "player": "Lena Musterfrau",
+      "same": false,
+      "why": "one part is not enough"
+    },
+    {
+      "page": "Max Musterfrau",
+      "player": "Lena Musterfrau",
+      "same": false,
+      "why": "another first name"
+    },
+    {
+      "page": "Lena Musterfrau",
+      "player": "",
+      "same": false,
+      "why": "no name in the Caddie"
+    }
+  ],
+  "tour_codes": {
+    "owgr": {
+      "DPWT": "dp_world",
+      "PGAT": "pga_tour",
+      "KFT": "korn_ferry",
+      "CHA": "hotelplanner",
+      "HPT": "hotelplanner",
+      "ALPS": "alps",
+      "PGT": "pro_golf_tour",
+      "PGTG": "pro_golf_tour"
+    },
+    "rolex": {
+      "LPGA": "lpga",
+      "LET": "let",
+      "LETAS": "let_access",
+      "LETA": "let_access",
+      "EPSON": "epson",
+      "EPS": "epson"
+    }
+  },
+  "cases": [
+    {
+      "name": "minimal",
+      "why": "A ranking alone.",
+      "valid": true,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "tour:let",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00Z",
+        "player": {
+          "name": "Lena Musterfrau"
+        },
+        "rankings": [
+          {
+            "source": "tour:let",
+            "rank": 87,
+            "as_of": "2026-11-23"
+          }
+        ]
+      },
+      "expect": {
+        "rows": 0,
+        "rankings": 1,
+        "events": 0,
+        "stats": 0
+      }
+    },
+    {
+      "name": "a_tour_page",
+      "why": "A tour's player page: the season ranking, two tournaments with their rounds (one missed cut, days named), the season statistics.",
+      "valid": true,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "tour:let",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00Z",
+        "player": {
+          "name": "Lena Musterfrau"
+        },
+        "generator": {
+          "name": "Golf Stats Sync",
+          "version": "0.6.0"
+        },
+        "sync": {
+          "plan_id": "p-1",
+          "reason": "manual"
+        },
+        "rankings": [
+          {
+            "source": "tour:let",
+            "rank": 87,
+            "points": 212.5,
+            "events": 14,
+            "as_of": "2026-11-23"
+          }
+        ],
+        "tournaments": [
+          {
+            "ref": "LET-2026-21",
+            "tour": "let",
+            "name": "Andalucía Costa del Sol Open",
+            "venue": "Real Club de Golf Guadalmina",
+            "country": "Spain",
+            "start": "2026-10-29",
+            "end": "2026-11-01",
+            "place": 18,
+            "tied": true,
+            "field": 120,
+            "points": 21.4,
+            "rounds": [
+              {
+                "round_no": 1,
+                "gross": 71,
+                "par": 72
+              },
+              {
+                "round_no": 2,
+                "gross": 70,
+                "par": 72
+              },
+              {
+                "round_no": 3,
+                "gross": 73,
+                "par": 72
+              },
+              {
+                "round_no": 4,
+                "gross": 72,
+                "par": 72
+              }
+            ]
+          },
+          {
+            "ref": "LET-2026-19",
+            "tour": "let",
+            "name": "Lacoste Ladies Open",
+            "venue": "Golf du Médoc",
+            "country": "France",
+            "start": "2026-10-08",
+            "end": "2026-10-10",
+            "result": "MC",
+            "field": 132,
+            "rounds": [
+              {
+                "round_no": 1,
+                "played_on": "2026-10-08",
+                "gross": 76
+              },
+              {
+                "round_no": 2,
+                "played_on": "2026-10-09",
+                "gross": 74
+              }
+            ]
+          }
+        ],
+        "stats": [
+          {
+            "tour": "let",
+            "season": 2026,
+            "as_of": "2026-11-23",
+            "values": {
+              "scoring_average": 71.85,
+              "driving_distance_m": 236.4,
+              "driving_accuracy_pct": 71.2,
+              "gir_pct": 70.4,
+              "putts_per_round": 29.6,
+              "putts_per_gir": 1.79,
+              "scrambling_pct": 58.1,
+              "sand_saves_pct": 47.0,
+              "events": 14,
+              "cuts_made": 9,
+              "top10": 2,
+              "rounds": 46,
+              "birdies_per_round": 3.4
+            }
+          }
+        ]
+      },
+      "expect": {
+        "rows": 6,
+        "rankings": 1,
+        "events": 2,
+        "stats": 1,
+        "values": 13
+      }
+    },
+    {
+      "name": "a_world_ranking_page",
+      "why": "The world ranking's page: the rank and a tournament with its points, no rounds.",
+      "valid": true,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "owgr",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00Z",
+        "player": {
+          "name": "MUSTERMANN, Max"
+        },
+        "rankings": [
+          {
+            "source": "owgr",
+            "rank": 612,
+            "points": 0.71,
+            "events": 44,
+            "as_of": "2026-11-22"
+          }
+        ],
+        "tournaments": [
+          {
+            "ref": "owgr-98765",
+            "tour": "dp_world",
+            "name": "Open de España",
+            "place": 31,
+            "tied": true,
+            "points": 2.9,
+            "week": "2026-W43"
+          }
+        ]
+      },
+      "expect": {
+        "rows": 0,
+        "rankings": 1,
+        "events": 1,
+        "stats": 0
+      }
+    },
+    {
+      "name": "confirmed_other_name",
+      "why": "The page writes her maiden name; she confirmed in the tool that it is hers.",
+      "valid": true,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "tour:let",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00Z",
+        "player": {
+          "name": "Lena Beispiel",
+          "confirmed": true
+        },
+        "rankings": [
+          {
+            "source": "tour:let",
+            "points": 40,
+            "as_of": "2026-11-23"
+          }
+        ]
+      },
+      "expect": {
+        "rows": 0,
+        "rankings": 1,
+        "events": 0,
+        "stats": 0
+      }
+    },
+    {
+      "name": "round_without_score",
+      "why": "A round the page lists without a score (withdrawn): no row.",
+      "valid": true,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "tour:let",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00Z",
+        "player": {
+          "name": "Lena Musterfrau"
+        },
+        "tournaments": [
+          {
+            "ref": "T1",
+            "start": "2026-09-01",
+            "result": "WD",
+            "rounds": [
+              {
+                "round_no": 1,
+                "gross": 80
+              },
+              {
+                "round_no": 2
+              }
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "rows": 1,
+        "rankings": 0,
+        "events": 1,
+        "stats": 0
+      }
+    },
+    {
+      "name": "wrong_format",
+      "why": "Another format.",
+      "valid": false,
+      "batch": {
+        "format": "dgvhcp/1",
+        "provider": "pro",
+        "site": "tour:let",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00Z",
+        "player": {
+          "name": "Lena Musterfrau"
+        }
+      },
+      "expect": {
+        "refused": "invalid"
+      }
+    },
+    {
+      "name": "no_site",
+      "why": "Which page is unknown.",
+      "valid": false,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00Z",
+        "player": {
+          "name": "Lena Musterfrau"
+        }
+      },
+      "expect": {
+        "refused": "invalid"
+      }
+    },
+    {
+      "name": "site_unknown",
+      "why": "A page the format doesn't know.",
+      "valid": false,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "tour:asian",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00Z",
+        "player": {
+          "name": "Lena Musterfrau"
+        }
+      },
+      "expect": {
+        "refused": "invalid"
+      }
+    },
+    {
+      "name": "no_player",
+      "why": "Whose page it is is unknown.",
+      "valid": false,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "tour:let",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00Z"
+      },
+      "expect": {
+        "refused": "invalid"
+      }
+    },
+    {
+      "name": "no_account_ref",
+      "why": "Which page, unknown.",
+      "valid": false,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "tour:let",
+        "account_ref": "x",
+        "generated_at": "2026-11-24T12:00:00Z",
+        "player": {
+          "name": "Lena Musterfrau"
+        }
+      },
+      "expect": {
+        "refused": "invalid"
+      }
+    },
+    {
+      "name": "local_time",
+      "why": "A time without its zone.",
+      "valid": false,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "tour:let",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00",
+        "player": {
+          "name": "Lena Musterfrau"
+        }
+      },
+      "expect": {
+        "refused": "invalid"
+      }
+    },
+    {
+      "name": "too_many",
+      "why": "More tournaments than a batch carries: the client splits.",
+      "valid": false,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "tour:let",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00Z",
+        "player": {
+          "name": "Lena Musterfrau"
+        },
+        "tournaments": [
+          {
+            "ref": "T0",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T1",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T2",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T3",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T4",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T5",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T6",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T7",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T8",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T9",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T10",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T11",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T12",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T13",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T14",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T15",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T16",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T17",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T18",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T19",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T20",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T21",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T22",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T23",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T24",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T25",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T26",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T27",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T28",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T29",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T30",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T31",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T32",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T33",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T34",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T35",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T36",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T37",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T38",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T39",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T40",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T41",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T42",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T43",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T44",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T45",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T46",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T47",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T48",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T49",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T50",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T51",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T52",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T53",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T54",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T55",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T56",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T57",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T58",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T59",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T60",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T61",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T62",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T63",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T64",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T65",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T66",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T67",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T68",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T69",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T70",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T71",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T72",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T73",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T74",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T75",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T76",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T77",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T78",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T79",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T80",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T81",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T82",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T83",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T84",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T85",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T86",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T87",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T88",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T89",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T90",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T91",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T92",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T93",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T94",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T95",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T96",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T97",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T98",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T99",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T100",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T101",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T102",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T103",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T104",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T105",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T106",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T107",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T108",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T109",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T110",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T111",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T112",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T113",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T114",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T115",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T116",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T117",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T118",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T119",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T120",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T121",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T122",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T123",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T124",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T125",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T126",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T127",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T128",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T129",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T130",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T131",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T132",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T133",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T134",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T135",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T136",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T137",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T138",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T139",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T140",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T141",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T142",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T143",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T144",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T145",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T146",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T147",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T148",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T149",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T150",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T151",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T152",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T153",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T154",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T155",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T156",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T157",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T158",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T159",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T160",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T161",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T162",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T163",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T164",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T165",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T166",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T167",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T168",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T169",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T170",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T171",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T172",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T173",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T174",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T175",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T176",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T177",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T178",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T179",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T180",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T181",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T182",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T183",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T184",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T185",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T186",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T187",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T188",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T189",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T190",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T191",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T192",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T193",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T194",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T195",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T196",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T197",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T198",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T199",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T200",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T201",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T202",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T203",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T204",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T205",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T206",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T207",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T208",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T209",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T210",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T211",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T212",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T213",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T214",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T215",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T216",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T217",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T218",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T219",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T220",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T221",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T222",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T223",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T224",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T225",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T226",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T227",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T228",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T229",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T230",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T231",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T232",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T233",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T234",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T235",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T236",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T237",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T238",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T239",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T240",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T241",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T242",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T243",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T244",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T245",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T246",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T247",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T248",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T249",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T250",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T251",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T252",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T253",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T254",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T255",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T256",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T257",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T258",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T259",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T260",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T261",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T262",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T263",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T264",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T265",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T266",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T267",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T268",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T269",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T270",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T271",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T272",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T273",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T274",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T275",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T276",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T277",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T278",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T279",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T280",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T281",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T282",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T283",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T284",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T285",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T286",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T287",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T288",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T289",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T290",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T291",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T292",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T293",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T294",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T295",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T296",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T297",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T298",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T299",
+            "start": "2026-01-01"
+          },
+          {
+            "ref": "T300",
+            "start": "2026-01-01"
+          }
+        ]
+      },
+      "expect": {
+        "refused": "too_large"
+      }
+    },
+    {
+      "name": "ranking_without_value",
+      "why": "A ranking with neither rank nor points: left out.",
+      "valid": false,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "tour:let",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00Z",
+        "player": {
+          "name": "Lena Musterfrau"
+        },
+        "rankings": [
+          {
+            "source": "owgr",
+            "as_of": "2026-11-22"
+          },
+          {
+            "source": "rolex",
+            "rank": 300,
+            "as_of": "2026-11-22"
+          }
+        ]
+      },
+      "expect": {
+        "rows": 0,
+        "rankings": 1,
+        "events": 0,
+        "stats": 0
+      }
+    },
+    {
+      "name": "tournament_without_start",
+      "why": "A tournament with neither its start nor its week: left out with its rounds.",
+      "valid": false,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "tour:let",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00Z",
+        "player": {
+          "name": "Lena Musterfrau"
+        },
+        "tournaments": [
+          {
+            "ref": "T1",
+            "rounds": [
+              {
+                "round_no": 1,
+                "gross": 70
+              }
+            ]
+          },
+          {
+            "ref": "T2",
+            "start": "2026-09-01",
+            "rounds": [
+              {
+                "round_no": 1,
+                "gross": 72
+              }
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "rows": 1,
+        "rankings": 0,
+        "events": 1,
+        "stats": 0
+      }
+    },
+    {
+      "name": "statistic_as_text",
+      "why": "A statistic that is no number: that value left out.",
+      "valid": false,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "tour:let",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00Z",
+        "player": {
+          "name": "Lena Musterfrau"
+        },
+        "stats": [
+          {
+            "season": 2026,
+            "as_of": "2026-11-23",
+            "values": {
+              "gir_pct": "70%",
+              "putts_per_round": 29.6
+            }
+          }
+        ]
+      },
+      "expect": {
+        "rows": 0,
+        "rankings": 0,
+        "events": 0,
+        "stats": 1,
+        "values": 1
+      }
+    },
+    {
+      "name": "other_players",
+      "why": "Fields the format doesn't have (another player's line) are dropped.",
+      "valid": false,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "tour:let",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-24T12:00:00Z",
+        "player": {
+          "name": "Lena Musterfrau"
+        },
+        "tournaments": [
+          {
+            "ref": "T1",
+            "start": "2026-09-01",
+            "leaders": [
+              {
+                "name": "Someone Else",
+                "gross": 65
+              }
+            ],
+            "rounds": [
+              {
+                "round_no": 1,
+                "gross": 72
+              }
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "rows": 1,
+        "rankings": 0,
+        "events": 1,
+        "stats": 0
+      }
+    },
+    {
+      "name": "owgr_page",
+      "why": "The OWGR's page of the player: his rank, average points and divisor, his tournaments by week with place and points won, no rounds (a world ranking has none; a major names no tour).",
+      "valid": true,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "owgr",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-25T18:00:00Z",
+        "generator": {
+          "name": "Golf Stats Sync",
+          "version": "0.13.0"
+        },
+        "sync": {
+          "plan_id": "p-7",
+          "reason": "manual"
+        },
+        "player": {
+          "name": "Max Mustermann"
+        },
+        "rankings": [
+          {
+            "source": "owgr",
+            "rank": 412,
+            "points": 0.9871,
+            "events": 40,
+            "as_of": "2026-11-25"
+          }
+        ],
+        "tournaments": [
+          {
+            "ref": "owgr-90012",
+            "tour": "dp_world",
+            "name": "Musterstadt Open",
+            "week": "2026-W40",
+            "place": 17,
+            "tied": true,
+            "points": 2.16597
+          },
+          {
+            "ref": "owgr-90007",
+            "tour": "hotelplanner",
+            "name": "Beispiel Challenge",
+            "week": "2026-W39",
+            "place": 1,
+            "points": 12.5
+          },
+          {
+            "ref": "owgr-89950",
+            "name": "A Major Somewhere",
+            "week": "2026-W29",
+            "result": "MC"
+          }
+        ]
+      },
+      "expect": {
+        "rows": 0,
+        "rankings": 1,
+        "events": 3,
+        "stats": 0
+      }
+    },
+    {
+      "name": "rolex_page",
+      "why": "The Rolex Rankings' page of the player: the same, the cut as MC.",
+      "valid": true,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "rolex",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-25T18:00:00Z",
+        "generator": {
+          "name": "Golf Stats Sync",
+          "version": "0.13.0"
+        },
+        "sync": {
+          "plan_id": "p-7",
+          "reason": "manual"
+        },
+        "player": {
+          "name": "Lena Musterfrau"
+        },
+        "rankings": [
+          {
+            "source": "rolex",
+            "rank": 87,
+            "points": 1.42,
+            "events": 38,
+            "as_of": "2026-11-25"
+          }
+        ],
+        "tournaments": [
+          {
+            "ref": "rolex-7001",
+            "tour": "lpga",
+            "name": "Beispiel Classic",
+            "week": "2026-W47",
+            "place": 36,
+            "tied": true,
+            "points": 2.2
+          },
+          {
+            "ref": "rolex-6950",
+            "tour": "let",
+            "name": "Musterland Masters",
+            "week": "2026-W20",
+            "place": 7,
+            "tied": true,
+            "points": 2.34
+          },
+          {
+            "ref": "rolex-6901",
+            "tour": "lpga",
+            "name": "Exemple Open",
+            "week": "2026-W40",
+            "result": "MC"
+          }
+        ]
+      },
+      "expect": {
+        "rows": 0,
+        "rankings": 1,
+        "events": 3,
+        "stats": 0
+      }
+    },
+    {
+      "name": "rounds_without_start",
+      "why": "Rounds of a tournament known only by its week: the rounds can't be placed on days, so they cost (counted failed); the tournament stays.",
+      "valid": false,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "owgr",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-25T18:00:00Z",
+        "generator": {
+          "name": "Golf Stats Sync",
+          "version": "0.13.0"
+        },
+        "sync": {
+          "plan_id": "p-7",
+          "reason": "manual"
+        },
+        "player": {
+          "name": "Max Mustermann"
+        },
+        "tournaments": [
+          {
+            "ref": "owgr-1",
+            "week": "2026-W40",
+            "place": 3,
+            "rounds": [
+              {
+                "round_no": 1,
+                "gross": 70
+              }
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "rows": 0,
+        "rankings": 0,
+        "events": 1,
+        "stats": 0
+      }
+    },
+    {
+      "name": "no_such_week",
+      "why": "A week no year has: the tournament is left out.",
+      "valid": false,
+      "batch": {
+        "format": "prores/1",
+        "provider": "pro",
+        "site": "owgr",
+        "account_ref": "Pq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-25T18:00:00Z",
+        "generator": {
+          "name": "Golf Stats Sync",
+          "version": "0.13.0"
+        },
+        "sync": {
+          "plan_id": "p-7",
+          "reason": "manual"
+        },
+        "player": {
+          "name": "Max Mustermann"
+        },
+        "tournaments": [
+          {
+            "ref": "owgr-2",
+            "week": "2026-W54",
+            "place": 3
+          }
+        ]
+      },
+      "expect": {
+        "rows": 0,
+        "rankings": 0,
+        "events": 0,
+        "stats": 0
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "$comment": "The rules of a handicap target and its clients (spec/hcp.md): is_due, busy, cards_to_read. `most: null` means the rules' max_cards. Exact.",
-  "spec_version": "1.14.0",
+  "spec_version": "1.15.0",
   "generated_by": "spec/reference/generate.py",
   "rules": {
     "$comment": "The planning rules of a handicap target (spec/hcp.md). Informative: a target may plan more gently; a client's load guard holds regardless.",

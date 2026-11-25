@@ -56,6 +56,8 @@ describe('pairing', () => {
     });
     expect(BrowserClient.readFragment('#target=javascript%3Aalert(1)&code=K7M2PQ9X')).toBeNull();
     expect(BrowserClient.readFragment('#code=K7M2PQ9X&code=K7M2PQ9X&target=https%3A%2F%2Fa.example')).toBeNull();
+    // 1.15.0: a pro's world ranking pages pair with their own kind.
+    expect(BrowserClient.readFragment('#target=https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1&code=K7M2PQ9X&kind=pro')).toEqual({ target: 'https://app.example.org/hcp/v1', code: 'K7M2PQ9X', kind: 'pro' });
   });
 
   it('pairs, and pairing the same target again replaces the pairing and ends the old token', async () => {

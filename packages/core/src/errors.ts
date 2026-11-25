@@ -87,6 +87,8 @@ export type TargetErrorCode =
   | 'test_unavailable'
   | 'not_test_account'
   | 'code_expired'
+  // A pro's page (spec 1.15.0, spec/prores.md) names someone else than the player: ask them, then send confirmed.
+  | 'other_player'
   // Not from the target's answer but about it:
   | 'unreachable'
   | 'unavailable'

@@ -38,6 +38,17 @@ describe('a pair link', () => {
     expect(readIncoming('https://a.example/pair', PROVIDERS, []).kind).toBe('invalid');
     expect(readIncoming(undefined, PROVIDERS, []).kind).toBe('invalid');
   });
+
+  // Spec 1.15.0: a pro's world ranking pages - not in this app yet. Taken for a launch monitor pairing (no provider
+  // named) it would have paired Trackman with a handicap target.
+  it('refuses a pro’s pages rather than take them for another kind', () => {
+    for (const link of [
+      'glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1&code=K7M2PQ9X&provider=pro&kind=pro',
+      'glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1&code=K7M2PQ9X&kind=pro',
+      'glmsync://read?kind=pro',
+    ]) expect([link, readIncoming(link, PROVIDERS, [])]).toEqual([link, { kind: 'invalid', error: 'unsupported:kind' }]);
+    expect(readIncoming('glmsync://read?kind=hcp', PROVIDERS, [])).toEqual({ kind: 'read' });
+  });
 });
 
 describe('where a pair link jumps back to once paired (spec 1.2.0)', () => {

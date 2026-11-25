@@ -2,13 +2,13 @@
 # Copyright (c) 2026 Reginald Stadlbauer
 """The deep links and the pairing fragment (spec/deep-links.md).
 
-    glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp][&return=<URL to go back to>]
+    glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp|pro][&return=<URL to go back to>]
     glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
     glmsync://test?[target=<target base URL>&]code=<test code>           (1.8.0, spec/test-mode.md)
-    glmsync://read?kind=hcp                                              (1.11.0, spec/hcp.md)
+    glmsync://read?kind=hcp|pro                                          (1.11.0, spec/hcp.md; pro 1.15.0)
     Android: a bound service with the action glmsync.intent.action.SYNC, data glmsync://sync?target=…,
              extra glmsync.extra.REASON = open | manual
-    https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp]
+    https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp|pro]
 
 Parsed by hand rather than with a URL library, so that every port reads the same strings the same
 way. A link is data from outside: anything unexpected makes it invalid rather than guessed at.
@@ -30,10 +30,12 @@ NEVER_RETURN = {"javascript", "data", "file", "vbscript", "about", "blob", "glms
 LINK = re.compile(r"^glmsync://(pair|sync|test|read)/?(?:\?([^#]*))?$")
 MAX_LEN = 2048
 # Which target API a pairing's base URL speaks (1.10.0): `lm` (the launch monitor one, also when no kind is given)
-# or `hcp` (spec/hcp.md). Any other is invalid: pairing with an API the client doesn't know would only be refused.
-KINDS = {"lm", "hcp"}
-# What a read link may open (1.11.0): only a client's way of reading along for the handicap record (spec/hcp.md).
-READ_KINDS = {"hcp"}
+# or `hcp` (spec/hcp.md), and (1.15.0) `pro`: the handicap target API for a professional's pages (spec/prores.md). Any
+# other is invalid: pairing with an API the client doesn't know would only be refused.
+KINDS = {"lm", "hcp", "pro"}
+# What a read link may open (1.11.0): a client's way of reading along - the handicap record (spec/hcp.md) and (1.15.0) a
+# professional's own pages (spec/prores.md).
+READ_KINDS = {"hcp", "pro"}
 BAD_ESCAPE = re.compile(r"%(?![0-9A-Fa-f]{2})")  # a '%' that starts no escape: invalid, not guessed at
 
 

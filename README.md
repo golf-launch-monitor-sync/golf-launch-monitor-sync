@@ -12,9 +12,13 @@ Syncs your golf data from **your own** accounts into apps of your choice, in ope
   and the companion app (in its own golf.de window) only read along while **you** open these pages - or,
   once you signed in and tap *Fetch all*, click through them for you at a person's pace: they send golf.de
   nothing of their own.
+- **A professional's world ranking** — rank, points and tournaments — from the player's own page of the
+  Official World Golf Ranking or the Rolex Women's World Golf Rankings, in [prores/1](spec/prores.md)
+  (since spec 1.15.0). The extension reads that page only when **you** tap *Send* on it, as it shows it to
+  you, and asks the site nothing of its own.
 
 > **Unofficial.** This project is not affiliated with, endorsed by or supported by Trackman, any
-> other launch monitor maker, the Deutscher Golf Verband (DGV) or golf.de. It uses your own sign-in,
+> other launch monitor maker, the Deutscher Golf Verband (DGV), golf.de, the OWGR or Rolex. It uses your own sign-in,
 > for your own account, the way the maker's web portal does - or, for golf.de, only reads what golf.de's
 > own page loaded in your browser. Trademarks belong to their owners and are used here only to say
 > which accounts the project can read.
@@ -101,6 +105,8 @@ And, as a rule for every line of code here:
   Nothing happens unless you open the page or tap *Fetch all* there - then it clicks golf.de's own links
   and buttons for you, as you would, with a pause between pages ([spec/hcp.md](spec/hcp.md)); golf.de's
   page asks what it asks. Names of other players never leave the page.
+- **World rankings: only your own page, only on your tap, only what it shows you; no request of its own**
+  ([spec/prores.md](spec/prores.md)).
 
 ## Repository
 
@@ -111,9 +117,10 @@ And, as a rule for every line of code here:
 | [`packages/core`](packages/core/README.md) | One sync from a target's plan to an imported batch: plan and push client, the file target and its cursor, the load guard, errors. |
 | [`packages/provider-trackman`](packages/provider-trackman/README.md) | Reading your own Trackman account, into olmd. |
 | [`packages/provider-golfde`](packages/provider-golfde/README.md) | Reading along on golf.de's pages (your handicap record), into dgvhcp/1: the page script and its mapping. |
+| [`packages/provider-rankings`](packages/provider-rankings/README.md) | A pro's own page of the world rankings (OWGR, Rolex Rankings), read as the page shows it on the player's tap, into prores/1. |
 | [`packages/provider-demo`](packages/provider-demo/README.md) | A made-up player's sessions and rounds, for tests, trying it out and app reviews. |
 | [`packages/browser`](packages/browser/README.md) | What the extension and the web app share: the key, pairings, "Is this you?", syncs, texts (English, German). |
-| [`apps/extension`](apps/extension/README.md) | The browser extension (Manifest V3; Chrome, Edge, Firefox): syncs in the background when a target's plan says so; reads along on golf.de. |
+| [`apps/extension`](apps/extension/README.md) | The browser extension (Manifest V3; Chrome, Edge, Firefox): syncs in the background when a target's plan says so; reads along on golf.de; sends a pro's world ranking page on *Send*. |
 | [`apps/web`](apps/web/README.md) | The web app on GitHub Pages: the pairing page, and syncing by hand without the extension. |
 | [`apps/companion`](apps/companion/README.md) | The companion app for the phone (Expo, iOS and Android): the provider's sign-in window, pairing by deep link, syncs when a target's plan says so; reads along on golf.de in its own window. |
 

@@ -38,9 +38,9 @@ export const expect = test.expect;
 
 /**
  * The popup, opened as a page: its main view, the list of connections - or, with `open`, the details of a connection
- * (`lm` the launch monitor's, `hcp` golf.de's), opened by its row.
+ * (`lm` the launch monitor's, `hcp` golf.de's, `pro` the world ranking's), opened by its row.
  */
-export async function popup(context: BrowserContext, extensionId: string, open?: 'lm' | 'hcp'): Promise<Page> {
+export async function popup(context: BrowserContext, extensionId: string, open?: 'lm' | 'hcp' | 'pro'): Promise<Page> {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${extensionId}/popup.html`);
   if (open) await page.locator(`[data-test="connection"][data-id="${open}"]`).click();

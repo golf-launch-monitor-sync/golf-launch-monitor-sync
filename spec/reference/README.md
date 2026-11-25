@@ -16,8 +16,9 @@ must match its vectors field for field.
 | `guard.py` | The load guard. |
 | `wake.py` | The wake: what a client registers, when a target wakes it, what a wake is (since 1.9.0). |
 | `deeplinks.py` | Deep links, the pairing fragment and the Android sync service's intent. |
+| `prores.py` | A professional's pages (since 1.15.0): a finish, a world ranking's tour code, an ISO week, whose name. |
 | `testmode.py` | A target's test scenario as a client reads it (1.8.0). |
-| `cases_trackman.py`, `generate.py` | The synthetic inputs, and the generator. |
+| `cases_trackman.py`, `cases_prores.py`, `generate.py` | The synthetic inputs, and the generator. |
 
 ```
 python3 spec/reference/generate.py           # write the vectors

@@ -3,7 +3,7 @@
 /**
  * The click checks' world: everything the browser would reach on the network, answered in the test
  * instead - the web app from its build, a made-up Trackman portal and API, a made-up golf.de (its pages make their
- * own requests, as golf.de's do), and a made-up target app. Nothing leaves the machine; all data is synthetic.
+ * own requests, as golf.de's do), a made-up OWGR player page, and a made-up target app. Nothing leaves the machine; all data is synthetic.
  */
 
 import type { BrowserContext, Route } from '@playwright/test';
@@ -11,7 +11,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FetchLike } from '../../packages/core/src/http.ts';
-import { FakeHcpTarget, FakeTarget, type PlanAsked } from '../../packages/core/src/testing/index.ts';
+import { FakeHcpTarget, FakeProTarget, FakeTarget, type PlanAsked } from '../../packages/core/src/testing/index.ts';
 import { entry, historyAnswer, memberAnswer, resultsAnswer, scoringAnswer } from '../../packages/provider-golfde/src/testing.ts';
 import { GRAPHQL_URL } from '../../packages/provider-trackman/src/client.ts';
 import { FakeTrackman, fakeToken } from '../../packages/provider-trackman/src/testing.ts';
@@ -35,6 +35,32 @@ export const GOLFDE_HISTORY = 'https://www.golf.de/mein-bereich/handicap-history
 export const GOLFDE_RESULTS = 'https://www.golf.de/sport/turnierkalender/clubturniere.html#/5001/ergebnisse';
 /** A header the made-up golf.de page puts on its own requests: one without it would not be golf.de's page's. */
 export const GOLFDE_PAGE_HEADER = 'x-made-up-golfde-page';
+
+/** The made-up target app's API for a pro's pages (spec/prores.md; a real target may use its handicap API) and its code. */
+export const PRO_TARGET = 'https://app.example.org/pro/v1';
+export const PRO_CODE = 'P7M2PQ9X';
+/** A made-up player's page on OWGR (made-up name, made-up tournaments). */
+export const OWGR_PAGE = 'https://www.owgr.com/playerprofile/max-mustermann-90001';
+
+/**
+ * The made-up OWGR player page: the head with its figures at once, the table of events a moment later, put in by the
+ * page's own script as owgr.com's is. It asks nothing of anyone.
+ */
+function owgrPage(): string {
+  const fig = (v: string, label: string) => `<div><div>${v}</div><div>${label}</div></div>`;
+  const row = (name: string, href: string | null, tour: string, week: number, finish: string, points: string) =>
+    `<tr><td>${href ? `<a href="${href}"><span>${name}</span></a>` : name}</td><td><button><span>${tour}</span></button></td><td>${week}</td><td>2026</td><td>${finish}</td><td>${points}</td><td>1.0000</td><td>${points}</td><td>4</td><td>3</td></tr>`;
+  const table = `<table><thead><tr>${['EVENT', 'TOUR', 'WEEK', 'YEAR', 'FINISH POS.', 'POINTS WON', 'WEIGHT', 'ADJ. POINTS', 'RANK FROM', 'RANK TO'].map((x) => `<th><button>${x}</button></th>`).join('')}</tr></thead><tbody>${[
+    row('Musterstadt Open', '/events/musterstadt-open-90012', 'DPWT', 40, 'T17', '2.16597'),
+    row('Multi Win Bonus 70% - Musterstadt Open', null, 'DPWT', 40, 'BP', '4.00000'),
+    row('A Major Somewhere', '/events/a-major-somewhere-89950', 'Maj', 29, 'MC', '-'),
+  ].join('')}</tbody></table>`;
+  return `<!doctype html><html><head><title>Official World Golf Ranking - Player Profile</title></head><body>
+<main><div><div>Max Mustermann</div><div><div>World number</div><div>412</div></div></div>
+<div><div>Statistics</div>${fig('412th', 'Current OWGR Rank')}${fig('390th', 'Best OWGR Rank')}${fig('0.9871', 'Average Points')}${fig('39.48', 'Total Points')}${fig('40', 'Divisor')}${fig('38', 'Actual Events Played')}</div>
+<div id="events"><div class="spinner">…</div></div></main>
+<script>setTimeout(() => { document.getElementById('events').innerHTML = ${JSON.stringify(table)}; }, 800);</script></body></html>`;
+}
 
 export function pairUrl(target = TARGET, code = CODE): string {
   return `${WEB}/pair#target=${encodeURIComponent(target)}&code=${code}`;
@@ -151,6 +177,9 @@ export class World {
   readonly target = new FakeTarget({ base: TARGET });
   readonly hcp = new FakeHcpTarget({ base: HCP_TARGET });
   readonly golfde = new GolfDe();
+  readonly pro = new FakeProTarget({ base: PRO_TARGET });
+  /** Every request that reached owgr.com: only the pages the player opened, never one of the extension's. */
+  readonly owgrSaw: { url: string; type: string }[] = [];
   readonly portal: Portal = { token: null, mode: 'storage' };
   /** How often Trackman's sign-out page was opened. */
   signOuts = 0;
@@ -208,7 +237,16 @@ export class World {
       const path = new URL(route.request().url()).pathname;
       if (path.startsWith('/lm/v1')) return answer(route, this.target.fetch);
       if (path.startsWith('/hcp/v1')) return answer(route, this.hcp.fetch);
+      if (path.startsWith('/pro/v1')) return answer(route, this.pro.fetch);
       return route.fulfill({ status: 200, body: '<!doctype html><html><head><title>Example App</title></head><body><h1>Example App</h1></body></html>', headers: { 'content-type': 'text/html' } });
+    });
+    // The made-up OWGR: a player's page, and its ranking (where the player searches for their page).
+    await context.route('https://www.owgr.com/**', (route) => {
+      const req = route.request();
+      this.owgrSaw.push({ url: req.url(), type: req.resourceType() });
+      const path = new URL(req.url()).pathname;
+      const body = path.startsWith('/playerprofile/') ? owgrPage() : '<!doctype html><title>Official World Golf Ranking - Ranking</title><h1>World ranking (made up)</h1>';
+      return route.fulfill({ status: 200, body, headers: { 'content-type': 'text/html' } });
     });
     // The made-up golf.de: its pages, and its API as the pages' own requests reach it.
     await context.route('https://www.golf.de/**', (route) => route.fulfill({ status: 200, body: this.golfde.page(new URL(route.request().url()).pathname), headers: { 'content-type': 'text/html' } }));

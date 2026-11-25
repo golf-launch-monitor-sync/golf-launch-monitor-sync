@@ -9,11 +9,16 @@
  * the player arrives from the content script there; a few seconds after the last new page it goes to the apps paired
  * for it, each batch after their plan. golf.de is never asked anything.
  *
+ * And a pro's own world ranking page (`ProClient`, spec/prores.md): the page arrives from the content script there when
+ * the player taps *Send*, read as the page showed it, and goes to the apps paired for it, each after its plan. Whether
+ * a page is the player's is answered in the extension's own pages. The site is never asked anything.
+ *
  * Woken by alarms, messages and the browser starting; it keeps nothing in memory that matters (a
  * Manifest V3 background may be stopped between events): everything is in chrome.storage.
  */
 
-import { badge, BrowserClient, HcpClient, IdbBlobs, pickLang, SEND_AFTER_MS, translator, type HcpView } from '@glmsync/browser';
+import { badge, BrowserClient, HcpClient, IdbBlobs, pickLang, ProClient, SEND_AFTER_MS, translator, type HcpView } from '@glmsync/browser';
+import { SITES } from '@glmsync/provider-rankings';
 import { HISTORY_SHEET_URL, readSeen } from '@glmsync/provider-golfde';
 import { bridgeMessage, type BridgeReply, type Reason } from '@glmsync/spec';
 import { PORTAL_URL, SIGN_OUT_URL } from '@glmsync/provider-trackman/portal';
@@ -53,6 +58,13 @@ const hcp = new HcpClient({
   name: __BROWSER__ === 'firefox' ? 'Golf Stats Sync for Firefox' : 'Golf Stats Sync for Chrome and Edge',
   version: VERSION,
 });
+const pro = new ProClient({
+  storage,
+  vault: storage,
+  kind: 'extension',
+  name: __BROWSER__ === 'firefox' ? 'Golf Stats Sync for Firefox' : 'Golf Stats Sync for Chrome and Edge',
+  version: VERSION,
+});
 const HCP_SEND = 'hcp-send';
 const HCP_RUN = 'hcp-run';
 const t = () => translator(pickLang(navigator.languages));
@@ -66,12 +78,16 @@ async function refreshIcon(): Promise<void> {
     const s = await client.status();
     // golf.de's account waiting for the yes asks as a launch monitor's does (nothing is sent before it).
     const hcpAsking = !s.attention && (await hcp.view().catch(() => null))?.account === 'asking';
-    const b = hcpAsking ? badge({ attention: 'confirm' }) : badge(s);
+    // An app asking whether a world ranking page is the player's asks the same way.
+    const proAsking = !s.attention && !hcpAsking ? ((await pro.view().catch(() => null))?.question ?? null) : null;
+    const b = hcpAsking || proAsking ? badge({ attention: 'confirm' }) : badge(s);
     await chrome.action.setBadgeText({ text: b.text });
     if (b.text) await chrome.action.setBadgeBackgroundColor({ color: b.color });
     const tr = t();
     const title = hcpAsking
       ? tr('wizard.title.account', { service: 'golf.de' })
+      : proAsking
+        ? tr('proLine.ask', { targets: proAsking.targets.join(', ') })
       : s.attention === 'sign_in'
         ? s.key.state === 'expired'
           ? tr('key.expired')
@@ -356,10 +372,12 @@ async function confirmPairing(chosen?: string): Promise<Reply> {
   const provider = p.provider ?? chosen;
   const offerOf = { target: p.target, code: p.code, ...(provider ? { provider } : {}) };
   // The handicap record (kind=hcp) pairs with its own API and reads along on golf.de; nothing to fetch now.
-  const out = p.kind === 'hcp' ? await hcp.offerPairing(offerOf) : await client.offerPairing(offerOf);
+  // A pro's world ranking pages (kind=pro) likewise: they are sent on the player's tap on their page.
+  const out = p.kind === 'hcp' ? await hcp.offerPairing(offerOf) : p.kind === 'pro' ? await pro.offerPairing(offerOf) : await client.offerPairing(offerOf);
   const next: Pending = out.ok ? { ...p, state: 'paired', name: out.name, code: '' } : { ...p, state: 'failed', error: out.error, code: '' };
   await setPending(next);
   if (out.ok && p.kind === 'hcp') await scheduleHcp(await hcp.view()).catch(() => undefined);
+  else if (out.ok && p.kind === 'pro') await refreshIcon();
   else if (out.ok) {
     void run('connect', out.id);
     await syncBridges();
@@ -504,6 +522,30 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
       return { ok: true, hcp: await hcp.view() };
     case 'open-golfde':
       await openTab(tabsApi, HISTORY_SHEET_URL, near);
+      return { ok: true };
+    case 'ranking-line':
+    case 'pro-status':
+      return { ok: true, pro: await pro.view() };
+    case 'ranking-send': {
+      const v = await pro.send(m.page);
+      await refreshIcon();
+      return { ok: true, pro: v };
+    }
+    case 'ranking-answer':
+      // From the site's page: only the connect window comes to the front, where the player answers.
+      await openConnectWindow(near);
+      return { ok: true, pro: await pro.view() };
+    case 'pro-answer': {
+      const v = await pro.answer(m.yes);
+      await refreshIcon();
+      return { ok: true, pro: v };
+    }
+    case 'pro-unpair':
+      return { ok: true, pro: await pro.removePairing(m.id) };
+    case 'pro-clear-ended':
+      return { ok: true, pro: await pro.clearEnded() };
+    case 'open-ranking':
+      await openTab(tabsApi, SITES[m.site].start, near);
       return { ok: true };
     case 'switch-account':
       // Someone else's account is signed in to the portal here: Trackman's own sign-out, as a page the player

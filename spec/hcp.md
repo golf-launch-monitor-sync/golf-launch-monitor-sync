@@ -9,6 +9,9 @@ a tournament's scorecard hole by hole, and the player's own line of a result lis
 it in their own account; a client reads it there with the player's own sign-in, as the launch monitor
 clients do, and hands it to a target the player paired.
 
+Since 1.15.0 the same API also carries **a professional's own pages** (world ranking and tour pages, prores/1, pairing
+with `kind=pro`): [prores.md](prores.md).
+
 Everything in [README.md](README.md) *Roles* holds: the sign-in stays in the client, a client reads
 only when the target's plan says so, and never past its load guard. Since 1.10.0 a client may also
 **only observe** the provider's own page ([below](#a-client-that-observes-and-clicks-for-the-player)): it

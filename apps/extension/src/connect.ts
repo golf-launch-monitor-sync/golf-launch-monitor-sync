@@ -8,15 +8,16 @@
  * app asked, it says where to start and waits. (2) The service's steps (Trackman: *Open the Trackman portal*, small
  * *Enter a test code*; golf.de: open the History Sheet), (3) *Is this your account?*, (4) the first data shown plainly,
  * (5) *Back to …*, which closes this tab. Steps 2 to 5 are the status panel's (or the handicap record's, kind=hcp - also
- * when golf.de's page brought this window to the front for the yes).
+ * when golf.de's page brought this window to the front for the yes; or a pro's world ranking pages, kind=pro: where to
+ * open them and, when an app asks, whether a page is the player's - also when the site's page brought this window up).
  */
 
-import type { ClientStatus, HcpView } from '@glmsync/browser';
+import type { ClientStatus, HcpView, ProView } from '@glmsync/browser';
 import { button, fill, h, offerWizard, type OfferContext, type WizardMemory } from '@glmsync/browser/render';
 import { PROVIDER_ID as GOLFDE } from '@glmsync/provider-golfde';
 import { finished } from './finished.ts';
 import type { Pending, Reply } from './messages.ts';
-import { hcpPanel, heading, send, statusPanel, t } from './page.ts';
+import { hcpPanel, heading, proPanel, send, statusPanel, t } from './page.ts';
 
 heading('connect.title');
 const done = document.getElementById('done') as HTMLElement;
@@ -25,6 +26,9 @@ const panel = document.getElementById('status') as HTMLElement;
 // The handicap record's steps, above the launch monitor's.
 const hcpRoot = document.createElement('div');
 panel.before(hcpRoot);
+// A pro's world ranking pages, above both.
+const proRoot = document.createElement('div');
+hcpRoot.before(proRoot);
 
 /** Opened by *Connect new*: the first step, also when no app has asked yet. */
 const fresh = new URLSearchParams(location.search).has('new');
@@ -32,6 +36,7 @@ const fresh = new URLSearchParams(location.search).has('new');
 let pendingNow: Pending | null = null;
 let statusNow: ClientStatus | null = null;
 let hcpNow: HcpView | null = null;
+let proNow: ProView | null = null;
 const memory: WizardMemory = { walked: false };
 /** The browser's prompt for the app's address is open (a second tap meanwhile asks nothing more). */
 let requesting = false;
@@ -39,7 +44,7 @@ let requesting = false;
 let choosing = false;
 /** What went wrong with the last answer of the background, said on the step. */
 let failure: string | null = null;
-const panels: { lm?: { refresh(): Promise<void> }; hcp?: { refresh(): Promise<void> } } = {};
+const panels: { lm?: { refresh(): Promise<void> }; hcp?: { refresh(): Promise<void> }; pro?: { refresh(): Promise<void> } } = {};
 
 /** This tab, closed: by the browser's tab API (an extension page may close its own tab), else by the window. */
 async function closeTab(): Promise<void> {
@@ -56,6 +61,8 @@ async function closeTab(): Promise<void> {
 }
 
 const isHcp = () => pendingNow?.kind === 'hcp';
+/** A pro's pages: the offer was for them, or an app asks whether a page is the player's. */
+const isPro = () => pendingNow?.kind === 'pro' || !!proNow?.question;
 
 /** The first step while the pairing doesn't stand yet; null once it does (or there is nothing to start here). */
 function offerState(p: Pending | null): Pick<OfferContext, 'state' | 'error'> | null {
@@ -71,7 +78,7 @@ function offerState(p: Pending | null): Pick<OfferContext, 'state' | 'error'> | 
       return { state: 'none' };
     case 'paired':
       // Paired, but the panel hasn't heard yet: still "connecting", not an overview without the new app.
-      return (p.kind === 'hcp' ? hcpNow && !hcpNow.pairings.length : statusNow && !statusNow.pairings.length) ? { state: 'working' } : null;
+      return (p.kind === 'hcp' ? hcpNow && !hcpNow.pairings.length : p.kind === 'pro' ? proNow && !proNow.pairings.length : statusNow && !statusNow.pairings.length) ? { state: 'working' } : null;
     default:
       return null;
   }
@@ -80,6 +87,7 @@ function offerState(p: Pending | null): Pick<OfferContext, 'state' | 'error'> | 
 /** What can be connected for the offer: its own service when it named one, else this version's. */
 function services(p: Pending | null): OfferContext['services'] {
   if (p?.kind === 'hcp') return [{ id: GOLFDE, name: 'golf.de' }];
+  if (p?.kind === 'pro') return [{ id: 'pro', name: t('pro.service') }];
   const own = statusNow?.provider ?? { id: 'trackman', name: 'Trackman' };
   return p?.provider && p.provider !== own.id ? [{ id: p.provider, name: p.provider }] : [{ id: own.id, name: own.name }];
 }
@@ -127,6 +135,7 @@ function draw(): void {
                 // The next step is the panel's: it hears of the new pairing now, not at its next look.
                 void panels.lm?.refresh();
                 void panels.hcp?.refresh();
+                void panels.pro?.refresh();
               });
             };
             const check = () => chrome.permissions.contains({ origins }).then((has) => (has ? pair() : refused()), refused);
@@ -142,11 +151,12 @@ function draw(): void {
     );
   } else fill(ask);
   // The first step stands alone; then only the service asked for (the handicap record, or the launch monitor).
-  const lmHidden = !!offer || isHcp() || (!!statusNow && !statusNow.pairings.length && !!hcpNow && hcpNow.pairings.length > 0);
+  const lmHidden = !!offer || isHcp() || isPro() || (!!statusNow && !statusNow.pairings.length && ((!!hcpNow && hcpNow.pairings.length > 0) || (!!proNow && proNow.pairings.length > 0)));
   panel.hidden = lmHidden;
-  hcpRoot.hidden = !!offer;
+  hcpRoot.hidden = !!offer || isPro();
+  proRoot.hidden = !!offer || (!isPro() && !(proNow?.pairings.length && !statusNow?.pairings.length && !hcpNow?.pairings.length));
   // The steps end with their own *Back to …*; a window opened when everything was done already just says so.
-  const now = !offer && !isHcp() && !memory.walked && finished(p, statusNow);
+  const now = !offer && !isHcp() && !isPro() && !memory.walked && finished(p, statusNow);
   fill(done, now ? h('div', { class: 'note', 'data-test': 'finished', role: 'status' }, h('p', {}, t('connect.finished')), h('div', { class: 'row' }, button(t('connect.close'), () => void closeTab(), { class: 'primary', 'data-test': 'close' }))) : null);
 }
 
@@ -178,6 +188,13 @@ panels.hcp = hcpPanel(hcpRoot, {
   back: () => void closeTab(),
   onView: (v) => {
     hcpNow = v;
+    draw();
+  },
+});
+panels.pro = proPanel(proRoot, {
+  back: () => void closeTab(),
+  onView: (v) => {
+    proNow = v;
     draw();
   },
 });

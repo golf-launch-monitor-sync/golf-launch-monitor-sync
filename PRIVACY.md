@@ -9,7 +9,7 @@ Sync). The store listings link here.
 monitor data from your own account at the maker of your launch monitor (today Trackman), and your handicap record as
 golf.de shows it to you, to an app you connect yourself (a *target*). Nobody behind this project sees your data, your sign-in or how you use the tools.
 
-> Unofficial: not affiliated with, endorsed by or supported by any launch monitor maker, the DGV or golf.de.
+> Unofficial: not affiliated with, endorsed by or supported by any launch monitor maker, the DGV, golf.de, the OWGR or Rolex.
 
 ## What the tools handle, and where it goes
 
@@ -22,6 +22,7 @@ golf.de shows it to you, to an app you connect yourself (a *target*). Nobody beh
 | On iPhone, the companion app's push address (an Expo push token for this app on this phone; since 1.9.0) | on your device | to the targets you connected, so a target that can push to this app may wake it when a sync is due ([spec/wake.md](spec/wake.md)). Such a wake is a silent push with nothing of yours in it (only "ask for the plan"); it passes Expo's push service and Apple's, shows nothing and asks no permission. Off with *Background App Refresh* for the app in iOS's settings, or by disconnecting |
 | A connected app's test scenario, if you enter its test code (test mode, made up by that app, no one's real data; since 1.8.0) | on your device: a file of the companion app's own, IndexedDB of the extension or of the web app's address; until you end the test, its connection ends or the app's end date for it passes | nowhere: the made-up data it plays back goes, marked as test data, to that connected app only ([spec/test-mode.md](spec/test-mode.md)) |
 | Your handicap record as golf.de's pages show it to you (History Sheet, Scoring Record, your own place in a result list, your index) - only once you connected an app for it, and only while you open those pages yourself. The extension reads what golf.de's own page loaded; it asks golf.de nothing. Names (yours, a marker's, other players'), card and member numbers never leave golf.de's page | in the extension's own storage on your device: what was seen (up to 600 results), a fingerprint of what each app has, and fingerprints (not the ids) of the golf.de accounts you answered *Is this your account?* about; which golf.de account the pages showed only until the browser closes. Nothing goes to an app before your yes | to the app you connected for it (each batch after its plan), and nowhere else; your golf.de account only as a hash (`account_ref`) |
+| A professional's own page of a world ranking (OWGR, Rolex Rankings) as it shows it to you: your rank, average points, divisor or events, and your tournaments with week, tour, place and points - only once you connected an app for it, and only when you tap *Send* on that page. The extension reads what the page shows; it asks the site nothing. The site's id of you never leaves as it is | in the extension's own storage on your device: what each app last answered, fingerprints (not the ids) of the pages you said are yours, and, until you answer it (a day at most), a page an app asked about | to the app you connected for it (after its plan), with the name the page writes so the app can check it is yours, and nowhere else; the page's id only as a hash (`account_ref`) |
 | The tool's own counts and log (times, kinds of request, statuses - never content) | on your device, the last 14 days | nowhere, unless you export the log yourself |
 
 The target you connect gets your data and an `account_ref`, a hash that tells your accounts apart without naming you.
@@ -41,7 +42,9 @@ GitHub), under their own terms.
   connected.
 - The extension reads only the provider's portal and API, the pairing page of the web app and, on golf.de, your *Mein
   Bereich* and a tournament's result list (only what golf.de's page itself loaded there; it sends golf.de nothing, and
-  shows a small line on those pages only once an app is connected for it); a target's address only once you allowed it,
+  shows a small line on those pages only once an app is connected for it), and on the OWGR's and the Rolex Rankings'
+  sites only a player's own page (read only when you tap *Send* in its line, which shows only once an app is connected
+  for it); a target's address only once you allowed it,
   one at a time. On a connected app's own pages it adds a small bridge (only those addresses)
   through which that page can ask it to fetch now - it hands the page nothing of yours but whether you are signed in
   and whether it is fetching.

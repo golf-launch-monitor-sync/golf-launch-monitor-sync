@@ -84,15 +84,21 @@ paths:
   /import:
     post:
       operationId: importHcp
-      summary: Hand over a dgvhcp/1 batch.
+      summary: Hand over a dgvhcp/1 batch, or (1.15.0, a pairing of provider `pro`) a prores/1 batch.
       description: |
         Idempotent: a result the target has is the same result again (it may add a card or a place
         to it). A batch of another account than the connected one is refused (`other_account`).
+        Since 1.15.0 a pairing of provider `pro` (kind=pro, spec/prores.md) hands over prores/1: one
+        page of a professional's at a time; a page whose name isn't the player's is refused
+        (`other_player`) until the player confirmed it in the client (`player.confirmed`).
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "../hcp/dgvhcp-1.schema.json" }
+            schema:
+              oneOf:
+                - $ref: "../hcp/dgvhcp-1.schema.json"
+                - $ref: "../prores/prores-1.schema.json"
       responses:
         "200":
           description: Stored (as far as it was new).
@@ -102,7 +108,7 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "409":
-          description: "`other_account`: another account than the connected one; `disconnected`: the player ended the connection."
+          description: "`other_account`: another account than the connected one; `disconnected`: the player ended the connection; `other_player` (1.15.0, prores/1): the page names someone else than the player - ask the player and send `player.confirmed`."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -160,7 +166,7 @@ components:
     Provider:
       type: string
       pattern: "^[a-z][a-z0-9_-]{1,39}$"
-      examples: [golfde]
+      examples: [golfde, pro]
     Reason:
       type: string
       enum: [connect, open, timer, manual]
@@ -291,5 +297,5 @@ components:
           properties:
             code:
               type: string
-              enum: [bad_request, code_invalid, token_invalid, other_account, disconnected, too_large, invalid_batch, rate_limited, provider_unknown, test_data, test_unavailable, not_test_account, code_expired]
+              enum: [bad_request, code_invalid, token_invalid, other_account, disconnected, too_large, invalid_batch, rate_limited, provider_unknown, test_data, test_unavailable, not_test_account, code_expired, other_player]
             message: { type: string, maxLength: 500 }

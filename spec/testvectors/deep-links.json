@@ -1,6 +1,6 @@
 {
-  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, sync, (1.8.0) test or (1.11.0) read; kind (1.10.0) lm or hcp, only where the link names it (read: always, and only hcp). parse_sync_intent (the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> {ok: true, target, reason} or {ok: false, error}.",
-  "spec_version": "1.14.0",
+  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, sync, (1.8.0) test or (1.11.0) read; kind (1.10.0) lm, hcp or (1.15.0) pro, only where the link names it (read: always, and only hcp or pro). parse_sync_intent (the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> {ok: true, target, reason} or {ok: false, error}.",
+  "spec_version": "1.15.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {
@@ -674,6 +674,43 @@
       }
     },
     {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=pro&kind=pro",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "provider": "pro",
+        "kind": "pro"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=PRO",
+      "expected": {
+        "ok": false,
+        "error": "invalid:kind"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://read?kind=pro",
+      "expected": {
+        "ok": true,
+        "action": "read",
+        "kind": "pro"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://read?kind=pro&kind=hcp",
+      "expected": {
+        "ok": false,
+        "error": "duplicate:kind"
+      }
+    },
+    {
       "rule": "parse_pair_fragment",
       "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X",
       "expected": {
@@ -776,6 +813,17 @@
       "expected": {
         "ok": false,
         "error": "duplicate:kind"
+      }
+    },
+    {
+      "rule": "parse_pair_fragment",
+      "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=pro",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "kind": "pro"
       }
     },
     {

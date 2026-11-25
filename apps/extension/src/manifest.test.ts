@@ -30,6 +30,14 @@ describe('the manifest', () => {
       expect(JSON.stringify(m)).not.toMatch(/api-v2\.golf\.de|membership-card-api|login\.golf\.de/);
     });
 
+    it(`${browser}: reads a world ranking only on a player's own page, nothing else of the sites`, () => {
+      const pages = (m.content_scripts as { matches: string[]; js: string[]; world?: string }[]).filter((c) => c.js.includes('rankings-content.js'));
+      expect(pages).toHaveLength(1);
+      expect(pages[0]?.matches).toEqual(['https://www.owgr.com/playerprofile/*', 'https://www.rolexrankings.com/players/*']);
+      expect(pages[0]?.world).toBeUndefined();
+      expect(JSON.stringify(m.host_permissions)).not.toMatch(/owgr|rolex/);
+    });
+
     it(`${browser}: has its version and names from the locales`, () => {
       expect(m.version).toBe(VERSION);
       expect(m.name).toBe('__MSG_name__');

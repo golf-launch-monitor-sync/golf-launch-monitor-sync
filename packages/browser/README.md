@@ -22,6 +22,19 @@ pages named; gone when the browser closes).
 | `cancelFetchAll()`, `leaveFetchAll(owner)` | *Stop*, or the page went away (a run whose page hasn't asked for two minutes ends by itself too): closed as above. |
 | `view()` | What the popup and the line on golf.de show (`lineOf`, `hcpLastText` in `hcpView.ts`), with `fetch_all` and the run's progress. |
 
+## `ProClient`
+
+A professional's own page of the world rankings (spec/prores.md, since 1.15.0; the extension holds one). Two
+`Storage`s: the **vault** (the pairings' import tokens) and **storage** (what each target last answered, fingerprints of
+the pages the player said are theirs, and the open question with its page, a day at most).
+
+| Method | What it does |
+| --- | --- |
+| `offerPairing({target, code})` | `POST /pair` of a target of kind `pro`, for provider `pro`. |
+| `send(page)` | A page the player tapped *Send* on (`@glmsync/provider-rankings`'s `ProPage`, read again strictly): per target its plan (`manual`), then one prores/1 batch; a page said to be the player's goes marked confirmed. A target's `other_player` keeps the question; `other_account` and failures are states; a revoked token or an ended connection forgets the pairing and says so. |
+| `answer(yes)` | The player's answer to *Is this page yours?*: a yes sends the page again, confirmed, to the targets that asked, and that page from then on. |
+| `view()` | What the popup, the connect page and the line on the page show (`proLineOf`, `proLastText` in `proView.ts`; `proDetails` in `render.ts`). |
+
 ## `BrowserClient`
 
 One object per client that keeps everything in two `Storage`s: the **vault** (import tokens and the

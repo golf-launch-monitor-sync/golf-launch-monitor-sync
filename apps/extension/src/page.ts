@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
-/** What the popup and the connect window share: talking to the background, and the status panel. */
+/** What the popup and the connect window share: talking to the background, and the panels (launch monitor, golf.de, world ranking). */
 
-import { formatDate, hcpLastText, pickLang, translator, type ClientStatus, type HcpView, type Lang, type T } from '@glmsync/browser';
+import { formatDate, hcpLastText, pickLang, translator, type ClientStatus, type HcpView, type Lang, type ProView, type T } from '@glmsync/browser';
 import { download, logName } from '@glmsync/browser/download';
-import { button, fill, h, hcpWizard, renderStatus, testEntry, type Actions, type WizardMemory } from '@glmsync/browser/render';
+import { button, fill, h, hcpWizard, proDetails, renderStatus, testEntry, type Actions, type WizardMemory } from '@glmsync/browser/render';
 import type { FromPage, Reply } from './messages.ts';
 
 export const lang: Lang = pickLang(navigator.languages);
@@ -237,6 +237,64 @@ export function hcpPanel(root: HTMLElement, opts: { onGolfde?: () => void; back?
     if (r.ok && r.hcp) draw(r.hcp);
   };
   const refresh = async () => apply(await send({ type: 'hcp-status' }));
+  void refresh();
+  const timer = setInterval(() => void refresh(), 3000);
+  return { refresh, stop: () => clearInterval(timer) };
+}
+
+/**
+ * A pro's world ranking pages (spec/prores.md): where to open them, the question whether a page is the player's (asked
+ * here, never on the site's page), each connected app with its last answer. Nothing while no app is connected for it.
+ */
+export function proPanel(root: HTMLElement, opts: { onOpen?: () => void; back?: () => void; onView?: (v: ProView) => void } = {}) {
+  let asking: string | null = null;
+  let answering = false;
+  let last: ProView | null = null;
+  const draw = (v: ProView) => {
+    last = v;
+    opts.onView?.(v);
+    if (!v.pairings.length && !v.ended.length) {
+      fill(root);
+      return;
+    }
+    fill(
+      root,
+      ...v.ended.map((e) => h('p', { class: 'note warn' }, t(e.why === 'revoked' ? 'ended.revoked' : 'ended.disconnected', { name: e.name, date: formatDate(Date.parse(e.at), lang) }))),
+      v.ended.length ? h('div', { class: 'row' }, button(t('ended.ok'), () => void send({ type: 'pro-clear-ended' }).then(apply))) : null,
+      v.pairings.length
+        ? proDetails(v, { t, lang, now: Date.now(), asking, answering }, {
+            open: (site) => {
+              void send({ type: 'open-ranking', site });
+              opts.onOpen?.();
+            },
+            answer: (yes) => {
+              answering = true;
+              draw(v);
+              void send({ type: 'pro-answer', yes }).then((r) => {
+                answering = false;
+                if (r.ok && r.pro) draw(r.pro);
+                else if (last) draw(last);
+              });
+            },
+            askDisconnect: (id) => {
+              asking = id;
+              if (last) draw(last);
+            },
+            disconnect: (id) => {
+              asking = null;
+              void send({ type: 'pro-unpair', id }).then(apply);
+            },
+          })
+        : null,
+      opts.back && v.pairings.length && !v.question && v.pairings.some((p) => p.last?.status === 'sent')
+        ? h('div', { class: 'row' }, button(t('wizard.back', { target: v.pairings[0]?.name ?? '' }), opts.back, { 'data-test': 'pro-back' }))
+        : null,
+    );
+  };
+  const apply = (r: Reply) => {
+    if (r.ok && r.pro) draw(r.pro);
+  };
+  const refresh = async () => apply(await send({ type: 'pro-status' }));
   void refresh();
   const timer = setInterval(() => void refresh(), 3000);
   return { refresh, stop: () => clearInterval(timer) };

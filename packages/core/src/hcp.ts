@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
  * The handicap target API (spec/hcp.md, spec/api/hcp-api.yaml): pairing for an import token, the plan, a dgvhcp/1
- * batch, the status, disconnecting. Kept apart from the launch monitor API (target.ts): its own pairing (no
+ * batch (or, since 1.15.0, a professional's page as prores/1, spec/prores.md), the status, disconnecting. Kept apart from the launch monitor API (target.ts): its own pairing (no
  * `return_prefixes`, other limits), its own plan (`cards_have`), its own result - and a token of one never calls
  * the other.
  *
@@ -10,7 +10,7 @@
  * and an answer that isn't one is `bad_answer`. The import token goes to its target and nowhere else.
  */
 
-import { validTarget, type Reason } from '@glmsync/spec';
+import { validTarget, type ProresBatch, type Reason } from '@glmsync/spec';
 import { ACCOUNT_REF, CLIENT_KINDS, PROVIDER_ID, type ClientKind } from './api.ts';
 import { TargetError } from './errors.ts';
 import { defaultFetch, parseJson, type FetchLike } from './http.ts';
@@ -252,7 +252,8 @@ export class HcpTarget {
     return readHcpPlan(body);
   }
 
-  async import(batch: HcpBatch): Promise<HcpImportResult> {
+  /** A dgvhcp/1 batch, or (spec 1.15.0) a prores/1 batch of a pairing with provider `pro`. */
+  async import(batch: HcpBatch | ProresBatch): Promise<HcpImportResult> {
     const x = await this.send('POST', '/import', batch);
     if (x.status !== 200) throw errorOf(x);
     const result = readHcpImportResult(parseJson(x.body));
