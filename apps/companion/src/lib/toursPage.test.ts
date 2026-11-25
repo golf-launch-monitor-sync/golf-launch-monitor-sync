@@ -31,7 +31,8 @@ describe('the tour window', () => {
     expect(WINDOW_TOURS).toEqual(['tour:pro_golf_tour']);
     expect(tourWindowRules.originWhitelist).toEqual(['*']); // every load decided here, none handed to the system
     for (const url of [PROFILE, RESULT, 'https://progolftour.de/', 'https://www.progolftour.de/order-of-merit-en', 'about:blank']) expect(top(url), url).toBe(true);
-    for (const url of ['http://www.progolftour.de/', 'https://www.progolftour.de.evil.test/', 'https://www.owgr.com/', 'intent://x', 'javascript:alert(1)']) {
+    // europeantour.com's tours are read in the extension only, so far: not the window's.
+    for (const url of ['http://www.progolftour.de/', 'https://www.progolftour.de.evil.test/', 'https://www.owgr.com/', 'https://www.europeantour.com/players/x-1/', 'intent://x', 'javascript:alert(1)']) {
       expect(top(url), url).toBe(false);
     }
     // A frame of the page (a consent banner, a video) over https loads in the page, never in the system's browser.

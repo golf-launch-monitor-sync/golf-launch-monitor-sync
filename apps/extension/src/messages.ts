@@ -10,6 +10,7 @@
 import type { ClientStatus, HcpView, PairOutcome, ProView, TestOutcome } from '@glmsync/browser';
 import type { progolftourRun } from '@glmsync/provider-tours';
 import type { Seen, TourView } from '@glmsync/browser/tours';
+import type { EtView } from './europeantour.ts';
 
 type TourStep = progolftourRun.Step;
 import type { GuardLogExport } from '@glmsync/core';
@@ -58,6 +59,16 @@ export type FromTour =
   | { type: 'tour-step' }
   | { type: 'tour-stop' }
   | { type: 'tour-answer' };
+/**
+ * From europeantour-content.ts on a player's own pages of europeantour.com (DP World Tour, HotelPlanner Tour): what a
+ * page of his showed (his ranks, results with rounds, season statistics - nobody else's), the line, *Send* and
+ * *Answer* (the extension's own page to the front).
+ */
+export type FromEuropeanTour =
+  | { type: 'et-seen'; read: object }
+  | { type: 'et-line' }
+  | { type: 'et-send' }
+  | { type: 'et-answer' };
 export type FromPage =
   | { type: 'status' }
   | { type: 'run'; id?: string }
@@ -95,7 +106,7 @@ export type FromPage =
   /** Where the player finds their page: the site's own ranking (it has a search). */
   | { type: 'open-ranking'; site: 'owgr' | 'rolex' };
 
-export type Message = FromPortal | FromPairPage | FromTargetPage | FromGolfde | FromRanking | FromTour | FromPage;
+export type Message = FromPortal | FromPairPage | FromTargetPage | FromGolfde | FromRanking | FromTour | FromEuropeanTour | FromPage;
 
 /** A pairing offered by the web app's page, waiting for the player's yes in the connect window. */
 export interface Pending {
@@ -113,7 +124,7 @@ export interface Pending {
 }
 
 export type Reply =
-  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; pro?: ProView; tour?: TourView; fetch?: 'started' | 'limit' | 'nothing' }
+  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; pro?: ProView; tour?: TourView; et?: EtView; fetch?: 'started' | 'limit' | 'nothing' }
   | { ok: false; error: string };
 
 /** What the pairing page's content script hands on to the page (no code, nothing secret). */

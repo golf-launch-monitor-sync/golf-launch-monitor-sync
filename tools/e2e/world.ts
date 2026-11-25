@@ -96,6 +96,41 @@ function pgtResultPage(slug: string): string {
 <script>setTimeout(() => { document.getElementById('result').innerHTML = ${JSON.stringify(table)}; }, 600);</script></body></html>`;
 }
 
+/** A made-up player's results on europeantour.com (made-up name, made-up tournaments). */
+export const ET_RESULTS = 'https://www.europeantour.com/players/jonas-beispiel-99002/results?tour=hotelplanner-tour';
+
+/**
+ * The made-up results page: the head with his rank above its label, the season's select, and the table the page's
+ * script puts in a moment later (another season's when he picks it; a made-up other player in the wins' table).
+ */
+function etResultsPage(): string {
+  const head = ['', 'End Date', 'Tournament', 'Pos.', 'R2DR Points', 'R2MR Points', 'Prize Money', 'R1', 'R2', 'R3', 'R4', 'Total', 'To Par', 'History'];
+  const row = (end: string, path: string, name: string, pos: string, dp: string, hp: string, r: (number | '-')[], total: string, toPar: string) =>
+    `<tr><td></td><td><span>${end}</span></td><td><a href="/${path}/"><span>${name}</span></a></td><td>${pos}</td><td>${dp}</td><td>${hp}</td><td>€1,000.00</td>${r.map((x) => `<td><span>${x}</span></td>`).join('')}<td>${total}</td><td>${toPar}</td><td></td></tr>`;
+  const table = (rows: string[]) => `<table><thead><tr>${head.map((h) => `<th><span>${h}</span></th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+  const seasons = {
+    2026: table([
+      row('01/11/2026', 'hotelplanner-tour/made-up-grand-final-2026', 'Made-up Grand Final', '9T', '', '63.25', [70, 69, 68, 71], '278', '-10'),
+      row('11/10/2026', 'hotelplanner-tour/sample-open-2026', 'Sample Open', '80T', '', '', [72, 75, '-', '-'], '-', '-'),
+      row('05/07/2026', 'dpworld-tour/beispiel-international-2026', 'Beispiel International', '43T', '12.5', '', [70, 71, 72, 73], '286', '-2'),
+    ]),
+    2025: table([row('14/09/2025', 'hotelplanner-tour/old-sample-challenge-2025', 'Old Sample Challenge', '2', '', '120.0', [66, 67, 68, 69], '270', '-18')]),
+  };
+  const wins = `<table><thead><tr><th>End Date</th><th>Tournament</th><th>R1</th></tr></thead><tbody><tr><td>01/01/2026</td><td>Otto ERFUNDEN</td><td>60</td></tr></tbody></table>`;
+  return `<!doctype html><html><head><title>Wins &amp; Results - Jonas BEISPIEL - Players - European Tour</title></head><body>
+<div><p>Player profile</p><h2>Jonas BEISPIEL</h2>
+<div><div><p>2</p><p>HPT WINS</p></div><div><p>12th</p><p>R2M</p></div><div><p>401st</p><p>OWGR</p></div></div></div>
+<h3>Wins and Results</h3>${wins}
+<h4>Tournament Results</h4><select id="season"><option>2026</option><option>2025</option></select>
+<div id="results">…</div>
+<script>
+const seasons = ${JSON.stringify(seasons)};
+const show = () => { document.getElementById('results').innerHTML = '…'; setTimeout(() => { document.getElementById('results').innerHTML = seasons[document.getElementById('season').value]; }, 600); };
+document.getElementById('season').addEventListener('change', show);
+show();
+</script></body></html>`;
+}
+
 export function pairUrl(target = TARGET, code = CODE): string {
   return `${WEB}/pair#target=${encodeURIComponent(target)}&code=${code}`;
 }
@@ -216,6 +251,8 @@ export class World {
   readonly owgrSaw: { url: string; type: string }[] = [];
   /** Every request that reached progolftour.de: only the pages opened (by the player, or by Fetch all as its links do). */
   readonly pgtSaw: { url: string; type: string }[] = [];
+  /** Every request that reached europeantour.com: only the pages the player opened. */
+  readonly etSaw: { url: string; type: string }[] = [];
   readonly portal: Portal = { token: null, mode: 'storage' };
   /** How often Trackman's sign-out page was opened. */
   signOuts = 0;
@@ -290,6 +327,14 @@ export class World {
       this.pgtSaw.push({ url: req.url(), type: req.resourceType() });
       const path = decodeURIComponent(new URL(req.url()).pathname);
       const body = path.startsWith('/player-profile/') ? pgtProfilePage() : path.startsWith('/tournament-details/') ? pgtResultPage(path.slice(20)) : '<!doctype html><title>PGT</title><h1>Pro Golf Tour (made up)</h1>';
+      return route.fulfill({ status: 200, body, headers: { 'content-type': 'text/html; charset=utf-8' } });
+    });
+    // The made-up europeantour.com: a player's results page.
+    await context.route('https://www.europeantour.com/**', (route) => {
+      const req = route.request();
+      this.etSaw.push({ url: req.url(), type: req.resourceType() });
+      const path = new URL(req.url()).pathname;
+      const body = path.startsWith('/players/') ? etResultsPage() : '<!doctype html><title>Players - DP World Tour</title><h1>Players (made up)</h1>';
       return route.fulfill({ status: 200, body, headers: { 'content-type': 'text/html; charset=utf-8' } });
     });
     // The made-up golf.de: its pages, and its API as the pages' own requests reach it.

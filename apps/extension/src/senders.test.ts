@@ -54,6 +54,23 @@ describe('who sent a message', () => {
     expect(accept({ type: 'golfde-confirm' }, 'target-page')).toBeNull();
   });
 
+  it('knows a player\'s pages on europeantour.com (the top frame only) and what may come from there', () => {
+    expect(from('https://www.europeantour.com/players/jonas-beispiel-99002/results?tour=hotelplanner-tour', { frameId: 0 })).toBe('europeantour');
+    expect(from('https://www.europeantour.com/players/jonas-beispiel-99002/', { frameId: 1 })).toBe('other');
+    // The rest of the site is no player's page: only a paired target's bridge could be there.
+    expect(from('https://www.europeantour.com/dpworld-tour/players/', { frameId: 0 })).toBe('target-page');
+    expect(accept({ type: 'et-seen', read: { kind: 'page' } }, 'europeantour')).toEqual({ type: 'et-seen', read: { kind: 'page' } });
+    expect(accept({ type: 'et-seen', read: 'x' }, 'europeantour')).toBeNull();
+    expect(accept({ type: 'et-seen', read: { big: 'x'.repeat(300_000) } }, 'europeantour')).toBeNull();
+    for (const type of ['et-seen', 'et-line', 'et-send', 'et-answer'] as const) {
+      expect(accept({ type, read: {} }, 'target-page')).toBeNull();
+      expect(accept({ type, read: {} }, 'tour')).toBeNull();
+      expect(accept({ type, read: {} }, 'extension')).toBeNull();
+    }
+    // The answer whether a page is his only from the extension's own pages.
+    expect(accept({ type: 'pro-answer', yes: true }, 'europeantour')).toBeNull();
+  });
+
   it('trusts nothing else', () => {
     expect(from('https://portal.trackmangolf.com.evil.example/')).toBe('other');
     expect(from('http://portal.trackmangolf.com/')).toBe('other');

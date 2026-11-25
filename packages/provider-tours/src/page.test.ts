@@ -30,6 +30,21 @@ describe('a tour page, read again where it arrives', () => {
     expect(JSON.stringify(got)).not.toContain('script');
   });
 
+  it('keeps a season\'s statistics of the page\'s tour, the keys it knows in their ranges', () => {
+    const stats = [
+      { tour: 'pro_golf_tour', season: 2026, as_of: '2026-11-25', values: { scoring_average: 70.5, gir_pct: 120, longest: 3 } },
+      { tour: 'dp_world', season: 2025, as_of: '2025-12-31', values: { scoring_average: 71 } },
+      { season: 2024, as_of: '2024-12-31', values: { putts_per_gir: 1.8 } },
+      { season: 2023, as_of: 'x', values: { putts_per_gir: 1.8 } },
+    ];
+    expect(checkTourPage({ ...page(), stats })?.stats).toEqual([
+      { tour: 'pro_golf_tour', season: 2026, as_of: '2026-11-25', values: { scoring_average: 70.5 } },
+      { tour: 'pro_golf_tour', season: 2024, as_of: '2024-12-31', values: { putts_per_gir: 1.8 } },
+    ]);
+    // Statistics alone are worth sending.
+    expect(checkTourPage({ ...page(), tournaments: [], ranking: { source: 'tour:pro_golf_tour', as_of: '2026-11-25' }, stats })).not.toBeNull();
+  });
+
   it('is none without its site, id, name or a ranking day, or with nothing worth sending', () => {
     for (const change of [{ site: 'tour:nowhere' }, { site: 'owgr' }, { id: '../x' }, { name: '' }, { ranking: { source: 'tour:pro_golf_tour' } }]) {
       expect(checkTourPage({ ...page(), ...change })).toBeNull();

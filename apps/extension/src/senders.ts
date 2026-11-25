@@ -6,7 +6,7 @@
  * a pairing code only from the web app's pairing page, a bridge request only from a page's top frame
  * (the background then checks its origin is a paired target's: bridge.ts), what golf.de's page showed only
  * from the top frame of a page on golf.de, a world ranking's page only from the top frame of a player's page there, a tour's pages only from the top frame of
- * that tour's site, and
+ * that tour's site (on europeantour.com only a player's page), and
  * the rest only from the extension's own pages. Pure, so it is
  * tested without a browser.
  */
@@ -15,11 +15,11 @@ import { PORTAL_ORIGIN } from '@glmsync/provider-trackman/portal';
 import { PAIR_PATH, WEB_APP_ORIGIN } from '@glmsync/browser';
 import { PAGE_ORIGIN as GOLFDE_ORIGIN } from '@glmsync/provider-golfde';
 import { playerPageOf } from '@glmsync/provider-rankings';
-import { progolftour } from '@glmsync/provider-tours';
+import { europeantour, progolftour } from '@glmsync/provider-tours';
 import { readBridgeRequest } from '@glmsync/spec';
 import type { Message } from './messages.ts';
 
-export type Source = 'portal' | 'pair-page' | 'golfde' | 'ranking' | 'tour' | 'target-page' | 'extension' | 'other';
+export type Source = 'portal' | 'pair-page' | 'golfde' | 'ranking' | 'tour' | 'europeantour' | 'target-page' | 'extension' | 'other';
 
 export interface SenderLike {
   id?: string | undefined;
@@ -49,6 +49,8 @@ export function sourceOf(sender: SenderLike, extensionId: string, extensionOrigi
   // A player's own page of a world ranking (rankings-content.ts): only its top frame, only such a page.
   if (playerPageOf(u.href) && sender.tab && sender.frameId === 0) return 'ranking';
   if (u.origin === progolftour.ORIGIN && sender.tab && sender.frameId === 0) return 'tour';
+  // A player's own page on europeantour.com (europeantour-content.ts): only its top frame, only such a page.
+  if (europeantour.playerPageOf(u.href) && sender.tab && sender.frameId === 0) return 'europeantour';
   // The bridge's content script, on some site's page: only its top frame, never the project's own site.
   if ((u.protocol === 'https:' || u.protocol === 'http:') && sender.tab && sender.frameId === 0 && u.origin !== WEB_APP_ORIGIN) return 'target-page';
   return 'other';
@@ -100,6 +102,10 @@ const FROM: Record<Message['type'], Source> = {
   'tour-step': 'tour',
   'tour-stop': 'tour',
   'tour-answer': 'tour',
+  'et-seen': 'europeantour',
+  'et-line': 'europeantour',
+  'et-send': 'europeantour',
+  'et-answer': 'europeantour',
   'pro-status': 'extension',
   'pro-answer': 'extension',
   'pro-unpair': 'extension',
@@ -157,6 +163,9 @@ export function accept(raw: unknown, source: Source): Message | null {
       if ('line' in v) return { type, seen: { key: v.key, line: v.line } };
       return v.unread === 'changed_page' || v.unread === 'not_him' || v.unread === 'no_result' ? { type, seen: { key: v.key, unread: v.unread } } : null;
     }
+    case 'et-seen':
+      // Read again strictly by the background (checkRead); here only its frame and size.
+      return m.read && typeof m.read === 'object' && !Array.isArray(m.read) && JSON.stringify(m.read).length <= 262_144 ? { type, read: m.read } : null;
     case 'pro-answer':
       return typeof m.yes === 'boolean' ? { type, yes: m.yes } : null;
     case 'pro-unpair':

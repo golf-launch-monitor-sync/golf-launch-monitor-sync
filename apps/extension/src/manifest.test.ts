@@ -38,6 +38,14 @@ describe('the manifest', () => {
       expect(JSON.stringify(m.host_permissions)).not.toMatch(/owgr|rolex/);
     });
 
+    it(`${browser}: reads europeantour.com only on a player's pages`, () => {
+      const pages = (m.content_scripts as { matches: string[]; js: string[]; world?: string }[]).filter((c) => c.js.includes('europeantour-content.js'));
+      expect(pages).toHaveLength(1);
+      expect(pages[0]?.matches).toEqual(['https://www.europeantour.com/players/*']);
+      expect(pages[0]?.world).toBeUndefined();
+      expect(JSON.stringify(m.host_permissions)).not.toMatch(/europeantour/);
+    });
+
     it(`${browser}: has its version and names from the locales`, () => {
       expect(m.version).toBe(VERSION);
       expect(m.name).toBe('__MSG_name__');

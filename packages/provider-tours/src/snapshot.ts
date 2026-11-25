@@ -26,8 +26,13 @@ export interface Snapshot {
   title: string;
   /** Texts of h1-h3 and list items, in page order. */
   lines: string[];
-  /** A label's value: a `dt`'s `dd`, or the next element after one whose whole text is a label asked for. */
+  /**
+   * A label's value: a `dt`'s `dd`, the next element after one whose whole text is a label asked for, or - for the labels
+   * a page writes under their value (`before`) - the element just before it.
+   */
   pairs: Record<string, string>;
+  /** The texts of the options chosen in the page's selects (a season, a tour), in page order. */
+  selected: string[];
   tables: Table[];
   links: string[];
 }
@@ -51,6 +56,8 @@ export interface DomElement extends DomNode {
   tagName: string;
   childNodes: ArrayLike<DomNode>;
   nextElementSibling: DomElement | null;
+  /** Optional, so that an older stand-in of the DOM still fits; every browser has it. */
+  previousElementSibling?: DomElement | null;
   getAttribute(name: string): string | null;
   querySelectorAll(selector: string): ArrayLike<DomElement>;
 }
@@ -105,8 +112,12 @@ function tableOf(el: DomElement, base: string): Table | null {
   return head.length > 0 ? { head, rows } : null;
 }
 
-/** The snapshot of the page open now. `labels`: the texts whose next element holds a value worth reading. */
-export function snapshotOf(doc: DomDocument, url: string, labels: readonly string[] = []): Snapshot {
+/**
+ * The snapshot of the page open now. `labels`: the texts whose next element holds a value worth reading; `before`: the
+ * texts written under their value (a figure, then its label), whose element before holds it - matched without case,
+ * kept under the label as asked.
+ */
+export function snapshotOf(doc: DomDocument, url: string, labels: readonly string[] = [], before: readonly string[] = []): Snapshot {
   const h1 = each(doc.querySelectorAll('h1'), 1)[0];
   const lines = each(doc.querySelectorAll('h1, h2, h3, li'), MOST_LINES).map(textIn).filter(Boolean);
   const pairs: Record<string, string> = {};
@@ -124,11 +135,22 @@ export function snapshotOf(doc: DomDocument, url: string, labels: readonly strin
       if (wanted.has(k) && !(k in pairs) && el.nextElementSibling) pairs[k] = textIn(el.nextElementSibling);
     }
   }
+  if (before.length > 0) {
+    const wanted = new Map(before.map((l) => [l.toLowerCase(), l]));
+    for (const el of each(doc.querySelectorAll('div, span, p'), 20000)) {
+      // Only the label's own element (no element inside it): a wrapper holding just the label has another box before it.
+      if ((el.textContent ?? '').length > 80 || each(el.childNodes, 200).some((n) => n.nodeType === 1)) continue;
+      const k = wanted.get(textIn(el).toLowerCase());
+      const prev = el.previousElementSibling;
+      if (k && !(k in pairs) && prev && (prev.textContent ?? '').length <= 80) pairs[k] = textIn(prev);
+    }
+  }
+  const selected = each(doc.querySelectorAll('select option:checked'), 20).map(textIn).filter(Boolean);
   const tables = each(doc.querySelectorAll('table'), 20).map((t) => tableOf(t, url)).filter((t): t is Table => t !== null);
   const links = each(doc.querySelectorAll('a[href]'), MOST_LINKS)
     .map((a) => absolute(a.getAttribute('href'), url))
     .filter((h): h is string => Boolean(h));
-  return { url, title: h1 ? ownText(h1) : '', lines, pairs, tables, links };
+  return { url, title: h1 ? ownText(h1) : '', lines, pairs, selected, tables, links };
 }
 
 /** The column of the first head among `names` (case and a trailing colon ignored), or -1. */

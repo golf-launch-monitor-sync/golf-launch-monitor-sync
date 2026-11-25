@@ -156,6 +156,22 @@ for a pro's pages. It keeps only the profile you opened last (another player's p
 for it) and your lines, in the extension's own storage. It sends the site nothing; *Fetch all* opens the site's own
 addresses as its links do.
 
+### DP World Tour and HotelPlanner Tour
+
+Since 0.15.0, on **europeantour.com** - one page per player for both tours, with the same connection (`kind=pro`).
+
+1. Open your own page (*Players*, search your name). The line says *Golf Stats Sync: send this page to …* with **Send**.
+2. Each page of yours is read as it shows: the head (your rank on the tour the address names), the overview (that
+   tour's rankings and your last five tournaments), **Wins & Results** (your tournaments of the season picked, with
+   R1-R4) and **Stats** (the season statistics of the tour picked). Pick another season or tour in the page's own
+   select and it is read too, a moment later.
+3. **Send** sends what was read, a page per tour - your DP World Tour and your HotelPlanner Tour each to the app.
+   A tournament goes with its rounds; Legends and G4D events aren't read; prize money never.
+
+`europeantour-content.ts` runs only on `europeantour.com/players/*`, in the extension's own world, and reads nothing
+until an app is connected for a pro's pages. It keeps what your pages showed (another player's page replaces it) in the
+extension's own storage. It sends the site nothing, and never asks the site's data service.
+
 ## The bridge on the app's page
 
 [spec/page-bridge.md](../../spec/page-bridge.md). A small content script (`bridge-content.ts`) goes on the pages

@@ -30,6 +30,7 @@ export function pgtProfile(over: Partial<Snapshot> = {}, rows?: Cell[][]): Snaps
     title: 'Lena Beispiel',
     lines: ['Beispiel', 'Lena', 'Lena Beispiel Year 2026', 'Statistics - Lena Beispiel Year 2026', 'Winner', 'Missed cut'],
     pairs: { 'Order of Merit': '7th', 'Season points': '17,290.60', 'Season prize money': '€ 17,580.46' },
+    selected: [],
     tables: [table],
     links: [],
     ...over,
@@ -52,6 +53,7 @@ export function pgtResult(slug = 'sample-desert-open-2026', rows?: Cell[][], ove
     title: '',
     lines: ['Sample Desert Open 2026', 'Sample Desert Golf Club', 'Final result Sample Desert Open 2026', 'Sample Desert Golf Club PAR 71'],
     pairs: { 'Golfclub:': 'Sample Desert Golf Club Desert Road 1, 12345 Sampletown, Egypt', 'Date:': '02.03.2026 - 04.03.2026' },
+    selected: [],
     tables: [{
       head: RESULT_HEAD,
       rows: rows ?? [
@@ -80,6 +82,7 @@ export class El implements DomElement {
   nodeType = 1;
   parent: El | null = null;
   nextElementSibling: El | null = null;
+  previousElementSibling: El | null = null;
   childNodes: (El | TextNode)[] = [];
   constructor(public tagName: string, public attrs: Record<string, string> = {}, kids: (El | string)[] = []) {
     let prev: El | null = null;
@@ -88,6 +91,7 @@ export class El implements DomElement {
       if (n instanceof El) {
         n.parent = this;
         if (prev) prev.nextElementSibling = n;
+        n.previousElementSibling = prev;
         prev = n;
       }
       this.childNodes.push(n);
@@ -105,8 +109,9 @@ export class El implements DomElement {
   private matches(sel: string): boolean {
     const parts = sel.trim().split(/\s+/);
     const one = (e: El, p: string) => {
-      const m = /^([a-z0-9]+)(\[([a-z]+)\])?$/.exec(p);
-      return !!m && e.tagName === m[1] && (!m[3] || e.getAttribute(m[3]) !== null);
+      // ":checked" stands for the option chosen now (here: one with the attribute).
+      const m = /^([a-z0-9]+)(\[([a-z]+)\])?(:checked)?$/.exec(p);
+      return !!m && e.tagName === m[1] && (!m[3] || e.getAttribute(m[3]) !== null) && (!m[4] || e.getAttribute('checked') !== null);
     };
     if (!one(this, parts[parts.length - 1] ?? '')) return false;
     let up = this.parent;
@@ -145,4 +150,86 @@ export function docOf(snap: Snapshot): El {
       ...snap.links.filter((l) => !inTables.has(l)).map((l) => h('a', { href: l }, ['link'])),
     ]),
   ]);
+}
+
+const ET = 'https://www.europeantour.com';
+const ET_HEAD = ['', 'End Date', 'Tournament', 'Pos.', 'R2DR Points', 'R2MR Points', 'Prize Money', 'R1', 'R2', 'R3', 'R4', 'Total', 'To Par', 'History'];
+/** The made-up player's title on europeantour.com, as the document's title writes it on his results. */
+export const ET_TITLE = 'Wins & Results - Jonas BEISPIEL - Players - European Tour';
+
+/**
+ * A line of his results: end date, the tournament's path (its tour first), place, the tour's points (R2DR or R2MR by the
+ * path), then the rounds; a missed cut as the site writes it (place after two rounds, dashes after).
+ */
+export function etLine(end: string, path: string, name: string, place: string, points: string, ...rounds: number[]): Cell[] {
+  const dp = path.startsWith('dpworld-tour/') || path.startsWith('european-tour/');
+  const r = [0, 1, 2, 3].map((i) => (rounds[i] === undefined ? '-' : String(rounds[i])));
+  const total = rounds.length === 4 ? String(rounds.reduce((a, b) => a + b, 0)) : '-';
+  const toPar = rounds.length === 4 ? String(rounds.reduce((a, b) => a + b, 0) - 4 * 72) : '-';
+  return cells('', end, { text: name, href: `${ET}/${path}/` }, place, dp ? points : '', dp ? '' : points, '€1,000.00', ...r, total, toPar, '');
+}
+
+/** Jonas Beispiel's results of the season 2026 (made up): the HotelPlanner Tour mostly, one DP World Tour event, one Legends. */
+export function etResults(over: Partial<Snapshot> = {}, rows?: Cell[][]): Snapshot {
+  return {
+    url: `${ET}/players/jonas-beispiel-99002/results?tour=hotelplanner-tour`,
+    title: '',
+    lines: ['Jonas BEISPIEL', 'Wins and Results', 'Tournament Wins', 'Tournament Results'],
+    pairs: { R2M: '12th' },
+    selected: ['2026'],
+    tables: [
+      // The wins (no place column): not read, the results have them too.
+      { head: ET_HEAD.filter((h) => h !== 'Pos.'), rows: [] },
+      {
+        head: ET_HEAD,
+        rows: rows ?? [
+          etLine('01/11/2026', 'hotelplanner-tour/made-up-grand-final-2026', 'Made-up Grand Final', '9T', '63.25', 70, 69, 68, 71),
+          etLine('11/10/2026', 'hotelplanner-tour/sample-open-2026', 'Sample Open', '80T', '', 72, 75),
+          etLine('05/07/2026', 'dpworld-tour/beispiel-international-2026', 'Beispiel International', '43T', '12.5', 70, 71, 72, 73),
+          etLine('21/06/2026', 'legends-tour/made-up-senior-open-2026', 'Made-up Senior Open', '5', '', 70, 70, 70, 70),
+          etLine('16/08/2015', 'challenge-tour/old-sample-challenge-2015', 'Old Sample Challenge', '1', '27,200.0', 65, 69, 69, 67),
+        ],
+      },
+    ],
+    links: [],
+    ...over,
+  };
+}
+
+/** His overview with ?tour=hotelplanner-tour: the head's rank, the tour's *Rankings*, the last five (here two). */
+export function etOverview(over: Partial<Snapshot> = {}): Snapshot {
+  return {
+    url: `${ET}/players/jonas-beispiel-99002/?tour=hotelplanner-tour`,
+    title: '',
+    lines: ['Jonas BEISPIEL', 'Latest on Jonas', 'Last 5 performances', 'Meet Jonas'],
+    pairs: { R2M: '12th', 'Current Rank': '12', 'Tournaments Played': '18', 'HotelPlanner Tour Rankings Points': '1,044.11' },
+    selected: [],
+    tables: [{ head: ET_HEAD, rows: [etLine('01/11/2026', 'hotelplanner-tour/made-up-grand-final-2026', 'Made-up Grand Final', '9T', '63.25', 70, 69, 68, 71)] }],
+    links: [],
+    ...over,
+  };
+}
+
+/** His statistics of the HotelPlanner Tour (picked in the page's select): two seasons, and one without statistics. */
+export function etStats(over: Partial<Snapshot> = {}): Snapshot {
+  const t = (season: string, rows: [string, string][]): Table => ({
+    head: [season, 'Stat', 'Tour Average', 'Rank'],
+    rows: rows.map(([k, v]) => cells(k, v, '1.00', '10')),
+  });
+  return {
+    url: `${ET}/players/jonas-beispiel-99002/stats?tour=hotelplanner-tour`,
+    title: '',
+    lines: ['Jonas BEISPIEL', 'Performance this season'],
+    pairs: { R2M: '12th' },
+    selected: ['HotelPlanner Tour'],
+    tables: [
+      { head: ['2027', 'Stat', 'Tour Average', 'Rank'], rows: [] },
+      t('2026', [['Driving Accuracy (%)', '61.20'], ['Driving Distance (Yards)', '300.00'], ['Greens in Regulation (%)', '70.10'],
+        ['Putts Per Gir', '1.76'], ['Average Putts Per Round', '29.10'], ['Sand Saves (% / Total Save attempts)', '50.00'],
+        ['Stroke Average', '70.45'], ['Longest Drive', '350']]),
+      t('2025', [['Stroke Average', '71.02']]),
+    ],
+    links: [],
+    ...over,
+  };
 }

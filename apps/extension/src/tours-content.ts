@@ -31,7 +31,7 @@ let phase: LinePhase = 'ready';
 let pro: ProView | undefined;
 let tour: TourView | undefined;
 let note: string | null = null;
-const onProfile = progolftour.readProfile({ url: location.href, title: '', lines: [], pairs: {}, tables: [], links: [] }) !== null;
+const onProfile = progolftour.readProfile({ url: location.href, title: '', lines: [], pairs: {}, selected: [], tables: [], links: [] }) !== null;
 
 type Ask =
   | { type: 'tour-seen'; seen: object }

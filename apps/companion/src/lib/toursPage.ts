@@ -41,9 +41,15 @@ function httpsHost(url: string): string | null {
   }
 }
 
+/**
+ * The tours whose module the window's page script runs. DP World Tour and HotelPlanner Tour (europeantour.com) are read
+ * in the extension only, so far: the window neither offers nor loads them until the page script reads them too.
+ */
+const APP_TOURS: readonly TourSite[] = ['tour:pro_golf_tour'];
+
 /** Each tour's own hosts (from its `matches`, with and without www). */
 const HOSTS: ReadonlyMap<string, TourSite> = new Map(
-  Object.values(TOUR_SITES).flatMap((info) =>
+  APP_TOURS.flatMap((site) => (TOUR_SITES[site] ? [TOUR_SITES[site]] : [])).flatMap((info) =>
     info.matches.flatMap((m) => {
       const h = httpsHost(m.replace(/\*$/, ''));
       return h ? [[h, info.site] as const, [h.replace(/^www\./, ''), info.site] as const] : [];
@@ -60,7 +66,7 @@ export function tourSiteOf(url: unknown): TourSite | null {
 export const onTourSite = (url: unknown): boolean => tourSiteOf(url) !== null;
 
 /** The tours the app's window opens, in the order offered. */
-export const WINDOW_TOURS: readonly TourSite[] = (Object.keys(TOUR_SITES) as TourSite[]).filter(isTourSite);
+export const WINDOW_TOURS: readonly TourSite[] = APP_TOURS.filter(isTourSite);
 
 const pageMayLoad = (url: string) => onTourSite(url) || url === 'about:blank';
 

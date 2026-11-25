@@ -8,9 +8,12 @@
  * - `page`             a tour's page as a client hands it on: read again strictly, one prores/1 batch of it
  * - `progolftour`      Pro Golf Tour: the profile (ranking, tournaments) and his line of a tournament's final result
  * - `progolftour-run`  *Fetch all* there: his finished tournaments' pages, one by one, on his tap
+ * - `europeantour`     DP World Tour and HotelPlanner Tour: his pages on europeantour.com (ranks, results with
+ *                      rounds, season statistics), each tour a page of its own
  */
 
 export * from './page.ts';
 export * from './snapshot.ts';
 export * as progolftour from './progolftour.ts';
 export * as progolftourRun from './progolftour-run.ts';
+export * as europeantour from './europeantour.ts';

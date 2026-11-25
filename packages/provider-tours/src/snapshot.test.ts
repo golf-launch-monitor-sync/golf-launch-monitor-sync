@@ -39,6 +39,22 @@ describe('a page as text', () => {
     ]);
   });
 
+  it('takes a figure written above its label, and the options chosen in the page\'s selects', () => {
+    const page = h('html', [
+      h('div', [h('p', ['35th']), h('p', ['R2M'])]),
+      h('div', [h('p', ['12']), h('p', ['Tournaments Played'])]),
+      h('div', [h('p', ['160']), h('p', ['Tournaments Played'])]),
+      h('div', [h('p', ['Current Rank'])]),
+      h('select', [h('option', ['2027']), h('option', { checked: '' }, ['2026'])]),
+      h('select', [h('option', { checked: '' }, ['HotelPlanner Tour'])]),
+    ]);
+    const s = snapshotOf(page, 'https://www.europeantour.com/players/x-1/', [], ['r2m', 'Tournaments Played', 'Current Rank']);
+    // The first of a label counts; a label with nothing before it has no value; the label is kept as asked.
+    expect(s.pairs).toEqual({ r2m: '35th', 'Tournaments Played': '12' });
+    expect(s.selected).toEqual(['2026', 'HotelPlanner Tour']);
+    expect(snap.selected).toEqual([]);
+  });
+
   it('cleans text, finds columns, makes names comparable', () => {
     expect(clean('  a\n b ')).toBe('a b');
     expect(clean(null)).toBe('');

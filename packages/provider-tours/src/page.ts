@@ -51,6 +51,19 @@ export const TOUR_SITES: Readonly<Partial<Record<TourSite, TourInfo>>> = {
     matches: ['https://www.progolftour.de/*'],
     start: 'https://www.progolftour.de/order-of-merit-en',
   },
+  // One site, one page per player for both tours (europeantour.ts): each tour's ranking and tournaments go as its own page.
+  'tour:dp_world': {
+    site: 'tour:dp_world',
+    name: 'DP World Tour',
+    matches: ['https://www.europeantour.com/players/*'],
+    start: 'https://www.europeantour.com/dpworld-tour/players/',
+  },
+  'tour:hotelplanner': {
+    site: 'tour:hotelplanner',
+    name: 'HotelPlanner Tour',
+    matches: ['https://www.europeantour.com/players/*'],
+    start: 'https://www.europeantour.com/hotelplanner-tour/players/',
+  },
 };
 
 export const isTourSite = (v: unknown): v is TourSite => typeof v === 'string' && Object.hasOwn(TOUR_SITES, v);
@@ -93,6 +106,22 @@ function tournamentOf(v: unknown, tour: ProTour): ProTournament | null {
   return out;
 }
 
+// The statistics' keys a client of this package sends, each in a range no season of a tour leaves (spec/prores.md).
+const STATS: Readonly<Record<string, readonly [number, number]>> = {
+  scoring_average: [55, 95], driving_distance_m: [100, 400], driving_accuracy_pct: [0, 100], gir_pct: [0, 100],
+  scrambling_pct: [0, 100], sand_saves_pct: [0, 100], putts_per_round: [15, 45], putts_per_gir: [1, 3],
+};
+
+function statsOf(v: unknown, tour: ProTour): ProStats | null {
+  const s = obj(v);
+  const values = obj(s?.values);
+  if (!s || !int(s.season, 1990, 2100) || !day(s.as_of) || !values) return null;
+  const kept: Record<string, number> = {};
+  for (const [k, [lo, hi]] of Object.entries(STATS)) if (num(values[k], lo, hi)) kept[k] = values[k];
+  // A page's statistics are of the page's tour, never another's.
+  return Object.keys(kept).length > 0 && (s.tour === undefined || s.tour === tour) ? { tour, season: s.season, as_of: s.as_of, values: kept } : null;
+}
+
 /** A page as it arrives from where it was read: field by field, what doesn't fit is dropped; without site, id, name or ranking it is none. */
 export function checkTourPage(v: unknown): TourPage | null {
   const p = obj(v);
@@ -107,9 +136,10 @@ export function checkTourPage(v: unknown): TourPage | null {
   if (int(r.events, 0, 999)) ranking.events = r.events;
   const raw = Array.isArray(p.tournaments) ? p.tournaments.slice(0, PRORES_MAX.tournaments) : [];
   const tournaments = raw.map((t) => tournamentOf(t, tour)).filter((t): t is ProTournament => t !== null);
-  // Neither a rank nor points nor a tournament: nothing worth sending.
-  if (ranking.rank === undefined && ranking.points === undefined && tournaments.length === 0) return null;
-  return { site, id: p.id, name: p.name, ranking, tournaments, stats: [] };
+  const stats = (Array.isArray(p.stats) ? p.stats.slice(0, PRORES_MAX.stats) : []).map((x) => statsOf(x, tour)).filter((x): x is ProStats => x !== null);
+  // Neither a rank nor points nor a tournament nor a season's statistics: nothing worth sending.
+  if (ranking.rank === undefined && ranking.points === undefined && tournaments.length === 0 && stats.length === 0) return null;
+  return { site, id: p.id, name: p.name, ranking, tournaments, stats };
 }
 
 export interface TourBatchOptions {

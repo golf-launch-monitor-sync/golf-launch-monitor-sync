@@ -11,7 +11,8 @@
  *
  * And a pro's own world ranking page (`ProClient`, spec/prores.md): the page arrives from the content script there when
  * the player taps *Send*, read as the page showed it, and goes to the apps paired for it, each after its plan. Whether
- * a page is the player's is answered in the extension's own pages. The site is never asked anything.
+ * a page is the player's is answered in the extension's own pages. The site is never asked anything. A tour's pages
+ * the same way (the Pro Golf Tour: tours.ts; europeantour.com, a page per tour: europeantour.ts).
  *
  * Woken by alarms, messages and the browser starting; it keeps nothing in memory that matters (a
  * Manifest V3 background may be stopped between events): everything is in chrome.storage.
@@ -20,6 +21,7 @@
 import { badge, BrowserClient, HcpClient, IdbBlobs, pickLang, ProClient, SEND_AFTER_MS, translator, type HcpView } from '@glmsync/browser';
 import { SITES } from '@glmsync/provider-rankings';
 import { TourKeeper } from '@glmsync/browser/tours';
+import { EtKeeper } from './europeantour.ts';
 import { HISTORY_SHEET_URL, readSeen } from '@glmsync/provider-golfde';
 import { bridgeMessage, type BridgeReply, type Reason } from '@glmsync/spec';
 import { PORTAL_URL, SIGN_OUT_URL } from '@glmsync/provider-trackman/portal';
@@ -68,6 +70,8 @@ const pro = new ProClient({
 });
 // The Pro Golf Tour's pages as the player opens them (`@glmsync/browser/tours`): what was read, *Fetch all*.
 const tours = new TourKeeper(storage);
+// His pages on europeantour.com as he opens them (europeantour.ts): DP World Tour and HotelPlanner Tour, merged.
+const et = new EtKeeper(storage);
 const localDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /** His tour page as read so far, to every app paired for a pro's pages (each after its plan). */
@@ -76,6 +80,14 @@ async function sendTour(): Promise<Reply> {
   const v = page ? await pro.send(page) : await pro.view();
   await refreshIcon();
   return { ok: true, pro: v, tour: await tours.view() };
+}
+/** His europeantour.com pages as read so far: a page per tour, each to every app paired for a pro's pages. */
+async function sendEt(): Promise<Reply> {
+  const pages = await et.pages(localDay());
+  let v = await pro.view();
+  for (const page of pages) v = await pro.send(page);
+  await refreshIcon();
+  return { ok: true, pro: v, et: { ...(await et.view()), sent: pages.map((p) => p.site) } };
 }
 const HCP_SEND = 'hcp-send';
 const HCP_RUN = 'hcp-run';
@@ -573,6 +585,16 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
       return sendTour();
     case 'tour-answer':
       // From the tour's page: only the connect window comes to the front, where the player answers.
+      await openConnectWindow(near);
+      return { ok: true, pro: await pro.view() };
+    case 'et-seen':
+      return { ok: true, pro: await pro.view(), et: await et.seen(m.read) };
+    case 'et-line':
+      return { ok: true, pro: await pro.view(), et: await et.view() };
+    case 'et-send':
+      return sendEt();
+    case 'et-answer':
+      // From the site's page: only the connect window comes to the front, where the player answers.
       await openConnectWindow(near);
       return { ok: true, pro: await pro.view() };
     case 'pro-answer': {
