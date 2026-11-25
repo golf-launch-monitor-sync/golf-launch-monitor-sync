@@ -12,6 +12,8 @@
  *                      rounds, season statistics), each tour a page of its own
  * - `seasonPage`       the tours whose *Results* page shows the whole season with rounds, read on *Send*:
  *                      `pgatour` (PGA Tour, Korn Ferry Tour), `lpga` (LPGA Tour, Epson Tour); `figures` the standing
+ * - `ocs`              Ladies European Tour and LET Access Series: her profile (results with rounds) and her line of the
+ *                      Order of Merit
  */
 
 export * from './page.ts';
@@ -24,3 +26,4 @@ export * from './seasonPage.ts';
 export type { SeasonRead, SeasonUnread } from './season.ts';
 export * as pgatour from './pgatour.ts';
 export * as lpga from './lpga.ts';
+export * as ocs from './ocs.ts';

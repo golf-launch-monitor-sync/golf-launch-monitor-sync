@@ -42,6 +42,8 @@ describe('the tour window', () => {
 
   it('knows the tour of a page and his profile among its pages', () => {
     expect([tourSiteOf(PROFILE), tourSiteOf('https://www.owgr.com/'), tourSiteOf(null), tourSiteOf('x'.repeat(5000))]).toEqual(['tour:pro_golf_tour', null, null, null]);
+    // The LET's sites the extension reads; the window doesn't (yet): no page of theirs is the window's.
+    expect([tourSiteOf('https://letaccess.com/player-profiles/911221/'), tourSiteOf('https://ladieseuropeantour.com/')]).toEqual([null, null]);
     expect([onProfile(PROFILE), onProfile(RESULT), onProfile('https://evil.test/player-profile/1')]).toEqual([true, false, false]);
     expect([keptTourPage(PROFILE), keptTourPage(RESULT), keptTourPage(`${PROFILE}&x=${'a'.repeat(3000)}`), keptTourPage(42)]).toEqual([PROFILE, null, null, null]);
   });

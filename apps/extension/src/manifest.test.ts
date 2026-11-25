@@ -54,6 +54,14 @@ describe('the manifest', () => {
       expect(JSON.stringify(m.host_permissions)).not.toMatch(/pgatour|lpga|epsontour|orchestrator/);
     });
 
+    it(`${browser}: reads the LET's and LET Access Series' pages in their own script, asking no host permission`, () => {
+      const pages = (m.content_scripts as { matches: string[]; js: string[]; world?: string }[]).filter((c) => c.js.includes('ocs-content.js'));
+      expect(pages).toHaveLength(1);
+      expect(pages[0]?.matches).toEqual(['https://ladieseuropeantour.com/*', 'https://letaccess.com/*']);
+      expect(pages[0]?.world).toBeUndefined();
+      expect(JSON.stringify(m.host_permissions)).not.toMatch(/ladieseuropeantour|letaccess/);
+    });
+
     it(`${browser}: has its version and names from the locales`, () => {
       expect(m.version).toBe(VERSION);
       expect(m.name).toBe('__MSG_name__');

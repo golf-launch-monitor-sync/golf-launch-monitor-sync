@@ -192,6 +192,25 @@ same connection (`kind=pro`).
 *Results* without loading a page; the line shows only there) and reads nothing until an app is connected for a pro's
 pages and you tap *Send*. It keeps nothing of the page and sends the sites nothing.
 
+### A tour's pages: the Ladies European Tour and the LET Access Series
+
+Since 0.17.0 (the module `ocs` of [`@glmsync/provider-tours`](../../packages/provider-tours/README.md)), with the same
+connection.
+
+1. Open your own profile on **ladieseuropeantour.com** or **letaccess.com** (*Players*, search your name). The line
+   says *Golf Stats Sync: send this page to …* with **Send**. The profile shows your results of the season picked there
+   with every round, so nothing else needs opening; pick another season to send that one.
+2. For your rank, open the tour's **Order of Merit** afterwards: only your own line is taken (by the link to the profile
+   you read last, never by a name), and the line says *Rank n of the Order of Merit read*. **Send** there, or on your
+   profile, sends both.
+3. A tournament goes with its rounds and its par (the total minus its score to par, over the rounds), and only three
+   days after its start, so one still running isn't sent half.
+
+`ocs-content.ts` runs on every page of both sites (each is one app that changes its address without loading a page,
+so it looks again when the address changes) and reads nothing until an app is connected for a pro's pages. It keeps
+per tour only the profile you read last and your Order of Merit line (another player's profile replaces both), in the
+extension's own storage. It sends the sites nothing and opens no page itself.
+
 ## The bridge on the app's page
 
 [spec/page-bridge.md](../../spec/page-bridge.md). A small content script (`bridge-content.ts`) goes on the pages

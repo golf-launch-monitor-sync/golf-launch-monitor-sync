@@ -11,10 +11,11 @@
  *   loaded there (spec/hcp.md). Not golf.de's API: the extension sends golf.de nothing of its own.
  * - **The world rankings** (OWGR, Rolex Rankings): only a player's own page, to read what it shows when the player taps
  *   *Send* there (spec/prores.md). Nothing else of the sites, and no request to them.
- * - **A tour's site** (the Pro Golf Tour): the player's profile and his tournaments' pages, to read his ranking and his
+ * - **A tour's site**: on the Pro Golf Tour the player's profile and his tournaments' pages, to read his ranking and his
  *   own line of a final result (spec/prores.md), and on his *Fetch all* to open those pages as their links do. On
- *   europeantour.com (DP World Tour, HotelPlanner Tour) only a player's pages, read as they show. No request to the
- *   sites of its own.
+ *   europeantour.com (DP World Tour, HotelPlanner Tour) only a player's pages, read as they show; on the Ladies European
+ *   Tour and the LET Access Series her profile (results with rounds) and her own line of the Order of Merit. No request
+ *   to the sites of its own.
  * - **The tours whose player page shows the season** (pgatour.com, lpga.com, epsontour.com): the whole site, because it
  *   moves to the player's *Results* page without loading it; the line shows only there, and the page is read only when
  *   the player taps *Send*. No request to the sites.
@@ -26,7 +27,7 @@
 
 import { PAGE_MATCHES as GOLFDE_MATCHES } from '@glmsync/provider-golfde';
 import { PAGE_MATCHES as RANKING_MATCHES } from '@glmsync/provider-rankings';
-import { europeantour, progolftour, SEASON_PAGE_MATCHES } from '@glmsync/provider-tours';
+import { europeantour, ocs, progolftour, SEASON_PAGE_MATCHES } from '@glmsync/provider-tours';
 
 export type Browser = 'chrome' | 'firefox';
 
@@ -89,6 +90,9 @@ export function manifest(browser: Browser, version: string, testHosts: string[] 
       { matches: [...europeantour.PAGE_MATCHES], js: ['europeantour-content.js'], run_at: 'document_idle', all_frames: false },
       // The tours whose player page shows the season (PGA Tour, Korn Ferry, LPGA, Epson): the line on his Results page.
       { matches: [...SEASON_PAGE_MATCHES], js: ['season-content.js'], run_at: 'document_idle', all_frames: false },
+      // The LET's and LET Access Series' pages: every page, because each site is one app that changes its address
+      // without loading a page; the script reads only her profile and her line of the Order of Merit.
+      { matches: [...ocs.PAGE_MATCHES], js: ['ocs-content.js'], run_at: 'document_idle', all_frames: false },
     ],
     content_security_policy: { extension_pages: CSP },
   };

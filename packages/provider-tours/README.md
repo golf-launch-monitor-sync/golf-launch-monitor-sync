@@ -15,8 +15,14 @@ Unofficial: not affiliated with, endorsed by or supported by any tour or its ope
 
 | **PGA Tour** (`tour:pga_tour`), **Korn Ferry Tour** (`tour:korn_ferry`) | `pgatour.ts` | the player's *Results* page `pgatour.com/player/<id>/<name>/results` (the Korn Ferry Tour's also under `/korn-ferry-tour/…`) | `robots.txt` (read 25 Nov 2026): disallows only some query strings (`?…player=`, `?…webview=` …) and internal paths, not the player pages. The terms of use (`pgatour.com/company/terms-of-use`, updated April 2024, read 25 Nov 2026), section 7: for personal, non-commercial use only, its data for no commercial purpose unless licensed (A); no automated processes, robots, scrapers or other programs that copy or download its data, nor facilitating others to use them (C); scores and statistics only for news reporting and personal, non-commercial purposes (D). This module reads only the page the player opened, on his tap, and opens nothing; whether a player may hand his own page to an app is for each project using it to answer (spec/prores.md). |
 | **LPGA Tour** (`tour:lpga`), **Epson Tour** (`tour:epson`) | `lpga.ts` | the player's *Results* page `lpga.com/athletes/<name>/<id>/results`, `epsontour.com/athletes/<name>/<id>/results` | `robots.txt` (read 25 Nov 2026), both sites: `User-Agent: * Allow: /`. The terms of use (`lpga.com/terms-and-conditions`, effective 5 Sep 2024, for both sites) allow use for the visitor's own non-commercial purposes; commercial use, *systematic retrieval* to build a collection and tools that harvest information *for any commercial purpose* only with written consent; statistics only for news or private, non-commercial purposes, with attribution. Same answer as above. |
+| **Ladies European Tour** (`tour:let`) | `ocs.ts` | her profile `ladieseuropeantour.com/player-profiles/<id>/`; the Order of Merit `ladieseuropeantour.com/order-of-merit` | Read 25 Nov 2026, as far as reachable: the site sits behind Cloudflare's bot check, which stopped a cloud browser (not a player's own browser) at the profile and at `/terms-and-conditions`; the players list (`/players`) showed the same layout and ids as the LET Access Series. `/robots.txt` is answered by the site's app itself (no robots.txt). **Its terms were not read yet.** |
+| **LET Access Series** (`tour:let_access`) | `ocs.ts` | her profile `letaccess.com/player-profiles/<id>/` (the same id as on the LET); the Order of Merit `letaccess.com/letas-order-of-merits?id=<season>` | Read 25 Nov 2026: no robots.txt (the site's app answers the address), no terms of use of its own (`/terms-and-conditions` is empty; the operator is the LET's company, Ladies European Golf Venture Limited). |
 
-Other tours come as modules of their own, each with its terms noted here before it is added.
+Other tours come as modules of their own, each with its terms noted here before it is added. The **Alps Tour**
+(alpstourgolf.com, also OCS Sport, but another layout: `/playerprofile/<code>`) isn't read yet: its pages weren't seen
+behind Cloudflare's check; its `robots.txt` (read 25 Nov 2026) allows all (`User-agent: *`, `Allow: /`,
+`Content-Signal: search=yes, ai-train=no, use=reference`) and shuts out AI crawlers by name. The old information centre
+of OCS (`ocs-let.com/tic/…`, `alps.ocs-ffg.com/tic/tmtic.cgi`) answers 404.
 
 ## DP World Tour and HotelPlanner Tour
 
@@ -79,6 +85,23 @@ Other tours come as modules of their own, each with its terms noted here before 
 - **The tour**: on pgatour.com the *Tour* picker's (the address may still name another); PGA Tour Champions and PGA
   Tour Americas aren't read (`other_tour`), prores/1 has no key for them.
 - The page's other players (pgatour.com's leaderboard strip at the top) never leave the page's script.
+## Ladies European Tour and LET Access Series
+
+- Both sites run on one platform (OCS Sport), each an app that changes its address without loading a page; the extension
+  looks again whenever the address changes. One module (`ocs.ts`) reads both; each is a tour of its own.
+- **Her profile** shows her results of the season picked there (`2026 Season`): per tournament its link
+  (`/tournaments-information/<code>/<season>`, the ref `let-<code>-<season>` or `letas-<code>-<season>`), its start
+  (`12/04/26`), her place (`2`, `9=` tied; a missed cut is a place after two rounds there), **every round in one cell**
+  (`72 69 69`) and the total with its score to par (`210 (-6)`). The par of a round is the total minus its score to par,
+  over the rounds - only when the total equals the rounds and the par comes out whole. Prize money is never read. Her
+  name is the heading above her season's figures (*… Tournaments Played*). No rank on the profile.
+- **The Order of Merit** (*Pos, Name, Nat, Points, Played*): only her own line, found by the link to the profile read
+  last on that tour (never by a name): rank, points, events of that season. The page's other lines never leave the
+  page's script.
+- A tournament goes with its rounds, and only three days after its start (four rounds at most), so one still running
+  isn't sent half. The ranking goes with every send: the events of the profile, and rank and points once her line of
+  that season's Order of Merit was read.
+- Nothing is opened for her: one page has the whole season; no *Fetch all*.
 
 ## Pieces
 
@@ -93,15 +116,18 @@ Other tours come as modules of their own, each with its terms noted here before 
 - `progolftour-run.ts` - *Fetch all* as a value: `startRun`, `nextStep`, `seeRun`, `stopRun`, `mayStart`.
 - `europeantour.ts` - a page of his on europeantour.com (`readPage`, `shows`), what the client keeps of them
   (`mergeRead`, `checkRead`) and a page per tour to send (`pagesOf`).
-- `season.ts`, `seasonPage.ts`, `pgatour.ts`, `lpga.ts`, `figures.ts` - the season pages (above).
+- `ocs.ts` - the LET and the LET Access Series: where a page is (`siteAt`, `profileIdOf`, `isOomPage`), her profile
+  (`readProfile`), her line of the Order of Merit (`readOom`), what a read hands on (`siteRead`), the strict re-reads
+  (`checkProfile`, `checkOom`).
 - `testing.ts` - the tours' pages made up by hand in their shape (made-up players, made-up numbers; the season pages in
   `testing-season.ts`), and a tiny DOM (`h`, `docOf` of a snapshot) for the tests of a page's script. Never a recorded
   page.
 
-The extension puts it together (`apps/extension`: `tours-content.ts`, `europeantour-content.ts` and `season-content.ts`
-on the sites; `TourKeeper` of `@glmsync/browser/tours` and the extension's `europeantour.ts` keeping what was read;
+The extension puts it together (`apps/extension`: `tours-content.ts`, `europeantour-content.ts`, `season-content.ts` and
+`ocs-content.ts` on the sites; `TourKeeper` of `@glmsync/browser/tours` and the extension's `europeantour.ts` and
+`ocs-pages.ts` keeping what was read;
 `ProClient` of `@glmsync/browser` sending it). The companion app the same
 in its own window (`apps/companion`: `ToursView` with the page script `scripts/tours-page.entry.ts`, `toursSession.ts`
 over the same `TourKeeper`, run and `ProClient`). A new tour joins the app's window with its module's reading in the
 page script and its pages in `src/lib/toursPage.ts`; the window shows only the sites it reads (`APP_TOURS`): DP World
-Tour, HotelPlanner Tour and the season pages are read in the extension only, so far.
+Tour, HotelPlanner Tour, the season pages, the LET and the LET Access Series are read in the extension only, so far.

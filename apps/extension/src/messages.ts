@@ -11,6 +11,7 @@ import type { ClientStatus, HcpView, PairOutcome, ProView, TestOutcome } from '@
 import type { progolftourRun } from '@glmsync/provider-tours';
 import type { Seen, TourView } from '@glmsync/browser/tours';
 import type { EtView } from './europeantour.ts';
+import type { OcsSeen, OcsView } from './ocs-pages.ts';
 
 type TourStep = progolftourRun.Step;
 import type { GuardLogExport } from '@glmsync/core';
@@ -72,6 +73,17 @@ export type FromEuropeanTour =
   | { type: 'et-line' }
   | { type: 'et-send' }
   | { type: 'et-answer' };
+/**
+ * From ocs-content.ts on the pages of the Ladies European Tour and the LET Access Series (`ocs` of
+ * `@glmsync/provider-tours`): what a page showed of her (her profile, or only her own line of the Order of Merit), the
+ * line, *Send*, *Answer*. Each names its tour, which the background checks against the page it came from.
+ */
+export type OcsTour = 'tour:let' | 'tour:let_access';
+export type FromOcs =
+  | { type: 'ocs-seen'; site: OcsTour; seen: OcsSeen }
+  | { type: 'ocs-line'; site: OcsTour }
+  | { type: 'ocs-send'; site: OcsTour }
+  | { type: 'ocs-answer' };
 export type FromPage =
   | { type: 'status' }
   | { type: 'run'; id?: string }
@@ -109,7 +121,7 @@ export type FromPage =
   /** Where the player finds their page: the site's own ranking (it has a search). */
   | { type: 'open-ranking'; site: 'owgr' | 'rolex' };
 
-export type Message = FromPortal | FromPairPage | FromTargetPage | FromGolfde | FromRanking | FromTour | FromEuropeanTour | FromPage;
+export type Message = FromPortal | FromPairPage | FromTargetPage | FromGolfde | FromRanking | FromTour | FromEuropeanTour | FromOcs | FromPage;
 
 /** A pairing offered by the web app's page, waiting for the player's yes in the connect window. */
 export interface Pending {
@@ -127,7 +139,7 @@ export interface Pending {
 }
 
 export type Reply =
-  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; pro?: ProView; tour?: TourView; et?: EtView; fetch?: 'started' | 'limit' | 'nothing' }
+  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; pro?: ProView; tour?: TourView; et?: EtView; ocs?: OcsView; fetch?: 'started' | 'limit' | 'nothing' }
   | { ok: false; error: string };
 
 /** What the pairing page's content script hands on to the page (no code, nothing secret). */

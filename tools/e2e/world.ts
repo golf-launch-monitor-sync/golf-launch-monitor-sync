@@ -186,6 +186,50 @@ function lpgaResultsPage(): string {
 <script>setTimeout(() => { document.getElementById('season').innerHTML = ${JSON.stringify(table)}; }, 700);</script></body></html>`;
 }
 
+/** The made-up LET Access Series' players list: where she finds her profile. */
+export const LETAS_PLAYERS = 'https://letaccess.com/players';
+
+/**
+ * The made-up LET Access Series: one app for every address, as the site is - a link changes the address without loading a
+ * page, and what a page shows comes a moment after (put in by the page's script). Her profile with the season's results
+ * (rounds in one cell, the total with its score to par), and the Order of Merit with her and two made-up players.
+ */
+function letasPage(): string {
+  const result = (code: string, name: string, date: string, pos: string, r: number[], par: string) =>
+    `<tr><td><li><a href="/tournaments-information/${code}/2026">${name}</a></li></td><td>${date}</td><td>${pos}</td><td><span>${r.join(' ')}</span></td><td>${r.reduce((a, b) => a + b, 0)} (${par})</td><td>1,000.00</td><td></td></tr>`;
+  const profile = `<h3>Erika Erfunden <img alt=""></h3><h3>17 <span>Tournaments Played</span></h3><h3>0 <span>Wins</span></h3>
+<h3>LETAS Results</h3><select><option selected>2026 Season</option><option>2025 Season</option></select>
+<table><thead><tr>${['Tournaments', 'Date', 'Position', 'Rounds', 'Total', 'Prize Money', 'Points'].map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>
+${result('9001', 'Sample Ladies Open', '12/04/26', '2', [72, 69, 69], '-6')}${result('9003', 'Beispiel Open', '08/07/26', '53=', [70, 75], '+1')}</tbody></table>`;
+  const oomLine = (pos: string, name: string, id: string, points: string, played: string) =>
+    `<tr><td>${pos}</td><td><a href="/player-profiles/${id}">${name}</a></td><td></td><td>${points}</td><td>${played}</td><td><a href="/player-profiles/${id}">&gt;</a></td></tr>`;
+  const oom = `<h3>Anna Ausgedacht</h3><h3>12 <span>Tournaments Played</span></h3><select><option selected>2026 Season</option></select>
+<table><thead><tr>${['Pos', 'Name', 'Nat', 'Points', 'Played', ''].map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>
+${oomLine('1', 'Anna Ausgedacht (FRA)', '990010', '2,145.14', '17')}${oomLine('2', 'Berta Beispiel (SWE)', '990011', '1,885.25', '12')}${oomLine('3', 'Erika Erfunden (SUI)', '990001', '1,807.42', '18')}</tbody></table>`;
+  const players = `<table><thead><tr><th>Name</th><th>Nationality</th><th>Instagram</th></tr></thead><tbody>
+<tr><td><a href="/player-profiles/990010/">Anna Ausgedacht</a></td><td></td><td>-</td></tr><tr><td><a href="/player-profiles/990001/">Erika Erfunden</a></td><td></td><td>-</td></tr></tbody></table>`;
+  const views = { profile, oom, players };
+  return `<!doctype html><html><head><title>Letaccess</title></head><body>
+<nav><a href="/players">Players</a> <a href="/letas-order-of-merits?id=2026&oom=LO">Order of Merit</a></nav><main id="app">…</main>
+<script>
+const views = ${JSON.stringify(views)};
+function show() {
+  const p = location.pathname;
+  const v = p.replace(/[/]$/, '') === '/player-profiles/990001' ? views.profile : p.startsWith('/letas-order-of-merits') ? views.oom : p === '/players' ? views.players : '<h1>LET Access Series (made up)</h1>';
+  document.getElementById('app').innerHTML = '…';
+  setTimeout(() => { document.getElementById('app').innerHTML = v; }, 600);
+}
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a');
+  if (!a || a.origin !== location.origin) return;
+  e.preventDefault();
+  history.pushState(null, '', a.href);
+  show();
+});
+show();
+</script></body></html>`;
+}
+
 export function pairUrl(target = TARGET, code = CODE): string {
   return `${WEB}/pair#target=${encodeURIComponent(target)}&code=${code}`;
 }
@@ -310,6 +354,8 @@ export class World {
   readonly etSaw: { url: string; type: string }[] = [];
   /** Every request that reached pgatour.com or lpga.com: only the pages the player opened. */
   readonly seasonSaw: { url: string; type: string }[] = [];
+  /** Every request that reached letaccess.com: only the one page the player opened (the site changes pages itself). */
+  readonly letasSaw: { url: string; type: string }[] = [];
   readonly portal: Portal = { token: null, mode: 'storage' };
   /** How often Trackman's sign-out page was opened. */
   signOuts = 0;
@@ -407,6 +453,12 @@ export class World {
       this.seasonSaw.push({ url: req.url(), type: req.resourceType() });
       const body = new URL(req.url()).pathname.endsWith('/results') ? lpgaResultsPage() : '<!doctype html><title>LPGA (made up)</title><h1>LPGA (made up)</h1>';
       return route.fulfill({ status: 200, body, headers: { 'content-type': 'text/html; charset=utf-8' } });
+    });
+    // The made-up LET Access Series: one app for every address.
+    await context.route('https://letaccess.com/**', (route) => {
+      const req = route.request();
+      this.letasSaw.push({ url: req.url(), type: req.resourceType() });
+      return route.fulfill({ status: 200, body: letasPage(), headers: { 'content-type': 'text/html; charset=utf-8' } });
     });
     // The made-up golf.de: its pages, and its API as the pages' own requests reach it.
     await context.route('https://www.golf.de/**', (route) => route.fulfill({ status: 200, body: this.golfde.page(new URL(route.request().url()).pathname), headers: { 'content-type': 'text/html' } }));

@@ -148,6 +148,7 @@ export function docOf(snap: Snapshot): El {
         h('table', [h('thead', [h('tr', t.head.map((x) => h('th', [x])))]), h('tbody', t.rows.map((r) => h('tr', r.map((c) => cell(c, 'td')))))]),
       ),
       ...snap.links.filter((l) => !inTables.has(l)).map((l) => h('a', { href: l }, ['link'])),
+      ...snap.selected.map((o) => h('select', [h('option', { checked: '' }, [o])])),
     ]),
   ]);
 }
@@ -234,3 +235,56 @@ export function etStats(over: Partial<Snapshot> = {}): Snapshot {
   };
 }
 export * from './testing-season.ts';
+
+const LETAS = 'https://letaccess.com';
+const OCS_HEAD = ['Tournaments', 'Date', 'Position', 'Rounds', 'Total', 'Prize Money', 'Points'];
+
+/** A line of her season's results on an OCS profile: the tournament's page, its start, her place, rounds, total. */
+export function ocsEntry(code: string, name: string, date: string, place: string, rounds: number[], toPar: string, points = '', origin = LETAS): Cell[] {
+  const total = rounds.reduce((a, b) => a + b, 0);
+  return cells({ text: name, href: `${origin}/tournaments-information/${code}/2026` }, date, place, rounds.join(' '), `${total} (${toPar})`, '1,000.00', points);
+}
+
+/** Erika Erfunden's profile on the LET Access Series, season 2026: three tournaments, one a missed cut. */
+export function ocsProfile(over: Partial<Snapshot> = {}, rows?: Cell[][]): Snapshot {
+  return {
+    url: `${LETAS}/player-profiles/990001/`,
+    title: '',
+    lines: ['Erika Erfunden', '17 Tournaments Played', '0 Wins', '2 Top Ten Finishes', '67 Lowest Round', 'Sample Ladies Open', 'Made-up Challenge', 'Beispiel Open', 'LETAS Results', 'Partners & Suppliers'],
+    pairs: {},
+    tables: [{
+      head: OCS_HEAD,
+      rows: rows ?? [
+        ocsEntry('9001', 'Sample Ladies Open', '12/04/26', '2', [72, 69, 69], '-6'),
+        ocsEntry('9002', 'Made-up Challenge', '20/05/26', '9=', [69, 71, 72], '+2', '12.50'),
+        ocsEntry('9003', 'Beispiel Open', '08/07/26', '53=', [70, 75], '+1'),
+      ],
+    }],
+    links: [],
+    selected: ['2026 Season'],
+    ...over,
+  };
+}
+
+/** A season's Order of Merit: Erika Erfunden third, among made-up players. */
+export function ocsOom(over: Partial<Snapshot> = {}, origin = LETAS): Snapshot {
+  const line = (pos: string, name: string, id: string, points: string, played: string): Cell[] =>
+    cells(pos, name, '', points, played, { text: '', href: `${origin}/player-profiles/${id}` });
+  return {
+    url: `${origin}/letas-order-of-merits?id=2026&oom=LO`,
+    title: '',
+    lines: ['Otto Platzhalter', '12 Tournaments Played'],
+    pairs: {},
+    tables: [{
+      head: ['Pos', 'Name', 'Nat', 'Points', 'Played', ''],
+      rows: [
+        line('1', 'Anna Ausgedacht (FRA)', '990010', '2,145.14', '17'),
+        line('2', 'Berta Beispiel (SWE)', '990011', '1,885.25', '12'),
+        line('3', 'Erika Erfunden (SUI)', '990001', '1,807.42', '18'),
+      ],
+    }],
+    links: [],
+    selected: ['2026 Season'],
+    ...over,
+  };
+}

@@ -49,6 +49,18 @@ describe('who sent a message', () => {
     expect(accept({ type: 'golfde-seen', page: 'not hex!', seen: {} }, 'golfde')).toBeNull();
     expect(accept({ type: 'golfde-seen', page: 'a1b2c3d4e5', seen: 'x' }, 'golfde')).toBeNull();
     expect(accept({ type: 'golfde-send' }, 'golfde')).toEqual({ type: 'golfde-send' });
+    // The LET's pages: only from their top frame, naming one of the two tours (the background checks it is this page's).
+    expect(from('https://letaccess.com/player-profiles/911221/', { frameId: 0 })).toBe('ocs');
+    expect(from('https://ladieseuropeantour.com/order-of-merit?id=2026', { frameId: 0 })).toBe('ocs');
+    expect(from('https://letaccess.com/player-profiles/911221/', { frameId: 3 })).not.toBe('ocs');
+    expect(accept({ type: 'ocs-send', site: 'tour:let' }, 'ocs')).toEqual({ type: 'ocs-send', site: 'tour:let' });
+    expect(accept({ type: 'ocs-send', site: 'tour:pro_golf_tour' }, 'ocs')).toBeNull();
+    expect(accept({ type: 'ocs-send', site: 'tour:let' }, 'tour')).toBeNull();
+    expect(accept({ type: 'ocs-seen', site: 'tour:let_access', seen: { oom: { rank: 3 } } }, 'ocs')).toEqual({ type: 'ocs-seen', site: 'tour:let_access', seen: { oom: { rank: 3 } } });
+    expect(accept({ type: 'ocs-seen', site: 'tour:let_access', seen: { other: 1 } }, 'ocs')).toBeNull();
+    expect(accept({ type: 'ocs-seen', site: 'tour:let_access', seen: { profile: 'x'.repeat(70_000) } }, 'ocs')).toBeNull();
+    expect(accept({ type: 'ocs-answer' }, 'ocs')).toEqual({ type: 'ocs-answer' });
+    expect(accept({ type: 'pro-answer', yes: true }, 'ocs')).toBeNull();
     expect(accept({ type: 'hcp-unpair', id: 'abc' }, 'golfde')).toBeNull();
     expect(accept({ type: 'hcp-unpair', id: 'abc' }, 'extension')).toEqual({ type: 'hcp-unpair', id: 'abc' });
     expect(accept({ type: 'hcp-auto', auto: 'yes' }, 'extension')).toBeNull();

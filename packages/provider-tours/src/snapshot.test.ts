@@ -2,8 +2,9 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import { describe, expect, it } from 'vitest';
 import { clean, column, nameKey, snapshotOf } from './snapshot.ts';
+import * as ocs from './ocs.ts';
 import * as progolftour from './progolftour.ts';
-import { docOf, h, pgtProfile, pgtResult } from './testing.ts';
+import { docOf, h, ocsOom, ocsProfile, pgtProfile, pgtResult } from './testing.ts';
 
 describe('a page as text', () => {
   const doc = h('html', [
@@ -84,5 +85,12 @@ describe('a made-up page as a document', () => {
     expect(progolftour.readProfile(snapshotOf(docOf(prof), prof.url, progolftour.LABELS))).toEqual(progolftour.readProfile(prof));
     const res = pgtResult();
     expect(progolftour.ownLine(snapshotOf(docOf(res), res.url, progolftour.LABELS), 'Lena Beispiel')).toEqual(progolftour.ownLine(res, 'Lena Beispiel'));
+  });
+
+  it('reads back as the snapshot it was made of, for what the LET\'s module takes (the season from its picker)', () => {
+    const prof = ocsProfile({ selected: ['2025 Season'] });
+    expect(ocs.readProfile(snapshotOf(docOf(prof), prof.url))).toEqual(ocs.readProfile(prof));
+    const oom = ocsOom();
+    expect(ocs.readOom(snapshotOf(docOf(oom), oom.url), '990001')).toEqual(ocs.readOom(oom, '990001'));
   });
 });

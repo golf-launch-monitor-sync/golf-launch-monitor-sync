@@ -89,6 +89,18 @@ export const TOUR_SITES: Readonly<Partial<Record<TourSite, TourInfo>>> = {
     matches: ['https://www.epsontour.com/*'],
     start: 'https://www.epsontour.com/athletes/directory',
   },
+  'tour:let': {
+    site: 'tour:let',
+    name: 'Ladies European Tour',
+    matches: ['https://ladieseuropeantour.com/*'],
+    start: 'https://ladieseuropeantour.com/players',
+  },
+  'tour:let_access': {
+    site: 'tour:let_access',
+    name: 'LET Access Series',
+    matches: ['https://letaccess.com/*'],
+    start: 'https://letaccess.com/players',
+  },
 };
 
 export const isTourSite = (v: unknown): v is TourSite => typeof v === 'string' && Object.hasOwn(TOUR_SITES, v);

@@ -23,6 +23,8 @@ import { badge, BrowserClient, HcpClient, IdbBlobs, pickLang, ProClient, SEND_AF
 import { SITES } from '@glmsync/provider-rankings';
 import { TourKeeper } from '@glmsync/browser/tours';
 import { EtKeeper } from './europeantour.ts';
+import { OcsKeeper } from './ocs-pages.ts';
+import { ocs } from '@glmsync/provider-tours';
 import { HISTORY_SHEET_URL, readSeen } from '@glmsync/provider-golfde';
 import { bridgeMessage, type BridgeReply, type Reason } from '@glmsync/spec';
 import { PORTAL_URL, SIGN_OUT_URL } from '@glmsync/provider-trackman/portal';
@@ -73,6 +75,8 @@ const pro = new ProClient({
 const tours = new TourKeeper(storage);
 // His pages on europeantour.com as he opens them (europeantour.ts): DP World Tour and HotelPlanner Tour, merged.
 const et = new EtKeeper(storage);
+// The LET's and LET Access Series' pages (ocs-pages.ts): her profile and her Order of Merit line, per tour.
+const ocsPages = new OcsKeeper(storage);
 const localDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /** His tour page as read so far, to every app paired for a pro's pages (each after its plan). */
@@ -90,6 +94,15 @@ async function sendEt(): Promise<Reply> {
   await refreshIcon();
   return { ok: true, pro: v, et: { ...(await et.view()), sent: pages.map((p) => p.site) } };
 }
+/** Her profile of a tour of the LET's (with her Order of Merit line), to every app paired for a pro's pages. */
+async function sendOcs(site: ocs.OcsTourSite): Promise<Reply> {
+  const page = await ocsPages.page(site, localDay());
+  const v = page ? await pro.send(page) : await pro.view();
+  await refreshIcon();
+  return { ok: true, pro: v, ocs: await ocsPages.view(site) };
+}
+/** A message naming a tour of the LET's only from that tour's own page (both sites run the same script). */
+const fromSite = (url: string | undefined, site: ocs.OcsTourSite): boolean => ocs.siteAt(url)?.site === site;
 const HCP_SEND = 'hcp-send';
 const HCP_RUN = 'hcp-run';
 const t = () => translator(pickLang(navigator.languages));
@@ -607,6 +620,18 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
       return { ok: true, pro: v };
     }
     case 'season-answer':
+      await openConnectWindow(near);
+      return { ok: true, pro: await pro.view() };
+    case 'ocs-line':
+      if (!fromSite(from.url, m.site)) return { ok: false, error: 'wrong_site' };
+      return { ok: true, pro: await pro.view(), ocs: await ocsPages.view(m.site) };
+    case 'ocs-seen':
+      if (!fromSite(from.url, m.site)) return { ok: false, error: 'wrong_site' };
+      return { ok: true, pro: await pro.view(), ocs: await ocsPages.seen(m.site, m.seen) };
+    case 'ocs-send':
+      if (!fromSite(from.url, m.site)) return { ok: false, error: 'wrong_site' };
+      return sendOcs(m.site);
+    case 'ocs-answer':
       // From the tour's page: only the connect window comes to the front, where the player answers.
       await openConnectWindow(near);
       return { ok: true, pro: await pro.view() };

@@ -7,7 +7,8 @@
  * (the background then checks its origin is a paired target's: bridge.ts), what golf.de's page showed only
  * from the top frame of a page on golf.de, a world ranking's page only from the top frame of a player's page there, a tour's pages only from the top frame of
  * that tour's site (on europeantour.com only a player's page; a season page's from the top frame of the sites of
- * `seasonPage`), and
+ * `seasonPage`; the LET's and LET Access Series' named by the message, checked by the background
+ * against the page), and
  * the rest only from the extension's own pages. Pure, so it is
  * tested without a browser.
  */
@@ -16,11 +17,11 @@ import { PORTAL_ORIGIN } from '@glmsync/provider-trackman/portal';
 import { PAIR_PATH, WEB_APP_ORIGIN } from '@glmsync/browser';
 import { PAGE_ORIGIN as GOLFDE_ORIGIN } from '@glmsync/provider-golfde';
 import { playerPageOf } from '@glmsync/provider-rankings';
-import { europeantour, onSeasonSite, progolftour } from '@glmsync/provider-tours';
+import { europeantour, ocs, onSeasonSite, progolftour } from '@glmsync/provider-tours';
 import { readBridgeRequest } from '@glmsync/spec';
 import type { Message } from './messages.ts';
 
-export type Source = 'portal' | 'pair-page' | 'golfde' | 'ranking' | 'tour' | 'europeantour' | 'season' | 'target-page' | 'extension' | 'other';
+export type Source = 'portal' | 'pair-page' | 'golfde' | 'ranking' | 'tour' | 'europeantour' | 'season' | 'ocs' | 'target-page' | 'extension' | 'other';
 
 export interface SenderLike {
   id?: string | undefined;
@@ -54,6 +55,9 @@ export function sourceOf(sender: SenderLike, extensionId: string, extensionOrigi
   if (europeantour.playerPageOf(u.href) && sender.tab && sender.frameId === 0) return 'europeantour';
   // A site of the tours whose player page shows the season (season-content.ts): only its top frame.
   if (onSeasonSite(u.href) && sender.tab && sender.frameId === 0) return 'season';
+  // The LET's and LET Access Series' pages (ocs-content.ts): only their top frame. Which of the two it is, the background
+  // checks against the tour a message names.
+  if (ocs.siteAt(u.href) && sender.tab && sender.frameId === 0) return 'ocs';
   // The bridge's content script, on some site's page: only its top frame, never the project's own site.
   if ((u.protocol === 'https:' || u.protocol === 'http:') && sender.tab && sender.frameId === 0 && u.origin !== WEB_APP_ORIGIN) return 'target-page';
   return 'other';
@@ -112,6 +116,10 @@ const FROM: Record<Message['type'], Source> = {
   'season-line': 'season',
   'season-send': 'season',
   'season-answer': 'season',
+  'ocs-seen': 'ocs',
+  'ocs-line': 'ocs',
+  'ocs-send': 'ocs',
+  'ocs-answer': 'ocs',
   'pro-status': 'extension',
   'pro-answer': 'extension',
   'pro-unpair': 'extension',
@@ -175,6 +183,16 @@ export function accept(raw: unknown, source: Source): Message | null {
     case 'season-send':
       // The page itself is read again strictly by the background (checkTourPage); here only its frame and size.
       return m.page && typeof m.page === 'object' && !Array.isArray(m.page) && JSON.stringify(m.page).length <= 262_144 ? { type, page: m.page } : null;
+    case 'ocs-line':
+    case 'ocs-send':
+      return ocs.isOcsSite(m.site) ? { type, site: m.site } : null;
+    case 'ocs-seen': {
+      // Read again strictly by the background (checkProfile, checkOom); here only its frame and size.
+      const v = m.seen && typeof m.seen === 'object' && !Array.isArray(m.seen) ? (m.seen as Record<string, unknown>) : null;
+      if (!ocs.isOcsSite(m.site) || !v || JSON.stringify(v).length > 65_536) return null;
+      if ('profile' in v) return { type, site: m.site, seen: { profile: v.profile } };
+      return 'oom' in v ? { type, site: m.site, seen: { oom: v.oom } } : null;
+    }
     case 'pro-answer':
       return typeof m.yes === 'boolean' ? { type, yes: m.yes } : null;
     case 'pro-unpair':
