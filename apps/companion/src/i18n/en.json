@@ -178,9 +178,10 @@
   "rankings.reload": "Load again",
   "pro.unofficial": "Unofficial: Golf Stats Sync is not affiliated with, endorsed by or supported by the OWGR, Rolex or any tour.",
   "pro.cardTitle": "World ranking and tour",
-  "tours.how": "Your tour: open your own page there and tap “Send” for your rank and points. On the Pro Golf Tour “Fetch all” opens your tournaments’ pages one by one and brings your rounds; on europeantour.com (DP World Tour, HotelPlanner Tour) your “Wins & Results” page has them - pick each season there. Of each page the app takes only your own and sends it to {name}.",
+  "tours.how": "Your tour: open your own page there and tap “Send” for your rank and points. On the Pro Golf Tour “Fetch all” opens your tournaments’ pages one by one and brings your rounds; on europeantour.com (DP World Tour, HotelPlanner Tour) your “Wins & Results” page has them - pick each season there; on the LET and the LET Access Series your profile has them, and the Order of Merit adds your rank. Of each page the app takes only your own and sends it to {name}.",
   "tours.open": "Open {tour}",
   "tours.orTour": "Or your tour:",
   "tours.find": "Open your own profile (search for your name in the Order of Merit); then “Send” and “Fetch all” appear up here.",
-  "tours.findEt": "Open your own player page (search for your name among the players); then “Send” appears up here. Your rounds are on “Wins & Results”: each season you pick there, and the statistics of each tour you pick, are read and go with “Send”."
+  "tours.findEt": "Open your own player page (search for your name among the players); then “Send” appears up here. Your rounds are on “Wins & Results”: each season you pick there, and the statistics of each tour you pick, are read and go with “Send”.",
+  "tours.findOcs": "Open your own profile (search for your name among the players); then “Send” appears up here. Your profile shows a season’s results with every round: pick each season there and tap “Send”. For your rank open the tour’s Order of Merit afterwards: only your own line is read, and it goes with “Send”."
 }

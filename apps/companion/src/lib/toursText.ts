@@ -14,13 +14,15 @@ import { proLineOf, type LinePhase } from '@glmsync/browser/proView';
 import type { TourView } from '@glmsync/browser/tours';
 import { translator } from '@glmsync/browser/i18n';
 import { europeantour, type TourSite } from '@glmsync/provider-tours';
-import { onEtPage, onProfile } from './toursPage.ts';
+import type { OcsView } from '@glmsync/browser/ocs';
+import type { OcsNote } from './ocsSession.ts';
+import { onEtPage, onOcsOom, onOcsProfile, onProfile } from './toursPage.ts';
 import type { Lang } from './text.ts';
 
 export type { LinePhase };
 
 /** The app's own words (src/i18n), as the bar needs them. */
-export type AppText = (key: 'tours.find' | 'tours.findEt' | 'rankings.changed' | 'pro.pairFirst') => string;
+export type AppText = (key: 'tours.find' | 'tours.findEt' | 'tours.findOcs' | 'rankings.changed' | 'pro.pairFirst') => string;
 
 export interface ToursBar {
   text: string;
@@ -77,4 +79,32 @@ export function etBar(v: ProView | null, url: string | null, phase: LinePhase, s
   const line = proLineOf(v, site, phase, tr);
   if (!line) return { text: app('pro.pairFirst'), warn: true, ...none };
   return { text: line.text, warn: line.warn, send: page && line.send, fetchAll: false, stop: false, ask: false };
+}
+
+/** What a note of the LET's pages says, in the extension's words (`ocsLine.*`). */
+function noteText(note: OcsNote, tr: ReturnType<typeof translator>): string {
+  if (note.kind === 'oomRead') return tr('ocsLine.oomRead', { rank: note.rank });
+  return tr(note.kind === 'noResults' ? 'ocsLine.noResults' : 'ocsLine.oomMissing');
+}
+
+/**
+ * The bar on the LET and the LET Access Series: *Send* on her profile, and on the tour's Order of Merit once a profile
+ * of this tour was read (her rank goes with it); no *Fetch all* (her profile has the rounds). What a read found (no
+ * results, her rank, not on this table) stands in place of the line's words, as on the extension's line.
+ */
+export function ocsBar(v: ProView | null, kept: OcsView | null, site: TourSite, url: string | null, phase: LinePhase, note: OcsNote | null, lang: Lang, app: AppText): ToursBar {
+  const tr = translator(lang);
+  if (!v) return { text: '', warn: false, ...none };
+  if (!v.pairings.length) return { text: app('pro.pairFirst'), warn: true, ...none };
+  if (v.question) {
+    const targets = v.question.targets.join(', ') || [...new Set(v.pairings.map((p) => p.name))].join(', ');
+    return { text: tr('pro.question', { site: v.question.siteName, name: v.question.name, targets }), warn: true, ...none, ask: true };
+  }
+  if (phase === 'changed_page') return { text: app('rankings.changed'), warn: true, ...none };
+  const page = onOcsProfile(url) || (onOcsOom(url) && !!kept?.who);
+  if (!page && phase === 'ready') return { text: app('tours.findOcs'), warn: false, ...none };
+  const line = proLineOf(v, site, phase, tr);
+  if (!line) return { text: app('pro.pairFirst'), warn: true, ...none };
+  const text = note && phase !== 'reading' ? noteText(note, tr) : line.text;
+  return { text, warn: line.warn || note?.kind === 'oomMissing', send: page && line.send && phase !== 'reading', fetchAll: false, stop: false, ask: false };
 }

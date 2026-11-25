@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * What the extension keeps of a player's own pages of the Ladies European Tour and the LET Access Series
+ * What a client keeps of a player's own pages of the Ladies European Tour and the LET Access Series
  * (`ocs` of `@glmsync/provider-tours`), between the pages she opens: per tour her profile as last read and her line of
- * that tour's Order of Merit. Kept in the extension's own storage (no web page reaches it), only of the profile she opened
- * herself: a profile of another player replaces it, and her Order of Merit line with it.
+ * that tour's Order of Merit. Kept in the client's own storage (no web page reaches it: the extension's storage, the
+ * companion app's), only of the profile she opened herself: a profile of another player replaces it, and her Order of
+ * Merit line with it. The extension's background holds one, the companion app's tour window another.
  *
- * Everything arrives from a content script and is read again strictly (`checkProfile`, `checkOom`). Pure apart from the
+ * Everything arrives from a page's script and is read again strictly (`checkProfile`, `checkOom`). Pure apart from the
  * storage it is handed, so it is tested without a browser.
  */
 

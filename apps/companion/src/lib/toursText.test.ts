@@ -3,7 +3,7 @@
 import type { ProView } from '@glmsync/browser/pro';
 import type { TourView } from '@glmsync/browser/tours';
 import { describe, expect, it } from 'vitest';
-import { etBar, toursBar, type AppText } from './toursText.ts';
+import { etBar, ocsBar, toursBar, type AppText } from './toursText.ts';
 
 const SITE = 'tour:pro_golf_tour' as const;
 const PROFILE = 'https://www.progolftour.de/player-profile/99001?year=2026';
@@ -84,5 +84,37 @@ describe('the tour window’s bar on europeantour.com', () => {
     expect(etBar(q, ET_RESULTS, 'done', 'tour:hotelplanner', 'en', app)).toMatchObject({ ask: true, send: false, warn: true });
     expect(etBar(view({ pairings: [] }), ET_RESULTS, 'ready', null, 'en', app)).toMatchObject({ text: '[pro.pairFirst]', send: false });
     expect(etBar(null, ET_RESULTS, 'ready', null, 'en', app).text).toBe('');
+  });
+});
+
+const LETAS = 'tour:let_access' as const;
+const LETAS_PROFILE = 'https://letaccess.com/player-profiles/990001/';
+const LETAS_OOM = 'https://letaccess.com/letas-order-of-merits?id=2026&oom=LO';
+const her = { who: { id: '990001', name: 'Erika Erfunden', season: 2026 }, rank: null, read: 3 };
+
+describe('the tour window’s bar on the LET and the LET Access Series', () => {
+  it('offers Send on her profile, and on the Order of Merit once a profile was read; elsewhere where her profile is', () => {
+    const send = { text: 'Golf Stats Sync: send this page to Example App', warn: false, send: true, fetchAll: false, stop: false, ask: false };
+    expect(ocsBar(view(), null, LETAS, LETAS_PROFILE, 'ready', null, 'en', app)).toEqual(send);
+    expect(ocsBar(view(), her, LETAS, LETAS_OOM, 'ready', null, 'en', app)).toEqual(send);
+    const find = { text: '[tours.findOcs]', warn: false, send: false, fetchAll: false, stop: false, ask: false };
+    expect(ocsBar(view(), null, LETAS, LETAS_OOM, 'ready', null, 'en', app)).toEqual(find);
+    expect(ocsBar(view(), her, LETAS, 'https://letaccess.com/players', 'ready', null, 'en', app)).toEqual(find);
+    expect(ocsBar(view(), her, LETAS, null, 'ready', null, 'en', app)).toEqual(find);
+  });
+
+  it('says what a read found in the extension’s words, and nothing while reading', () => {
+    expect(ocsBar(view(), her, LETAS, LETAS_OOM, 'ready', { kind: 'oomRead', rank: 3 }, 'de', app)).toMatchObject({ text: 'Platz 3 der Order of Merit gelesen: er geht mit, wenn du dein Profil schickst.', warn: false, send: true });
+    expect(ocsBar(view(), her, LETAS, LETAS_OOM, 'ready', { kind: 'oomMissing' }, 'en', app)).toMatchObject({ text: 'You aren’t on this Order of Merit (or not in this season’s): nothing of it was read.', warn: true, send: true });
+    expect(ocsBar(view(), her, LETAS, LETAS_PROFILE, 'ready', { kind: 'noResults' }, 'en', app)).toMatchObject({ text: 'This page shows no results of the season: nothing to send. Pick a season with tournaments.' });
+    expect(ocsBar(view(), her, LETAS, LETAS_PROFILE, 'reading', { kind: 'noResults' }, 'en', app)).toMatchObject({ text: 'Reading the page …', send: false });
+  });
+
+  it('asks whose page it is, wants a connection first, and says a page changed', () => {
+    expect(ocsBar(null, null, LETAS, LETAS_PROFILE, 'ready', null, 'en', app)).toMatchObject({ text: '', send: false });
+    expect(ocsBar(view({ pairings: [] }), null, LETAS, LETAS_PROFILE, 'ready', null, 'en', app)).toMatchObject({ text: '[pro.pairFirst]', warn: true, send: false });
+    const question = { site: LETAS, siteName: 'LET Access Series', name: 'Erika Erfunden', targets: ['Example App'] };
+    expect(ocsBar(view({ question } as Partial<ProView>), her, LETAS, LETAS_PROFILE, 'ready', null, 'en', app)).toMatchObject({ ask: true, send: false, warn: true });
+    expect(ocsBar(view(), her, LETAS, LETAS_PROFILE, 'changed_page', null, 'en', app)).toEqual({ text: '[rankings.changed]', warn: true, send: false, fetchAll: false, stop: false, ask: false });
   });
 });

@@ -2,12 +2,12 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { europeantour, progolftour } from '@glmsync/provider-tours';
-import { docOf, ET_TITLE, etOverview, etResults, etStats, h, pgtLine, pgtProfile, pgtResult } from '@glmsync/provider-tours/testing';
+import { europeantour, ocs, progolftour } from '@glmsync/provider-tours';
+import { docOf, ET_TITLE, etOverview, etResults, etStats, h, ocsOom, ocsProfile, pgtLine, pgtProfile, pgtResult } from '@glmsync/provider-tours/testing';
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error - a plain script of the build, without types
 import { moduleText, OUT } from '../../scripts/tours-page.mjs';
-import { READ_FUNCTION, readPickMessage, readScript, readTourMessage, TABLE_WAIT_MS } from './toursPage.ts';
+import { READ_FUNCTION, readMovedMessage, readPickMessage, readScript, readTourMessage, TABLE_WAIT_MS, WATCH_MS } from './toursPage.ts';
 import { TOURS_PAGE_SCRIPT } from './toursPageScript.ts';
 
 describe('the tour window’s page script', () => {
@@ -26,10 +26,11 @@ const RESULT = 'https://www.progolftour.de/tournament-details/sample-desert-open
 const ASK = '0a1b2c3d4e5f60718293';
 
 /** The site's page, made up: the script runs in it as the web view runs it; a clock the test moves. */
-function site(href: string, document: unknown) {
+function site(href: string, document: unknown, watch = true) {
   const posted: string[] = [];
   const asked: string[] = [];
   const timers: (() => void)[] = [];
+  const every: { fn: () => void; ms: number }[] = [];
   let clock = 1_000_000;
   const win: Record<string, unknown> = {
     location: { href },
@@ -47,6 +48,14 @@ function site(href: string, document: unknown) {
       timers.push(fn);
       return timers.length;
     },
+    ...(watch
+      ? {
+          setInterval: (fn: () => void, ms: number) => {
+            every.push({ fn, ms });
+            return every.length;
+          },
+        }
+      : {}),
     ReactNativeWebView: { postMessage: (data: string) => posted.push(data) },
     Date: class extends Date {
       static override now() {
@@ -66,7 +75,12 @@ function site(href: string, document: unknown) {
   };
   /** The app's ask: the script it injects. */
   const read = (who: string | null = null, ask = ASK, today: string | null = null) => runInNewContext(readScript(ask, who, today) as string, win);
-  return { win, posted, asked, tick, read };
+  /** The page's own script moves to `to` without loading a page; then a turn of the script's watch. */
+  const go = (to: string) => {
+    (win.location as { href: string }).href = to;
+    for (const e of every) e.fn();
+  };
+  return { win, posted, asked, tick, read, go, every };
 }
 
 /** A made-up document that can be listened on, as the site's (`change` of its own select) and with its title. */
@@ -222,5 +236,81 @@ describe('the page script on europeantour.com', () => {
     const p = site(ET_RESULTS, Object.assign(docOf(etResults()), { title: ET_TITLE }));
     p.read(null, ASK, TODAY);
     expect(readTourMessage(ET_RESULTS, p.posted[0], ASK)).toMatchObject({ ok: true });
+  });
+});
+
+const LETAS_PROFILE = 'https://letaccess.com/player-profiles/990001/';
+const LETAS_OOM = 'https://letaccess.com/letas-order-of-merits?id=2026&oom=LO';
+
+describe('the page script on the LET and the LET Access Series', () => {
+  it('reads nothing until the app asks; then her profile with every round, as it shows', () => {
+    const p = site(LETAS_PROFILE, docOf(ocsProfile()));
+    expect(p.posted).toEqual([]);
+    p.read();
+    expect(p.posted).toHaveLength(1);
+    const got = readTourMessage(LETAS_PROFILE, p.posted[0], ASK);
+    expect(got).toEqual({ ok: true, ocs: ocs.checkProfile(ocs.readProfile(ocsProfile())) });
+    expect(got && 'ocs' in got && got.ocs.kind === 'profile' ? got.ocs.entries.map((e) => e.rounds.map((r) => r.gross)) : null).toEqual([[72, 69, 69], [69, 71, 72], [70, 75]]);
+    expect(p.asked).toEqual([]); // it asked the site nothing of its own
+  });
+
+  it('on the Order of Merit only her line goes, by the profile’s id the app hands in - nobody else’s name', () => {
+    const p = site(LETAS_OOM, docOf(ocsOom()));
+    p.read('990001');
+    expect(readTourMessage(LETAS_OOM, p.posted[0], ASK)).toEqual({ ok: true, ocs: { kind: 'oom', site: 'tour:let_access', player_id: '990001', season: 2026, rank: 3, points: 1807.42, events: 18 } });
+    for (const other of ['Anna Ausgedacht', 'Berta Beispiel', '990010', '990011', 'Erika Erfunden']) expect(p.posted[0]).not.toContain(other);
+    // Without her id (a name, nothing) the Order of Merit is no page to read.
+    for (const who of [null, 'Erika Erfunden']) {
+      const q = site(LETAS_OOM, docOf(ocsOom()));
+      q.read(who);
+      expect(q.posted.map((d) => JSON.parse(d)), String(who)).toEqual([{ glmsync: 'tour-page', ask: ASK, why: 'not_player_page' }]);
+    }
+    const list = site('https://letaccess.com/players', docOf(ocsOom()));
+    list.read('990001');
+    expect(list.posted.map((d) => JSON.parse(d).why)).toEqual(['not_player_page']);
+  });
+
+  it('waits a little for the table, then says why: no results this season, not on this table, or the page changed', () => {
+    const p = site(LETAS_PROFILE, docOf(ocsProfile({ tables: [] })));
+    p.read();
+    expect(p.posted).toEqual([]); // waiting for the table
+    p.read(); // a second ask while reading does nothing more
+    for (let waited = 0; waited <= TABLE_WAIT_MS; waited += 500) p.tick(500);
+    expect(p.posted.map((d) => readTourMessage(LETAS_PROFILE, d, ASK))).toEqual([{ ok: true, ocsUnread: 'no_result' }]);
+    const q = site(LETAS_OOM, docOf(ocsOom()));
+    q.read('990099');
+    for (let waited = 0; waited <= TABLE_WAIT_MS; waited += 500) q.tick(500);
+    expect(q.posted.map((d) => readTourMessage(LETAS_OOM, d, ASK))).toEqual([{ ok: true, ocsUnread: 'not_him' }]);
+    const r = site(LETAS_OOM, docOf(ocsOom({ tables: [] })));
+    r.read('990001');
+    for (let waited = 0; waited <= TABLE_WAIT_MS; waited += 500) r.tick(500);
+    expect(r.posted.map((d) => JSON.parse(d).why)).toEqual(['changed_page']);
+  });
+
+  it('tells the app only that the address changed (the site moves without loading a page), nothing read', () => {
+    const p = site(LETAS_PROFILE, docOf(ocsProfile()));
+    expect(p.every.map((e) => e.ms)).toEqual([WATCH_MS]);
+    p.go(LETAS_PROFILE); // the same address: nothing
+    expect(p.posted).toEqual([]);
+    p.win.document = docOf(ocsOom()); // the site draws the Order of Merit in the same page
+    p.go(LETAS_OOM);
+    expect(p.posted).toEqual([JSON.stringify({ glmsync: 'tour-page', moved: true })]);
+    expect(readMovedMessage(LETAS_OOM, p.posted[0])).toBe(true);
+    p.go(LETAS_OOM);
+    expect(p.posted).toHaveLength(1);
+    // The page goes on reading where it is now.
+    p.read('990001');
+    expect(readTourMessage(LETAS_OOM, p.posted[1], ASK)).toMatchObject({ ok: true, ocs: { kind: 'oom', rank: 3 } });
+    // Without the app's bridge it stays out of the page's way; the other tours' pages are watched by the web view.
+    delete p.win.ReactNativeWebView;
+    expect(() => p.go(LETAS_PROFILE)).not.toThrow();
+    expect(site(ET_RESULTS, listened(docOf(etResults()), ET_TITLE).doc).every).toEqual([]);
+    expect(site(PROFILE, docOf(pgtProfile())).every).toEqual([]);
+  });
+
+  it('a page without a watch is read all the same', () => {
+    const p = site(LETAS_PROFILE, docOf(ocsProfile()), false);
+    p.read();
+    expect(readTourMessage(LETAS_PROFILE, p.posted[0], ASK)).toMatchObject({ ok: true });
   });
 });

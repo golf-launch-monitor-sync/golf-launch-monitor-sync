@@ -1,15 +1,20 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
-import { europeantour, progolftour } from '@glmsync/provider-tours';
-import { ET_TITLE, etResults, pgtLine, pgtProfile, pgtResult } from '@glmsync/provider-tours/testing';
+import { europeantour, ocs, progolftour } from '@glmsync/provider-tours';
+import { ET_TITLE, etResults, ocsOom, ocsProfile, pgtLine, pgtProfile, pgtResult } from '@glmsync/provider-tours/testing';
 import { describe, expect, it } from 'vitest';
 import {
   callFits,
   isEt,
+  isOcs,
   keptTourPage,
+  ocsProfileUrl,
   onEtPage,
+  onOcsOom,
+  onOcsProfile,
   onProfile,
   openInTourWindow,
+  readMovedMessage,
   readPickMessage,
   readScript,
   readTourMessage,
@@ -35,13 +40,13 @@ describe('the tour window', () => {
   const frame = (url: string) => tourWindowRules.onShouldStartLoadWithRequest({ url, isTopFrame: false });
 
   it('shows the tours’ own pages, nothing else', () => {
-    expect(WINDOW_TOURS).toEqual(['tour:pro_golf_tour', 'tour:dp_world', 'tour:hotelplanner']);
+    expect(WINDOW_TOURS).toEqual(['tour:pro_golf_tour', 'tour:dp_world', 'tour:hotelplanner', 'tour:let', 'tour:let_access']);
     expect(tourWindowRules.originWhitelist).toEqual(['*']); // every load decided here, none handed to the system
-    for (const url of [PROFILE, RESULT, 'https://progolftour.de/', 'https://www.progolftour.de/order-of-merit-en', 'about:blank', ET_RESULTS, 'https://www.europeantour.com/hotelplanner-tour/players/', 'https://europeantour.com/']) {
+    for (const url of [PROFILE, RESULT, 'https://progolftour.de/', 'https://www.progolftour.de/order-of-merit-en', 'about:blank', ET_RESULTS, 'https://www.europeantour.com/hotelplanner-tour/players/', 'https://europeantour.com/', 'https://letaccess.com/players', 'https://ladieseuropeantour.com/player-profiles/990001/']) {
       expect(top(url), url).toBe(true);
     }
-    // The tours read in the extension only, so far (the LET's, the season pages): not the window's.
-    for (const url of ['http://www.progolftour.de/', 'https://www.progolftour.de.evil.test/', 'https://www.owgr.com/', 'http://www.europeantour.com/players/x-1/', 'https://www.europeantour.com.evil.test/', 'https://letaccess.com/', 'https://www.pgatour.com/', 'intent://x', 'javascript:alert(1)']) {
+    // The tours read in the extension only, so far (the season pages): not the window's.
+    for (const url of ['http://www.progolftour.de/', 'https://www.progolftour.de.evil.test/', 'https://www.owgr.com/', 'http://www.europeantour.com/players/x-1/', 'https://www.europeantour.com.evil.test/', 'http://letaccess.com/', 'https://letaccess.com.evil.test/', 'https://www.letaccess.com/', 'https://www.pgatour.com/', 'intent://x', 'javascript:alert(1)']) {
       expect(top(url), url).toBe(false);
     }
     // A frame of the page (a consent banner, a video) over https loads in the page, never in the system's browser.
@@ -51,8 +56,6 @@ describe('the tour window', () => {
 
   it('knows the tour of a page and his profile among its pages', () => {
     expect([tourSiteOf(PROFILE), tourSiteOf('https://www.owgr.com/'), tourSiteOf(null), tourSiteOf('x'.repeat(5000))]).toEqual(['tour:pro_golf_tour', null, null, null]);
-    // The LET's sites the extension reads; the window doesn't (yet): no page of theirs is the window's.
-    expect([tourSiteOf('https://letaccess.com/player-profiles/911221/'), tourSiteOf('https://ladieseuropeantour.com/')]).toEqual([null, null]);
     expect([onProfile(PROFILE), onProfile(RESULT), onProfile('https://evil.test/player-profile/1')]).toEqual([true, false, false]);
     expect([keptTourPage(PROFILE), keptTourPage(RESULT), keptTourPage(`${PROFILE}&x=${'a'.repeat(3000)}`), keptTourPage(42)]).toEqual([PROFILE, null, null, null]);
   });
@@ -69,6 +72,68 @@ describe('the tour window', () => {
       true, true, false, false, true,
     ]);
     expect([keptTourPage(ET_RESULTS), keptTourPage('https://www.europeantour.com/hotelplanner-tour/players/'), onProfile(ET_RESULTS)]).toEqual([ET_RESULTS, null, false]);
+  });
+});
+
+const LETAS_PROFILE = 'https://letaccess.com/player-profiles/990001/';
+const LETAS_OOM = 'https://letaccess.com/letas-order-of-merits?id=2026&oom=LO';
+const LET_PROFILE = 'https://ladieseuropeantour.com/player-profiles/990001/';
+const LET_OOM = 'https://ladieseuropeantour.com/order-of-merit?id=2026&oom=PT';
+const ocsRead = ocs.readProfile(ocsProfile()) as ocs.Profile;
+const ocsLine = ocs.readOom(ocsOom(), '990001') as ocs.OomLine;
+
+describe('the tour window on the LET and the LET Access Series', () => {
+  it('each site a tour of its own, her profile and the Order of Merit among its pages', () => {
+    // As the module and the extension: the sites as they are, without a www in front.
+    expect([tourSiteOf(LETAS_PROFILE), tourSiteOf(LET_OOM), tourSiteOf('https://www.letaccess.com/players')]).toEqual(['tour:let_access', 'tour:let', null]);
+    expect([isOcs('tour:let'), isOcs('tour:let_access'), isOcs('tour:dp_world'), isOcs(null)]).toEqual([true, true, false, false]);
+    expect([onOcsProfile(LETAS_PROFILE), onOcsProfile(LET_PROFILE), onOcsProfile(LETAS_OOM), onOcsProfile('https://letaccess.com.evil.test/player-profiles/990001/'), onOcsProfile(PROFILE)]).toEqual([true, true, false, false, false]);
+    expect([onOcsOom(LETAS_OOM), onOcsOom(LET_OOM), onOcsOom(LETAS_PROFILE), onOcsOom('https://letaccess.com/players')]).toEqual([true, true, false, false]);
+    // One window per tour: the LET's profile isn't the LET Access Series' window.
+    expect([sameWindow(LETAS_PROFILE, 'tour:let_access'), sameWindow(LET_PROFILE, 'tour:let_access'), sameWindow(LET_PROFILE, 'tour:let')]).toEqual([true, false, true]);
+  });
+
+  it('keeps her profile to open the window there next time, never the Order of Merit', () => {
+    expect([keptTourPage(LETAS_PROFILE), keptTourPage(LETAS_OOM), keptTourPage('https://letaccess.com/players')]).toEqual([LETAS_PROFILE, null, null]);
+    expect([ocsProfileUrl('tour:let', '990001'), ocsProfileUrl('tour:let_access', '990001'), ocsProfileUrl('tour:let', '../x')]).toEqual([LET_PROFILE, LETAS_PROFILE, null]);
+  });
+
+  it('takes her profile only from the profile the window shows, on its own tour', () => {
+    expect(readTourMessage(LETAS_PROFILE, msg({ ocs: ocsRead }), ASK)).toEqual({ ok: true, ocs: ocsRead });
+    // Another player's profile shown meanwhile, or the profile of the other tour: nothing.
+    expect(readTourMessage('https://letaccess.com/player-profiles/990011/', msg({ ocs: ocsRead }), ASK)).toBeNull();
+    expect(readTourMessage(LET_PROFILE, msg({ ocs: ocsRead }), ASK)).toBeNull();
+    // A line of the Order of Merit from her profile, a profile from the Order of Merit, or a read from the players' list: nothing.
+    expect(readTourMessage(LETAS_PROFILE, msg({ ocs: ocsLine }), ASK)).toBeNull();
+    expect(readTourMessage(LETAS_OOM, msg({ ocs: ocsRead }), ASK)).toBeNull();
+    expect(readTourMessage('https://letaccess.com/players', msg({ ocs: ocsRead }), ASK)).toBeNull();
+    // Not the module's shape, or another of the page script's answers in its place.
+    expect(readTourMessage(LETAS_PROFILE, msg({ ocs: { ...ocsRead, player_id: 'x' } }), ASK)).toBeNull();
+    expect(readTourMessage(LETAS_PROFILE, msg({ profile }), ASK)).toBeNull();
+    expect(readTourMessage(LETAS_PROFILE, msg({ read: etRead }), ASK)).toBeNull();
+  });
+
+  it('takes a line only from that tour’s Order of Merit; why a page wasn’t read; nothing of theirs elsewhere', () => {
+    expect(readTourMessage(LETAS_OOM, msg({ ocs: ocsLine }), ASK)).toEqual({ ok: true, ocs: ocsLine });
+    expect(readTourMessage(LET_OOM, msg({ ocs: ocsLine }), ASK)).toBeNull();
+    expect(readTourMessage(LETAS_OOM, msg({ ocsUnread: 'not_him' }), ASK)).toEqual({ ok: true, ocsUnread: 'not_him' });
+    expect(readTourMessage(LETAS_PROFILE, msg({ ocsUnread: 'no_result' }), ASK)).toEqual({ ok: true, ocsUnread: 'no_result' });
+    expect(readTourMessage(LETAS_PROFILE, msg({ ocsUnread: 'gone' }), ASK)).toBeNull();
+    expect(readTourMessage(LETAS_PROFILE, msg({ why: 'changed_page' }), ASK)).toEqual({ ok: false, why: 'changed_page' });
+    expect(readTourMessage(LETAS_PROFILE, msg({ ocs: ocsRead }, 'ffffffffffffffff'), ASK)).toBeNull();
+    // A read of the LET's sites from any other tour's page: nothing.
+    expect(readTourMessage(PROFILE, msg({ ocs: ocsRead }), ASK)).toBeNull();
+    expect(readTourMessage(ET_RESULTS, msg({ ocsUnread: 'no_result' }), ASK)).toBeNull();
+  });
+
+  it('that the address changed: only from their pages, only in exactly that shape', () => {
+    const moved = JSON.stringify({ glmsync: TOUR_MESSAGE, moved: true });
+    expect([readMovedMessage(LETAS_PROFILE, moved), readMovedMessage('https://ladieseuropeantour.com/players', moved)]).toEqual([true, true]);
+    expect(readMovedMessage(ET_RESULTS, moved)).toBe(false);
+    expect(readMovedMessage(PROFILE, moved)).toBe(false);
+    for (const data of [JSON.stringify({ glmsync: TOUR_MESSAGE, moved: 1 }), JSON.stringify({ glmsync: TOUR_MESSAGE, moved: true, url: 'x' }), JSON.stringify({ glmsync: 'x', moved: true }), '[1]', 'nope', 7, 'x'.repeat(300)]) {
+      expect(readMovedMessage(LETAS_PROFILE, data), String(data)).toBe(false);
+    }
   });
 });
 

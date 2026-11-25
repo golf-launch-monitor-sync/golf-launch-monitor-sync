@@ -157,6 +157,18 @@ portal in a sign-in window - so that window lives here, in a small app that does
   (`src/lib/etSession.ts`). No *Fetch all*: his *Wins & Results* page has the rounds, a season at a time. A read is
   taken only of the player whose page the window shows (`readTourMessage`), only with a connection for a pro's pages,
   only while the window is open.
+  **The LET and the LET Access Series** (ladieseuropeantour.com, letaccess.com; companion 0.6.0): a window per tour
+  (*Open Ladies European Tour*, *Open LET Access Series* open its list of players), the extension's way there: once her
+  profile (`/player-profiles/<id>/`) has loaded, the page script reads her results of the season shown with every round
+  (`ocs.readProfile`), kept in the extension's `OcsKeeper` (`@glmsync/browser/ocs`); on the tour's Order of Merit, once
+  a profile of this tour was read, the app hands the page script that profile's id and takes only her line
+  (`ocs.readOom`; the other lines stay in the page script). *Send* on her profile, or on the Order of Merit, reads the
+  page once more and sends her profile with her rank of that season (`src/lib/ocsSession.ts`, the bar's words `ocsBar`).
+  Both sites change their address without loading a page, which the web view doesn't always tell: the page script looks
+  at the address every second and posts only that it changed (`readMovedMessage`), and the window takes its address as
+  a new page. No *Fetch all*: her profile has the rounds. A profile is taken only of the profile the window shows, a
+  line only from that tour's Order of Merit (`readTourMessage`), only with a connection for a pro's pages, only while the
+  window is open.
 - **Demo**: a made-up player (`@glmsync/provider-demo`) for trying the app without an account, and
   for app reviews. Its "requests" go through the guard too, so counters and log behave as for real.
 - **Save as file**: a sync into an olmd file (the share sheet), planned gently by the file target -

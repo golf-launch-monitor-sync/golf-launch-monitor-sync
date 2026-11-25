@@ -10,6 +10,9 @@
  * - DP World Tour and HotelPlanner Tour (europeantour.com, one page per player for both): each page of his is read once
  *   it has loaded and again a moment after he picks another season or tour in the page's own select, kept merged, and
  *   *Send* sends a page per tour (lib/etSession.ts).
+ * - The LET and the LET Access Series: her profile is read once it has loaded, on the Order of Merit only her own line;
+ *   *Send* sends her profile with her rank (lib/ocsSession.ts). The sites change their address without loading a page,
+ *   so the page script tells the window when it did (`readMovedMessage`), as the web view doesn't always.
  *
  * The page loads as this phone's web view is: its own engine and user agent, nothing added. The app sends the site
  * nothing of its own, and nothing the page opens leaves the window (lib/toursPage.ts, `tourWindowRules`). The window
@@ -25,18 +28,22 @@ import { lang, t } from '../i18n';
 import { askId, dayOf } from '../lib/rankingsPage';
 import type { Services } from '../lib/services';
 import { EtSession, type EtState } from '../lib/etSession';
-import { ANSWER_MS, isEt, keptTourPage, openInTourWindow, readPickMessage, readScript, readTourMessage, sameWindow, tourWindowRules, type TourAnswer } from '../lib/toursPage';
+import { OcsSession, type OcsState } from '../lib/ocsSession';
+import { ANSWER_MS, isEt, isOcs, keptTourPage, openInTourWindow, readMovedMessage, readPickMessage, readScript, readTourMessage, sameWindow, tourWindowRules, type TourAnswer } from '../lib/toursPage';
 import { TOURS_PAGE_SCRIPT } from '../lib/toursPageScript';
 import { TourSession, type TourState } from '../lib/toursSession';
-import { etBar, toursBar } from '../lib/toursText';
+import { etBar, ocsBar, toursBar } from '../lib/toursText';
 import { Body, Button, s, Small, Title } from './parts';
 
 export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; done: () => void }) {
   const info = TOUR_SITES[site];
   /** europeantour.com: its own way of reading (each page of his, no *Fetch all*). */
   const et = isEt(site);
+  /** The LET's tours: their own way too (her profile, her line of the Order of Merit, no *Fetch all*). */
+  const lets = isOcs(site) ? site : null;
   const [state, setState] = useState<TourState>({ view: null, unread: false, tour: null, phase: 'ready', limit: false });
   const [etState, setEtState] = useState<EtState>({ view: null, unread: false, et: null, phase: 'ready', sent: null });
+  const [ocsState, setOcsState] = useState<OcsState>({ view: null, unread: false, ocs: null, phase: 'ready', note: null });
   /** Where the window opens: null while it is decided. */
   const [start, setStart] = useState<string | null>(null);
   const [url, setUrl] = useState<string | null>(null);
@@ -47,11 +54,14 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
   /** The open ask to the page script, with how to hand its answer back. */
   const ask = useRef<{ id: string; resolve: (a: TourAnswer | null) => void; timer: ReturnType<typeof setTimeout> } | null>(null);
   const shown = useRef<string | null>(null);
+  /** The address last told the sessions as loaded (the LET's page script tells a move the web view may have told as loading). */
+  const loadedAt = useRef<string | null>(null);
   const tr = translator(lang);
 
   /** Made with the window and closed with it (a remount, as React's strict mode does, gets a session of its own). */
   const [session, setSession] = useState<TourSession | null>(null);
   const [etSession, setEtSession] = useState<EtSession | null>(null);
+  const [ocsSession, setOcsSession] = useState<OcsSession | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -78,9 +88,17 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
       });
     const today = () => dayOf(new Date());
     let close: () => void;
-    if (et) {
+    if (lets) {
+      const made = new OcsSession({ site: lets, keeper: svc.ocs, pro: svc.pro, lastPage: svc.lastPage, read, today, onChange: (st) => live && setOcsState(st) });
+      setOcsSession(made);
+      setEtSession(null);
+      setSession(null);
+      void made.start();
+      close = () => made.close();
+    } else if (et) {
       const made = new EtSession({ keeper: svc.et, pro: svc.pro, lastPage: svc.lastPage, read: () => read(null), today, onChange: (st) => live && setEtState(st) });
       setEtSession(made);
+      setOcsSession(null);
       setSession(null);
       void made.start();
       close = () => made.close();
@@ -96,6 +114,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
       });
       setSession(made);
       setEtSession(null);
+      setOcsSession(null);
       void made.start();
       close = () => void made.close();
     }
@@ -113,9 +132,32 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
       }
       close();
     };
-  }, [svc, site, info, et]);
+  }, [svc, site, info, et, lets]);
+
+  /** The window shows `to` (`loaded`: it has loaded): every session hears of a new address once. */
+  function show(to: string, loaded: boolean) {
+    if (shown.current !== to) {
+      shown.current = to;
+      setUrl(to);
+      session?.moved();
+      etSession?.moved(to);
+      ocsSession?.moved(to);
+    }
+    // A page the run opened (the Pro Golf Tour), a page of his (europeantour.com, the LET's) is read once it has loaded.
+    if (loaded) {
+      loadedAt.current = to;
+      void session?.loaded(to);
+      void etSession?.loaded(to);
+      void ocsSession?.loaded(to);
+    }
+  }
 
   function onMessage(e: WebViewMessageEvent) {
+    // The LET's sites changed their address without loading a page: the window's address is a new page of theirs.
+    if (ocsSession && readMovedMessage(e.nativeEvent.url, e.nativeEvent.data)) {
+      if (loadedAt.current !== e.nativeEvent.url) show(e.nativeEvent.url, true);
+      return;
+    }
     // europeantour.com: he picked another season or tour in the page's own select - read it again a moment later.
     if (etSession && readPickMessage(e.nativeEvent.url, e.nativeEvent.data)) {
       etSession.picked(e.nativeEvent.url);
@@ -130,17 +172,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
   }
 
   function onNavigation(nav: WebViewNavigation) {
-    if (shown.current !== nav.url) {
-      shown.current = nav.url;
-      setUrl(nav.url);
-      session?.moved();
-      etSession?.moved(nav.url);
-    }
-    // A page the run opened (the Pro Golf Tour), a page of his (europeantour.com) is read once it has loaded.
-    if (!nav.loading) {
-      void session?.loaded(nav.url);
-      void etSession?.loaded(nav.url);
-    }
+    show(nav.url, !nav.loading);
   }
 
   // A new window of the page (target=_blank, window.open) opens in this one, where the window may go; else nowhere.
@@ -150,7 +182,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
   }
 
   async function answer(yes: boolean) {
-    const s = etSession ?? session;
+    const s = ocsSession ?? etSession ?? session;
     if (!s) return;
     setBusy(true);
     try {
@@ -160,9 +192,13 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
     }
   }
 
-  const bar = et ? etBar(etState.view, url, etState.phase, etState.sent, lang, (k) => t(k)) : toursBar(state.view, state.tour, site, url, state.phase, state.limit, lang, (k) => t(k));
-  const unread = et ? etState.unread : state.unread;
-  const loadView = () => void (etSession ?? session)?.loadView();
+  const bar = lets
+    ? ocsBar(ocsState.view, ocsState.ocs, lets, url, ocsState.phase, ocsState.note, lang, (k) => t(k))
+    : et
+      ? etBar(etState.view, url, etState.phase, etState.sent, lang, (k) => t(k))
+      : toursBar(state.view, state.tour, site, url, state.phase, state.limit, lang, (k) => t(k));
+  const unread = lets ? ocsState.unread : et ? etState.unread : state.unread;
+  const loadView = () => void (ocsSession ?? etSession ?? session)?.loadView();
 
   if (!info) {
     // A tour this version doesn't read (an older link): nothing to open.
@@ -187,6 +223,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
           {bar.ask && <Button label={tr('pro.no')} kind="secondary" disabled={busy} onPress={() => void answer(false)} />}
           {bar.send && url && session && <Button label={tr('proLine.send')} onPress={() => void session.send(url)} />}
           {bar.send && url && etSession && <Button label={tr('proLine.send')} onPress={() => void etSession.send(url)} />}
+          {bar.send && url && ocsSession && <Button label={tr('proLine.send')} onPress={() => void ocsSession.send(url)} />}
           {bar.fetchAll && url && session && <Button label={tr('line.fetchAll')} kind="secondary" onPress={() => void session.fetchAll(url)} />}
           {bar.stop && session && <Button label={tr('line.stop')} kind="secondary" onPress={() => void session.stop()} />}
           {unread && <Button label={t('rankings.reload')} kind="secondary" onPress={loadView} />}

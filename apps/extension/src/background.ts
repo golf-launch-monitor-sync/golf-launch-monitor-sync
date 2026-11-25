@@ -23,7 +23,7 @@ import { badge, BrowserClient, HcpClient, IdbBlobs, pickLang, ProClient, SEND_AF
 import { SITES } from '@glmsync/provider-rankings';
 import { TourKeeper } from '@glmsync/browser/tours';
 import { EtKeeper } from '@glmsync/browser/europeantour';
-import { OcsKeeper } from './ocs-pages.ts';
+import { OcsKeeper } from '@glmsync/browser/ocs';
 import { ocs } from '@glmsync/provider-tours';
 import { HISTORY_SHEET_URL, readSeen } from '@glmsync/provider-golfde';
 import { bridgeMessage, type BridgeReply, type Reason } from '@glmsync/spec';
@@ -76,7 +76,7 @@ const tours = new TourKeeper(storage);
 // His pages on europeantour.com as he opens them (`@glmsync/browser/europeantour`): DP World Tour and HotelPlanner
 // Tour, merged.
 const et = new EtKeeper(storage);
-// The LET's and LET Access Series' pages (ocs-pages.ts): her profile and her Order of Merit line, per tour.
+// The LET's and LET Access Series' pages (`OcsKeeper`, @glmsync/browser/ocs): her profile and her Order of Merit line, per tour.
 const ocsPages = new OcsKeeper(storage);
 const localDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 

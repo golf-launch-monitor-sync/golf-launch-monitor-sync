@@ -11,19 +11,24 @@
  * - europeantour.com (DP World Tour, HotelPlanner Tour; once his page has loaded, after a pick, on *Send*): what his
  *   page shows now - his ranks, his results with their rounds, the season statistics. When he picks another season or
  *   tour in the page's own select, it only tells the app that he picked; the app asks for the read a moment later.
+ * - the LET and the LET Access Series (once her page has loaded, on *Send*): on her profile her results of the season
+ *   shown with every round, on the tour's Order of Merit only her own line (by the profile's id the app hands in). The
+ *   sites change their address without loading a page: the script looks at it every second and tells the app only that
+ *   it changed (nothing read); the app asks for the read of the new page.
  *
  * It reads nothing before it is asked, sends the site nothing and changes nothing the page does.
  * scripts/tours-page.mjs bundles it into src/lib/toursPageScript.ts.
  */
 
-import { europeantour, progolftour, snapshotOf, type DomDocument } from '@glmsync/provider-tours';
-import { callFits, onTourSite, READ_FUNCTION, TABLE_WAIT_MS, TOUR_MESSAGE } from '../src/lib/toursPage.ts';
+import { europeantour, ocs, progolftour, snapshotOf, type DomDocument, type Snapshot } from '@glmsync/provider-tours';
+import { callFits, isOcs, onTourSite, READ_FUNCTION, TABLE_WAIT_MS, tourSiteOf, TOUR_MESSAGE, WATCH_MS } from '../src/lib/toursPage.ts';
 
 declare const window: {
   ReactNativeWebView?: { postMessage(data: string): void };
   document: DomDocument & { title?: unknown; addEventListener?(type: string, fn: (e: { target?: unknown }) => void, capture?: boolean): void };
   location: { href: string };
   setTimeout(fn: () => void, ms: number): unknown;
+  setInterval?(fn: () => void, ms: number): unknown;
 };
 
 /** The phone's day, should the app's ask not name it (an older app's call): europeantour.com's results need it. */
@@ -69,11 +74,51 @@ try {
       };
       look();
     };
+    /**
+     * Her page on the LET's sites as it shows now, waited for a little until `ready` (the site draws it after the page,
+     * or after a change of its address). Only what is hers goes: her profile, or her line of the Order of Merit.
+     */
+    const readOcs = (ask: string, href: string, who: unknown) => {
+      const oomOf = typeof who === 'string' && /^[0-9]{3,10}$/.test(who) ? who : null;
+      const profile = ocs.profileIdOf(href) !== null;
+      if (!profile && !(ocs.isOomPage(href) && oomOf)) {
+        post(ask, { why: 'not_player_page' });
+        return;
+      }
+      const readOf = (snap: Snapshot) => (profile ? ocs.readProfile(snap) : ocs.readOom(snap, oomOf as string));
+      reading = true;
+      const started = Date.now();
+      const look = () => {
+        try {
+          let snap: Snapshot | null = null;
+          try {
+            snap = snapshotOf(window.document, href);
+          } catch {
+            snap = null;
+          }
+          const r = snap ? readOf(snap) : null;
+          if (snap && r?.kind !== 'profile' && r?.kind !== 'oom' && Date.now() - started < TABLE_WAIT_MS) {
+            window.setTimeout(look, 500);
+            return;
+          }
+          reading = false;
+          // The snapshot, with everyone else's names on the Order of Merit, stays here.
+          post(ask, r?.kind === 'profile' || r?.kind === 'oom' ? { ocs: r } : r?.kind === 'unread' && r.why !== 'changed_page' ? { ocsUnread: r.why } : { why: 'changed_page' });
+        } catch {
+          reading = false; // never in the page's way; the app takes the read as failed after a while
+        }
+      };
+      look();
+    };
     Object.defineProperty(window, READ_FUNCTION, {
       value: (ask: unknown, who: unknown, today?: unknown) => {
         try {
           if (reading || !callFits(ask, who, today)) return;
           const href = window.location.href;
+          if (isOcs(tourSiteOf(href))) {
+            readOcs(ask, href, who);
+            return;
+          }
           if (europeantour.playerPageOf(href)) {
             readEt(ask, href, typeof today === 'string' ? today : localDay());
             return;
@@ -135,6 +180,20 @@ try {
       },
       true,
     );
+    // The LET's sites change their address without loading a page, which the web view doesn't always tell the app:
+    // only that it changed goes (nothing read, nothing of hers); the app asks for the read of the new page.
+    if (isOcs(tourSiteOf(window.location.href))) {
+      let here = window.location.href;
+      window.setInterval?.(() => {
+        try {
+          if (window.location.href === here) return;
+          here = window.location.href;
+          window.ReactNativeWebView?.postMessage(JSON.stringify({ glmsync: TOUR_MESSAGE, moved: true }));
+        } catch {
+          // never in the page's way
+        }
+      }, WATCH_MS);
+    }
   }
 } catch {
   // never in the page's way

@@ -18,7 +18,7 @@
 import { pickLang, proLineOf, translator, type LinePhase, type ProView } from '@glmsync/browser';
 import { ocs, snapshotOf, type Snapshot } from '@glmsync/provider-tours';
 import type { Reply } from './messages.ts';
-import type { OcsView } from './ocs-pages.ts';
+import type { OcsView } from '@glmsync/browser/ocs';
 
 const t = translator(pickLang(navigator.languages));
 const SITE = ocs.siteAt(location.href)?.site;

@@ -4,14 +4,14 @@ import { MemoryStorage } from '@glmsync/core';
 import { checkTourPage, ocs } from '@glmsync/provider-tours';
 import { ocsOom, ocsProfile } from '@glmsync/provider-tours/testing';
 import { describe, expect, it } from 'vitest';
-import { OcsKeeper } from './ocs-pages.ts';
+import { OcsKeeper } from './ocs.ts';
 
 const TODAY = '2026-11-25';
 const LET = 'https://ladieseuropeantour.com';
 const profile = (over = {}) => ocs.readProfile(ocsProfile(over));
 const oom = (id = '990001', over = {}) => ocs.readOom(ocsOom(over), id);
 
-describe('what the extension keeps of her LET and LET Access pages', () => {
+describe('what a client keeps of her LET and LET Access pages', () => {
   it('sends her profile with every finished tournament and, once read, her rank of that season', async () => {
     const k = new OcsKeeper(new MemoryStorage());
     expect(await k.page('tour:let_access', TODAY)).toBeNull();
