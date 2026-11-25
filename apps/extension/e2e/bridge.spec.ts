@@ -7,7 +7,7 @@
 
 import type { Page } from '@playwright/test';
 import { APP_PAGE, pairUrl, PORTAL } from '../../../tools/e2e/world.ts';
-import { allowAndChoose, connectWindow, expect, popup, test } from './fixture.ts';
+import { chooseService, connectWindow, expect, popup, test } from './fixture.ts';
 
 type Reply = Record<string, unknown>;
 
@@ -42,7 +42,7 @@ test('the app’s page learns the sign-in and has the extension fetch now', asyn
   const windowOpens = connectWindow(context, extensionId);
   await pairPage.goto(pairUrl());
   const connect = await windowOpens;
-  await allowAndChoose(connect);
+  await chooseService(connect);
 
   await expect.poll(() => marked(app)).toBe('1');
   expect(await ask(app, 'state', 's1')).toEqual([{ glmsync: 'reply', v: 1, id: 's1', answer: 'state', signin: 'none', fetching: false }]);

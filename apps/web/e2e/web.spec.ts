@@ -27,17 +27,19 @@ test('pairs this page when there is no extension, then fetches by hand', async (
   await expect(page.locator('#install')).toContainText('Not in the browser stores yet');
   await expect(page.getByTestId('waiting')).toHaveText(/leave this page open: it connects by itself/);
   await expect(page.locator('main')).not.toContainText('null');
-  // *Connect new* by hand: (1) allow the app, (2) what to connect - only then it pairs.
-  await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'pair');
-  await expect(page.getByTestId('wizard-title')).toHaveText('Connect with app.example.org?');
-  await page.getByTestId('allow').click();
+  // *Connect new* by hand: (1) the app by its address, and the one button is the yes - only then it pairs.
   await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'service');
+  await expect(page.getByTestId('wizard-title')).toHaveText('Connect with app.example.org');
+  await expect(page.getByTestId('wizard-progress')).toHaveText('Step 1 of 5');
+  await expect(page.getByTestId('offer-what')).toHaveText('Your data then goes to app.example.org – nowhere else.');
+  await expect(page.getByTestId('allow')).toHaveCount(0);
+  await expect(page.getByTestId('service-trackman')).toHaveText('Connect this page with app.example.org');
   expect(world.target.tokens.size).toBe(0);
   await page.getByTestId('service-trackman').click();
   await expect(page).toHaveURL(`${WEB}/app.html`);
-  // (3) the Trackman key (the bookmark, pasted), in the step itself.
+  // (2) the Trackman key (the bookmark, pasted), in the step itself.
   await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'signin');
-  await expect(page.getByTestId('wizard-progress')).toHaveText('Step 3 of 6');
+  await expect(page.getByTestId('wizard-progress')).toHaveText('Step 2 of 5');
   await expect(page.getByTestId('unconfirmed')).toHaveText('Not yet connected with Example App – sign in at Trackman');
   await expect(page.getByTestId('wizard').getByTestId('paste')).toBeVisible();
   expect(page.url()).not.toContain(CODE);
@@ -97,10 +99,9 @@ test('connecting’s steps in German; a first sync that fails stays on its step 
   await world.route(context);
   const page = await context.newPage();
   await page.goto(pairUrl());
-  await page.getByTestId('allow').click();
-  await expect(page.getByTestId('wizard-title')).toHaveText('Was möchtest du verbinden?');
+  await expect(page.getByTestId('wizard-title')).toHaveText('Mit app.example.org verbinden');
   await page.getByTestId('service-trackman').click();
-  await expect(page.getByTestId('wizard-progress')).toHaveText('Schritt 3 von 6');
+  await expect(page.getByTestId('wizard-progress')).toHaveText('Schritt 2 von 5');
   await expect(page.getByTestId('unconfirmed')).toHaveText('Noch nicht mit Example App verbunden – bei Trackman anmelden');
   await page.getByTestId('paste').fill(world.key());
   await page.getByTestId('use-key').click();
@@ -165,7 +166,7 @@ test.describe('in Safari', () => {
     await page.goto(pairUrl());
     await expect(page.getByTestId('pair-status')).toHaveText(/This browser can’t run the extension \(Safari/);
     await expect(page.getByTestId('install')).toHaveCount(0);
-    await expect(page.getByTestId('allow')).toBeVisible();
+    await expect(page.getByTestId('service-trackman')).toBeVisible();
   });
 });
 
@@ -173,7 +174,8 @@ test('the handicap record (kind=hcp) needs the extension: no way by hand', async
   await page.goto(`${pairUrl(HCP_TARGET, HCP_CODE)}&kind=hcp`);
   await expect(page.getByTestId('pair-status')).toHaveText(/needs the browser extension/, { timeout: 5000 });
   await expect(page.getByTestId('install')).toBeVisible();
-  await expect(page.getByTestId('allow')).toHaveCount(0);
+  await expect(page.getByTestId('service-golfde')).toHaveCount(0);
+  await expect(page.getByTestId('wizard')).toHaveCount(0);
   expect(world.hcp.received).toHaveLength(0);
 });
 
@@ -187,11 +189,10 @@ test('says so when the link is no pairing link', async ({ page }) => {
 
 test('a code that ran out: says so, and offers to start again', async ({ page }) => {
   await page.goto(pairUrl(undefined, 'EXPIRED1'));
-  await page.getByTestId('allow').click();
   await page.getByTestId('service-trackman').click();
   await expect(page.getByTestId('offer-error')).toHaveText('That didn’t work: The code has run out or was used already. Start again in your app.');
-  // Back at the first step: the same code can't be tried again.
-  await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'pair');
+  // Back to where to start: the same code can't be tried again.
+  await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'service');
   await expect(page.getByTestId('offer-start')).toBeVisible();
   expect(page.url()).not.toContain('EXPIRED1');
 });
@@ -202,16 +203,15 @@ test('the main view: *Connect new* says to start in the app; back to the list', 
   await expect(page.getByTestId('paste')).toBeHidden();
   await page.getByTestId('connect-new').click();
   await expect(page.getByTestId('wizard-title')).toHaveText('Start in your app');
-  await expect(page.getByTestId('wizard-progress')).toHaveText('Step 1 of 6');
+  await expect(page.getByTestId('wizard-progress')).toHaveText('Step 1 of 5');
   await expect(page.getByTestId('connections')).toBeHidden();
   await page.locator('#new').getByTestId('connections-back').click();
   await expect(page.getByTestId('connect-new')).toBeVisible();
 });
 
 test('the bookmark copies the key the portal keeps, or the one its next call carries', async ({ page, world }) => {
-  // The bookmark is where the sign-in is: connecting's step 3.
+  // The bookmark is where the sign-in is: connecting's step 2.
   await page.goto(pairUrl());
-  await page.getByTestId('allow').click();
   await page.getByTestId('service-trackman').click();
   await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'signin');
   const href = (await page.getByTestId('bookmarklet').getAttribute('href')) as string;
@@ -244,6 +244,6 @@ test.describe('in German', () => {
   test('the pairing page speaks the browser’s language', async ({ page }) => {
     await page.goto(pairUrl());
     await expect(page.getByTestId('pair-status')).toHaveText('Die Browser-Erweiterung ist in diesem Browser nicht installiert.');
-    await expect(page.getByTestId('allow')).toHaveText('Diese Seite mit app.example.org verbinden');
+    await expect(page.getByTestId('service-trackman')).toHaveText('Diese Seite mit app.example.org verbinden');
   });
 });

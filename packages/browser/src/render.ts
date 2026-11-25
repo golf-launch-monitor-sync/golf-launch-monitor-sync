@@ -12,7 +12,7 @@ import { hcpLastText } from './hcpView.ts';
 import { formatDate, formatDateTime, formatTime, type Lang, type T } from './i18n.ts';
 import { historyText, lastText, noticeText } from './view.ts';
 import { connectionLine, type Connection } from './connections.ts';
-import { factsOfHcp, factsOfOffer, factsOfStatus, hcpWhoLine, statusSituation, stepParts, targetOf, whoLine, wizardLines, wizardOf, type ServiceKind, type StepPart, type WizardFacts, type WizardLines, type WizardView } from './wizard.ts';
+import { factsOfHcp, factsOfOffer, factsOfStatus, hcpWhoLine, serviceChoices, statusSituation, stepParts, targetOf, whoLine, wizardLines, wizardOf, type OfferState, type ServiceKind, type StepPart, type WizardFacts, type WizardLines, type WizardView } from './wizard.ts';
 
 type Child = Node | string | null | undefined | false;
 
@@ -84,7 +84,7 @@ export interface RenderContext {
    */
   memory?: WizardMemory;
   /**
-   * *Enter a test code*, the client's box (`testEntry`): the panel puts it under the sign-in - the wizard's step 3,
+   * *Enter a test code*, the client's box (`testEntry`): the panel puts it under the sign-in - the wizard's step 2,
    * the overview's sign-in - and nowhere else. Absent: this client takes no test codes.
    */
   testSlot?: HTMLElement;
@@ -294,7 +294,7 @@ function confirmPart(s: ClientStatus, c: RenderContext, a: Actions): HTMLElement
 
 /**
  * The launch monitor's steps, inside the shared frame: what `stepParts` says the step shows, nothing else. A test
- * code stands in for the sign-in (step 3); its made-up account is step 4, its first data step 5 - never the
+ * code stands in for the sign-in (step 2); its made-up account is step 3, its first data step 4 - never the
  * provider's sign-in.
  */
 function statusWizard(s: ClientStatus, view: WizardView, facts: WizardFacts, c: RenderContext, a: Actions): HTMLElement {
@@ -420,7 +420,7 @@ export function wizardFrame(view: WizardView, lines: WizardLines, body: Child[],
   );
 }
 
-/** Steps 5 and 6: what came, and what is still to come. */
+/** Steps 4 and 5: what came, and what is still to come. */
 export function progressLines(lines: WizardLines): Child[] {
   return [
     lines.brought ? h('p', { class: 'brought', 'data-test': 'wizard-brought' }, lines.brought) : null,
@@ -428,7 +428,7 @@ export function progressLines(lines: WizardLines): Child[] {
   ];
 }
 
-/** Step 6: back to the app - a button where this page can take the player there, else the sentence that they can. */
+/** Step 5: back to the app - a button where this page can take the player there, else the sentence that they can. */
 export function backPart(t: T, target: string | null, back: (() => void) | undefined, web = false): Child[] {
   const name = target ?? t('wizard.yourApp');
   return [
@@ -437,7 +437,7 @@ export function backPart(t: T, target: string | null, back: (() => void) | undef
   ];
 }
 
-/** Steps 3 and 5: a way out (with one app; with several the overview's own buttons do it). */
+/** Steps 2 and 4: a way out (with one app; with several the overview's own buttons do it). */
 function cancelPart(only: ClientStatus['pairings'][number], target: string, c: RenderContext, a: Actions): Child[] {
   const { t } = c;
   if (c.asking === only.id) {
@@ -507,7 +507,7 @@ export function hcpWizard(v: HcpView, c: HcpWizardContext, a: HcpWizardActions):
         body.push(h('p', {}, t('connect.nextHcp')));
         break;
       case 'signin':
-        // On step 5 the button to send comes first once there is something to send.
+        // On step 4 the button to send comes first once there is something to send.
         body.push(h('div', { class: 'row' }, button(t('connect.openHcp'), a.openGolfde, { ...(parts.includes('send') ? {} : { class: 'primary' }), 'data-test': 'hcp-open' })));
         break;
       case 'who':
@@ -568,8 +568,8 @@ export function hcpWizard(v: HcpView, c: HcpWizardContext, a: HcpWizardActions):
 
 export interface OfferContext {
   t: T;
-  /** `none`: no app asked yet; `asking`: waiting for the yes; `allowed`: what to connect is next; `working`: pairing. */
-  state: 'none' | 'asking' | 'allowed' | 'working';
+  /** `none`: no app asked yet; `asking`: an app asks, the service's tap is the yes; `working`: pairing. */
+  state: OfferState;
   kind: ServiceKind;
   /** The asking app's address (shown plainly: any page can ask). */
   host?: string;
@@ -577,19 +577,19 @@ export interface OfferContext {
   services: readonly { id: string; name: string }[];
   /** What went wrong with the last request (a code run out, the permission refused …), said on its step. */
   error?: string | null;
-  /** The yes in this client's words (the web app: *Connect this page with …*). */
-  allowLabel?: string;
+  /** The one service's button in this client's words (the web app: *Connect this page with …*). */
+  connectLabel?: string;
 }
 
 export interface OfferActions {
-  allow(): void;
   cancel(): void;
+  /** The yes to the app with the service chosen (in the extension also the click the browser's permission needs). */
   choose(id: string): void;
 }
 
 /**
- * A new connection's first two steps, in the same frame as the rest: an app asks and the player allows it (or, with no
- * app asking yet, where to start), then what to connect. One button each.
+ * A new connection's first step, in the same frame as the rest: an app asks by its address, says where the data goes,
+ * and the tap on the service is the yes (or, with no app asking yet, where to start). One button, or one per service.
  */
 export function offerWizard(c: OfferContext, a: OfferActions): HTMLElement {
   const { t } = c;
@@ -600,17 +600,15 @@ export function offerWizard(c: OfferContext, a: OfferActions): HTMLElement {
   const body: Child[] = [];
   if (c.error) body.push(h('p', { class: 'note warn', 'data-test': 'offer-error', role: 'alert' }, c.error));
   if (c.state === 'none') body.push(h('p', { 'data-test': 'offer-start' }, t('wizard.pairStartHow')));
-  else if (c.state === 'asking') {
+  else {
+    const working = c.state === 'working';
+    const choices = serviceChoices(c.kind, c.services, t, c.connectLabel);
+    const several = choices.length > 1;
     body.push(
       h('p', { 'data-test': 'offer-what' }, t('wizard.pairWhat', { host: c.host ?? '' })),
-      h('div', { class: 'row' }, button(c.allowLabel ?? t('wizard.allow'), a.allow, { class: 'primary', 'data-test': 'allow' }), button(t('connect.cancel'), a.cancel, { class: 'link', 'data-test': 'cancel' })),
-    );
-  } else {
-    const working = c.state === 'working';
-    body.push(
-      h('p', { class: 'muted small' }, t(c.kind === 'hcp' ? 'wizard.serviceHcp' : 'wizard.serviceLm')),
-      h('div', { class: 'row services' }, ...c.services.map((x) => button(x.name, () => a.choose(x.id), { class: 'primary', 'data-test': `service-${x.id}`, ...(working ? { disabled: '' } : {}) }))),
-      c.kind === 'lm' ? h('p', { class: 'muted small' }, t('wizard.serviceMore')) : null,
+      several ? h('p', { class: 'muted small' }, t(c.kind === 'hcp' ? 'wizard.serviceHcp' : 'wizard.serviceLm')) : null,
+      h('div', { class: 'row services' }, ...choices.map((x) => button(x.label, () => a.choose(x.id), { class: 'primary', 'data-test': `service-${x.id}`, ...(working ? { disabled: '' } : {}) }))),
+      several && c.kind === 'lm' ? h('p', { class: 'muted small' }, t('wizard.serviceMore')) : null,
       working ? h('p', { class: 'muted', role: 'status', 'data-test': 'working' }, t('connect.working')) : h('div', { class: 'row' }, button(t('connect.cancel'), a.cancel, { class: 'link', 'data-test': 'cancel' })),
     );
   }

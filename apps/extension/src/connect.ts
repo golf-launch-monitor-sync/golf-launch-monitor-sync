@@ -2,13 +2,13 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
  * The connect window: *Connect new*, step by step, the same for every service (`@glmsync/browser`'s wizard), one button
- * per step. (1) An app asks - the web app's pairing page handed over its code - and the player allows it, the browser's
- * own prompt for that one address following from the same click; opened from the popup (`?new`) before any app asked,
- * it says where to start and waits. (2) What to connect (the offer's service; later more launch monitors). (3) The
- * service's steps (Trackman: *Open the Trackman portal*, small *Enter a test code*; golf.de: open the History Sheet),
- * (4) *Is this your account?*, (5) the first data shown plainly, (6) *Back to …*, which closes this tab. Steps 3 to 6 are
- * the status panel's (or the handicap record's, kind=hcp - also when golf.de's page brought this window to the front
- * for the yes).
+ * per step. (1) An app asks - the web app's pairing page handed over its code - by its address, and the tap on what to
+ * connect (the offer's service; later more launch monitors) is the yes: the browser's own prompt for that one address
+ * follows from the same click, and refused, the step stays with its sentence. Opened from the popup (`?new`) before any
+ * app asked, it says where to start and waits. (2) The service's steps (Trackman: *Open the Trackman portal*, small
+ * *Enter a test code*; golf.de: open the History Sheet), (3) *Is this your account?*, (4) the first data shown plainly,
+ * (5) *Back to …*, which closes this tab. Steps 2 to 5 are the status panel's (or the handicap record's, kind=hcp - also
+ * when golf.de's page brought this window to the front for the yes).
  */
 
 import type { ClientStatus, HcpView } from '@glmsync/browser';
@@ -33,8 +33,8 @@ let pendingNow: Pending | null = null;
 let statusNow: ClientStatus | null = null;
 let hcpNow: HcpView | null = null;
 const memory: WizardMemory = { walked: false };
-/** The offer (by its time) the player allowed: what to connect is next. */
-let allowedAt: number | null = null;
+/** The browser's prompt for the app's address is open (a second tap meanwhile asks nothing more). */
+let requesting = false;
 /** The yes with the service is on its way. */
 let choosing = false;
 /** What went wrong with the last answer of the background, said on the step. */
@@ -57,12 +57,12 @@ async function closeTab(): Promise<void> {
 
 const isHcp = () => pendingNow?.kind === 'hcp';
 
-/** Steps 1 and 2 while the pairing doesn't stand yet; null once it does (or there is nothing to start here). */
+/** The first step while the pairing doesn't stand yet; null once it does (or there is nothing to start here). */
 function offerState(p: Pending | null): Pick<OfferContext, 'state' | 'error'> | null {
   if (!p) return fresh ? { state: 'none' } : null;
   switch (p.state) {
     case 'asking':
-      return { state: choosing ? 'working' : allowedAt === p.at ? 'allowed' : 'asking', error: failure };
+      return { state: choosing ? 'working' : 'asking', error: failure };
     case 'working':
       return { state: 'working' };
     case 'failed':
@@ -102,43 +102,46 @@ function draw(): void {
       offerWizard(
         { t, ...offer, kind: p?.kind ?? 'lm', ...(p ? { host: p.host } : {}), services: services(p) },
         {
-          allow: () => {
-            if (!p) return;
-            // The browser's prompt needs this very click. Then what the browser holds decides (a permission given
-            // before counts); refused, the background says so (it checks again before pairing).
-            const origins = [`${new URL(p.target).origin}/*`];
-            const next = () =>
-              chrome.permissions.contains({ origins }).then(
-                (has) => {
-                  if (has) {
-                    allowedAt = p.at;
-                    draw();
-                  } else void send({ type: 'pair-confirm' }).then(apply);
-                },
-                () => void send({ type: 'pair-confirm' }).then(apply),
-              );
-            chrome.permissions.request({ origins }).then(next, next);
-          },
           cancel: () => {
-            allowedAt = null;
             void send({ type: 'pair-cancel' }).then(apply);
           },
           choose: (id) => {
-            choosing = true;
-            draw();
-            void send({ type: 'pair-confirm', provider: id }).then((r) => {
-              choosing = false;
-              apply(r);
-              // The next step is the panel's: it hears of the new pairing now, not at its next look.
-              void panels.lm?.refresh();
-              void panels.hcp?.refresh();
-            });
+            if (!p || requesting || choosing) return;
+            // The tap is the yes, and the browser's prompt needs this very click. Then what the browser holds decides
+            // (a permission given before counts); refused, the step stays and says so (the background checks again
+            // before pairing).
+            const origins = [`${new URL(p.target).origin}/*`];
+            const refused = () => {
+              requesting = false;
+              failure = t('connect.denied', { host: p.host });
+              draw();
+            };
+            const pair = () => {
+              requesting = false;
+              choosing = true;
+              failure = null;
+              draw();
+              void send({ type: 'pair-confirm', provider: id }).then((r) => {
+                choosing = false;
+                apply(r);
+                // The next step is the panel's: it hears of the new pairing now, not at its next look.
+                void panels.lm?.refresh();
+                void panels.hcp?.refresh();
+              });
+            };
+            const check = () => chrome.permissions.contains({ origins }).then((has) => (has ? pair() : refused()), refused);
+            requesting = true;
+            try {
+              chrome.permissions.request({ origins }).then(check, check);
+            } catch {
+              void check();
+            }
           },
         },
       ),
     );
   } else fill(ask);
-  // Steps 1 and 2 stand alone; then only the service asked for (the handicap record, or the launch monitor).
+  // The first step stands alone; then only the service asked for (the handicap record, or the launch monitor).
   const lmHidden = !!offer || isHcp() || (!!statusNow && !statusNow.pairings.length && !!hcpNow && hcpNow.pairings.length > 0);
   panel.hidden = lmHidden;
   hcpRoot.hidden = !!offer;
@@ -156,7 +159,6 @@ const look = async () => {
   pendingNow = p;
   if (said !== shown) {
     shown = said;
-    if (!p || p.at !== allowedAt) allowedAt = null;
     failure = null;
   }
   draw();

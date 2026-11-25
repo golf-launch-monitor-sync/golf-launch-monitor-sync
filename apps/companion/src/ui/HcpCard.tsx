@@ -79,7 +79,7 @@ export function HcpCard({ svc, view, setView, open }: { svc: Services; view: Hcp
             <Button label={t('hcp.open')} onPress={open} />
           </>
         )}
-        {/* Step 4: only the account and yes or no (stepParts). */}
+        {/* Step 3: only the account and yes or no (stepParts). */}
         {wv.step === 'account' && (
           <>
             <Body>{hcpWhoLine(view.index, tr, lang)}</Body>

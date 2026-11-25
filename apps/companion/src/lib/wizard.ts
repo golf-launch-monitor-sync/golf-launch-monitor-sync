@@ -14,12 +14,12 @@ import { wizardLines, wizardOf, type WizardFacts, type WizardLines, type WizardV
 import type { LastRun } from './runner.ts';
 import type { Lang } from './text.ts';
 
-/** The steps before the yes: not signed in yet (1), or the account named and waiting for the answer (2). */
+/** The steps before the yes: not signed in yet (2), or the account named and waiting for the answer (3). */
 export function beforeYes(asking: boolean): WizardFacts {
   return { kind: 'lm', signedIn: asking, asking, confirmed: false, first: 'waiting', brought: null, more: null };
 }
 
-/** Step 4 about a target's made-up account (test mode, spec/test-mode.md): its test code stood in for the sign-in. */
+/** Step 3 about a target's made-up account (test mode, spec/test-mode.md): its test code stood in for the sign-in. */
 export function testAccount(): WizardFacts {
   return { ...beforeYes(true), test: true };
 }
@@ -33,7 +33,7 @@ export function testKeys(pairings: readonly { key: string; provider: string }[],
 }
 
 /**
- * Steps 5 and 6: the first sync under way or through, and what the pairings' runs brought (the one that brought most
+ * Steps 4 and 5: the first sync under way or through, and what the pairings' runs brought (the one that brought most
  * speaks for all - each gets the same account's data).
  */
 export function firstLoad(runs: readonly (LastRun | null)[], phase: 'running' | 'through'): WizardFacts {

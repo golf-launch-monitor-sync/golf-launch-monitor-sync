@@ -13,7 +13,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { BrowserContext, Locator } from '@playwright/test';
 import { pairUrl, PORTAL, ROOT } from '../../../tools/e2e/world.ts';
-import { allowAndChoose, connectWindow, expect, popup, test } from './fixture.ts';
+import { chooseService, connectWindow, expect, popup, test } from './fixture.ts';
 
 const OUT = join(ROOT, 'apps', 'extension', 'store');
 
@@ -40,10 +40,10 @@ test('store screenshots', async ({ context, world, extensionId }) => {
   await pairPage.goto(pairUrl());
   const connect = await windowOpens;
   await connect.setViewportSize({ width: 560, height: 760 });
-  await expect(connect.getByTestId('allow')).toBeVisible();
+  await expect(connect.getByTestId('service-trackman')).toBeVisible();
   await frame(context, connect.locator('main'), 'Your app asks for your launch monitor data – you decide', '1-connect.png');
 
-  await allowAndChoose(connect);
+  await chooseService(connect);
   world.portal.token = world.key();
   await (await context.newPage()).goto(PORTAL);
   await expect(connect.getByTestId('confirm')).toContainText('Alex Example');

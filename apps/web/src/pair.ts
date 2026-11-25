@@ -6,8 +6,9 @@
  * over (its content script read the fragment before this script ran) and this page says how it went.
  * Without it, the page offers the extension and waits for it - every two seconds, up to five minutes:
  * install, leave the page open, and it pairs by itself (the extension reaches a page that was open when
- * it was installed). Or it connects this page itself, as *Connect new*'s first two steps (`@glmsync/browser`'s
- * wizard): allow the app, then what to connect; the rest follows on the page by hand (`app.html#connect`). In a
+ * it was installed). Or it connects this page itself, as *Connect new*'s first step (`@glmsync/browser`'s wizard): the
+ * app by its address, and the tap on *Connect this page with …* is the yes; the rest follows on the page by hand
+ * (`app.html#connect`). In a
  * browser that can't run the extension (Safari, a phone's) that is the only way it offers.
  *
  * The code is taken out of the address as soon as it was used, so it doesn't stay in the history.
@@ -100,7 +101,7 @@ window.addEventListener('message', (event: MessageEvent) => {
 /** Errors after which the same code can't be tried again (the player starts again in the app). */
 const FINAL = new Set(['link', 'code', 'provider']);
 
-/** This page connected by hand: steps 1 and 2 of *Connect new*. */
+/** This page connected by hand: the first step of *Connect new*. */
 function byHand(target: { target: string; code: string; provider?: string }): void {
   const host = new URL(target.target).host;
   let state: OfferContext['state'] = 'asking';
@@ -117,13 +118,9 @@ function byHand(target: { target: string; code: string; provider?: string }): vo
           host,
           services: [{ id: client.provider.id, name: client.provider.name }],
           error,
-          allowLabel: t('pair.useWeb', { host }),
+          connectLabel: t('pair.useWeb', { host }),
         },
         {
-          allow: () => {
-            state = 'allowed';
-            draw();
-          },
           cancel: () => {
             forgetCode();
             state = 'none';
@@ -142,13 +139,13 @@ function byHand(target: { target: string; code: string; provider?: string }): vo
                   return;
                 }
                 error = t('pair.failed', { why: t(`connect.error.${out.error}`) });
-                state = FINAL.has(out.error) ? 'none' : 'allowed';
+                state = FINAL.has(out.error) ? 'none' : 'asking';
                 if (state === 'none') forgetCode();
                 draw();
               },
               () => {
                 error = t('pair.failed', { why: t('connect.error.unreachable') });
-                state = 'allowed';
+                state = 'asking';
                 draw();
               },
             );

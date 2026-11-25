@@ -73,12 +73,14 @@ chunk may go: the target's `wait_s`, a minute after a chunk that brought somethi
 
 ## Connecting, step by step
 
-`wizard.ts` (pure, tested without a browser): connecting as six steps, the same for every service, one button each -
-**allow** (the app's pairing, by its address), **the service** (what to connect), **sign in**, **your account** (*Is
-this your account?*), **the first data**, **done**. Each client turns its own state into `WizardFacts`
-(`factsOfOffer` for the first two, before the pairing stands; `factsOfStatus` for a launch monitor, `factsOfHcp` for
-golf.de, the companion app its own), `wizardOf` decides the step and `wizardLines` says it (English, German). A
-connection with a client state behind it is past the first two (`paired`, `chosen` absent).
+`wizard.ts` (pure, tested without a browser): connecting as five steps, the same for every service, one button each -
+**the service** (the app's pairing, by its address, and what to connect: the tap is the yes to the app; no step of its
+own to allow, which read as one button too many), **sign in**, **your account** (*Is this your account?*), **the first
+data**, **done**. Each client turns its own state into `WizardFacts` (`factsOfOffer` for the first, before the pairing
+stands; `factsOfStatus` for a launch monitor, `factsOfHcp` for golf.de, the companion app its own), `wizardOf` decides
+the step and `wizardLines` says it (English, German). A connection with a client state behind it is past the first
+(`chosen` absent). `serviceChoices` gives the first step's buttons: one service that fits, one button by its kind
+(*Connect launch monitor*, *Connect handicap record*, or the client's own words for it); several, each by its name.
 
 `connections.ts` (pure): the main view's list - one connection per service and account (`connectionsOfStatus`: the
 signed-in account's pairings, and each pairing in test mode; `connectionOfHcp`: golf.de's record; the companion app
@@ -110,7 +112,7 @@ name is the one *Is this your account?* showed, kept once the player said yes (`
   (`factsOfStatus`), then the account's own connection (`factsOfAccount`, which never counts a test's pairing), then a
   pairing in test mode until its first data is through.
 
-`render.ts` draws them (`renderConnections` the list, `offerWizard` steps 1 and 2, `renderStatus` for a launch monitor,
+`render.ts` draws them (`renderConnections` the list, `offerWizard` step 1, `renderStatus` for a launch monitor,
 `hcpWizard` for golf.de, the shared `wizardFrame`): until
 the first data is through they stand in place of the overview; a page that walked the steps (`WizardMemory`) shows
 *done* with the overview below, one opened afterwards just the overview.

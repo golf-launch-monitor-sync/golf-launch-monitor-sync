@@ -47,13 +47,11 @@ export async function popup(context: BrowserContext, extensionId: string, open?:
   return page;
 }
 
-/** *Connect new*'s first two steps in the connect window: allow the app, then the service the offer asks for. */
-export async function allowAndChoose(connect: Page, service = 'trackman'): Promise<void> {
-  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'pair');
-  await connect.getByTestId('allow').click();
+/** *Connect new*'s first step in the connect window: the service the offer asks for, whose tap is the yes to the app. */
+export async function chooseService(connect: Page, service = 'trackman'): Promise<void> {
   await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'service');
   await connect.getByTestId(`service-${service}`).click();
-  await expect(connect.getByTestId('wizard').first()).not.toHaveAttribute('data-step', /^(pair|service)$/);
+  await expect(connect.getByTestId('wizard').first()).not.toHaveAttribute('data-step', 'service');
 }
 
 /** The toolbar icon's badge. */

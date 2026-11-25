@@ -33,7 +33,7 @@ export type FromPage =
   | { type: 'open-portal' }
   | { type: 'switch-account' }
   | { type: 'pending' }
-  /** The yes to an app's pairing, with the service chosen (step 2): the offer's own, or this one when it named none. */
+  /** The yes to an app's pairing, with the service chosen (step 1, the tap that is the yes): the offer's own, or this one when it named none. */
   | { type: 'pair-confirm'; provider?: string }
   /** *Connect new* in the popup: the connect window, at its first step. */
   | { type: 'open-connect' }

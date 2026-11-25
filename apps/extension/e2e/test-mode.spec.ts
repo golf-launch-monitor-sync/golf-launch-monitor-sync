@@ -2,8 +2,8 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
  * Test mode in the extension (spec/test-mode.md): paired from the app's page, no Trackman sign-in at all. In the
- * connect window's step 3, small under *Open the Trackman portal*, the test code instead: a wrong one stays there with
- * its sentence; the right one brings the app's made-up scenario to step 4, *Is this your account?*, with only the
+ * connect window's step 2, small under *Open the Trackman portal*, the test code instead: a wrong one stays there with
+ * its sentence; the right one brings the app's made-up scenario to step 3, *Is this your account?*, with only the
  * account and yes or no; then the data as from Trackman - the first sync, then the older history a chunk per alarm,
  * `test: true` on every batch, Trackman never asked - and nowhere a Trackman sign-in for it: not in the list, not in
  * its details, not on the icon. Ending it stops it. All synthetic.
@@ -12,7 +12,7 @@
 import type { Page } from '@playwright/test';
 import { accountRefOf } from '../../../packages/core/src/sha256.ts';
 import { pairUrl, TEST_CODE, TEST_SUBJECT } from '../../../tools/e2e/world.ts';
-import { allowAndChoose, badgeText, connectWindow, expect, popup, test } from './fixture.ts';
+import { chooseService, badgeText, connectWindow, expect, popup, test } from './fixture.ts';
 
 async function enter(page: Page, code: string) {
   if (await page.getByTestId('test-enter').isVisible()) await page.getByTestId('test-enter').click();
@@ -26,14 +26,14 @@ async function noSignIn(page: Page) {
   await expect(page.getByText('Open the Trackman portal')).toHaveCount(0);
 }
 
-test('the test code in step 3 instead of the sign-in; then only the account, and no sign-in anywhere after', async ({ context, world, extensionId, background }) => {
+test('the test code in step 2 instead of the sign-in; then only the account, and no sign-in anywhere after', async ({ context, world, extensionId, background }) => {
   world.testAccount(7, 2);
   world.target.expiredCodes.add('OVER0001');
   const pairPage = await context.newPage();
   const windowOpens = connectWindow(context, extensionId);
   await pairPage.goto(pairUrl());
   const connect = await windowOpens;
-  await allowAndChoose(connect);
+  await chooseService(connect);
   // Not signed in to Trackman: the icon says so - until a test code stands in for the sign-in.
   await expect.poll(() => badgeText(background)).toBe('!');
 
@@ -136,18 +136,18 @@ test('the test code in step 3 instead of the sign-in; then only the account, and
   expect(world.target.imports).toHaveLength(had);
 });
 
-test('in the popup too: the test code in step 3 of a connection not set up yet', async ({ context, world, extensionId }) => {
+test('in the popup too: the test code in step 2 of a connection not set up yet', async ({ context, world, extensionId }) => {
   world.testAccount(3, 2);
   const pairPage = await context.newPage();
   const windowOpens = connectWindow(context, extensionId);
   await pairPage.goto(pairUrl());
-  await allowAndChoose(await windowOpens);
+  await chooseService(await windowOpens);
   const pop = await popup(context, extensionId, 'lm');
   await expect(pop.getByTestId('wizard')).toHaveAttribute('data-step', 'signin');
   await enter(pop, TEST_CODE);
   await expect(pop.getByTestId('wizard')).toHaveAttribute('data-step', 'account');
   await noSignIn(pop);
-  // No: back to step 3, nothing kept.
+  // No: back to step 2, nothing kept.
   await pop.getByTestId('test-no').click();
   await expect(pop.getByTestId('wizard')).toHaveAttribute('data-step', 'signin');
   await expect(pop.getByTestId('open-portal')).toBeVisible();

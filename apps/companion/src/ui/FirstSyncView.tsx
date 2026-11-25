@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * After signing in (and saying yes to the account): the wizard's steps 5 and 6. With the yes the player is done here,
+ * After signing in (and saying yes to the account): the wizard's steps 4 and 5. With the yes the player is done here,
  * and the step says so at once (LMS-AS-4): *Done – fetching your data …*, *Back to …* where the target named a way
  * back (else *OK*), and the sentence that the rest comes by itself - not only once the data is in. The first sync runs
  * while this app is in front (lib/firstSync.ts says why), shown plainly - "10 sessions, 6 rounds fetched", then how

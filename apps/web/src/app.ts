@@ -12,7 +12,7 @@
  * bookmark, pasted), *Is this you?*, the first sync right after the yes, shown plainly, and done - the overview then
  * follows below.
  *
- * Test mode (spec/test-mode.md): small, under the sign-in (the wizard's step 3, the overview's sign-in), *Enter a test
+ * Test mode (spec/test-mode.md): small, under the sign-in (the wizard's step 2, the overview's sign-in), *Enter a test
  * code*, for testing a connected app with its made-up scenario instead of a Trackman account.
  */
 
@@ -52,7 +52,7 @@ let first = true;
 function show(next: View): void {
   view = next;
   // *Connect new* here: it starts in the app (its pairing page brings the player back). Drawn only while shown.
-  fill($('new-steps'), view === 'new' ? offerWizard({ t, state: 'none', kind: 'lm', services: [] }, { allow: () => undefined, cancel: () => show('list'), choose: () => undefined }) : null);
+  fill($('new-steps'), view === 'new' ? offerWizard({ t, state: 'none', kind: 'lm', services: [] }, { cancel: () => show('list'), choose: () => undefined }) : null);
   listView.hidden = view !== 'list';
   newView.hidden = view !== 'new';
   detail.hidden = view !== 'detail';
@@ -88,7 +88,7 @@ function draw(s: ClientStatus): void {
   renderConnections(listRoot, sortConnections(connectionsOfStatus(s, busy)), { t }, { add: () => show('new'), open: () => show('detail') });
   if (notes.length) listRoot.prepend(...notes);
   drawKey(s);
-  // The key's box and the test code go where the sign-in is (the panel says where): the wizard's step 3, or the
+  // The key's box and the test code go where the sign-in is (the panel says where): the wizard's step 2, or the
   // overview's sign-in for an app connected to the account.
   renderStatus(panel, s, { t, lang, now: Date.now(), busy, client: 'web', asking, askingEnd, testConfirming, confirming, memory, signinSlot: keyBox, testSlot: testRoot }, actions);
   // While a step stands, only it: the file comes with the overview, and only for the Trackman account's data.

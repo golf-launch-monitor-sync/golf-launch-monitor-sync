@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { ClientStatus } from './client.ts';
 import type { HcpView } from './hcp.ts';
 import { translator } from './i18n.ts';
-import { factsOfAccount, factsOfHcp, factsOfOffer, factsOfStatus, hcpWhoLine, statusSituation, stepParts, targetOf, whoLine, wizardLines, wizardOf, type StepPart, type WizardFacts } from './wizard.ts';
+import { factsOfAccount, factsOfHcp, factsOfOffer, factsOfStatus, hcpWhoLine, serviceChoices, statusSituation, stepParts, targetOf, whoLine, WIZARD_STEPS, wizardLines, wizardOf, type StepPart, type WizardFacts } from './wizard.ts';
 
 const en = translator('en');
 const de = translator('de');
@@ -26,43 +26,63 @@ const status = (key: ClientStatus['key'], pairings: P[] = [pairing()], running: 
 const READY = { state: 'ready', until: 0 } as const;
 
 describe('the steps', () => {
-  it('goes allow, service, sign in, account, first data, done – and says where it stands', () => {
+  it('goes service, sign in, account, first data, done – no step of its own to allow – and says where it stands', () => {
     const steps = [
-      wizardOf(factsOfOffer('none', 'lm')),
-      wizardOf(factsOfOffer('allowed', 'lm')),
+      wizardOf(factsOfOffer('asking', 'lm')),
       wizardOf(facts()),
       wizardOf(facts({ signedIn: true, asking: true })),
       wizardOf(facts({ signedIn: true, confirmed: true, first: 'running' })),
       wizardOf(facts({ signedIn: true, confirmed: true, first: 'through' })),
     ];
     expect(steps.map((v) => [v.step, v.index, v.total])).toEqual([
-      ['pair', 1, 6],
-      ['service', 2, 6],
-      ['signin', 3, 6],
-      ['account', 4, 6],
-      ['load', 5, 6],
-      ['done', 6, 6],
+      ['service', 1, 5],
+      ['signin', 2, 5],
+      ['account', 3, 5],
+      ['load', 4, 5],
+      ['done', 5, 5],
     ]);
-    // A connection with a client state behind it is paired and its service chosen.
-    expect(steps[3]?.steps.map((s) => s.state)).toEqual(['done', 'done', 'done', 'current', 'todo', 'todo']);
-    expect(steps[5]?.steps.map((s) => s.state)).toEqual(['done', 'done', 'done', 'done', 'done', 'done']);
-    expect(wizardOf(factsOfOffer('asking', 'hcp')).step).toBe('pair');
+    expect(WIZARD_STEPS).toEqual(['service', 'signin', 'account', 'load', 'done']);
+    // A connection with a client state behind it has its service chosen (and so is paired).
+    expect(steps[2]?.steps.map((s) => s.state)).toEqual(['done', 'done', 'current', 'todo', 'todo']);
+    expect(steps[4]?.steps.map((s) => s.state)).toEqual(['done', 'done', 'done', 'done', 'done']);
+    // No app asked yet, an app asks, pairing now: all the first step.
+    expect(wizardOf(factsOfOffer('none', 'lm')).step).toBe('service');
+    expect(wizardOf(factsOfOffer('asking', 'hcp')).step).toBe('service');
     expect(wizardOf(factsOfOffer('working', 'hcp')).step).toBe('service');
   });
 
-  it('the first two steps: the app asks by its address, no "not yet connected" before there is an app', () => {
+  it('the first step: the app asks by its address, the tap on the service is the yes; no "not yet connected" before there is an app', () => {
     const t = (f: WizardFacts, target: string | null) => wizardLines(wizardOf(f), f, de, { service: 'Trackman', target });
-    expect(t(factsOfOffer('none', 'lm'), null)).toMatchObject({ title: 'In deiner App starten', unconfirmed: null, progress: 'Schritt 1 von 6' });
-    expect(t(factsOfOffer('asking', 'lm'), 'app.example.org')).toMatchObject({ title: 'Mit app.example.org verbinden?', unconfirmed: null });
-    expect(t(factsOfOffer('allowed', 'lm'), 'app.example.org')).toMatchObject({ title: 'Was möchtest du verbinden?', unconfirmed: null, progress: 'Schritt 2 von 6' });
-    expect(t(factsOfOffer('allowed', 'lm'), 'app.example.org').labels).toEqual(['Erlauben', 'Dienst', 'Anmelden', 'Konto', 'Erste Daten', 'Fertig']);
+    expect(t(factsOfOffer('none', 'lm'), null)).toMatchObject({ title: 'In deiner App starten', unconfirmed: null, progress: 'Schritt 1 von 5' });
+    expect(t(factsOfOffer('asking', 'lm'), 'app.example.org')).toMatchObject({ title: 'Mit app.example.org verbinden', unconfirmed: null, progress: 'Schritt 1 von 5' });
+    expect(t(factsOfOffer('working', 'lm'), 'app.example.org').title).toBe('Mit app.example.org verbinden');
+    expect(wizardLines(wizardOf(factsOfOffer('asking', 'hcp')), factsOfOffer('asking', 'hcp'), en, { service: 'golf.de', target: 'app.example.org' }).title).toBe('Connect with app.example.org');
+    expect(t(factsOfOffer('asking', 'lm'), 'app.example.org').labels).toEqual(['Dienst', 'Anmelden', 'Konto', 'Erste Daten', 'Fertig']);
+  });
+
+  it('one service that fits: one button by its kind; several: each by its name', () => {
+    const trackman = [{ id: 'trackman', name: 'Trackman' }];
+    expect(serviceChoices('lm', trackman, de)).toEqual([{ id: 'trackman', label: 'Launch Monitor verbinden' }]);
+    expect(serviceChoices('hcp', [{ id: 'golfde', name: 'golf.de' }], de)).toEqual([{ id: 'golfde', label: 'Stammblatt verbinden' }]);
+    expect(serviceChoices('lm', trackman, en)).toEqual([{ id: 'trackman', label: 'Connect launch monitor' }]);
+    // The client's own words for the one button (the web app: this page is what gets connected).
+    expect(serviceChoices('lm', trackman, de, 'Diese Seite mit app.example.org verbinden')).toEqual([{ id: 'trackman', label: 'Diese Seite mit app.example.org verbinden' }]);
+    const two = [
+      { id: 'trackman', name: 'Trackman' },
+      { id: 'other', name: 'Other' },
+    ];
+    expect(serviceChoices('lm', two, de, 'ignored')).toEqual([
+      { id: 'trackman', label: 'Trackman' },
+      { id: 'other', label: 'Other' },
+    ]);
+    expect(serviceChoices('lm', [], de)).toEqual([]);
   });
 
   it('before the yes: the big line says what is missing, and nothing counts as on its way', () => {
     const t = (f: WizardFacts) => wizardLines(wizardOf(f), f, de, words);
     // A count was there already (from an earlier connection): still not shown before the yes.
     const asking = facts({ signedIn: true, asking: true, brought: { sessions: 150, rounds: 3 }, more: 140 });
-    expect(t(asking)).toMatchObject({ title: 'Ist das dein Trackman-Konto?', unconfirmed: 'Noch nicht mit Example App verbunden – Konto bestätigen', brought: null, more: null, progress: 'Schritt 4 von 6' });
+    expect(t(asking)).toMatchObject({ title: 'Ist das dein Trackman-Konto?', unconfirmed: 'Noch nicht mit Example App verbunden – Konto bestätigen', brought: null, more: null, progress: 'Schritt 3 von 5' });
     expect(t(facts())).toMatchObject({ title: 'Bei Trackman anmelden', unconfirmed: 'Noch nicht mit Example App verbunden – bei Trackman anmelden', brought: null });
     expect(wizardLines(wizardOf(facts()), facts(), en, { service: 'Trackman', target: null }).unconfirmed).toBe('Not yet connected with your app – sign in at Trackman');
   });
@@ -127,7 +147,7 @@ describe('a launch monitor client’s state as steps', () => {
     expect(factsOfStatus(status({ state: 'none' }, []))).toBeNull();
   });
 
-  it('a test code stands in for the sign-in: its account is step 4, its first data step 5 - never the sign-in', () => {
+  it('a test code stands in for the sign-in: its account is step 3, its first data step 4 - never the sign-in', () => {
     const test = { name: 'S', player: 'Leon', valid_until: '2026-12-01T00:00:00Z', at: 0, counts: null };
     const who = { player: 'Leon', activities: null };
     const asking = { id: 'p1', target: 'Example App', name: 'S', who, valid_until: '2026-12-01T00:00:00Z', at: 0 };
@@ -242,7 +262,7 @@ describe('what a step shows: its own content, nothing else', () => {
     expect(stepParts('load', facts({ kind: 'hcp', first: 'waiting' }), { fresh: true })).toEqual(['waitingHow', 'signin', 'send', 'progress']);
     expect(stepParts('load', facts({ kind: 'hcp', first: 'running' }), { fresh: true })).toEqual(['progress']);
     expect(stepParts('done', lm, { cancel: true, testCode: true })).toEqual(['progress', 'back']);
-    expect(stepParts('pair', lm)).toEqual([]);
+    expect(stepParts('service', lm)).toEqual([]);
   });
 });
 

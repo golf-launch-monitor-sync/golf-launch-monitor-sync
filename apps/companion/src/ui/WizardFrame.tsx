@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
  * Connecting as steps, the phone's frame for them (the steps and their words are `@glmsync/browser`'s wizard, the same
- * in the extension and the web app): the big line before the yes (step 3's alone: `stepParts`), the steps with their
+ * in the extension and the web app): the big line before the yes (step 2's alone: `stepParts`), the steps with their
  * progress, the step's title, and the step's own content below.
  */
 

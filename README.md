@@ -51,25 +51,26 @@ up yet – continue*); a row opens its details. And every client connects the sa
 golf.de, those to come) - one frame, [`packages/browser`'s wizard](packages/browser/README.md#connecting-step-by-step),
 not one per module, one button per step:
 
-1. **allow**: the app that wants the data asks (its pairing link, by its address) and you allow it - or, started
-   from *Connect new*, where to start in that app;
-2. **the service**: what to connect (Trackman; golf.de for the handicap record; later more launch monitors) - only
-   then the connection is made;
-3. **sign in** at the service (its own page, in your browser or the companion app's window); small, under it, *Enter
+1. **the service**: the app that wants the data asks (its pairing link, by its address: *Connect with …*, *your data
+   then goes to … – nowhere else*), and your tap on what to connect is the yes - one button when one service fits
+   (*Connect launch monitor*, *Connect handicap record*; later more launch monitors, each by its name); only then the
+   connection is made. In the extension the same tap is the click the browser needs for its own prompt for that one
+   address. Started from *Connect new*, the step says where to start in that app;
+2. **sign in** at the service (its own page, in your browser or the companion app's window); small, under it, *Enter
    a test code* for an app's test account instead - a code that is right goes on like a sign-in, one that isn't stays
    here with its sentence;
-4. **your account**: the service names it - *Is this your account?* - and nothing is fetched or sent before
+3. **your account**: the service names it - *Is this your account?* - and nothing is fetched or sent before
    *Yes, that's me*;
-5. **the first data**, shown plainly (*10 sessions, 6 rounds fetched*, then *older data follows bit by bit,
+4. **the first data**, shown plainly (*10 sessions, 6 rounds fetched*, then *older data follows bit by bit,
    about 140 sessions still to come*); for a launch monitor you are done here already (*Done – fetching your
    data …*), with *Back to …* right there - the rest comes by itself. This first fetch hands your sessions to the
    app in parts while it still fetches, a part every two sessions or so, so the app can count them as they come;
    the rounds follow with their shots in the last part;
-6. **done**: *Back to …* where the client can take you there, else the sentence that you can go back and the
+5. **done**: *Back to …* where the client can take you there, else the sentence that you can go back and the
    rest comes by itself.
 
 Each step shows only what is due there: nothing of another step, no notes above or below it - on *Is this your
-account?* only the account and *Yes, that's me* / *No*. Until step 4 is answered the tools show no count that looks
+account?* only the account and *Yes, that's me* / *No*. Until step 3 is answered the tools show no count that looks
 as if anything were running; step 3 says, big, *Not yet connected with … – sign in at …*. Then the usual overview. A
 connection in test mode never asks for the provider's sign-in - not in the list, its details or on the icon.
 

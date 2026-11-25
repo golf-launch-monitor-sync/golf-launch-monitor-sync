@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * Test mode in the web app (spec/test-mode.md): the connected app's test code in connecting's step 3, small under the
- * sign-in, instead of it - then step 4, *Is this your account?* about its made-up account with nothing else on it,
+ * Test mode in the web app (spec/test-mode.md): the connected app's test code in connecting's step 2, small under the
+ * sign-in, instead of it - then step 3, *Is this your account?* about its made-up account with nothing else on it,
  * then the data as from Trackman (the first sync, then the older history in chunks while the page is open, `test: true`
- * on every batch, Trackman never asked), and nowhere a Trackman sign-in for it. A wrong, an expired code stay on step 3
+ * on every batch, Trackman never asked), and nowhere a Trackman sign-in for it. A wrong, an expired code stay on step 2
  * with their sentence; an app without a test account says so. All synthetic.
  */
 
@@ -25,10 +25,9 @@ const test = base.extend<{ world: World }>({
 
 async function pairByHand(page: Page) {
   await page.goto(pairUrl());
-  await page.getByTestId('allow').click();
   await page.getByTestId('service-trackman').click();
   await expect(page).toHaveURL(`${WEB}/app.html`);
-  // Paired, no Trackman sign-in: connecting's step 3, where a tester enters the test code instead.
+  // Paired, no Trackman sign-in: connecting's step 2, where a tester enters the test code instead.
   await expect(page.getByTestId('wizard')).toHaveAttribute('data-step', 'signin');
   await expect(page.getByTestId('unconfirmed')).toContainText('Example App');
 }
@@ -40,7 +39,7 @@ async function noSignIn(page: Page) {
 }
 
 async function enter(page: Page, code: string) {
-  // Small, in step 3 under the sign-in - nowhere else on the page.
+  // Small, in step 2 under the sign-in - nowhere else on the page.
   const step = page.locator('[data-test="wizard"][data-step="signin"]');
   if (await step.getByTestId('test-enter').isVisible()) await step.getByTestId('test-enter').click();
   await page.getByTestId('test-code').fill(code);
@@ -58,13 +57,13 @@ test('a test code: asked first, then the scenario as from Trackman, in chunks wh
   await expect(signin.getByTestId('test-enter')).toHaveText('Enter a test code');
   await expect(page.getByTestId('test-enter')).toHaveCount(1);
 
-  // Wrong, then expired: a sentence each on step 3, nothing kept.
+  // Wrong, then expired: a sentence each on step 2, nothing kept.
   await enter(page, 'WRONG0001');
   await expect(signin.getByTestId('test-error')).toHaveText('That test code isn’t right. Check it, or get a new one in your app.');
   await enter(page, 'OVER0001');
   await expect(signin.getByTestId('test-error')).toHaveText('That test code has expired. Get a new one in your app.');
 
-  // The right one (as the app's test link, copied): step 4 about the made-up account, nothing synced yet - and on it
+  // The right one (as the app's test link, copied): step 3 about the made-up account, nothing synced yet - and on it
   // only the account and yes or no: no sign-in, no test code, no way out, no notes above or below.
   await enter(page, `glmsync://test?code=${TEST_CODE}`);
   const wizard = page.getByTestId('wizard');
@@ -140,7 +139,7 @@ test('a test code: asked first, then the scenario as from Trackman, in chunks wh
   expect(await page.evaluate(() => Object.keys(localStorage).join(' '))).not.toContain('test-asking');
 });
 
-test('without a pairing no test code to enter; an app’s account that is no test account says so, on step 3', async ({ page, world }) => {
+test('without a pairing no test code to enter; an app’s account that is no test account says so, on step 2', async ({ page, world }) => {
   await page.goto(`${WEB}/app.html`);
   await expect(page.getByTestId('connections-none')).toBeVisible();
   await expect(page.getByTestId('test-enter')).toBeHidden();

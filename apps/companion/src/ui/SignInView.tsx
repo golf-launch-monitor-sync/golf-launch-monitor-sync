@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
  * Signing in at a provider: Trackman's own portal in a window, then "Is this you?" before anything is
- * kept or synced - the wizard's steps 1 and 2 (lib/wizard.ts). The key stays in memory until the player says yes;
+ * kept or synced - the wizard's steps 2 and 3 (lib/wizard.ts). The key stays in memory until the player says yes;
  * "no" opens the portal afresh, without the session someone else may have left on this phone. The question names the
  * account and its newest activity, no count (a number there read as data already on its way).
  *
@@ -113,7 +113,7 @@ export function SignInView({
     );
   }
 
-  // Step 2: the account the provider named, and the player's answer.
+  // Step 3: the account the provider named, and the player's answer.
   const w = wizardText(beforeYes(true), lang, words);
   let content;
   if (step.name === 'checking') {
@@ -123,7 +123,7 @@ export function SignInView({
       </WizardFrame>
     );
   } else if (step.name === 'confirm') {
-    // Step 4: only the account and yes or no (the demo's made-up player has no "no": its way out is *Cancel*).
+    // Step 3: only the account and yes or no (the demo's made-up player has no "no": its way out is *Cancel*).
     const facts = whoLine(step.who.activities, translator(lang), lang);
     content = (
       <WizardFrame view={w.view} lines={w.lines} banner={paired}>

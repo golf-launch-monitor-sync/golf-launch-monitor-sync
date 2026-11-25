@@ -8,7 +8,7 @@
 
 import type { BrowserContext, Page } from '@playwright/test';
 import { APP_PAGE, pairUrl, PORTAL } from '../../../tools/e2e/world.ts';
-import { allowAndChoose, connectWindow, expect, test } from './fixture.ts';
+import { chooseService, connectWindow, expect, test } from './fixture.ts';
 
 /** The app opens the pairing page by script (as the target app does), from a click. */
 async function openFromApp(context: BrowserContext): Promise<{ app: Page; pairPage: Promise<Page> }> {
@@ -33,7 +33,7 @@ test('another account in the portal: no, sign out, sign in with your own in the 
   const connect = await windowOpens;
   // Handed over to the extension's tab beside it: the pairing page closes itself (it was opened by the app).
   await expect.poll(() => pair.isClosed(), { timeout: 15_000 }).toBe(true);
-  await allowAndChoose(connect);
+  await chooseService(connect);
 
   // The portal opens with someone else's account.
   world.portal.token = world.key('someone-else');

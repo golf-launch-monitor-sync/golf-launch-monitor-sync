@@ -44,10 +44,10 @@ export type Screen =
   | { name: 'golfde' }
   | { name: 'signin'; provider: ProviderId; back?: { url: string; name: string } }
   | { name: 'sync'; link: { target?: string; return?: string } }
-  /** Just signed in: the first sync shown as the wizard's steps 3 and 4, then (with `back`) *Back to …*. */
+  /** Just signed in: the first sync shown as the wizard's steps 4 and 5, then (with `back`) *Back to …*. */
   | { name: 'first'; target?: string; back?: { url: string; name: string } }
   /**
-   * Test mode (spec 1.8.0): a test code for one of `keys`' pairings instead of the sign-in, typed (step 3) or from a
+   * Test mode (spec 1.8.0): a test code for one of `keys`' pairings instead of the sign-in, typed (step 2) or from a
    * link; `back` as after a sign-in.
    */
   | { name: 'test'; keys: string[]; code?: string; back?: { url: string; name: string } }

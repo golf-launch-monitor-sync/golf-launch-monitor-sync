@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * Test mode (spec/test-mode.md): the connected app's test code instead of the provider's sign-in - the wizard's step 3
+ * Test mode (spec/test-mode.md): the connected app's test code instead of the provider's sign-in - the wizard's step 2
  * (*Enter a test code*, small under the sign-in), typed here or brought by its link (a QR code on its test page opens
  * one), for one of this phone's pairings; a test code never pairs. The scenario comes from that app with the pairing's
- * import token; step 4, "Is this your account?", asks about its made-up account as about a sign-in, through the guard,
+ * import token; step 3, "Is this your account?", asks about its made-up account as about a sign-in, through the guard,
  * with only the account and yes or no; nothing is kept or synced before the yes. Then the first sync, as after signing
- * in. A wrong or expired code stays on step 3 with its sentence.
+ * in. A wrong or expired code stays on step 2 with its sentence.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -60,7 +60,7 @@ export function TestView({ svc, keys, code: linked, back, go }: { svc: Services;
         const who = await svc.runner.testWho(scenario);
         setStep({ name: 'confirm', pairing, scenario, who });
       } catch (e) {
-        // Still step 3: the code's sentence where it was typed.
+        // Still step 2: the code's sentence where it was typed.
         setStep({ name: 'enter', error: testErrorText(e, Date.now(), lang, t) });
       }
     },
@@ -98,7 +98,7 @@ export function TestView({ svc, keys, code: linked, back, go }: { svc: Services;
       </WizardFrame>
     );
   } else if (step.name === 'enter') {
-    // Step 3, the test code's field open in place of the sign-in.
+    // Step 2, the test code's field open in place of the sign-in.
     const w = wizardText(beforeYes(false), lang, { service, target });
     content = (
       <WizardFrame view={w.view} lines={{ ...w.lines, title: t('test.enter') }}>
@@ -131,7 +131,7 @@ export function TestView({ svc, keys, code: linked, back, go }: { svc: Services;
       </WizardFrame>
     );
   } else {
-    // Step 4: only the account and yes or no (stepParts).
+    // Step 3: only the account and yes or no (stepParts).
     const f = testAccount();
     const w = wizardText(f, lang, { service, target: step.name === 'confirm' ? step.pairing.target.name : target });
     const parts = stepParts('account', f, { confirming: saving });

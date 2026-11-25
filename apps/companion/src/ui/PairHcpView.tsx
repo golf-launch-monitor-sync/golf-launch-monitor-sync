@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * *Connect new* for the handicap record (a pair link with `kind=hcp`), its first two steps as in PairView: "Connect
- * with <host>?" - only ever a question, the address shown plainly, nothing without the player's yes - then what to
- * connect (golf.de). Once paired the golf.de window opens, where the player signs in and opens their record; a
+ * *Connect new* for the handicap record (a pair link with `kind=hcp`), its first step as in PairView: "Connect with
+ * <host>" - only ever a question, the address shown plainly, nothing without the player's yes, which is the tap on
+ * *Connect handicap record* (golf.de). Once paired the golf.de window opens, where the player signs in and opens their record; a
  * handicap pairing names no address to jump back to, so the app stays.
  */
 
 import { translator } from '@glmsync/browser/i18n';
-import { factsOfOffer } from '@glmsync/browser/wizard';
+import { factsOfOffer, serviceChoices } from '@glmsync/browser/wizard';
 import { useEffect, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { lang, t } from '../i18n';
@@ -21,7 +21,7 @@ import { Body, Button, s, Small } from './parts';
 import { WizardFrame } from './WizardFrame';
 
 export function PairHcpView({ svc, link, go }: { svc: Services; link: Extract<Incoming, { kind: 'pair-hcp' }>; go: (s: Screen) => void }) {
-  const [step, setStep] = useState<'asking' | 'allowed' | 'working'>('asking');
+  const [step, setStep] = useState<'asking' | 'working'>('asking');
   const [error, setError] = useState<string | null>(null);
   const [replaces, setReplaces] = useState(false);
   const tr = translator(lang);
@@ -54,29 +54,21 @@ export function PairHcpView({ svc, link, go }: { svc: Services; link: Extract<In
     } catch {
       setError(t('error.generic'));
     }
-    setStep('allowed');
+    setStep('asking');
   }
 
   return (
     <ScrollView contentContainerStyle={s.scroll}>
       <WizardFrame view={w.view} lines={w.lines} spinning={step === 'working'}>
-        {step === 'asking' ? (
-          <>
-            <Body>{t('pairHcp.what', { host: link.host })}</Body>
-            <Body muted>{t('pair.only')}</Body>
-            {replaces && <Body warn>{t('pairHcp.replaces')}</Body>}
-            <Small>{link.target}</Small>
-            <Button label={tr('wizard.allow')} onPress={() => setStep('allowed')} />
-            <Button label={t('pair.no')} kind="secondary" onPress={() => go({ name: 'home' })} />
-          </>
-        ) : (
-          <>
-            <Small>{tr('wizard.serviceHcp')}</Small>
-            {error && <Body warn>{error}</Body>}
-            <Button label="golf.de" onPress={() => void choose()} busy={step === 'working'} />
-            <Button label={t('pair.no')} kind="secondary" onPress={() => go({ name: 'home' })} disabled={step === 'working'} />
-          </>
-        )}
+        <Body>{t('pairHcp.what', { host: link.host })}</Body>
+        <Body muted>{t('pair.only')}</Body>
+        {replaces && <Body warn>{t('pairHcp.replaces')}</Body>}
+        <Small>{link.target}</Small>
+        {error && <Body warn>{error}</Body>}
+        {serviceChoices('hcp', [{ id: link.provider, name: 'golf.de' }], tr).map((c) => (
+          <Button key={c.id} label={c.label} onPress={() => void choose()} busy={step === 'working'} />
+        ))}
+        <Button label={t('pair.no')} kind="secondary" onPress={() => go({ name: 'home' })} disabled={step === 'working'} />
       </WizardFrame>
     </ScrollView>
   );

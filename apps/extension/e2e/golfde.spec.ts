@@ -8,7 +8,7 @@
 
 import { PERSONAL } from '../../../packages/provider-golfde/src/testing.ts';
 import { GOLFDE_HISTORY, GOLFDE_RESULTS, HCP_CODE, HCP_TARGET, pairUrl } from '../../../tools/e2e/world.ts';
-import { allowAndChoose, connectWindow, expect, popup, test } from './fixture.ts';
+import { chooseService, connectWindow, expect, popup, test } from './fixture.ts';
 
 test('pairs for the handicap record, reads along on golf.de, sends on Send, and asks golf.de nothing itself', async ({ context, world, extensionId }) => {
   // Not connected yet: golf.de's page shows no line at all.
@@ -23,16 +23,15 @@ test('pairs for the handicap record, reads along on golf.de, sends on Send, and 
   const windowOpens = connectWindow(context, extensionId);
   await pairPage.goto(`${pairUrl(HCP_TARGET, HCP_CODE)}&kind=hcp`);
   const connect = await windowOpens;
-  await expect(connect.getByTestId('wizard-title')).toHaveText('Connect with app.example.org?');
-  await connect.getByTestId('allow').click();
-  // What to connect: the handicap record asks for golf.de.
+  // The first step: the app by its address, and one button by the kind the pairing names - its tap is the yes.
   await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'service');
-  await expect(connect.getByTestId('wizard')).toContainText('Handicap record');
+  await expect(connect.getByTestId('wizard-title')).toHaveText('Connect with app.example.org');
+  await expect(connect.getByTestId('service-golfde')).toHaveText('Connect handicap record');
   await connect.getByTestId('service-golfde').click();
   // Then the same steps as for a launch monitor. golf.de's page was open in this browser before (signed in), so the
   // account is known already: the step is its question, and nothing goes out before the answer.
   await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'account');
-  await expect(connect.getByTestId('wizard-progress')).toHaveText('Step 4 of 6');
+  await expect(connect.getByTestId('wizard-progress')).toHaveText('Step 3 of 5');
   // Only the account and yes or no: the title asks.
   await expect(connect.getByTestId('unconfirmed')).toHaveCount(0);
   await expect(connect.getByTestId('finished')).toHaveCount(0);
@@ -97,7 +96,7 @@ test('signed out on golf.de: the line says so, and nothing goes to the app witho
   const windowOpens = connectWindow(context, extensionId);
   await pairPage.goto(`${pairUrl(HCP_TARGET, HCP_CODE)}&kind=hcp`);
   const connect = await windowOpens;
-  await allowAndChoose(connect, 'golfde');
+  await chooseService(connect, 'golfde');
   // golf.de not opened yet in this browser: the first step is its sign-in.
   await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'signin');
   await expect(connect.getByTestId('unconfirmed')).toHaveText('Not yet connected with Example App – sign in at golf.de');
@@ -116,7 +115,7 @@ test('not my account: nothing of it is kept or sent, and the line says so', asyn
   const windowOpens = connectWindow(context, extensionId);
   await pairPage.goto(`${pairUrl(HCP_TARGET, HCP_CODE)}&kind=hcp`);
   const connect = await windowOpens;
-  await allowAndChoose(connect, 'golfde');
+  await chooseService(connect, 'golfde');
 
   const page = await context.newPage();
   await page.goto(GOLFDE_HISTORY);

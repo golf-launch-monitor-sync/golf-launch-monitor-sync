@@ -15,10 +15,10 @@ background, while your browser is open — and reads your handicap record along 
 1. In the app that wants the data (a *target*), choose to connect Launch Monitor Sync. It opens the
    web app's pairing page (`…/pair#target=…&code=…`; the part after `#` reaches no server).
 2. The extension picks the code up and opens its connect page in a tab beside it. Connecting goes **as steps with
-   their progress**, one button each (*Step 1 of 6*; the same for every service,
+   their progress**, one button each (*Step 1 of 5*; the same for every service,
    [`@glmsync/browser`'s wizard](../../packages/browser/README.md#connecting-step-by-step)): **which address** the data
-   would go to - *Allow* (the browser asks once for that one address) -, then **what to connect** (*Trackman*), and it
-   is connected. The pairing page closes itself once the extension took over (when the app opened it; otherwise it
+   would go to, and **what to connect** - *Connect launch monitor* is the yes, and the browser asks once for that one
+   address on the same click (refused, the step stays and says so) -, and it is connected. The pairing page closes itself once the extension took over (when the app opened it; otherwise it
    says it may be closed). *Connect new* in the popup opens the same page at its first step, which says to start in
    the app and goes on by itself once the app's pairing page hands over its code.
 3. The steps go on in the connect page (and from the popup's row): open the Trackman portal (`portal.trackmangolf.com`)

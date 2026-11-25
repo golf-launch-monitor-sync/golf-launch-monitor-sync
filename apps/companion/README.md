@@ -13,8 +13,8 @@ portal in a sign-in window - so that window lives here, in a small app that does
 ## What it does
 
 - **Pairs with a target** through `glmsync://pair?target=…&code=…` ([deep links](../../spec/deep-links.md)).
-  A pair link only asks: "Connect with *host*?" shows the address the data would go to, and nothing
-  happens without the player's yes (any app or page can open such a link).
+  A pair link only asks: "Connect with *host*" shows the address the data would go to, and nothing
+  happens without the player's yes - the tap on *Connect launch monitor* (any app or page can open such a link).
 - **Signs in at the provider** in the provider's own portal (`src/ui/TrackmanLoginView.tsx`). A small
   script in the page passes on the access key the portal itself sends to the provider's API; the
   password is typed into the provider's page and never seen by the app. Before anything is kept,
@@ -35,7 +35,7 @@ portal in a sign-in window - so that window lives here, in a small app that does
   it stands; a row opens its details (`Home`'s `focus`). *Connect new* without a pair link says to start in the app
   (and offers the demo).
 - **Connects as steps** (`@glmsync/browser`'s wizard, the same as the extension's; `src/lib/wizard.ts`,
-  `src/ui/WizardFrame.tsx`), one button each: *Connect with <host>?* (the pair link), what to connect, sign in, *Is
+  `src/ui/WizardFrame.tsx`), one button each: *Connect with <host>* (the pair link) with what to connect, sign in, *Is
   this your account?* (its name and newest activity - no count), the first
   data shown plainly (*10 sessions, 6 rounds fetched*, how much older data is still to come), and done. Paired but
   never signed in here, the home page says so big (*Not yet connected with … – sign in at Trackman*) instead of a card
@@ -92,7 +92,7 @@ portal in a sign-in window - so that window lives here, in a small app that does
   (`Tests` of `@glmsync/provider-trackman`, shared with the browser clients). Each way it can fail has its sentence in German and English (wrong or expired code, no test
   account, an app without test mode, a provider this app lacks, no network, a real account refusing test data).
 - **Reads along on golf.de** for the handicap record (spec 1.10.0/1.11.0, [hcp.md](../../spec/hcp.md), *A client that
-  only observes*): a pair link with `kind=hcp` asks "Connect with *host*?" for the handicap record (provider `golfde`
+  only observes*): a pair link with `kind=hcp` asks "Connect with *host*" for the handicap record (*Connect handicap record* is the yes) (provider `golfde`
   only; no `return`: a handicap pairing names no return prefixes), then opens golf.de in the app's own window
   (`src/ui/GolfdeView.tsx`) - golf.de's History Sheet, loaded as this web view is, nothing added; the player signs in
   there. The extension's page script (`@glmsync/provider-golfde/page`) is injected before golf.de's own scripts, only

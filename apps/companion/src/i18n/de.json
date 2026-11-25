@@ -10,7 +10,7 @@
   "link.invalid": "Dieser Link ließ sich nicht lesen, es ist nichts passiert. Öffne ihn noch einmal aus deiner App.",
   "pair.title": "Mit {host} verbinden?",
   "pair.what": "Ab jetzt gehen deine {provider}-Daten an {host}, wann immer diese App danach fragt. Deine Anmeldung bleibt auf diesem Handy.",
-  "pair.only": "Sag nur Ja, wenn du gerade selbst in dieser App auf „verbinden“ getippt hast.",
+  "pair.only": "Verbinde nur, wenn du gerade selbst in dieser App auf „verbinden“ getippt hast.",
   "pair.replaces": "Dieses Handy ist mit dieser App schon verbunden: Die neue Verbindung ersetzt die alte.",
   "pair.yes": "Verbinden",
   "pair.no": "Jetzt nicht",

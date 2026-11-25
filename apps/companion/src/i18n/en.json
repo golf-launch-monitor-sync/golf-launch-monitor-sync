@@ -10,7 +10,7 @@
   "link.invalid": "That link couldn't be read, so nothing happened. Open it again from your app.",
   "pair.title": "Connect with {host}?",
   "pair.what": "From now on, your {provider} data goes to {host} whenever that app asks for it. Your sign-in stays on this phone.",
-  "pair.only": "Only say yes if you just tapped “connect” in that app yourself.",
+  "pair.only": "Only connect if you just tapped “connect” in that app yourself.",
   "pair.replaces": "This phone is already connected with that app: the new connection replaces the old one.",
   "pair.yes": "Connect",
   "pair.no": "Not now",

@@ -4,9 +4,10 @@
  * Connecting, as steps with their progress: the same frame for every service the project reads (a launch monitor's
  * account, golf.de's handicap record, those to come), in the extension, the web app and the companion app alike.
  *
- * 1. the player's yes that an app gets the data (the pairing), 2. what to connect (Trackman, golf.de, those to come),
- * 3. the service's own steps (sign in), 4. the account the service names, and the player's yes, 5. the first data,
- * shown plainly, 6. done: back to the app. One button per step, little text.
+ * 1. what to connect (Trackman, golf.de, those to come) - the step names the app and where the data goes, and the tap
+ * on the service is the player's yes that this app gets the data (the pairing; no step of its own to allow: it read as
+ * one button too many), 2. the service's own steps (sign in), 3. the account the service names, and the player's yes,
+ * 4. the first data, shown plainly, 5. done: back to the app. One button per step, little text.
  *
  * Until the player said yes to the account nothing here looks as if it were running: no count of sessions, results or
  * requests, only what is missing ("Not yet connected with … – confirm your account"). A count in the question itself
@@ -21,8 +22,8 @@ import type { ClientStatus } from './client.ts';
 import type { HcpView } from './hcp.ts';
 import { formatDate, type Lang, type T } from './i18n.ts';
 
-export type WizardStep = 'pair' | 'service' | 'signin' | 'account' | 'load' | 'done';
-export const WIZARD_STEPS: readonly WizardStep[] = ['pair', 'service', 'signin', 'account', 'load', 'done'];
+export type WizardStep = 'service' | 'signin' | 'account' | 'load' | 'done';
+export const WIZARD_STEPS: readonly WizardStep[] = ['service', 'signin', 'account', 'load', 'done'];
 
 /** The services a pairing of a kind can connect: today one each, later more launch monitors. */
 export type ServiceKind = 'lm' | 'hcp';
@@ -31,11 +32,9 @@ export interface WizardFacts {
   /** `lm`: a launch monitor's account (sessions, rounds, an older history); `hcp`: a handicap record (results). */
   kind: ServiceKind;
   /**
-   * The player allowed an app to get the data (its pairing follows once the service is chosen). Absent: yes - every connection that has a client
-   * state behind it is paired; only a new connection's first two steps say no.
+   * What to connect is chosen - and with it the app allowed to get the data, which pairs. Absent: yes - every
+   * connection that has a client state behind it is paired; only a new connection's first step says no.
    */
-  paired?: boolean;
-  /** What to connect is chosen (absent: yes, as above). */
   chosen?: boolean;
   /** Signed in at the service on this device, with an account it named. */
   signedIn: boolean;
@@ -68,7 +67,7 @@ export interface WizardView {
 
 export function wizardOf(f: WizardFacts): WizardView {
   const step: WizardStep =
-    f.paired === false ? 'pair' : f.chosen === false ? 'service' : !f.confirmed ? (f.signedIn && f.asking ? 'account' : 'signin') : f.first === 'through' ? 'done' : 'load';
+    f.chosen === false ? 'service' : !f.confirmed ? (f.signedIn && f.asking ? 'account' : 'signin') : f.first === 'through' ? 'done' : 'load';
   const at = WIZARD_STEPS.indexOf(step);
   return {
     step,
@@ -77,7 +76,7 @@ export function wizardOf(f: WizardFacts): WizardView {
     // The last step is done once it is reached: nothing is left to do there.
     steps: WIZARD_STEPS.map((id, i) => ({ id, state: i < at || (step === 'done' && i === at) ? 'done' : i === at ? 'current' : 'todo' })),
     // Before the pairing there is no app to be "not yet connected" with.
-    unconfirmed: f.confirmed || step === 'pair' || step === 'service' ? null : step === 'account' ? 'confirm' : 'sign_in',
+    unconfirmed: f.confirmed || step === 'service' ? null : step === 'account' ? 'confirm' : 'sign_in',
   };
 }
 
@@ -94,9 +93,9 @@ export interface WizardLines {
   title: string;
   /** The big line before the yes. */
   unconfirmed: string | null;
-  /** Steps 3 and 4: what came. Never before the yes. */
+  /** Steps 4 and 5: what came. Never before the yes. */
   brought: string | null;
-  /** Steps 3 and 4: what is still to come. */
+  /** Steps 4 and 5: what is still to come. */
   more: string | null;
 }
 
@@ -104,8 +103,8 @@ export function wizardLines(v: WizardView, f: WizardFacts, t: T, w: WizardWords)
   const target = w.target ?? t('wizard.yourApp');
   const vars = { service: w.service, target };
   const titles: Record<WizardStep, () => string> = {
-    pair: () => (w.target ? t('wizard.title.pair', vars) : t('wizard.title.pairStart')),
-    service: () => t('wizard.title.service'),
+    // No app asked yet: where to start. An app asks: connect with it (by its address: any page can ask).
+    service: () => (w.target ? t('wizard.title.service', vars) : t('wizard.title.pairStart')),
     signin: () => t('wizard.title.signin', vars),
     account: () => t('wizard.title.account', vars),
     // A launch monitor's player is done with the yes: the rest comes by itself (LMS-AS-4). golf.de's results come only
@@ -182,23 +181,23 @@ export type StepPart =
 
 /** What a client knows besides the facts, for `stepParts`. Absent: no. */
 export interface StepSituation {
-  /** Step 3: something went wrong with the sign-in that the player must hear there. */
+  /** Step 2: something went wrong with the sign-in that the player must hear there. */
   trouble?: boolean;
-  /** Step 3: the sign-in is a button (`button`) or a box of the client's own (`box`: the web app's key). */
+  /** Step 2: the sign-in is a button (`button`) or a box of the client's own (`box`: the web app's key). */
   signin?: 'button' | 'box';
-  /** Step 3: the way to another account (after a no, or another account signed in). */
+  /** Step 2: the way to another account (after a no, or another account signed in). */
   switchAccount?: boolean;
-  /** Step 3: the sign-in kept here can be forgotten (another account than the app's). */
+  /** Step 2: the sign-in kept here can be forgotten (another account than the app's). */
   forget?: boolean;
-  /** Step 3: this client takes a test code instead of the sign-in. */
+  /** Step 2: this client takes a test code instead of the sign-in. */
   testCode?: boolean;
-  /** Step 4: the service named the account (no: it couldn't be asked). */
+  /** Step 3: the service named the account (no: it couldn't be asked). */
   named?: boolean;
-  /** Step 4: the answer is on its way. */
+  /** Step 3: the answer is on its way. */
   confirming?: boolean;
-  /** Step 5 (golf.de): results seen and not sent yet. */
+  /** Step 4 (golf.de): results seen and not sent yet. */
   fresh?: boolean;
-  /** Steps 3 and 5: one app to stop connecting with. */
+  /** Steps 2 and 4: one app to stop connecting with. */
   cancel?: boolean;
 }
 
@@ -209,9 +208,8 @@ export function stepParts(step: WizardStep, f: WizardFacts, s: StepSituation = {
   };
   const lm = f.kind === 'lm';
   switch (step) {
-    case 'pair':
     case 'service':
-      // `offerWizard`'s own: the app's address and *Allow*, then the services.
+      // `offerWizard`'s own: where the data goes, and the services (`serviceChoices`).
       return out;
     case 'signin':
       add(true, 'banner');
@@ -306,7 +304,7 @@ const through = (p: Pairing) => !!p.last_synced_at || p.last?.status === 'not_du
 /**
  * A launch monitor client's state as the wizard's facts; null when there is nothing to set up.
  *
- * A test code fetched is step 4 about its made-up account, whatever else stands (the tester just typed it, in step
+ * A test code fetched is step 3 about its made-up account, whatever else stands (the tester just typed it, in step
  * 3). Then the account signed in, while one of its apps isn't set up (`factsOfAccount`). Then a pairing in test mode,
  * whose code stood in for the sign-in: its first data and done - never the provider's sign-in.
  */
@@ -367,8 +365,23 @@ export function factsOfHcp(v: Pick<HcpView, 'pairings' | 'account' | 'sending'>)
 /**
  * A new connection before its pairing stands (the extension's connect window, the web app's pairing page, the companion
  * app's pair link): `none` - no app has asked yet (the player starts in the app); `asking` - an app asks, waiting for
- * the yes; `allowed` - allowed, what to connect is next; `working` - pairing now.
+ * the service, whose tap is the yes; `working` - pairing now. All three are the first step.
  */
-export function factsOfOffer(state: 'none' | 'asking' | 'allowed' | 'working', kind: ServiceKind): WizardFacts {
-  return { kind, paired: state === 'allowed' || state === 'working', chosen: false, signedIn: false, asking: false, confirmed: false, first: 'waiting', brought: null, more: null };
+export type OfferState = 'none' | 'asking' | 'working';
+
+export function factsOfOffer(_state: OfferState, kind: ServiceKind): WizardFacts {
+  return { kind, chosen: false, signedIn: false, asking: false, confirmed: false, first: 'waiting', brought: null, more: null };
+}
+
+/**
+ * The first step's buttons. One service that fits (the pairing names its kind, and today each kind has one): one
+ * button by the kind (*Connect launch monitor*, *Connect handicap record*) - or the client's own words for it (`own`,
+ * the web app's *Connect this page with …*). Several: each by its name. The tap is the yes to the app.
+ */
+export function serviceChoices(kind: ServiceKind, services: readonly { id: string; name: string }[], t: T, own?: string): { id: string; label: string }[] {
+  if (services.length === 1) {
+    const one = services[0] as { id: string; name: string };
+    return [{ id: one.id, label: own ?? t(kind === 'hcp' ? 'wizard.connectHcp' : 'wizard.connectLm') }];
+  }
+  return services.map((x) => ({ id: x.id, label: x.name }));
 }
