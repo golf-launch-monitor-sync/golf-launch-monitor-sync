@@ -10,7 +10,7 @@ import type { Fetched, Provider, ProviderContext } from './provider.ts';
 import { accountRefOf } from './sha256.ts';
 import { MemoryStorage } from './storage.ts';
 import { sync } from './sync.ts';
-import { HttpTarget, pair } from './target.ts';
+import { HttpTarget, pair, type Target } from './target.ts';
 import { FakeTarget, VirtualClock } from './testing/index.ts';
 
 const session = (id: string): Session => ({ external_id: id, kind: 'range', started_at: '2026-11-15T10:00:00Z', shots: [{ flight: { carry_m: 150 } }] });
@@ -221,6 +221,137 @@ describe('a sync', () => {
     const stop = new AbortController();
     stop.abort();
     expect(await sync({ target, provider: new Fake(), credential: SUB, reason: 'manual', client: 'web', guard, signal: stop.signal })).toEqual({ status: 'cancelled' });
+  });
+});
+
+describe('the first sync after connecting hands over while it fetches (LMS-AS-6)', () => {
+  const ten = Array.from({ length: 10 }, (_, i) => `S${i + 1}`);
+
+  /** A provider that tells the sync each session as it has it (`ctx.got`), and notes how many parts the target had by then. */
+  class Telling extends Fake {
+    seen: number[] = [];
+    constructor(have: string[], public target: FakeTarget, fail?: (n: number) => Error | null) {
+      super(have, fail);
+    }
+    override async fetch(plan: Plan, _c: { sub: string }, ctx: ProviderContext): Promise<Fetched> {
+      this.plans.push(plan);
+      const out: Fetched = { sessions: [], rounds: [], failed: [] };
+      await ctx.guarded('list', async () => ({ status: 200, value: (this.asked += 1) }));
+      for (const id of this.have.filter((x) => !plan.known_ids.includes(x))) {
+        await ctx.guarded('session', async () => ({ status: 200, value: (this.asked += 1) }));
+        const s = session(id);
+        out.sessions.push(s);
+        this.seen.push(this.target.imports.length);
+        ctx.got?.({ sessions: [s] });
+      }
+      return { ...out, rounds: [{ external_id: 'R1' }], progress: { more_available: false, oldest_seen: '2026-11-01T10:00:00Z' } };
+    }
+  }
+
+  it('hands its sessions over in parts as they come, only the last with sync, failed, progress and notice', async () => {
+    const { fake, target, guard, clock } = await setup();
+    const provider = new Telling(ten, fake);
+    const out = await sync({ target, provider, credential: SUB, reason: 'connect', client: 'web', guard, now: clock.now, sleep: clock.sleep });
+    expect(out).toMatchObject({ status: 'synced', result: { sessions: 10, rounds: 1 }, more: false, dropped: 0 });
+    expect(fake.imports.length).toBeGreaterThan(2);
+    if (out.status === 'synced') expect(out.parts).toBe(fake.imports.length);
+    // Before the provider had its last session, the target already had parts to count.
+    expect(provider.seen.at(-1)).toBeGreaterThan(0);
+    const last = fake.imports.at(-1);
+    expect(last).toMatchObject({ sync: { reason: 'connect', plan_id: expect.stringMatching(/^pl_/) }, progress: { more_available: false }, rounds: [{ external_id: 'R1' }] });
+    for (const b of fake.imports.slice(0, -1)) {
+      expect(b.sync).toBeUndefined();
+      expect(b.progress).toBeUndefined();
+      expect(b.failed).toBeUndefined();
+      expect(b.notice).toBeUndefined();
+      expect(b.rounds).toEqual([]);
+      expect(b.sessions.length).toBeGreaterThan(0);
+      expect(b.sessions.length).toBeLessThanOrEqual(2);
+      expect(validateBatch(b).ok).toBe(true);
+    }
+    // Every session once, in the order fetched.
+    expect(fake.imports.flatMap((b) => b.sessions.map((s) => s.external_id))).toEqual(ten);
+  });
+
+  it('only after connecting, and only to a target that takes parts: other reasons and a file as before', async () => {
+    for (const reason of ['timer', 'manual', 'open', 'backfill'] as const) {
+      const { fake, target, guard, clock } = await setup();
+      await sync({ target, provider: new Telling(ten, fake), credential: SUB, reason, client: 'web', guard, now: clock.now, sleep: clock.sleep });
+      expect(fake.imports).toHaveLength(1);
+    }
+    // A target that doesn't take parts while the sync fetches (a file wants one per sync; it isn't due on connect anyway).
+    const { fake, target, guard, clock } = await setup();
+    const plain: Target = { name: target.name, salt: target.salt, limits: target.limits, plan: (...a) => target.plan(...a), import: (b) => target.import(b) };
+    await sync({ target: plain, provider: new Telling(ten, fake), credential: SUB, reason: 'connect', client: 'web', guard, now: clock.now, sleep: clock.sleep });
+    expect(fake.imports).toHaveLength(1);
+  });
+
+  it('a part the target can’t take now goes with the last one; the rest goes on (one part, the end)', async () => {
+    const { fake, target, guard, clock } = await setup();
+    let n = 0;
+    const flaky = new HttpTarget(target.pairing, {
+      now: clock.now,
+      fetch: async (url, init) => {
+        if (url.endsWith('/import') && n++ === 0) return { status: 503, headers: { get: () => null }, text: async () => '{}' };
+        return fake.fetch(url, init);
+      },
+    });
+    const out = await sync({ target: flaky, provider: new Telling(ten, fake), credential: SUB, reason: 'connect', client: 'web', guard, now: clock.now, sleep: clock.sleep });
+    expect(out).toMatchObject({ status: 'synced', result: { sessions: 10 } });
+    expect(fake.imports).toHaveLength(1);
+    expect(fake.imports[0]?.sessions.map((s) => s.external_id)).toEqual(ten);
+    expect(fake.imports[0]?.sync).toBeDefined();
+  });
+
+  it('a short Retry-After of a part is waited out once, as for any part', async () => {
+    const { fake, target, guard, clock } = await setup();
+    let n = 0;
+    const flaky = new HttpTarget(target.pairing, {
+      now: clock.now,
+      fetch: async (url, init) => {
+        if (url.endsWith('/import') && n++ === 0) return { status: 429, headers: { get: (h) => (h === 'Retry-After' ? '5' : null) }, text: async () => '{}' };
+        return fake.fetch(url, init);
+      },
+    });
+    const out = await sync({ target: flaky, provider: new Telling(ten, fake), credential: SUB, reason: 'connect', client: 'web', guard, now: clock.now, sleep: clock.sleep });
+    expect(out).toMatchObject({ status: 'synced', result: { sessions: 10 } });
+    expect(fake.imports.length).toBeGreaterThan(2);
+  });
+
+  it('the player disconnected meanwhile: the fetch stops at once, nothing more is asked of the provider', async () => {
+    const { fake, target, guard, clock } = await setup();
+    const provider = new Telling(ten, fake);
+    const inner = fake.fetch;
+    const cut = new HttpTarget(target.pairing, {
+      now: clock.now,
+      fetch: async (url, init) => {
+        if (url.endsWith('/import')) fake.disconnected = true;
+        return inner(url, init);
+      },
+    });
+    const out = await sync({ target: cut, provider, credential: SUB, reason: 'connect', client: 'web', guard, now: clock.now, sleep: clock.sleep });
+    expect(out).toEqual({ status: 'disconnected' });
+    expect(provider.asked).toBeLessThan(1 + ten.length);
+  });
+
+  it('stopped by the player midway: what was handed over stays, and the sync says cancelled', async () => {
+    const { fake, target, guard, clock } = await setup();
+    const stop = new AbortController();
+    const provider = new Telling(ten, fake);
+    const inner = fake.fetch;
+    const watching = new HttpTarget(target.pairing, {
+      now: clock.now,
+      fetch: async (url, init) => {
+        const r = await inner(url, init);
+        if (url.endsWith('/import')) stop.abort();
+        return r;
+      },
+    });
+    const out = await sync({ target: watching, provider, credential: SUB, reason: 'connect', client: 'web', guard, now: clock.now, sleep: clock.sleep, signal: stop.signal });
+    expect(out).toEqual({ status: 'cancelled' });
+    expect(fake.imports.length).toBeGreaterThan(0);
+    expect(fake.imports.every((b) => b.sync === undefined)).toBe(true);
+    expect(fake.sessions.size).toBeGreaterThan(0);
   });
 });
 

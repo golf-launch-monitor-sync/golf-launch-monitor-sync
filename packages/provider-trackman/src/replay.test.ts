@@ -109,6 +109,45 @@ async function timeLapse(make: (clock: VirtualClock) => { provider: TrackmanProv
 }
 
 describe('a test scenario played back', () => {
+  it('the first sync after connecting comes in parts while it fetches, played back as from Trackman (LMS-AS-6)', async () => {
+    const sc = scenario({}, 10);
+    const firstSync = async (make: (clock: VirtualClock) => { provider: TrackmanProvider; credential: string; fetch: FetchLike }) => {
+      const clock = new VirtualClock(START);
+      const { provider, credential, fetch } = make(clock);
+      const plan = (_: PlanAsked, t: FakeTarget): Json => ({ due: true, plan_id: 'pl_1', known_ids: t.known(), since: new Date(START - 90 * DAY).toISOString(), max_sessions: 40, rounds: true, round_shots: true });
+      const target = new FakeTarget({ plan });
+      target.testAccount = true;
+      const pairing = await pair({ target: target.base, code: 'K7M2PQ9X', provider: 'trackman', client: { kind: 'companion', name: 'Test' }, fetch: target.fetch });
+      const http = new HttpTarget(pairing, { fetch: target.fetch, now: clock.now });
+      const guard = new Guard({ storage: new MemoryStorage(), now: clock.now, sleep: clock.sleep, random: HALF });
+      const out = await sync({ target: http, provider, credential, reason: 'connect', client: 'companion', guard, fetch, now: clock.now, sleep: clock.sleep });
+      return { out, target };
+    };
+    const real = await firstSync((clock) => {
+      const tm = new FakeTrackman(clock.now).load(sc.data);
+      const credential = fakeToken(SUBJECT);
+      tm.tokens.add(credential);
+      tm.delay = (req) => sampleMs(latencyOf(sc.latency, req.name), HALF);
+      tm.sleep = clock.sleep;
+      return { provider: trackman(), credential, fetch: tm.fetch };
+    });
+    const played = await firstSync((clock) => {
+      const r = replay(sc, { now: clock.now, sleep: clock.sleep, random: HALF });
+      return { provider: r, credential: r.credential, fetch: noNetwork };
+    });
+    expect(played.out).toMatchObject({ status: 'synced', result: { sessions: 10, rounds: 2 } });
+    const imports = played.target.imports;
+    expect(imports.length).toBeGreaterThanOrEqual(5); // a part every two sessions or so, then the last
+    expect(imports.slice(0, -1).every((b) => b.sync === undefined && b.rounds.length === 0 && b.sessions.length > 0)).toBe(true);
+    expect(imports.at(-1)).toMatchObject({ sync: { reason: 'connect', plan_id: 'pl_1' }, progress: { more_available: false } });
+    expect(imports.at(-1)?.rounds.map((r) => r.external_id)).toEqual(['R2', 'R1']);
+    expect(imports.every((b) => b.test === true)).toBe(true);
+    // The parts' times grow with the fetch: the first came well before the last.
+    expect(Date.parse(imports.at(-1)?.generated_at ?? '') - Date.parse(imports[0]?.generated_at ?? '')).toBeGreaterThan(10_000);
+    // The same parts as from Trackman with the same answers: only `test` tells them apart.
+    expect(imports.map(({ test: _, ...b }) => b)).toEqual(real.target.imports);
+  });
+
   it('brings the same chunks as the real provider with the same answers, test on each, never past the limits', async () => {
     const sc = scenario();
     const real = await timeLapse((clock) => {

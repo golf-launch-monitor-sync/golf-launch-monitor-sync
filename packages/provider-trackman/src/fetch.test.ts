@@ -41,6 +41,24 @@ async function run(plan: Json, reason: Reason = 'timer', token = TOKEN) {
 }
 
 describe('one sync', () => {
+  it('tells each session as soon as it has it, so a first sync can hand it over while it fetches (LMS-AS-6)', async () => {
+    tm.activities = [act('A1'), act('A2'), act('A3')];
+    tm.nodes.set('A1', { strokes: [stroke(140)] });
+    tm.nodes.set('A3', { strokes: [stroke(150), stroke(151)] });
+    tm.nodes.set('A2', { strokes: 'broken' }); // the shots themselves failed at Trackman
+    const told: { ids: string[]; requests: number }[] = [];
+    await guard.beginRun(ACCOUNT);
+    const ctx = providerContext({
+      guard, account: ACCOUNT, fetch: tm.fetch, now: clock.now, reason: 'connect', pace: 1,
+      got: ({ sessions }) => void told.push({ ids: sessions.map((s) => s.external_id), requests: tm.requests.length }),
+    });
+    const out = await fetchForPlan(readPlan({ due: true, since: '2026-08-01T00:00:00Z', max_sessions: 40 }) as Plan, TOKEN, ctx, state);
+    // Right after its own request, before the next one; one Trackman didn't send isn't told (it goes as failed).
+    expect(told).toEqual([{ ids: ['A1'], requests: 2 }, { ids: ['A3'], requests: 4 }]);
+    expect(out.sessions.map((s) => s.external_id)).toEqual(['A1', 'A3']);
+    expect(out.failed.map((f) => f.external_id)).toEqual(['A2']);
+  });
+
   it('skips played rounds, known and given-up sessions, and brings the rest', async () => {
     tm.activities = [act('A1'), act('G1', '2026-11-09T10:00:00Z', 'COURSE_PLAY'), act('K1'), act('X1'), act('A2', '2026-11-01T10:00:00Z')];
     tm.nodes.set('A1', { strokes: [stroke(140), null, stroke(150)] });

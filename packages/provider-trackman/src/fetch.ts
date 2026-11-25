@@ -371,8 +371,12 @@ export async function fetchForPlan(plan: Plan, token: string, ctx: ProviderConte
       asked += 1;
       const got = await fetchSession(ctx, token, item);
       oldest = earlier(oldest, item.time);
-      if (got) raw.sessions.push(got);
-      else {
+      if (got) {
+        raw.sessions.push(got);
+        // Told at once, so a first sync can hand it over while the rest comes (LMS-AS-6). The rounds come in one
+        // answer at the end, with their shots, and go with the sync's last part.
+        if (ctx.got) ctx.got({ sessions: toOlmd({ sessions: [got] }).sessions });
+      } else {
         const started = when(item.time);
         failed.push({ external_id: id, ...(started ? { started_at: started } : {}) });
       }

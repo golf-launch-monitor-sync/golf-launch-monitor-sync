@@ -100,7 +100,14 @@ describe('test mode', () => {
     while ((await s.services.runner.backfill()) !== null) s.clock.advance(60_000);
     expect(s.target.sessions.size).toBe(25);
     expect([...s.target.sessions.keys()].every((id) => id.startsWith('L'))).toBe(true);
-    expect(s.target.imports.map((b) => [b.sync?.reason, b.sessions.length])).toEqual([['connect', 15], ['backfill', 10]]);
+    // The first sync in parts while it fetches (LMS-AS-6: no reason until its last), then the history's chunk.
+    const parts = s.target.imports.map((b) => [b.sync?.reason, b.sessions.length] as const);
+    expect(parts.at(-1)).toEqual(['backfill', 10]);
+    const firstSync = parts.slice(0, -1);
+    expect(firstSync.length).toBeGreaterThan(2);
+    expect(firstSync.at(-1)?.[0]).toBe('connect');
+    expect(firstSync.slice(0, -1).every(([r, n]) => r === undefined && n > 0 && n <= 2)).toBe(true);
+    expect(firstSync.reduce((n, [, k]) => n + k, 0)).toBe(15);
     expect(s.target.imports.every((b) => b.test === true)).toBe(true);
     expect(s.tm.count()).toBe(0);
     expect(s.services.signIns.get('trackman')?.player).toBe('Real Player');

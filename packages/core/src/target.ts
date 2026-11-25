@@ -52,6 +52,11 @@ export interface Target {
   readonly salt: string;
   readonly limits: ImportLimits;
   /**
+   * Takes the parts of a sync while it still fetches (LMS-AS-6): a target behind the target API, which counts them as
+   * they come. A file wants one file per sync, not one per part.
+   */
+  readonly takesEarlyParts?: boolean;
+  /**
    * Whether to fetch now, and what. Asked before anything is asked of a provider. `signin` (1.5.0): where
    * the client's provider sign-in stands, for the target app to show; it changes no plan.
    */
@@ -148,6 +153,7 @@ export class HttpTarget implements Target {
   readonly name: string;
   readonly salt: string;
   readonly limits: ImportLimits;
+  readonly takesEarlyParts = true;
   private readonly fetchImpl: FetchLike;
   private readonly now: () => number;
   private readonly signal: AbortSignal | undefined;

@@ -32,6 +32,16 @@ const outcome = await sync({ target: new HttpTarget(pairing), provider, credenti
 5. **Handed over**. A part the target finds too large is halved; a short `Retry-After` (≤ 30 s) of
    the target is waited out once. `sync` never throws: every way it ends is an outcome to show.
 
+**The first sync after connecting hands over while it fetches** (`reason: 'connect'`, to a target that takes parts:
+`HttpTarget`, not a file). A provider tells each session as soon as it has it (`ctx.got`); every `PART_SESSIONS` (2)
+sessions, or `PART_MS` (5 s) after the last part, they go to the target as a part without `sync`, behind the fetch
+(the provider never waits for the target). The last part carries what remains, the rounds and `sync`, `failed`,
+`progress`, `notice`, as above - a target can't tell it from a large batch split. A part the target can't take now
+(down, unreachable, a long `Retry-After`) goes with the last part, and so does everything after it; one it refuses
+for good (disconnected, another account, the token, test data) stops the fetch at once and is the outcome. Stopped by
+the player midway, what went before stays with the target, and its next plan names it as known. A provider that never
+calls `got` hands over at the end, as before.
+
 ## The load guard
 
 `Guard` ([spec/guard.md](../../spec/guard.md)) counts every request to a provider per provider

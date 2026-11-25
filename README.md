@@ -62,7 +62,9 @@ not one per module, one button per step:
    *Yes, that's me*;
 5. **the first data**, shown plainly (*10 sessions, 6 rounds fetched*, then *older data follows bit by bit,
    about 140 sessions still to come*); for a launch monitor you are done here already (*Done – fetching your
-   data …*), with *Back to …* right there - the rest comes by itself;
+   data …*), with *Back to …* right there - the rest comes by itself. This first fetch hands your sessions to the
+   app in parts while it still fetches, a part every two sessions or so, so the app can count them as they come;
+   the rounds follow with their shots in the last part;
 6. **done**: *Back to …* where the client can take you there, else the sentence that you can go back and the
    rest comes by itself.
 

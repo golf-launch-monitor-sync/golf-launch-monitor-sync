@@ -65,6 +65,13 @@ export interface ProviderContext {
   http(kind: string, url: string, init: { method: string; headers: Record<string, string>; body?: string }): Promise<HttpAnswer>;
   /** Any other kind of request (the demo's), through the guard, answering with a status. */
   guarded<T>(kind: string, send: (signal?: AbortSignal) => Promise<Sent<T>>): Promise<T>;
+  /**
+   * What the provider has so far, told while it fetches (LMS-AS-6): a session as soon as it is fetched, already in
+   * olmd/1. The sync may hand it to the target before the fetch is over (the first sync after connecting, so the target
+   * app can count it as it comes); the provider still returns everything in its `Fetched`, and the sync leaves out
+   * what went before. Absent, or never called: one hand-over at the end, as before. Never throws and never waits.
+   */
+  got?(items: { sessions: Session[] }): void;
 }
 
 export interface ContextOptions {
@@ -78,6 +85,8 @@ export interface ContextOptions {
   fetch?: FetchLike;
   signal?: AbortSignal;
   now?: () => number;
+  /** Where the provider tells what it has so far (`ProviderContext.got`). */
+  got?: (items: { sessions: Session[] }) => void;
 }
 
 type Guarded = ProviderContext['guarded'];
@@ -114,6 +123,7 @@ export function providerContext(opts: ContextOptions): ProviderContext {
     ...(opts.signal ? { signal: opts.signal } : {}),
     reason: opts.reason ?? 'manual',
     now,
+    ...(opts.got ? { got: opts.got } : {}),
     guarded,
     http: httpThrough(guarded, () => (fetchImpl ??= defaultFetch()), now),
   };
