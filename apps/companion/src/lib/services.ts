@@ -7,11 +7,13 @@
  */
 
 import type { HcpClient } from '@glmsync/browser/hcp';
+import type { ProClient } from '@glmsync/browser/pro';
 import { Guard, HttpTarget, type FetchLike, type FileOut, type Storage } from '@glmsync/core';
 import { demo } from '@glmsync/provider-demo';
 import { expiresAt, trackman } from '@glmsync/provider-trackman';
 import { HcpSender, makeHcp } from './hcp.ts';
 import { Pairings } from './pairings.ts';
+import { LastPage, makePro } from './pro.ts';
 import { Runner, type AppProvider } from './runner.ts';
 import { ChunkedSecrets, type Secrets } from './secrets.ts';
 import { SignIns } from './signins.ts';
@@ -43,7 +45,7 @@ export interface Platform {
   now?: () => number;
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
   version?: string;
-  /** `ios` or `android`: how the app names itself to a handicap target. */
+  /** `ios` or `android`: how the app names itself to a handicap target (and one of a pro's pages). */
   os?: string;
 }
 
@@ -61,6 +63,10 @@ export interface Services {
   hcp: HcpClient;
   /** Sends what the golf.de window saw a little after the last new page. */
   hcpSender: HcpSender;
+  /** A pro's own world ranking pages, sent from the app's window on the player's tap, and their pairings (spec/prores.md). */
+  pro: ProClient;
+  /** The player's page last sent from here: where the window opens next time. */
+  lastPage: LastPage;
   /** Reads what this phone keeps; call once before using the rest. */
   load(): Promise<void>;
 }
@@ -114,6 +120,14 @@ export function makeServices(platform: Platform): Services {
     ...(platform.fetch ? { fetch: platform.fetch } : {}),
     ...(platform.now ? { now: platform.now } : {}),
   });
+  const pro = makePro({
+    storage: platform.storage,
+    secrets,
+    ...(platform.os ? { os: platform.os } : {}),
+    ...(platform.version ? { version: platform.version } : {}),
+    ...(platform.fetch ? { fetch: platform.fetch } : {}),
+    ...(platform.now ? { now: platform.now } : {}),
+  });
   return {
     providers,
     signIns,
@@ -124,6 +138,8 @@ export function makeServices(platform: Platform): Services {
     wakes,
     hcp,
     hcpSender: new HcpSender(hcp),
+    pro,
+    lastPage: new LastPage(platform.storage),
     async load() {
       await Promise.all([signIns.load(), pairings.load(), runner.loadRuns()]);
       // After the pairings: a test whose pairing went while the app was closed goes too.

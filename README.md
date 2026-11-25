@@ -122,7 +122,7 @@ And, as a rule for every line of code here:
 | [`packages/browser`](packages/browser/README.md) | What the extension and the web app share: the key, pairings, "Is this you?", syncs, texts (English, German). |
 | [`apps/extension`](apps/extension/README.md) | The browser extension (Manifest V3; Chrome, Edge, Firefox): syncs in the background when a target's plan says so; reads along on golf.de; sends a pro's world ranking page on *Send*. |
 | [`apps/web`](apps/web/README.md) | The web app on GitHub Pages: the pairing page, and syncing by hand without the extension. |
-| [`apps/companion`](apps/companion/README.md) | The companion app for the phone (Expo, iOS and Android): the provider's sign-in window, pairing by deep link, syncs when a target's plan says so; reads along on golf.de in its own window. |
+| [`apps/companion`](apps/companion/README.md) | The companion app for the phone (Expo, iOS and Android): the provider's sign-in window, pairing by deep link, syncs when a target's plan says so; reads along on golf.de in its own window; sends a pro's world ranking page from its own window on *Send*. |
 
 ## Development
 

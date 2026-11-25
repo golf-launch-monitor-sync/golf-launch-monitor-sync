@@ -38,6 +38,9 @@ importers:
       '@glmsync/provider-golfde':
         specifier: workspace:*
         version: link:../../packages/provider-golfde
+      '@glmsync/provider-rankings':
+        specifier: workspace:*
+        version: link:../../packages/provider-rankings
       '@glmsync/provider-trackman':
         specifier: workspace:*
         version: link:../../packages/provider-trackman

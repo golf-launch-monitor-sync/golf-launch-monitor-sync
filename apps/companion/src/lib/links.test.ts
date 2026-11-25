@@ -39,15 +39,20 @@ describe('a pair link', () => {
     expect(readIncoming(undefined, PROVIDERS, []).kind).toBe('invalid');
   });
 
-  // Spec 1.15.0: a pro's world ranking pages - not in this app yet. Taken for a launch monitor pairing (no provider
-  // named) it would have paired Trackman with a handicap target.
-  it('refuses a pro’s pages rather than take them for another kind', () => {
-    for (const link of [
-      'glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1&code=K7M2PQ9X&provider=pro&kind=pro',
-      'glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1&code=K7M2PQ9X&kind=pro',
-      'glmsync://read?kind=pro',
-    ]) expect([link, readIncoming(link, PROVIDERS, [])]).toEqual([link, { kind: 'invalid', error: 'unsupported:kind' }]);
-    expect(readIncoming('glmsync://read?kind=hcp', PROVIDERS, [])).toEqual({ kind: 'read' });
+  // Spec 1.15.0: a pro's world ranking pages (TE-22b-2). Taken for a launch monitor pairing (no provider named) it would
+  // have paired Trackman with a handicap target; it is a question of its own, for the provider `pro` alone.
+  it('takes a pro’s pages as their own question, never for another kind', () => {
+    const target = 'https://app.example.org/hcp/v1';
+    const want = { kind: 'pair-pro', target, code: 'K7M2PQ9X', provider: 'pro', host: 'app.example.org' };
+    expect(readIncoming('glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1&code=K7M2PQ9X&provider=pro&kind=pro', PROVIDERS, [])).toEqual(want);
+    expect(readIncoming('glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1&code=K7M2PQ9X&kind=pro', PROVIDERS, [])).toEqual(want);
+    // Another provider with kind=pro (golf.de's, Trackman's) is none this kind has.
+    for (const provider of ['golfde', 'trackman', 'owgr'])
+      expect(readIncoming(`glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1&code=K7M2PQ9X&provider=${provider}&kind=pro`, PROVIDERS, [])).toEqual({ kind: 'invalid', error: 'unknown:provider' });
+    // A pro's pairing takes no return (it names no return prefixes): the key is ignored, nothing jumps back.
+    expect(readIncoming('glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1&code=K7M2PQ9X&provider=pro&kind=pro&return=exampleapp%3A%2F%2Fx', PROVIDERS, [])).not.toHaveProperty('return');
+    expect(readIncoming('glmsync://read?kind=pro', PROVIDERS, [])).toEqual({ kind: 'read', what: 'pro' });
+    expect(readIncoming('glmsync://read?kind=hcp', PROVIDERS, [])).toEqual({ kind: 'read', what: 'hcp' });
   });
 });
 
@@ -165,7 +170,7 @@ describe('the handicap record’s links (spec 1.10.0, 1.11.0)', () => {
   });
 
   it('a read link only opens the golf.de window; another kind is no link', () => {
-    expect(readIncoming('glmsync://read?kind=hcp', PROVIDERS, [])).toEqual({ kind: 'read' });
+    expect(readIncoming('glmsync://read?kind=hcp', PROVIDERS, [])).toEqual({ kind: 'read', what: 'hcp' });
     expect(readIncoming('glmsync://read?kind=lm', PROVIDERS, []).kind).toBe('invalid');
     expect(readIncoming('glmsync://read', PROVIDERS, []).kind).toBe('invalid');
   });

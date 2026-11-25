@@ -4,7 +4,8 @@
  * The main view: *Connect new* and the list of connections (Connections.tsx; one per provider account, per pairing in
  * test mode, and golf.de's record), each with where it stands. A row opens its details (`focus`): the provider's
  * sign-in (with how much was asked of the provider today), the apps it goes to and how their last sync went, fetching
- * now, the request log to export - or the handicap record read along on golf.de (HcpCard), or a test's card. Under
+ * now, the request log to export - or the handicap record read along on golf.de (HcpCard), a pro's world ranking
+ * pages (ProCard), or a test's card. Under
  * Trackman's sign-in, small, *Enter a test code* instead; a connection in test mode never asks for the sign-in.
  */
 
@@ -27,6 +28,8 @@ import { beforeYes, testKeys, wizardText } from '../lib/wizard';
 import { connectionsOfApp } from '../lib/connections';
 import { BackToList, Connections } from './Connections';
 import { HcpCard, useHcpView } from './HcpCard';
+import { ProCard, useProView } from './ProCard';
+import { translator } from '@glmsync/browser/i18n';
 import { Body, Button, Card, colors, s, Small, Title } from './parts';
 import { WizardFrame } from './WizardFrame';
 
@@ -41,7 +44,7 @@ export function Home({
   renewing,
 }: {
   svc: Services;
-  /** The connection whose details are open (`lm:<provider>`, `test:<key>`, `hcp`); none: the list. */
+  /** The connection whose details are open (`lm:<provider>`, `test:<key>`, `hcp`, `pro`); none: the list. */
   focus?: string;
   message: string | null;
   dismiss: () => void;
@@ -56,6 +59,7 @@ export function Home({
   const pairings = svc.pairings.list();
   const now = Date.now();
   const hcp = useHcpView(svc);
+  const pro = useProView(svc);
 
   const refreshCounts = useCallback(async () => {
     const out: Partial<Record<ProviderId, GuardCounts | null>> = {};
@@ -133,8 +137,11 @@ export function Home({
 
   const tests = svc.tests.list();
   const hcpShown = !!hcp.view && (hcp.view.pairings.length > 0 || hcp.view.ended.length > 0);
-  // Only the handicap record connected, and no launch monitor sign-in ever: its cards would only be in the way.
-  const hcpOnly = !!hcp.view && hcp.view.pairings.length > 0 && pairings.length === 0 && !svc.signIns.get('trackman') && !svc.signIns.had('trackman');
+  const proShown = !!pro.view && (pro.view.pairings.length > 0 || pro.view.ended.length > 0);
+  // Only the handicap record (or a pro's pages) connected, and no launch monitor sign-in ever: its cards would only be
+  // in the way.
+  const otherKind = (!!hcp.view && hcp.view.pairings.length > 0) || (!!pro.view && pro.view.pairings.length > 0);
+  const hcpOnly = otherKind && pairings.length === 0 && !svc.signIns.get('trackman') && !svc.signIns.had('trackman');
   const shown = PROVIDERS.filter((p) => (p === 'trackman' && !hcpOnly) || svc.signIns.get(p) || svc.signIns.had(p) || pairings.some((x) => x.provider === p));
   // Paired, but never signed in here (or the account not confirmed): the wizard's first step, said big - not a card
   // that looks as if things were running.
@@ -147,6 +154,7 @@ export function Home({
     signIn: (id) => ({ valid: svc.signIns.valid(id), had: !!svc.signIns.had(id), player: svc.signIns.get(id)?.player ?? null }),
     lastRun: (key) => svc.runner.lastRun(key),
     hcp: hcp.view,
+    pro: { view: pro.view, service: translator(lang)('pro.service') },
   });
   const lmFocus = focus?.startsWith('lm:') ? focus.slice(3) : null;
   const testFocus = focus?.startsWith('test:') ? focus.slice(5) : null;
@@ -203,6 +211,8 @@ export function Home({
       )}
 
       {focus === 'hcp' && hcpShown && hcp.view && <HcpCard svc={svc} view={hcp.view} setView={hcp.setView} open={() => go({ name: 'golfde' })} />}
+
+      {focus === 'pro' && proShown && pro.view && <ProCard svc={svc} view={pro.view} setView={pro.setView} open={(site) => go({ name: 'rankings', site })} />}
 
       {tests
         .filter((m) => testFocus === m.key)

@@ -14,19 +14,24 @@
  *   pairs, never syncs by itself and never jumps back; the scenario comes only after the tester's yes;
  * - a pair link with `kind=hcp` (spec 1.10.0) asks the same question for the handicap record read along on golf.de
  *   (the provider `golfde`, none other); a read link (spec 1.11.0) only opens the golf.de window, where the player
- *   signs in and opens their record themselves - it never pairs and sends nothing by itself.
+ *   signs in and opens their record themselves - it never pairs and sends nothing by itself;
+ * - a pair link with `kind=pro` (spec 1.15.0) asks the same question for a pro's own world ranking pages (the provider
+ *   `pro`, none other), and its read link only opens the app's window on those sites, where the player opens their page
+ *   and taps *Send* themselves.
  */
 
 import { PROVIDER_ID as GOLFDE } from '@glmsync/provider-golfde';
-import { parseLink, returnAllowed } from '@glmsync/spec';
+import { parseLink, PRO_PROVIDER, returnAllowed } from '@glmsync/spec';
 import type { KeyedPairing } from './pairings.ts';
 
 export type Incoming =
   | { kind: 'pair'; target: string; code: string; provider: string; host: string; replaces: boolean; return?: string }
   /** The handicap record (kind=hcp): no `return` - a handicap pairing names no return_prefixes, so it never jumps back. */
   | { kind: 'pair-hcp'; target: string; code: string; provider: string; host: string }
-  /** Open the golf.de window (spec 1.11.0). */
-  | { kind: 'read' }
+  /** A pro's world ranking pages (kind=pro, spec 1.15.0): no `return` either, for the same reason. */
+  | { kind: 'pair-pro'; target: string; code: string; provider: string; host: string }
+  /** Open the golf.de window (spec 1.11.0, `hcp`) or the world ranking window (1.15.0, `pro`). */
+  | { kind: 'read'; what: 'hcp' | 'pro' }
   | { kind: 'sync'; target?: string; return?: string }
   /** `keys`: the pairings it may be for (of the link's target when it names one); none: pair first. */
   | { kind: 'test'; code: string; keys: string[] }
@@ -42,10 +47,12 @@ export function hostOf(target: string): string {
 export function readIncoming(url: unknown, providers: readonly string[], pairings: readonly KeyedPairing[]): Incoming {
   const link = parseLink(url);
   if (!link.ok) return { kind: 'invalid', error: link.error };
-  // A pro's world ranking pages (spec 1.15.0, kind=pro) aren't read in this app yet: refused rather than taken for
-  // another kind (a launch monitor pairing, golf.de's window).
-  if ((link.action === 'pair' || link.action === 'read') && link.kind === 'pro') return { kind: 'invalid', error: 'unsupported:kind' };
-  if (link.action === 'read') return { kind: 'read' };
+  if (link.action === 'read') return { kind: 'read', what: link.kind === 'pro' ? 'pro' : 'hcp' };
+  if (link.action === 'pair' && link.kind === 'pro') {
+    const provider = link.provider ?? PRO_PROVIDER;
+    if (provider !== PRO_PROVIDER) return { kind: 'invalid', error: 'unknown:provider' };
+    return { kind: 'pair-pro', target: link.target, code: link.code, provider, host: hostOf(link.target) };
+  }
   if (link.action === 'pair' && link.kind === 'hcp') {
     const provider = link.provider ?? GOLFDE;
     if (provider !== GOLFDE) return { kind: 'invalid', error: 'unknown:provider' };

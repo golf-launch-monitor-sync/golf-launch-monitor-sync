@@ -3,11 +3,12 @@
 /**
  * The phone's list of connections (the main view, as in the extension and the web app: `@glmsync/browser`'s
  * connections): one per provider account - its pairings, its sign-in, how its last runs went -, one per pairing in test
- * mode, and golf.de's record. Pure, so it is tested without a phone.
+ * mode, golf.de's record and a pro's world ranking pages. Pure, so it is tested without a phone.
  */
 
-import { connectionOfHcp, connectionState, sortConnections, type Connection } from '@glmsync/browser/connections';
+import { connectionOfHcp, connectionOfPro, connectionState, sortConnections, type Connection } from '@glmsync/browser/connections';
 import type { HcpView } from '@glmsync/browser/hcp';
+import type { ProView } from '@glmsync/browser/pro';
 import type { LastRun } from './runner.ts';
 
 export interface AppFacts {
@@ -18,6 +19,8 @@ export interface AppFacts {
   signIn(provider: string): { valid: boolean; had: boolean; player: string | null };
   lastRun(key: string): LastRun | null;
   hcp: Pick<HcpView, 'pairings' | 'account' | 'sending' | 'signed_out'> | null;
+  /** A pro's world ranking pages, with the service's name as the player reads it ("World ranking"). */
+  pro?: { view: Pick<ProView, 'pairings' | 'question'> | null; service: string };
 }
 
 export function connectionsOfApp(f: AppFacts): Connection[] {
@@ -52,5 +55,7 @@ export function connectionsOfApp(f: AppFacts): Connection[] {
   }
   const hcp = f.hcp ? connectionOfHcp(f.hcp) : null;
   if (hcp) out.push(hcp);
+  const pro = f.pro?.view ? connectionOfPro(f.pro.view, f.pro.service) : null;
+  if (pro) out.push(pro);
   return sortConnections(out);
 }

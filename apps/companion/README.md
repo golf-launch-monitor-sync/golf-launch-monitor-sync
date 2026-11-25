@@ -31,7 +31,8 @@ portal in a sign-in window - so that window lives here, in a small app that does
   held the player's key before, and only a key of that same account (`SignIns.renewalFits`). When that
   fails, the app says so and the target hears it (`auth_expired`).
 - **Opens on the list of connections** (`src/lib/connections.ts`, `src/ui/Connections.tsx`, as in the extension):
-  *Connect new* and one row per provider account, per connection in test mode and golf.de's record, each with where
+  *Connect new* and one row per provider account, per connection in test mode, golf.de's record and a pro's world
+  ranking pages, each with where
   it stands; a row opens its details (`Home`'s `focus`). *Connect new* without a pair link says to start in the app
   (and offers the demo).
 - **Connects as steps** (`@glmsync/browser`'s wizard, the same as the extension's; `src/lib/wizard.ts`,
@@ -113,6 +114,20 @@ portal in a sign-in window - so that window lives here, in a small app that does
   with a handicap pairing. What the app says plainly: Google or Apple sign-in often doesn't work in an app's window
   (e-mail and password do); nothing happens in the background; golf.de's own app isn't read. The window keeps every
   load in the app (`golfdeWindowRules`, as the Trackman window's).
+- **Sends a pro's world ranking page** (spec 1.15.0, [prores.md](../../spec/prores.md)): a pair link with `kind=pro`
+  asks "Connect with *host*" for the world ranking (*Connect world ranking* is the yes; provider `pro` only, no
+  `return`), then opens the app's own window on the sites (`src/ui/RankingsView.tsx`): the OWGR for men, the Rolex
+  Women's World Golf Rankings for women, loaded as this web view is, nothing added. The player searches for their name
+  there and opens their own page; only then does *Send* appear in the app's bar. A page script (`scripts/rankings-page.entry.ts`,
+  bundled into `src/lib/rankingsPageScript.ts`) gives the page one function and nothing else: on *Send* the app calls it
+  with a fresh ask, and it reads the page as it shows - the extension's very reading (`@glmsync/provider-rankings`),
+  OWGR's table waited for a little - and posts it back. It reads nothing before the tap and sends the sites nothing.
+  The app takes only an answer to its open ask, from the player's page the window shows, read again strictly
+  (`readRankingMessage`), and sends it with the extension's `ProClient` (`src/lib/pro.ts`) to each connected app after
+  its plan (`manual`). When an app finds another name on the page, *Is this page yours?* is asked right in the app's bar
+  (the site's page can't reach it) and on the connection's card. The window opens on the page last sent from here, else
+  asks which ranking; it keeps every load in the app (`rankingsWindowRules`). A read link `glmsync://read?kind=pro`
+  opens the window - only with a pairing of this kind. Nothing happens in the background.
 - **Demo**: a made-up player (`@glmsync/provider-demo`) for trying the app without an account, and
   for app reviews. Its "requests" go through the guard too, so counters and log behave as for real.
 - **Save as file**: a sync into an olmd file (the share sheet), planned gently by the file target -
@@ -132,6 +147,10 @@ portal in a sign-in window - so that window lives here, in a small app that does
 | What golf.de's pages showed (results, the index; no names, no numbers), what each handicap target has from here, what it last answered | app storage |
 | Which golf.de account the pages of this run named, and results waiting for it | memory only (gone when the app ends, as a browser session is) |
 | golf.de's own sign-in | golf.de's cookies in the window's web view, on this phone; the app never reads them |
+| Each pairing for a pro's pages with its import token | the secure store (one entry, `glmsync.pro.pairings`, in pieces where long) |
+| What each of those apps last answered, an open *Is this page yours?* with its page (a day at most), fingerprints of pages said to be the player's | app storage |
+| The address of the player's own ranking page last sent from here (where the window opens next time) | app storage, until the player disconnects the last app for a pro's pages here |
+| The sites' cookies (a consent banner's choice) | the window's web view, on this phone |
 
 Android backups leave the secure store out (`allowBackup: false`). A sign-in goes to the provider
 only; a target gets batches and nothing else (`src/lib/runner.test.ts` checks both directions). A
@@ -149,14 +168,15 @@ src/lib/            everything without a screen, tested with vitest: secrets, si
                     the wording
 src/ui/             the screens: App (links, opening, quiet renewal), Home, PairView, SignInView,
                     FirstSyncView, SyncView, TestView, Licenses, TrackmanLoginView, PairHcpView, GolfdeView,
-                    HcpCard
+                    HcpCard, PairProView, RankingsView, ProCard
 src/platform.ts     the phone's parts: secure store, storage, files, share sheet
 src/background.ts   the background task
 src/nudge.ts        the headless task behind the Android sync service
 modules/glmsync-sync  the Android sync service (Kotlin, a local Expo module; its manifest adds the
                     service to the app)
 scripts/            licenses.mjs (the licences page), release.sh (builds and updates at Expo),
-                    golfde-page.mjs (bundles the golf.de window's page script into src/lib/golfdePageScript.ts)
+                    golfde-page.mjs and rankings-page.mjs (bundle the golf.de and world ranking windows' page
+                    scripts into src/lib/*PageScript.ts, with page-script.mjs)
 ```
 
 ## Development
@@ -171,7 +191,8 @@ pnpm --filter @glmsync/companion start         # Expo dev server (a development 
 
 After a change to `@glmsync/provider-golfde`'s page script (or `src/lib/golfdePage.ts`, or
 `scripts/golfde-page.entry.ts`): `node apps/companion/scripts/golfde-page.mjs` writes `src/lib/golfdePageScript.ts`
-again; a test fails until it is. There is deliberately no npm script for it: `package.json`'s scripts are part of the
+again; a test fails until it is. The same for the world ranking window: after a change to `@glmsync/provider-rankings`,
+`src/lib/rankingsPage.ts` or `scripts/rankings-page.entry.ts`, `node apps/companion/scripts/rankings-page.mjs`. There is deliberately no npm script for it: `package.json`'s scripts are part of the
 app's native fingerprint, and a changed script keeps every update from the builds out there until a new build.
 
 The Expo packages follow the SDK together (Dependabot leaves them alone): upgrade them all at once

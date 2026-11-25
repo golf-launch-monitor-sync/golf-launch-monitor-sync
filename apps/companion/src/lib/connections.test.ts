@@ -69,4 +69,26 @@ describe('the phone’s connections', () => {
       ['lm:trackman', 'running'],
     ]);
   });
+
+  it('a pro’s world ranking pages (TE-22b-2): set up until a page went, then running; failed when the last send did', () => {
+    const entry = (last?: { status: 'sent' | 'failed' | 'not_due' }) => ({
+      id: 'p1',
+      base: 'https://app.example.org/hcp/v1',
+      name: 'Example App',
+      paired_at: '',
+      host: 'app.example.org',
+      ...(last ? { last: { at: '2026-11-25T10:00:00Z', site: 'owgr' as const, ...last } } : {}),
+    });
+    const one = (pairings: ReturnType<typeof entry>[], question: null | { site: 'owgr'; siteName: string; name: string; targets: string[]; at: string } = null) =>
+      connectionsOfApp(facts({ pro: { view: { pairings, question }, service: 'World ranking' } }));
+    expect(one([])).toEqual([]);
+    expect(one([entry()])).toEqual([{ id: 'pro', kind: 'pro', service: 'World ranking', account: null, targets: ['Example App'], state: 'setup' }]);
+    expect(one([entry({ status: 'not_due' })])[0]?.state).toBe('setup');
+    expect(one([entry({ status: 'sent' })])[0]?.state).toBe('running');
+    expect(one([entry({ status: 'failed' })])[0]?.state).toBe('setup'); // nothing went yet: still the steps
+    // An app asks whether the page is the player's: that needs them first, even after a page went.
+    expect(one([entry({ status: 'sent' })], { site: 'owgr', siteName: 'OWGR', name: 'Matt Example', targets: ['Example App'], at: '' })[0]?.state).toBe('setup');
+    // Not read yet: no row rather than a wrong one.
+    expect(connectionsOfApp(facts({ pro: { view: null, service: 'World ranking' } }))).toEqual([]);
+  });
 });

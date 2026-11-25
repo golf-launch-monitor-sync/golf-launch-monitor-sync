@@ -4,6 +4,7 @@
  * The app's frame: loads what the phone keeps, takes the links that open it, syncs when it comes to
  * the front (the plans decide whether anything is fetched), renews an expired Trackman sign-in quietly
  * where it may, sends what the golf.de window saw when the app goes to the back, and shows one view at a time.
+ * A pro's world ranking pages (spec 1.15.0) have their pair link and their window too.
  */
 
 import * as Linking from 'expo-linking';
@@ -18,6 +19,7 @@ import { t } from '../i18n';
 import { Once, readIncoming, type Incoming } from '../lib/links';
 import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
 import { testKeys } from '../lib/wizard';
+import type { RankingSite } from '../lib/rankingsPage';
 import { services } from '../platform';
 import { Home } from './Home';
 import { Licenses } from './Licenses';
@@ -26,6 +28,8 @@ import { PairView } from './PairView';
 import { FirstSyncView } from './FirstSyncView';
 import { GolfdeView } from './GolfdeView';
 import { PairHcpView } from './PairHcpView';
+import { PairProView } from './PairProView';
+import { RankingsView } from './RankingsView';
 import { Body, Button, colors, s } from './parts';
 import { SignInView } from './SignInView';
 import { SyncView } from './SyncView';
@@ -42,6 +46,10 @@ export type Screen =
   | { name: 'pairHcp'; link: Extract<Incoming, { kind: 'pair-hcp' }> }
   /** golf.de in the app's window, read along for the handicap record. */
   | { name: 'golfde' }
+  /** A pair link for a pro's world ranking pages (kind=pro). */
+  | { name: 'pairPro'; link: Extract<Incoming, { kind: 'pair-pro' }> }
+  /** The world ranking window: on `site`'s ranking, else the page last sent, else asking which. */
+  | { name: 'rankings'; site?: RankingSite }
   | { name: 'signin'; provider: ProviderId; back?: { url: string; name: string } }
   | { name: 'sync'; link: { target?: string; return?: string } }
   /** Just signed in: the first sync shown as the wizard's steps 4 and 5, then (with `back`) *Back to …*. */
@@ -185,15 +193,19 @@ function Main() {
       } else if (incoming.kind === 'pair-hcp') {
         setMessage(null);
         setScreen({ name: 'pairHcp', link: incoming });
+      } else if (incoming.kind === 'pair-pro') {
+        setMessage(null);
+        setScreen({ name: 'pairPro', link: incoming });
       } else if (incoming.kind === 'read') {
-        // Only with a connection for the handicap record: without one there is nobody to send what was read to.
-        void svc.hcp.view().then(
+        // Only with a connection of that kind: without one there is nobody to send what was read to.
+        const pro = incoming.what === 'pro';
+        void (pro ? svc.pro.view() : svc.hcp.view()).then(
           (v) => {
             if (v.pairings.length) {
               setMessage(null);
-              setScreen({ name: 'golfde' });
+              setScreen(pro ? { name: 'rankings' } : { name: 'golfde' });
             } else {
-              setMessage(t('hcp.pairFirst'));
+              setMessage(t(pro ? 'pro.pairFirst' : 'hcp.pairFirst'));
               setScreen({ name: 'home' });
             }
           },
@@ -318,6 +330,10 @@ function Main() {
     body = <PairHcpView svc={svc} link={screen.link} go={setScreen} />;
   } else if (screen.name === 'golfde') {
     body = <GolfdeView svc={svc} done={home} />;
+  } else if (screen.name === 'pairPro') {
+    body = <PairProView svc={svc} link={screen.link} go={setScreen} />;
+  } else if (screen.name === 'rankings') {
+    body = <RankingsView svc={svc} {...(screen.site ? { site: screen.site } : {})} done={() => setScreen({ name: 'home', focus: 'pro' })} />;
   } else if (screen.name === 'signin') {
     body = (
       <SignInView

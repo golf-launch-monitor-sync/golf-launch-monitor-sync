@@ -164,5 +164,17 @@
   "golfde.hint": "Melde dich an und tippe auf „Alles holen“: die App öffnet für dich dein History Sheet, den Scoring Record und die Ergebnislisten und liest mit. Melde dich mit E-Mail und Passwort an; Google oder Apple gehen hier oft nicht.",
   "golfde.done": "Fertig",
   "golfde.failed": "golf.de hat nicht geladen. Prüf die Verbindung und versuch es noch einmal.",
-  "golfde.reload": "Neu laden"
+  "golfde.reload": "Neu laden",
+  "pro.how": "Öffne deine eigene Seite der Weltrangliste hier in der App – die OWGR bei den Herren, die Rolex Rankings bei den Damen – und tippe oben auf „Schicken“. Die App liest, was die Seite dir zeigt (Rang, Punkte, Turniere), und schickt es an {name}. Die Seite selbst fragt sie nichts.",
+  "pro.pairFirst": "Verbinde zuerst deine Weltrangliste: in der App, die sie bekommen soll, über „Mit Golf Stats Sync verbinden“.",
+  "pairPro.what": "Ab jetzt geht deine Seite der Weltrangliste, die du hier in der App schickst, an {host}: Rang, Punkte und Turniere.",
+  "pairPro.replaces": "Dieses Handy ist mit dieser App für die Weltrangliste schon verbunden: Die neue Verbindung ersetzt die alte.",
+  "rankings.choose": "In welcher Weltrangliste stehst du?",
+  "rankings.find": "Such deinen Namen und öffne deine eigene Seite; dann erscheint hier oben „Schicken“.",
+  "rankings.changed": "Diese Seite sieht anders aus, als die App sie kennt: Es wurde nichts von ihr gelesen. Bitte aktualisiere die App.",
+  "rankings.other": "Andere Rangliste",
+  "rankings.done": "Fertig",
+  "rankings.failed": "Die Seite hat nicht geladen. Prüf die Verbindung und versuch es noch einmal.",
+  "rankings.reload": "Neu laden",
+  "pro.unofficial": "Inoffiziell: Golf Stats Sync ist nicht mit der OWGR, Rolex oder einer Tour verbunden und wird von ihnen nicht unterstützt."
 }
