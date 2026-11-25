@@ -1,0 +1,109 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Reginald Stadlbauer
+/**
+ * LPGA Tour (lpga.com) and Epson Tour (epsontour.com), the player's own *Results* page, as she opens it. Both sites
+ * are the LPGA's and built alike. Unofficial: not affiliated with, endorsed by or supported by the LPGA or the Epson
+ * Tour.
+ *
+ * One page holds the season: `<site>/athletes/<name>/<id>/results` with a *Seasons* picker, the season's standing
+ * ("134" over "CME Points Rank", "63.688" over "CME Points"; on the Epson Tour *Race for the Card*) and a table:
+ * TOURNAMENT (the first day and the tournament's link), POS, TO PAR, OFFICIAL MONEY (never read), R1-R4, TOTAL and the
+ * standing's points.
+ *
+ * Read only on the player's *Send*: what the page shows then, nothing opened, nothing asked.
+ */
+
+import { placeOf, type ProRanking, type ProTour, type ProTournament } from '@glmsync/spec';
+import { figureNumber, type Wanted } from './figures.ts';
+import type { TourPage } from './page.ts';
+import { addDays, asOfSeason, dayFrom, isTeamEvent, roundColumns, roundsOf, seasonOf, slugOf, type SeasonRead } from './season.ts';
+import { clean, column, type Snapshot } from './snapshot.ts';
+
+export const SITES = {
+  lpga: { tour: 'lpga', origin: 'https://www.lpga.com', prefix: 'lpga' },
+  epson: { tour: 'epson', origin: 'https://www.epsontour.com', prefix: 'epson' },
+} as const satisfies Record<string, { tour: ProTour; origin: string; prefix: string }>;
+/** The whole sites: they move between their pages without loading them, so the script must be there before her page. */
+export const PAGE_MATCHES = ['https://www.lpga.com/*', 'https://www.epsontour.com/*'];
+/** The season picker's value (`snapshotOf`'s `labels`). */
+export const LABELS = ['Seasons'] as const;
+/** The season's standing: the values written above their labels. */
+export const FIGURES: readonly Wanted[] = [
+  { key: 'rank', label: /^(?:CME|Race for the Card) Points Rank$/i, take: 'before' },
+  { key: 'points', label: /^(?:CME|Race for the Card) Points$/i, take: 'before' },
+];
+
+const RESULTS = /^https:\/\/www\.(lpga|epsontour)\.com\/athletes\/([a-z0-9-]{1,120})\/([0-9]{1,10})\/results\/?(?:[?#].*)?$/;
+
+/** A player's *Results* page: which site, her id. Null for any other page. */
+export function resultsPageOf(url: unknown): { site: keyof typeof SITES; id: string } | null {
+  if (typeof url !== 'string' || url.length > 2048) return null;
+  const m = RESULTS.exec(url);
+  if (!m?.[1] || !m[3]) return null;
+  return { site: m[1] === 'lpga' ? 'lpga' : 'epson', id: m[3] };
+}
+
+// "10/01/2026 LOTTE Championship" → the first day and the tournament's name (month first).
+function lineOf(s: string): { start: string; name: string } | null {
+  const m = /^([0-9]{1,2})\/([0-9]{1,2})\/([0-9]{4})\s+(.{1,200})$/.exec(clean(s));
+  const start = m ? dayFrom(Number(m[3]), Number(m[1]), Number(m[2])) : undefined;
+  return m?.[4] && start ? { start, name: m[4] } : null;
+}
+
+// The tournament's page: "/tournaments/<slug>/overview".
+const EVENT = /\/tournaments\/([a-z0-9-]{1,120})(?:\/|$)/;
+
+/** Her season as the page shows it now. `today`: the player's day; a tournament not over yet isn't sent. */
+export function readResults(snap: Snapshot, figures: Readonly<Record<string, string>>, today: string): SeasonRead {
+  const at = resultsPageOf(snap.url);
+  if (!at) return { kind: 'unread', why: 'changed_page' };
+  const site = SITES[at.site];
+  const name = clean(snap.title);
+  const table = snap.tables.find((t) => column(t.head, 'Tournament') >= 0 && column(t.head, 'R1') >= 0);
+  if (!name || name.length < 2 || !table) return { kind: 'unread', why: 'changed_page' };
+  const col = {
+    name: column(table.head, 'Tournament'),
+    pos: column(table.head, 'Pos', 'Position'),
+    pts: column(table.head, 'CME Points', 'Race Points', 'Points'),
+  };
+  const rounds = roundColumns(table.head);
+  if (col.pos < 0 || rounds.length === 0) return { kind: 'unread', why: 'changed_page' };
+  const tournaments: ProTournament[] = [];
+  const days: string[] = [];
+  const seen = new Set<string>();
+  for (const row of table.rows) {
+    const cell = row[col.name];
+    const line = lineOf(cell?.text ?? '');
+    if (!cell || !line) continue; // a line that isn't a tournament (a total, a note)
+    // The date is the first day; the last is counted on by the rounds the table has room for.
+    const end = addDays(line.start, rounds.length - 1);
+    days.push(end);
+    if (end >= today || isTeamEvent(line.name)) continue;
+    const played = roundsOf(row, rounds);
+    if (played.length === 0) continue;
+    const slug = EVENT.exec(cell.href ?? '')?.[1] ?? slugOf(line.name);
+    const ref = `${site.prefix}-${line.start.slice(0, 4)}-${slug}`.slice(0, 100);
+    if (seen.has(ref)) continue;
+    seen.add(ref);
+    const t: ProTournament = { ref, tour: site.tour, name: line.name, start: line.start, rounds: played };
+    const f = placeOf(clean(row[col.pos]?.text ?? '').replace(/^W\/D$/i, 'WD'));
+    if (f && 'result' in f) t.result = f.result;
+    else if (f) {
+      t.place = f.place;
+      if (f.tied) t.tied = true;
+    }
+    const pts = col.pts >= 0 ? figureNumber(clean(row[col.pts]?.text ?? '')) : undefined;
+    // "0.00" for a missed cut is no points, not a figure worth keeping.
+    if (pts !== undefined && pts > 0) t.points = pts;
+    tournaments.push(t);
+  }
+  const ranking: ProRanking = { source: `tour:${site.tour}`, as_of: asOfSeason(seasonOf(snap.pairs.Seasons), days.sort().at(-1), today) };
+  const rank = figureNumber(figures.rank);
+  if (rank !== undefined && Number.isInteger(rank) && rank >= 1) ranking.rank = rank;
+  const points = figureNumber(figures.points);
+  if (points !== undefined) ranking.points = points;
+  ranking.events = days.length;
+  if (ranking.rank === undefined && ranking.points === undefined && tournaments.length === 0) return { kind: 'unread', why: 'nothing' };
+  const page: TourPage = { site: `tour:${site.tour}`, id: at.id, name: name.slice(0, 120), ranking, tournaments, stats: [] };
+  return { kind: 'page', page };
+}

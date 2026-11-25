@@ -55,6 +55,19 @@ describe('a page as text', () => {
     expect(snap.selected).toEqual([]);
   });
 
+  it('takes the last row of a head of several (a group row above the columns) and a title made of parts', () => {
+    const d = h('html', [
+      h('h1', [h('span', ['Max']), h('span', ['Muster'])]),
+      h('table', [
+        h('thead', [h('tr', [h('th', ['']), h('th', ['Points List'])]), h('tr', []), h('tr', [h('th', ['Date']), h('th', ['R1']), h('th', ['Rank'])])]),
+        h('tbody', [h('tr', [h('td', ['1.25.2026']), h('td', ['70']), h('td', ['3'])])]),
+      ]),
+    ]);
+    const s = snapshotOf(d, 'https://www.pgatour.com/player/1/max-muster/results');
+    expect(s.title).toBe('Max Muster');
+    expect(s.tables[0]).toEqual({ head: ['Date', 'R1', 'Rank'], rows: [[{ text: '1.25.2026' }, { text: '70' }, { text: '3' }]] });
+  });
+
   it('cleans text, finds columns, makes names comparable', () => {
     expect(clean('  a\n b ')).toBe('a b');
     expect(clean(null)).toBe('');

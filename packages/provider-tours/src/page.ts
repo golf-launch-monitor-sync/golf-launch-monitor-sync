@@ -64,6 +64,31 @@ export const TOUR_SITES: Readonly<Partial<Record<TourSite, TourInfo>>> = {
     matches: ['https://www.europeantour.com/players/*'],
     start: 'https://www.europeantour.com/hotelplanner-tour/players/',
   },
+  // The season pages (seasonPage.ts): his whole season on his *Results* page.
+  'tour:pga_tour': {
+    site: 'tour:pga_tour',
+    name: 'PGA Tour',
+    matches: ['https://www.pgatour.com/*'],
+    start: 'https://www.pgatour.com/players',
+  },
+  'tour:korn_ferry': {
+    site: 'tour:korn_ferry',
+    name: 'Korn Ferry Tour',
+    matches: ['https://www.pgatour.com/*'],
+    start: 'https://www.pgatour.com/korn-ferry-tour/players',
+  },
+  'tour:lpga': {
+    site: 'tour:lpga',
+    name: 'LPGA Tour',
+    matches: ['https://www.lpga.com/*'],
+    start: 'https://www.lpga.com/athletes/directory',
+  },
+  'tour:epson': {
+    site: 'tour:epson',
+    name: 'Epson Tour',
+    matches: ['https://www.epsontour.com/*'],
+    start: 'https://www.epsontour.com/athletes/directory',
+  },
 };
 
 export const isTourSite = (v: unknown): v is TourSite => typeof v === 'string' && Object.hasOwn(TOUR_SITES, v);

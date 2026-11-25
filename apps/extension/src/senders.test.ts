@@ -27,6 +27,19 @@ describe('who sent a message', () => {
     expect(sourceOf({ id: ID, url: 'https://app.example.org/', frameId: 0 }, ID, ORIGIN)).toBe('other'); // no tab
   });
 
+  it('knows the season pages\' sites (the top frame only) and takes from there only their line, a page and the answer', () => {
+    expect(from('https://www.pgatour.com/player/1/max-erfunden/results', { frameId: 0 })).toBe('season');
+    expect(from('https://www.epsontour.com/', { frameId: 0 })).toBe('season');
+    expect(from('https://www.lpga.com/athletes/x/1/results', { frameId: 1 })).toBe('other');
+    expect(accept({ type: 'season-send', page: { site: 'tour:lpga' } }, 'season')).toEqual({ type: 'season-send', page: { site: 'tour:lpga' } });
+    expect(accept({ type: 'season-send', page: { site: 'tour:lpga' } }, 'tour')).toBeNull();
+    expect(accept({ type: 'season-send', page: ['x'] }, 'season')).toBeNull();
+    expect(accept({ type: 'season-send', page: { big: 'x'.repeat(300_000) } }, 'season')).toBeNull();
+    expect(accept({ type: 'season-line' }, 'season')).toEqual({ type: 'season-line' });
+    expect(accept({ type: 'season-answer' }, 'season')).toEqual({ type: 'season-answer' });
+    expect(accept({ type: 'pro-unpair', id: 'abc' }, 'season')).toBeNull();
+  });
+
   it('knows golf.de’s pages (the top frame only) and what may come from there', () => {
     expect(from('https://www.golf.de/mein-bereich/handicap-history-sheet.html', { frameId: 0 })).toBe('golfde');
     expect(from('https://www.golf.de/mein-bereich/handicap-history-sheet.html', { frameId: 2 })).toBe('other');

@@ -46,6 +46,14 @@ describe('the manifest', () => {
       expect(JSON.stringify(m.host_permissions)).not.toMatch(/europeantour/);
     });
 
+    it(`${browser}: shows the season line on the tours' own sites, in its isolated world, and asks them for nothing`, () => {
+      const pages = (m.content_scripts as { matches: string[]; js: string[]; world?: string }[]).filter((c) => c.js.includes('season-content.js'));
+      expect(pages).toHaveLength(1);
+      expect(pages[0]?.matches).toEqual(['https://www.pgatour.com/*', 'https://www.lpga.com/*', 'https://www.epsontour.com/*']);
+      expect(pages[0]?.world).toBeUndefined();
+      expect(JSON.stringify(m.host_permissions)).not.toMatch(/pgatour|lpga|epsontour|orchestrator/);
+    });
+
     it(`${browser}: has its version and names from the locales`, () => {
       expect(m.version).toBe(VERSION);
       expect(m.name).toBe('__MSG_name__');

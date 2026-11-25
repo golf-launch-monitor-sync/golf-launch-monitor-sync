@@ -13,6 +13,9 @@ Unofficial: not affiliated with, endorsed by or supported by any tour or its ope
 | **Pro Golf Tour** (`tour:pro_golf_tour`) | `progolftour.ts`, `progolftour-run.ts` | the player's profile `progolftour.de/player-profile/<id>?year=<season>`; a tournament's page `progolftour.de/tournament-details/<slug>` (its *Final result*) | `robots.txt` (read 25 Nov 2026): `User-agent: * Allow: / Crawl-delay: 5`. The site shows an imprint and a privacy policy; no terms of use were found. |
 | **DP World Tour** (`tour:dp_world`), **HotelPlanner Tour** (`tour:hotelplanner`) | `europeantour.ts` | the player's pages `europeantour.com/players/<name>-<id>/` (overview), `…/results` (*Wins & Results*), `…/stats` (*Stats*), each with `?tour=dpworld-tour` or `?tour=hotelplanner-tour` | `robots.txt` (read 25 Nov 2026): `User-Agent: *`, `Disallow: /api/` (the site's own data service, which this module never asks), `/search/`, `/european-tour/`, `/legends-tour/` and a few more; `/players/` is not disallowed. *Terms of Website Use* (`/terms-of-use`, read 25 Nov 2026, English law): you may print one copy and download extracts of any page for your personal use; no part of the content (live scoring data included) may be used for commercial purposes without a licence; a consumer uses the site for domestic and private use only. Nothing about robots or automated access. Whether an app may use what a player hands it of his own page is a question for each project that uses this. |
 
+| **PGA Tour** (`tour:pga_tour`), **Korn Ferry Tour** (`tour:korn_ferry`) | `pgatour.ts` | the player's *Results* page `pgatour.com/player/<id>/<name>/results` (the Korn Ferry Tour's also under `/korn-ferry-tour/…`) | `robots.txt` (read 25 Nov 2026): disallows only some query strings (`?…player=`, `?…webview=` …) and internal paths, not the player pages. The terms of use (`pgatour.com/company/terms-of-use`, updated April 2024, read 25 Nov 2026), section 7: for personal, non-commercial use only, its data for no commercial purpose unless licensed (A); no automated processes, robots, scrapers or other programs that copy or download its data, nor facilitating others to use them (C); scores and statistics only for news reporting and personal, non-commercial purposes (D). This module reads only the page the player opened, on his tap, and opens nothing; whether a player may hand his own page to an app is for each project using it to answer (spec/prores.md). |
+| **LPGA Tour** (`tour:lpga`), **Epson Tour** (`tour:epson`) | `lpga.ts` | the player's *Results* page `lpga.com/athletes/<name>/<id>/results`, `epsontour.com/athletes/<name>/<id>/results` | `robots.txt` (read 25 Nov 2026), both sites: `User-Agent: * Allow: /`. The terms of use (`lpga.com/terms-and-conditions`, effective 5 Sep 2024, for both sites) allow use for the visitor's own non-commercial purposes; commercial use, *systematic retrieval* to build a collection and tools that harvest information *for any commercial purpose* only with written consent; statistics only for news or private, non-commercial purposes, with attribution. Same answer as above. |
+
 Other tours come as modules of their own, each with its terms noted here before it is added.
 
 ## DP World Tour and HotelPlanner Tour
@@ -56,6 +59,27 @@ Other tours come as modules of their own, each with its terms noted here before 
   end the run; three runs a day; a page opened within a week isn't opened again (`TOUR_CLICKS`, which moves down after a
   measurement, never up without one). What it read goes out once at the end.
 
+## The season pages: PGA Tour, Korn Ferry Tour, LPGA Tour, Epson Tour
+
+- **One page holds the season**: the player's *Results* page shows the season he picked (on pgatour.com also the tour)
+  with its standing and a table of the season's tournaments with R1-R4. It is read on his *Send* and nothing is opened
+  for it (no *Fetch all*): `seasonPage.ts` says where a client's script runs, which page is a player's and what to take
+  from it (`seasonTakes`), and reads it (`readSeasonPage`).
+- **The standing** (FedExCup, Points List; Race to CME Globe, Race for the Card) is taken beside its label
+  (`figures.ts`: "83" before "PTS: 494", "134" above "CME Points Rank") as the ranking `tour:<key>`, with the season's
+  tournaments as its events.
+- **Days**: pgatour.com names a tournament's last day, lpga.com and epsontour.com its first. The other is counted by
+  the round columns the table has (four: the last day minus three); on lpga.com and epsontour.com no `end` is sent. The
+  rounds carry no day (the target counts them from `start` and marks them estimated).
+- **What is left out**: a tournament not over yet (its last day is today or later), a round not played ("-"), and a
+  **team event** (Zurich Classic, Grant Thornton Invitational, Dow Championship, QBE Shootout: a pair's score per
+  round, not his strokes), which then isn't sent at all (no tournament without its rounds). Winnings are never read.
+- **Ids**: pgatour.com's own tournament id from the row's shot-tracker link (`pga-R2026002`; a major has none:
+  `pga-<last day>-<name>`); lpga.com's tournament page and the year (`lpga-2026-<slug>`, `epson-2026-<slug>`).
+- **The tour**: on pgatour.com the *Tour* picker's (the address may still name another); PGA Tour Champions and PGA
+  Tour Americas aren't read (`other_tour`), prores/1 has no key for them.
+- The page's other players (pgatour.com's leaderboard strip at the top) never leave the page's script.
+
 ## Pieces
 
 - `snapshot.ts` - a page as text (title, headings and list lines, labelled values, tables, links), taken in the page's
@@ -69,13 +93,15 @@ Other tours come as modules of their own, each with its terms noted here before 
 - `progolftour-run.ts` - *Fetch all* as a value: `startRun`, `nextStep`, `seeRun`, `stopRun`, `mayStart`.
 - `europeantour.ts` - a page of his on europeantour.com (`readPage`, `shows`), what the client keeps of them
   (`mergeRead`, `checkRead`) and a page per tour to send (`pagesOf`).
-- `testing.ts` - the tours' pages made up by hand in their shape (made-up players, made-up numbers), and a tiny DOM
-  (`h`, `docOf` of a snapshot) for the tests of a page's script. Never a recorded page.
+- `season.ts`, `seasonPage.ts`, `pgatour.ts`, `lpga.ts`, `figures.ts` - the season pages (above).
+- `testing.ts` - the tours' pages made up by hand in their shape (made-up players, made-up numbers; the season pages in
+  `testing-season.ts`), and a tiny DOM (`h`, `docOf` of a snapshot) for the tests of a page's script. Never a recorded
+  page.
 
-The extension puts it together (`apps/extension`: `tours-content.ts` and `europeantour-content.ts` on the sites;
-`TourKeeper` of `@glmsync/browser/tours` and the extension's `europeantour.ts` keeping what was read; `ProClient` of
-`@glmsync/browser` sending it). The companion app the same
+The extension puts it together (`apps/extension`: `tours-content.ts`, `europeantour-content.ts` and `season-content.ts`
+on the sites; `TourKeeper` of `@glmsync/browser/tours` and the extension's `europeantour.ts` keeping what was read;
+`ProClient` of `@glmsync/browser` sending it). The companion app the same
 in its own window (`apps/companion`: `ToursView` with the page script `scripts/tours-page.entry.ts`, `toursSession.ts`
 over the same `TourKeeper`, run and `ProClient`). A new tour joins the app's window with its module's reading in the
-page script and its pages in `src/lib/toursPage.ts`; the window shows only the sites it reads (`APP_TOUR_SITES`): DP World
-Tour and HotelPlanner Tour are read in the extension only, so far.
+page script and its pages in `src/lib/toursPage.ts`; the window shows only the sites it reads (`APP_TOURS`): DP World
+Tour, HotelPlanner Tour and the season pages are read in the extension only, so far.

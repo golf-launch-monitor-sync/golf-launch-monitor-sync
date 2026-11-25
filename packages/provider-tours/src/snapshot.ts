@@ -22,7 +22,7 @@ export interface Table {
 
 export interface Snapshot {
   url: string;
-  /** The first h1's own text (without its buttons, e.g. a season picker). */
+  /** The first h1's own text (without its buttons, e.g. a season picker); all of its text where it has none of its own. */
   title: string;
   /** Texts of h1-h3 and list items, in page order. */
   lines: string[];
@@ -96,7 +96,11 @@ function absolute(href: string | null, base: string): string | undefined {
 }
 
 function tableOf(el: DomElement, base: string): Table | null {
-  let head = each(el.querySelectorAll('thead th, thead td'), 40).map(textIn);
+  // A head of several rows (a group row such as "FedExCup" above the columns): its last row names the columns.
+  const headRows = each(el.querySelectorAll('thead tr'), 10)
+    .map((tr) => each(tr.querySelectorAll('th, td'), 40).map(textIn))
+    .filter((r) => r.length > 0);
+  let head = headRows.at(-1) ?? each(el.querySelectorAll('thead th, thead td'), 40).map(textIn);
   let trs = each(el.querySelectorAll('tbody tr'), MOST_ROWS);
   if (head.length === 0) {
     // No thead: the first row of header cells is the head.
@@ -150,7 +154,8 @@ export function snapshotOf(doc: DomDocument, url: string, labels: readonly strin
   const links = each(doc.querySelectorAll('a[href]'), MOST_LINKS)
     .map((a) => absolute(a.getAttribute('href'), url))
     .filter((h): h is string => Boolean(h));
-  return { url, title: h1 ? ownText(h1) : '', lines, pairs, selected, tables, links };
+  // The h1's own text leaves its buttons out (a season picker); a name written in parts (<span>s) has none of its own.
+  return { url, title: h1 ? ownText(h1) || textIn(h1) : '', lines, pairs, selected, tables, links };
 }
 
 /** The column of the first head among `names` (case and a trailing colon ignored), or -1. */

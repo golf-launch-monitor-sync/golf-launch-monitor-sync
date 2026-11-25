@@ -42,8 +42,9 @@ function httpsHost(url: string): string | null {
 }
 
 /**
- * The tours whose module the window's page script runs. DP World Tour and HotelPlanner Tour (europeantour.com) are read
- * in the extension only, so far: the window neither offers nor loads them until the page script reads them too.
+ * The tours whose module the window's page script runs. DP World Tour and HotelPlanner Tour (europeantour.com) and the
+ * season pages (PGA Tour, Korn Ferry, LPGA, Epson: `seasonPage`) are read in the extension only, so far: the window
+ * neither offers nor loads them until the page script reads them too.
  */
 const APP_TOURS: readonly TourSite[] = ['tour:pro_golf_tour'];
 

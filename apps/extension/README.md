@@ -172,6 +172,26 @@ Since 0.15.0, on **europeantour.com** - one page per player for both tours, with
 until an app is connected for a pro's pages. It keeps what your pages showed (another player's page replaces it) in the
 extension's own storage. It sends the site nothing, and never asks the site's data service.
 
+### A tour's season page: PGA Tour, Korn Ferry Tour, LPGA Tour, Epson Tour
+
+Since 0.16.0 (the module is [`@glmsync/provider-tours`](../../packages/provider-tours/README.md) `seasonPage`), with the
+same connection (`kind=pro`).
+
+1. Open your own player page on **pgatour.com** (PGA Tour; the Korn Ferry Tour under *Tour* or its own players),
+   **lpga.com** or **epsontour.com** and go to **Results**. The line says *Golf Stats Sync: send this page to …* with
+   **Send** - only there, nowhere else on the sites.
+2. Pick the season (and on pgatour.com the tour) on the page as you like; **Send** sends what the page shows then: the
+   season's standing (FedExCup, Points List, Race to CME Globe, Race for the Card: rank and points) and every finished
+   tournament with its place, points and your rounds. Nothing is opened for it - the page shows the whole season.
+3. A tournament on pgatour.com names only its last day, one on lpga.com and epsontour.com only its first: the other is
+   counted by the rounds the table has room for (the app marks those days as estimated). A team event (two players'
+   score per round: Zurich Classic, Dow Championship …) is left out, as is a tournament not over yet. A tour of
+   pgatour.com this doesn't read (PGA Tour Champions, PGA Tour Americas) says so and sends nothing.
+
+`season-content.ts` runs on those sites in the extension's own world (the whole site, because the sites move to
+*Results* without loading a page; the line shows only there) and reads nothing until an app is connected for a pro's
+pages and you tap *Send*. It keeps nothing of the page and sends the sites nothing.
+
 ## The bridge on the app's page
 
 [spec/page-bridge.md](../../spec/page-bridge.md). A small content script (`bridge-content.ts`) goes on the pages

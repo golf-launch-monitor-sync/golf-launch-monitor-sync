@@ -58,7 +58,10 @@ export type FromTour =
   | { type: 'tour-fetch-all' }
   | { type: 'tour-step' }
   | { type: 'tour-stop' }
-  | { type: 'tour-answer' };
+  | { type: 'tour-answer' }
+  | { type: 'season-line' }
+  | { type: 'season-send'; page: object }
+  | { type: 'season-answer' };
 /**
  * From europeantour-content.ts on a player's own pages of europeantour.com (DP World Tour, HotelPlanner Tour): what a
  * page of his showed (his ranks, results with rounds, season statistics - nobody else's), the line, *Send* and

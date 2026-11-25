@@ -12,7 +12,8 @@
  * And a pro's own world ranking page (`ProClient`, spec/prores.md): the page arrives from the content script there when
  * the player taps *Send*, read as the page showed it, and goes to the apps paired for it, each after its plan. Whether
  * a page is the player's is answered in the extension's own pages. The site is never asked anything. A tour's pages
- * the same way (the Pro Golf Tour: tours.ts; europeantour.com, a page per tour: europeantour.ts).
+ * the same way (the Pro Golf Tour: tours.ts; europeantour.com, a page per tour: europeantour.ts; the season pages of PGA Tour,
+ * Korn Ferry, LPGA and Epson: season-content.ts, sent as the page showed them).
  *
  * Woken by alarms, messages and the browser starting; it keeps nothing in memory that matters (a
  * Manifest V3 background may be stopped between events): everything is in chrome.storage.
@@ -595,6 +596,18 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
       return sendEt();
     case 'et-answer':
       // From the site's page: only the connect window comes to the front, where the player answers.
+      await openConnectWindow(near);
+      return { ok: true, pro: await pro.view() };
+    case 'season-line':
+      return { ok: true, pro: await pro.view() };
+    case 'season-send': {
+      // His season as the page showed it on his tap: read again strictly (checkTourPage) and sent to each app after its plan.
+      const v = await pro.send(m.page);
+      await refreshIcon();
+      return { ok: true, pro: v };
+    }
+    case 'season-answer':
+      // From the tour's page: only the connect window comes to the front, where the player answers.
       await openConnectWindow(near);
       return { ok: true, pro: await pro.view() };
     case 'pro-answer': {

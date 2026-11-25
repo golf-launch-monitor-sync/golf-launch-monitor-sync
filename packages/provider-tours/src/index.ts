@@ -10,6 +10,8 @@
  * - `progolftour-run`  *Fetch all* there: his finished tournaments' pages, one by one, on his tap
  * - `europeantour`     DP World Tour and HotelPlanner Tour: his pages on europeantour.com (ranks, results with
  *                      rounds, season statistics), each tour a page of its own
+ * - `seasonPage`       the tours whose *Results* page shows the whole season with rounds, read on *Send*:
+ *                      `pgatour` (PGA Tour, Korn Ferry Tour), `lpga` (LPGA Tour, Epson Tour); `figures` the standing
  */
 
 export * from './page.ts';
@@ -17,3 +19,8 @@ export * from './snapshot.ts';
 export * as progolftour from './progolftour.ts';
 export * as progolftourRun from './progolftour-run.ts';
 export * as europeantour from './europeantour.ts';
+export * from './figures.ts';
+export * from './seasonPage.ts';
+export type { SeasonRead, SeasonUnread } from './season.ts';
+export * as pgatour from './pgatour.ts';
+export * as lpga from './lpga.ts';

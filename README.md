@@ -16,11 +16,12 @@ Syncs your golf data from **your own** accounts into apps of your choice, in ope
   Official World Golf Ranking or the Rolex Women's World Golf Rankings, in [prores/1](spec/prores.md)
   (since spec 1.15.0). The extension reads that page only when **you** tap *Send* on it, as it shows it to
   you, and asks the site nothing of its own.
-- **A professional's tour** — the season's ranking and his tournaments with their rounds — from his own pages of a tour
-  (today the Pro Golf Tour, the DP World Tour and the HotelPlanner Tour), in prores/1: on the Pro Golf Tour his profile
-  and his own line of each tournament's final result (opened by him, or by *Fetch all* on his tap), in the extension
-  or the companion app's window; on europeantour.com, in the extension, his own pages as he opens them (results with
-  rounds, season statistics). Nobody else's line leaves the page.
+- **A professional's tour** — the season's ranking and his tournaments with their rounds — from his own pages of a tour,
+  in prores/1: on the Pro Golf Tour his profile and his own line of each tournament's final result (opened by him, or
+  by *Fetch all* on his tap), in the extension or the companion app's window; on europeantour.com (DP World Tour,
+  HotelPlanner Tour), in the extension, his own pages as he opens them (results with rounds, season statistics); on the
+  PGA Tour, the Korn Ferry Tour, the LPGA Tour and the Epson Tour, in the extension, his *Results* page, which shows the
+  whole season (read on *Send*, nothing opened). Nobody else's line leaves the page.
 
 > **Unofficial.** This project is not affiliated with, endorsed by or supported by Trackman, any
 > other launch monitor maker, the Deutscher Golf Verband (DGV), golf.de, the OWGR, Rolex or any tour. It uses your own sign-in,
@@ -126,7 +127,7 @@ And, as a rule for every line of code here:
 | [`packages/provider-trackman`](packages/provider-trackman/README.md) | Reading your own Trackman account, into olmd. |
 | [`packages/provider-golfde`](packages/provider-golfde/README.md) | Reading along on golf.de's pages (your handicap record), into dgvhcp/1: the page script and its mapping. |
 | [`packages/provider-rankings`](packages/provider-rankings/README.md) | A pro's own page of the world rankings (OWGR, Rolex Rankings), read as the page shows it on the player's tap, into prores/1. |
-| [`packages/provider-tours`](packages/provider-tours/README.md) | A pro's own pages of a tour (today the Pro Golf Tour, DP World Tour, HotelPlanner Tour): his ranking, his tournaments with their rounds, his season statistics, into prores/1; on the Pro Golf Tour *Fetch all* on his tap. |
+| [`packages/provider-tours`](packages/provider-tours/README.md) | A pro's own pages of a tour (Pro Golf Tour, DP World Tour, HotelPlanner Tour, PGA Tour, Korn Ferry Tour, LPGA Tour, Epson Tour): his ranking, his tournaments with their rounds, his season statistics, into prores/1; on the Pro Golf Tour *Fetch all* on his tap, on the season pages (PGA Tour, Korn Ferry, LPGA, Epson) his *Results* page on *Send*. |
 | [`packages/provider-demo`](packages/provider-demo/README.md) | A made-up player's sessions and rounds, for tests, trying it out and app reviews. |
 | [`packages/browser`](packages/browser/README.md) | What the extension and the web app share: the key, pairings, "Is this you?", syncs, texts (English, German). |
 | [`apps/extension`](apps/extension/README.md) | The browser extension (Manifest V3; Chrome, Edge, Firefox): syncs in the background when a target's plan says so; reads along on golf.de; sends a pro's world ranking page on *Send*. |

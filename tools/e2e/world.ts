@@ -131,6 +131,61 @@ show();
 </script></body></html>`;
 }
 
+/** A made-up player's pages on pgatour.com (made-up name, made-up tournaments). */
+export const PGA_OVERVIEW = 'https://www.pgatour.com/player/99002/max-erfunden/overview';
+export const LPGA_RESULTS = 'https://www.lpga.com/athletes/lena-ausgedacht/99003/results';
+
+/**
+ * The made-up pgatour.com player page, as the site builds it: a leaderboard strip of other players at the top, the head,
+ * the tabs; *Results* is put in by the page's own script without loading a page (the address changes by pushState), its
+ * season's table a moment later. It asks nothing of anyone.
+ */
+function pgaPlayerPage(path: string): string {
+  const picker = (label: string, value: string) => `<button><div><div><div><p>${label}</p></div></div></div><p>${value}</p></button>`;
+  const row = (date: string, name: string, pos: string, r: string[], pts: string, id: string | null) =>
+    `<tr><td><span>${date}</span></td><td><span>${name}</span></td><td><span>${pos}</span></td>${r.map((x) => `<td><span>${x}</span></td>`).join('')}<td>${r.filter((x) => x !== '-').reduce((a, b) => a + Number(b), 0)}</td><td>-3</td><td>50</td><td>${pts}</td><td></td><td>-</td><td>-</td><td>$1,000</td><td>${id ? `<a href="https://tourcast.pgatour.com/tourcast.html?id=${id}&webview=true#/hole-view?round=1&hole=1"><img alt="TOURCAST Logo"></a>` : '-'}</td></tr>`;
+  const head = ['Date', 'Tournament', 'Pos', 'R1', 'R2', 'R3', 'R4', 'Total', 'To Par', 'Rank', 'Pts', '', 'Rank', 'Pts', 'Winnings', ''];
+  const table = `<h2>Results &amp; Scorecards</h2><table><thead><tr><th></th><th>FedExCup</th><th></th><th>FedexCup Fall</th></tr><tr></tr><tr>${head.map((h) => `<th><span>${h}</span></th>`).join('')}</tr></thead><tbody>${[
+    row('1.25.2026', 'Sample Desert Classic', 'CUT', ['71', '66', '70', '-'], '-', 'R2026902'),
+    row('2.1.2026', 'Made-up Coast Open', 'T5', ['65', '75', '65', '68'], '105.000', 'R2026904'),
+    row('4.26.2026', 'Zurich Classic of Sampletown', 'CUT', ['61', '76', '-', '-'], '-', 'R2026918'),
+  ].join('')}</tbody></table>`;
+  const results = `<div>${picker('Tour', 'PGA Tour')}${picker('Season', '2026')}</div>
+<div><img alt="FedExCup Standings"><div><div>83</div><div>PTS: 494</div></div></div>
+<div><img alt="FedExCup Fall Standings"><div><div>83</div><div>PTS: 663</div></div></div><div id="season">…</div>`;
+  const script = `
+    const show = () => {
+      document.getElementById('tab').innerHTML = ${JSON.stringify(results)};
+      setTimeout(() => { document.getElementById('season').innerHTML = ${JSON.stringify(table)}; }, 700);
+    };
+    document.getElementById('results').addEventListener('click', (e) => { e.preventDefault(); history.pushState({}, '', '/player/99002/max-erfunden/results'); show(); });
+    if (location.pathname.endsWith('/results')) show();`;
+  return `<!doctype html><html><head><title>Max Erfunden PGA Tour Player Profile (made up)</title></head><body>
+<div><a href="/leaderboard?player=1">O. Erfunden</a><div>Pos</div><div>1</div></div>
+<main><h1><span>Max</span><span>Erfunden</span></h1><div><div><div>World Rank (OWGR)</div></div><div>122</div></div>
+<div role="tablist"><a href="${path.replace(/\/[a-z-]+$/, '/overview')}">Overview</a><a id="results" href="/player/99002/max-erfunden/results">Results</a></div>
+<div id="tab">Overview of a made-up player</div></main><script>${script}</script></body></html>`;
+}
+
+/** The made-up lpga.com *Results* page: the head and the standing at once, the season's table a moment later. */
+function lpgaResultsPage(): string {
+  const fig = (v: string, label: string) => `<div><div>${v}</div><div>${label}</div></div>`;
+  const row = (date: string, slug: string, name: string, pos: string, r: string[], pts: string) =>
+    `<tr><th><div><div>${date}</div><a href="/tournaments/${slug}/overview"><span>${name}</span></a></div></th><td><p>${pos}</p></td><td><p>-1</p></td><td><p>$0</p></td>${r.map((x) => `<td><p>${x}</p></td>`).join('')}<td><p>${r.filter((x) => x !== '-').reduce((a, b) => a + Number(b), 0)}</p></td><td><p>${pts}</p></td></tr>`;
+  const head = ['TOURNAMENT', 'POS', 'TO PAR', 'OFFICIAL MONEY', 'R1', 'R2', 'R3', 'R4', 'TOTAL', 'CME POINTS'];
+  const table = `<table><thead><tr>${head.map((h) => `<th><p>${h}</p></th>`).join('')}</tr></thead><tbody><div>${[
+    row('07/23/2026', 'made-up-links-open', 'Made-up Links Open', 'T44', ['77', '70', '74', '77'], '9.07'),
+    row('06/11/2026', 'dow-championship', 'Dow Championship', 'T30', ['70', '67', '74', '66'], '3.70'),
+  ].join('')}</div></tbody></table>`;
+  return `<!doctype html><html><head><title>Lena Ausgedacht | Results | LPGA (made up)</title></head><body>
+<ul><li>Leaderboard</li><li>Schedule</li></ul>
+<main><h1><span>Lena</span><span>Ausgedacht</span></h1><div><div>143</div></div>
+<div><p>Seasons</p><div><div>2026</div></div></div>
+<h2>Race to CME Globe</h2><div>${fig('134', 'CME Points Rank')}${fig('134', 'CME Points Rank Previous')}${fig('63.688', 'CME Points')}${fig('3,980.187', 'CME Points Behind')}</div>
+<div id="season">…</div></main>
+<script>setTimeout(() => { document.getElementById('season').innerHTML = ${JSON.stringify(table)}; }, 700);</script></body></html>`;
+}
+
 export function pairUrl(target = TARGET, code = CODE): string {
   return `${WEB}/pair#target=${encodeURIComponent(target)}&code=${code}`;
 }
@@ -253,6 +308,8 @@ export class World {
   readonly pgtSaw: { url: string; type: string }[] = [];
   /** Every request that reached europeantour.com: only the pages the player opened. */
   readonly etSaw: { url: string; type: string }[] = [];
+  /** Every request that reached pgatour.com or lpga.com: only the pages the player opened. */
+  readonly seasonSaw: { url: string; type: string }[] = [];
   readonly portal: Portal = { token: null, mode: 'storage' };
   /** How often Trackman's sign-out page was opened. */
   signOuts = 0;
@@ -335,6 +392,20 @@ export class World {
       this.etSaw.push({ url: req.url(), type: req.resourceType() });
       const path = new URL(req.url()).pathname;
       const body = path.startsWith('/players/') ? etResultsPage() : '<!doctype html><title>Players - DP World Tour</title><h1>Players (made up)</h1>';
+      return route.fulfill({ status: 200, body, headers: { 'content-type': 'text/html; charset=utf-8' } });
+    });
+    // The made-up pgatour.com and lpga.com: a player's pages (the rest of the sites: a plain page).
+    await context.route('https://www.pgatour.com/**', (route) => {
+      const req = route.request();
+      this.seasonSaw.push({ url: req.url(), type: req.resourceType() });
+      const path = new URL(req.url()).pathname;
+      const body = path.startsWith('/player/99002/') ? pgaPlayerPage(path) : '<!doctype html><title>PGA Tour (made up)</title><h1>PGA Tour (made up)</h1>';
+      return route.fulfill({ status: 200, body, headers: { 'content-type': 'text/html; charset=utf-8' } });
+    });
+    await context.route('https://www.lpga.com/**', (route) => {
+      const req = route.request();
+      this.seasonSaw.push({ url: req.url(), type: req.resourceType() });
+      const body = new URL(req.url()).pathname.endsWith('/results') ? lpgaResultsPage() : '<!doctype html><title>LPGA (made up)</title><h1>LPGA (made up)</h1>';
       return route.fulfill({ status: 200, body, headers: { 'content-type': 'text/html; charset=utf-8' } });
     });
     // The made-up golf.de: its pages, and its API as the pages' own requests reach it.

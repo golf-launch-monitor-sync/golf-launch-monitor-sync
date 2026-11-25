@@ -15,6 +15,9 @@
  *   own line of a final result (spec/prores.md), and on his *Fetch all* to open those pages as their links do. On
  *   europeantour.com (DP World Tour, HotelPlanner Tour) only a player's pages, read as they show. No request to the
  *   sites of its own.
+ * - **The tours whose player page shows the season** (pgatour.com, lpga.com, epsontour.com): the whole site, because it
+ *   moves to the player's *Results* page without loading it; the line shows only there, and the page is read only when
+ *   the player taps *Send*. No request to the sites.
  * - **A target**: asked for when the player connects one (`optional_host_permissions`), one address
  *   at a time - never every site up front.
  * - No `tabs`, no `webRequest`, no `<all_urls>`. `scripting` only to reach a pairing page that was
@@ -23,7 +26,7 @@
 
 import { PAGE_MATCHES as GOLFDE_MATCHES } from '@glmsync/provider-golfde';
 import { PAGE_MATCHES as RANKING_MATCHES } from '@glmsync/provider-rankings';
-import { europeantour, progolftour } from '@glmsync/provider-tours';
+import { europeantour, progolftour, SEASON_PAGE_MATCHES } from '@glmsync/provider-tours';
 
 export type Browser = 'chrome' | 'firefox';
 
@@ -84,6 +87,8 @@ export function manifest(browser: Browser, version: string, testHosts: string[] 
       { matches: [...progolftour.PAGE_MATCHES], js: ['tours-content.js'], run_at: 'document_idle', all_frames: false },
       // europeantour.com: only a player's pages (DP World Tour, HotelPlanner Tour); the line with *Send*.
       { matches: [...europeantour.PAGE_MATCHES], js: ['europeantour-content.js'], run_at: 'document_idle', all_frames: false },
+      // The tours whose player page shows the season (PGA Tour, Korn Ferry, LPGA, Epson): the line on his Results page.
+      { matches: [...SEASON_PAGE_MATCHES], js: ['season-content.js'], run_at: 'document_idle', all_frames: false },
     ],
     content_security_policy: { extension_pages: CSP },
   };
