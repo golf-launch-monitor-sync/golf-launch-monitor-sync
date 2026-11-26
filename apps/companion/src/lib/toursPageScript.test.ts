@@ -7,7 +7,7 @@ import { alpsHead, alpsOom, alpsRecord, docOf, ET_TITLE, etOverview, etResults, 
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error - a plain script of the build, without types
 import { moduleText, OUT } from '../../scripts/tours-page.mjs';
-import { READ_FUNCTION, readMovedMessage, readPickMessage, readScript, readTourMessage, TABLE_WAIT_MS, WATCH_MS } from './toursPage.ts';
+import { PICK_FUNCTION, pickScript, READ_FUNCTION, readMovedMessage, readPickAnswer, readPickMessage, readScript, readTourMessage, TABLE_WAIT_MS, WATCH_MS } from './toursPage.ts';
 import { TOURS_PAGE_SCRIPT } from './toursPageScript.ts';
 
 describe('the tour window’s page script', () => {
@@ -484,5 +484,123 @@ describe('the page script on the Alps Tour', () => {
     // The page goes on reading where it is now.
     p.read();
     expect(readTourMessage(ALPS_PROFILE, p.posted[1], ASK)).toMatchObject({ ok: true, alps: { player_id: 'tst001' } });
+  });
+});
+
+describe('the page script picks for a run of Fetch all', () => {
+  const PROFILE_URL = 'https://www.alpstourgolf.com/playerprofile/TST001';
+  const flushAll = async () => {
+    for (let i = 0; i < 20; i++) await new Promise((r) => setImmediate(r));
+  };
+
+  /** His Alps Tour profile, made up: its own select of reports, the table it shows, and who listens to its `change`. */
+  function profile() {
+    const heard: ((e: { target?: unknown }) => void)[] = [];
+    const table = { tagName: 'TABLE', textContent: 'Statistics table', getAttribute: () => null, querySelectorAll: () => [] };
+    const events: string[] = [];
+    class HTMLSelectElement {
+      tagName = 'SELECT';
+      textContent = '';
+      opts = ['Statistics', 'This Season record', 'Results', 'Order of Merit'].map((text, i) => ({ text, value: `r${i}`, selected: i === 0 }));
+      get options() {
+        return this.opts;
+      }
+      get value() {
+        return this.opts.find((o) => o.selected)?.value ?? '';
+      }
+      set value(v: string) {
+        for (const o of this.opts) o.selected = o.value === v;
+      }
+      getAttribute() {
+        return null;
+      }
+      querySelectorAll() {
+        return [];
+      }
+      dispatchEvent(e: { type: string }) {
+        events.push(e.type);
+        if (e.type !== 'change') return true;
+        // The site shows the report picked, and the page's own `change` reaches every listener.
+        table.textContent = `${this.opts.find((o) => o.selected)?.text ?? ''} table`;
+        for (const fn of heard) fn({ target: this });
+        return true;
+      }
+    }
+    const select = new HTMLSelectElement();
+    const document = {
+      querySelectorAll: (sel: string) => (sel === 'select' ? [select] : sel === 'table' ? [table] : []),
+      addEventListener: (type: string, fn: (e: { target?: unknown }) => void) => {
+        if (type === 'change') heard.push(fn);
+      },
+    };
+    return { document, select, table, events, HTMLSelectElement };
+  }
+
+  function pageWithPicks() {
+    const page = profile();
+    const p = site(PROFILE_URL, page.document);
+    Object.assign(p.win, {
+      HTMLSelectElement: page.HTMLSelectElement,
+      Event: class {
+        constructor(public type: string) {}
+      },
+    });
+    const pick = (value: string, picker: string | null = null, ask = ASK) => runInNewContext(pickScript(ask, picker, value) as string, p.win);
+    return { ...page, ...p, pick };
+  }
+
+  it('picks in the page\'s own select as a person does (input, change), waits for the new table, and says only how it went', async () => {
+    const w = pageWithPicks();
+    w.pick('Results');
+    await flushAll();
+    expect(w.select.value).toBe('r2');
+    expect(w.events).toEqual(['input', 'change']);
+    expect(w.posted).toEqual([]); // a moment more for the site, as after his own pick
+    w.tick(1500);
+    await flushAll();
+    expect(w.posted.map((d) => readPickAnswer(PROFILE_URL, d, ASK))).toEqual(['picked']);
+    // The run's own pick is no pick of his: the page script didn't tell the app he picked.
+    expect(w.posted.some((d) => readPickMessage(PROFILE_URL, d))).toBe(false);
+    expect(w.posted[0]).not.toContain('table');
+    expect(w.asked).toEqual([]);
+  });
+
+  it('a report shown already, one not offered, a call the app couldn\'t make, a page no run picks on', async () => {
+    const w = pageWithPicks();
+    w.pick('Statistics');
+    await flushAll();
+    w.pick('Weather', null, '1a1b2c3d4e5f60718293');
+    await flushAll();
+    expect(w.posted.map((d) => JSON.parse(d).pick)).toEqual(['already', 'absent']);
+    expect(w.events).toEqual([]);
+    const fn = w.win[PICK_FUNCTION] as (a: unknown, p: unknown, v: unknown) => void;
+    fn('x', null, 'Results');
+    fn(ASK, 7, 'Results');
+    fn(ASK, null, { toString: () => 'Results' });
+    await flushAll();
+    expect(w.posted).toHaveLength(2);
+    expect(w.events).toEqual([]);
+
+    const stats = profile();
+    const q = site('https://www.alpstourgolf.com/stats', stats.document);
+    Object.assign(q.win, { HTMLSelectElement: stats.HTMLSelectElement });
+    runInNewContext(pickScript(ASK, null, 'Results') as string, q.win);
+    await flushAll();
+    expect([q.posted, stats.events]).toEqual([[], []]);
+  });
+
+  it('one pick at a time; his own pick afterwards is his again', async () => {
+    const w = pageWithPicks();
+    w.pick('Results');
+    w.pick('Order of Merit', null, '1a1b2c3d4e5f60718293');
+    await flushAll();
+    w.tick(1500);
+    await flushAll();
+    expect(w.posted.map((d) => JSON.parse(d).pick)).toEqual(['picked']);
+    expect(w.select.value).toBe('r2');
+    // He picks himself now: the app is told, as before.
+    w.select.value = 'r3';
+    w.select.dispatchEvent({ type: 'change' });
+    expect(w.posted.filter((d) => readPickMessage(PROFILE_URL, d))).toHaveLength(1);
   });
 });

@@ -11,6 +11,11 @@
  * - *Send* (on her profile, or on the Order of Merit once a profile was read) reads the page once more and sends her
  *   profile with her rank to every connected app, each after its plan (`ProClient`).
  *
+ * *Fetch all* (decision 57; pickRun.ts, the extension's very run): on her tap on her profile each season of the reach
+ * is picked there for her, then the tour's Order of Merit of each of those seasons is opened (only her line read), at the
+ * extension's pace; at the end her profile with every season read and her rank goes out once, within the reach. While it
+ * runs the window's own reads wait.
+ *
  * Both sites change their address without loading a page; the window tells every move (`moved`, `loaded`), whether the
  * web view saw it or the page script did. Nothing is read without a connection for a pro's pages (as the extension's
  * content script reads nothing then), nothing while the window is closed, and the site is asked nothing. Every keeper
@@ -21,7 +26,8 @@
 import type { OcsKeeper, OcsView } from '@glmsync/browser/ocs';
 import type { ProView } from '@glmsync/browser/pro';
 import type { LinePhase } from '@glmsync/browser/proView';
-import type { ocs } from '@glmsync/provider-tours';
+import { ocs, run as pickRun } from '@glmsync/provider-tours';
+import { PickRunDriver, type FetchAllDeps, type RunState } from './pickRun.ts';
 import { ocsProfileUrl, onOcsOom, onOcsProfile, type TourAnswer } from './toursPage.ts';
 
 /** What the bar adds to the extension's line, as the extension's line does (`ocsLine.*`). */
@@ -34,6 +40,8 @@ export interface OcsState {
   ocs: OcsView | null;
   phase: LinePhase;
   note: OcsNote | null;
+  /** *Fetch all*: the run going on, how the last one ended (none: the window offers no *Fetch all*). */
+  run?: RunState;
 }
 
 export interface OcsSessionDeps {
@@ -46,6 +54,10 @@ export interface OcsSessionDeps {
   /** The player's day, on this phone's clock. */
   today(): string;
   onChange(state: OcsState): void;
+  /** *Fetch all* (none: not offered). */
+  fetchAll?: FetchAllDeps;
+  schedule?: (fn: () => void, ms: number) => unknown;
+  cancel?: (handle: unknown) => void;
 }
 
 export class OcsSession {
@@ -56,7 +68,28 @@ export class OcsSession {
   /** The address of the page shown now (the window tells every move). */
   private shown: string | null = null;
 
-  constructor(private readonly d: OcsSessionDeps) {}
+  /** *Fetch all*'s run (none without it). */
+  private readonly run: PickRunDriver | null;
+
+  constructor(private readonly d: OcsSessionDeps) {
+    this.run = d.fetchAll
+      ? new PickRunDriver({
+          ...d.fetchAll,
+          // Her profile of the season picked, or her line of an Order of Merit the run opened: read when something was kept.
+          look: async (url) => ((await this.readNow(url, false)) === 'kept' ? 'read' : 'unread'),
+          player: (url) => ocs.profileIdOf(url),
+          fresh: async () => undefined,
+          send: () => this.sendRun(),
+          // The keeper replaces another player's profile with her own read; nothing goes now.
+          drop: async () => undefined,
+          failed: () => this.set({ phase: 'error' }),
+          today: d.today,
+          onChange: (run) => this.set({ run }),
+          ...(d.schedule ? { schedule: d.schedule } : {}),
+          ...(d.cancel ? { cancel: d.cancel } : {}),
+        })
+      : null;
+  }
 
   get now(): OcsState {
     return this.state;
@@ -83,9 +116,10 @@ export class OcsSession {
     return onOcsProfile(url) || (onOcsOom(url) && !!this.state.ocs?.who);
   }
 
-  /** The window opened: what is connected and what was kept. */
+  /** The window opened: what is connected and what was kept (and a run left from a window that is gone ended). */
   async start(): Promise<void> {
     await this.loadView();
+    await this.run?.start();
     try {
       const kept = await this.serial(() => this.d.keeper.view(this.d.site));
       this.set({ ocs: kept });
@@ -107,48 +141,55 @@ export class OcsSession {
   /** The window shows another page: whatever the bar said of the last one is over. */
   moved(url: string): void {
     this.shown = url;
+    this.run?.moved(url);
     this.set(this.state.phase === 'reading' ? { note: null } : { phase: 'ready', note: null });
   }
 
   /**
    * Reads the page the window shows and keeps what is hers. `mine`: her tap - a failure says so on the bar; otherwise
-   * only a page the module doesn't know does. True when something can go: her profile read, or on the Order of Merit
-   * (whatever its line said) the profile read before.
+   * only a page the module doesn't know does. `kept`: her profile or her line was read and kept; `oom`: nothing new, but
+   * on the Order of Merit the profile read before can go (whatever its line said); false: nothing can go.
    */
-  private async readNow(url: string, mine: boolean): Promise<boolean> {
+  private async readNow(url: string, mine: boolean): Promise<'kept' | 'oom' | false> {
     const oom = onOcsOom(url);
     const who = oom ? (this.state.ocs?.who?.id ?? null) : null;
     if (oom && !who) return false;
     const a = await this.d.read(who);
+    const none = oom ? 'oom' : false;
     if (!a) {
       if (mine && !oom) this.set({ phase: 'error' });
-      return oom;
+      return none;
     }
     if (!a.ok) {
       if (a.why === 'changed_page') this.set({ phase: 'changed_page' });
       else if (mine) this.set({ phase: 'ready' });
-      return oom;
+      return none;
     }
     if ('ocsUnread' in a) {
       if (a.ocsUnread === 'no_result') this.set({ note: { kind: 'noResults' }, ...(this.state.phase === 'changed_page' ? { phase: 'ready' } : {}) });
       else if (a.ocsUnread === 'not_him') this.set({ note: { kind: 'oomMissing' } });
       else this.set({ phase: 'changed_page' });
-      return oom;
+      return none;
     }
     if (!('ocs' in a)) {
       if (mine) this.set({ phase: 'error' });
-      return oom;
+      return none;
     }
     const seen = a.ocs;
     const kept = await this.serial(() => this.d.keeper.seen(this.d.site, seen.kind === 'profile' ? { profile: seen } : { oom: seen }));
     const note: OcsNote | null = seen.kind === 'oom' && seen.rank !== undefined ? { kind: 'oomRead', rank: seen.rank } : null;
     this.set(this.state.phase === 'changed_page' ? { ocs: kept, note, phase: 'ready' } : { ocs: kept, note });
-    return true;
+    return 'kept';
   }
 
   /** The window finished loading `url`, or the site changed its address to it: a page of hers is read as it shows. */
   async loaded(url: string): Promise<void> {
     this.shown = url;
+    // During a run the page is the run's: it reads after each of its picks and on each Order of Merit it opened.
+    if (this.run?.takes(url)) {
+      await this.run.loaded(url);
+      return;
+    }
     if (this.closed || this.reading || !this.connected || !this.readable(url)) return;
     this.reading = true;
     try {
@@ -162,7 +203,7 @@ export class OcsSession {
 
   /** Her tap on *Send*, on her profile or the Order of Merit: read it once more, then her profile with her rank to every connected app. */
   async send(url: string): Promise<void> {
-    if (this.reading || !this.readable(url)) return;
+    if (this.reading || this.run?.running || !this.readable(url)) return;
     this.reading = true;
     this.set({ phase: 'reading', note: null });
     try {
@@ -187,6 +228,36 @@ export class OcsSession {
     }
   }
 
+  /** Her tap on *Fetch all*, on her profile `url`: each season picked for her, then each season's Order of Merit. */
+  async fetchAll(url: string): Promise<void> {
+    if (!this.run || this.closed || this.reading || !this.connected || !onOcsProfile(url)) return;
+    this.set({ phase: 'ready', note: null });
+    await this.run.fetchAll(url);
+  }
+
+  /** Her tap on *Stop*: the run ends where it is, and what it read goes out. */
+  async stop(): Promise<void> {
+    await this.run?.stop();
+  }
+
+  /** A run ended: her profile with every season read and her rank to every connected app, within the reach. */
+  private async sendRun(): Promise<void> {
+    try {
+      const today = this.d.today();
+      const page = await this.serial(() => this.d.keeper.page(this.d.site, today));
+      if (!page) {
+        this.set({ phase: 'ready' });
+        return;
+      }
+      this.set({ view: await this.d.pro.send(pickRun.withinReach(page, today)), phase: 'done', note: null });
+      // The window opens on her profile next time.
+      const profile = ocsProfileUrl(this.d.site, page.id);
+      if (profile) await this.d.lastPage.set(profile).catch(() => undefined);
+    } catch {
+      this.set({ phase: 'error' });
+    }
+  }
+
   /** Her answer to *Is this page yours?*. */
   async answer(yes: boolean): Promise<void> {
     try {
@@ -196,8 +267,9 @@ export class OcsSession {
     }
   }
 
-  /** The window closes: what was read stays kept for the next *Send*. */
+  /** The window closes: what was read stays kept for the next *Send*; a run going on ends and what it read goes out, as on *Stop*. */
   close(): void {
     this.closed = true;
+    void this.run?.close();
   }
 }

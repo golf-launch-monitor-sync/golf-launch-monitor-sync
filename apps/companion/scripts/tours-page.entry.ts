@@ -23,12 +23,17 @@
  *   tells the app that he picked; the app asks for the read a moment later. The site moves without loading pages too:
  *   watched as the LET's.
  *
- * It reads nothing before it is asked, sends the site nothing and changes nothing the page does.
+ * *Fetch all* (decision 57): on a run's step the app calls its second function with a pick (a season, a tour, a report);
+ * it picks in the page's own picker as a person does it, with the extension's very steps (`operate.pickSettled`: its
+ * `<select>` set with `input` and `change`, a drawn picker pressed and its entry chosen), waits until the page shows the
+ * new table, and tells the app only how the pick went. The app then asks for the read as above.
+ *
+ * It reads nothing before it is asked, picks nothing it isn't asked to, and sends the site nothing of its own.
  * scripts/tours-page.mjs bundles it into src/lib/toursPageScript.ts.
  */
 
-import { alps, europeantour, figuresOf, ocs, progolftour, readSeasonPage, seasonShows, seasonSiteOf, seasonTakes, snapshotOf, type DomDocument, type FigureDocument, type Snapshot } from '@glmsync/provider-tours';
-import { callFits, isAlps, isOcs, isSeason, onTourSite, READ_FUNCTION, TABLE_WAIT_MS, tourSiteOf, TOUR_MESSAGE, watchedSite, WATCH_MS } from '../src/lib/toursPage.ts';
+import { alps, europeantour, figuresOf, ocs, operate, progolftour, readSeasonPage, seasonShows, seasonSiteOf, seasonTakes, snapshotOf, type DomDocument, type FigureDocument, type Snapshot } from '@glmsync/provider-tours';
+import { callFits, isAlps, isOcs, isSeason, onTourSite, PICK_FUNCTION, pickFits, READ_FUNCTION, runPicksOn, TABLE_WAIT_MS, tourSiteOf, TOUR_MESSAGE, watchedSite, WATCH_MS } from '../src/lib/toursPage.ts';
 
 declare const window: {
   ReactNativeWebView?: { postMessage(data: string): void };
@@ -36,6 +41,34 @@ declare const window: {
   location: { href: string };
   setTimeout(fn: () => void, ms: number): unknown;
   setInterval?(fn: () => void, ms: number): unknown;
+};
+
+/**
+ * A person's press and the browser's own way to set a select: the events the page's scripts listen for (as the
+ * extension's content script makes them, apps/extension/src/tour-run.ts).
+ */
+const pageEnv: operate.OpEnv = {
+  press(el) {
+    const e = el as unknown as HTMLElement;
+    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
+      const init = { bubbles: true, cancelable: true, composed: true, button: 0, buttons: type.endsWith('down') ? 1 : 0 };
+      e.dispatchEvent(type.startsWith('pointer') && typeof PointerEvent === 'function' ? new PointerEvent(type, init) : new MouseEvent(type, init));
+    }
+    e.click();
+  },
+  choose(select, value) {
+    const s = select as unknown as HTMLSelectElement;
+    // The element's own setter, so a page that watches the property sees the change as from a person.
+    const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+    if (set) set.call(s, value);
+    else s.value = value;
+    s.dispatchEvent(new Event('input', { bubbles: true }));
+    s.dispatchEvent(new Event('change', { bubbles: true }));
+  },
+  escape(el) {
+    (el as unknown as HTMLElement).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
+  },
+  sleep: (ms) => new Promise<void>((resolve) => void window.setTimeout(resolve, ms)),
 };
 
 /** The phone's day, should the app's ask not name it (an older app's call): europeantour.com's results need it. */
@@ -48,6 +81,8 @@ try {
   // Only in the tours' own pages (the window shows no others; the guard is for a page that got there anyway).
   if (onTourSite(window.location.href)) {
     let reading = false;
+    /** A pick of *Fetch all* is being done: the page's `change` is the run's, which asks for its read itself. */
+    let picking = false;
     const post = (ask: string, what: object) => {
       try {
         window.ReactNativeWebView?.postMessage(JSON.stringify({ glmsync: TOUR_MESSAGE, ask, ...what }));
@@ -261,6 +296,29 @@ try {
         }
       },
     });
+    // *Fetch all*: a pick the app's run asks for, in the page's own picker as a person does it, waited for until the page
+    // shows it; only how it went goes to the app (`picked`, `already`, `absent`: not offered, `missing`: no such picker).
+    Object.defineProperty(window, PICK_FUNCTION, {
+      value: (ask: unknown, picker: unknown, value: unknown) => {
+        try {
+          if (reading || picking || !pickFits(ask, picker, value) || !runPicksOn(window.location.href)) return;
+          picking = true;
+          operate
+            // pickFits checked both: the label (or null) and the value, as a run writes them.
+            .pickSettled(window.document as unknown as operate.OpRoot, { picker: picker as string | null, value: value as string }, pageEnv)
+            .then(
+              (outcome) => outcome,
+              () => 'missing' as const, // a page whose pickers can't be worked: nothing picked
+            )
+            .then((outcome) => {
+              picking = false;
+              post(ask, { pick: outcome });
+            });
+        } catch {
+          picking = false;
+        }
+      },
+    });
     // europeantour.com: another season or tour picked in the page's own select; the Alps Tour: another report. Only that
     // he picked goes to the app (nothing read, nothing of his); the app asks for the read a moment later, once the site
     // shows the new table.
@@ -270,7 +328,7 @@ try {
         try {
           const tag = (e?.target as { tagName?: unknown } | undefined)?.tagName;
           const at = window.location.href;
-          if (typeof tag !== 'string' || tag.toLowerCase() !== 'select' || !(europeantour.playerPageOf(at) || (isAlps(tourSiteOf(at)) && alps.profileIdOf(at)))) return;
+          if (picking || typeof tag !== 'string' || tag.toLowerCase() !== 'select' || !(europeantour.playerPageOf(at) || (isAlps(tourSiteOf(at)) && alps.profileIdOf(at)))) return;
           window.ReactNativeWebView?.postMessage(JSON.stringify({ glmsync: TOUR_MESSAGE, picked: true }));
         } catch {
           // never in the page's way

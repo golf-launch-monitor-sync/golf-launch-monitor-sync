@@ -161,7 +161,9 @@ tap. `run.ts` holds what all share:
 - **The pick in the page** (`operate.ts`): a `<select>` set to one of its own options with its `input` and `change`, or
   a picker the page draws (a button or combobox whose text is its label and the value it shows) pressed, and the entry
   of its menu or list box pressed; *Escape* when the entry isn't there. Only the page's own controls; nothing is asked
-  of the site, and the page is read afterwards exactly as when the player picks.
+  of the site, and the page is read afterwards exactly as when the player picks. `pickSettled` waits as a person would:
+  for a picker the page is still drawing, then until the picker shows the value and the page's tables changed, then a
+  moment more - the same in the extension's content script and the companion app's page script.
 
 Each tour's steps are in its own file (`alps-run.ts`, `europeantour-run.ts`, `ocs-run.ts`, `season-run.ts`), together
 in `tour-runs.ts` (`runPlanOf`, `runMayOpen`, `runFamilyOf`). The Pro Golf Tour's run opens tournament pages instead
@@ -200,6 +202,7 @@ companion app the same in its own window (`apps/companion`: `ToursView` with the
 `scripts/tours-page.entry.ts`; `toursSession.ts` over the same `TourKeeper`, run and `ProClient` for the Pro Golf Tour,
 `etSession.ts` over the same `EtKeeper` for europeantour.com, `ocsSession.ts` over the same `OcsKeeper` for the LET and
 the LET Access Series, `seasonSession.ts` for the season pages, read on *Send* through `readSeasonPage` and `figuresOf`
-as in the extension, `alpsSession.ts` over the same `AlpsKeeper` for the Alps Tour, since companion 0.9.0). A new tour
+as in the extension, `alpsSession.ts` over the same `AlpsKeeper` for the Alps Tour, since companion 0.9.0; *Fetch all* on
+those four since companion 0.11.0, `pickRun.ts` over the same `RunKeeper`, `SeasonKeeper` and plans). A new tour
 joins the app's window with its module's reading in the page script and its pages in `src/lib/toursPage.ts`; the window
 shows only the sites it reads (`APP_TOURS`): every tour the extension reads, so far.

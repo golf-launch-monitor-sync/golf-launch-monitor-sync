@@ -144,3 +144,37 @@ export async function pick(root: OpRoot, p: Pick, env: OpEnv): Promise<PickResul
   env.escape(trigger.el);
   return 'absent';
 }
+
+/** After a pick, the site needs a moment to show the new table (as after the player's own pick). */
+export const AFTER_PICK_MS = 1500;
+/** How long a page still drawing itself may take to show the picker, and then to show what was picked. */
+export const PICK_WAIT_MS = 5000;
+
+/** The text of the page's tables, to see when a pick changed them. */
+export function tablesText(root: OpRoot): string {
+  return each(root.querySelectorAll('table'), 20)
+    .map((t) => t.textContent ?? '')
+    .join('|');
+}
+
+/**
+ * A pick as a person does it, waited for until the page shows its outcome - the same in every client (the extension's
+ * content script, the companion app's page script). A page still drawing itself (a tap right after it opened) has no
+ * picker yet: looked for again for a little. After a pick, a select shows its new value at once and the table a moment
+ * later: waited for until the picker shows it and the page's tables changed (or a while passed, if they don't), then a
+ * moment more - so the table of the season before is never read as the new one.
+ */
+export async function pickSettled(root: OpRoot, p: Pick, env: OpEnv, now: () => number = Date.now): Promise<PickResult> {
+  const before = tablesText(root);
+  let done = await pick(root, p, env);
+  for (let waited = 0; done === 'missing' && waited < PICK_WAIT_MS; waited += 500) {
+    await env.sleep(500);
+    done = await pick(root, p, env);
+  }
+  if (done === 'picked') {
+    const started = now();
+    while ((!shows(root, p) || tablesText(root) === before) && now() - started < PICK_WAIT_MS) await env.sleep(250);
+    await env.sleep(AFTER_PICK_MS);
+  }
+  return done;
+}

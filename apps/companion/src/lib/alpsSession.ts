@@ -10,6 +10,10 @@
  * `@glmsync/browser/alps`, shared with the extension), and *Send* reads the report once more and sends his season with
  * its rounds and his rank to every connected app, each after its plan (`ProClient`).
  *
+ * *Fetch all* (decision 57; pickRun.ts, the extension's very run): on his tap on his profile the three reports are
+ * picked for him under *Select Report*, one after the other at the extension's pace, each read as above; at the end his
+ * season goes out once, within the reach. While it runs the window's own reads wait.
+ *
  * The site changes its address without loading a page; the window tells every move (`moved`, `loaded`), whether the web
  * view saw it or the page script did. Nothing is read without a connection for a pro's pages (as the extension's content
  * script reads nothing then), nothing while the window is closed, and the site is asked nothing. Every keeper call runs
@@ -20,6 +24,8 @@
 import type { AlpsKeeper, AlpsView } from '@glmsync/browser/alps';
 import type { ProView } from '@glmsync/browser/pro';
 import type { LinePhase } from '@glmsync/browser/proView';
+import { alps as alpsTour, run as pickRun } from '@glmsync/provider-tours';
+import { PickRunDriver, type FetchAllDeps, type RunState } from './pickRun.ts';
 import { AFTER_PICK_MS, onAlpsProfile, type TourAnswer } from './toursPage.ts';
 
 export interface AlpsState {
@@ -28,6 +34,8 @@ export interface AlpsState {
   unread: boolean;
   alps: AlpsView | null;
   phase: LinePhase;
+  /** *Fetch all*: the run going on, how the last one ended (none: the window offers no *Fetch all*). */
+  run?: RunState;
 }
 
 export interface AlpsSessionDeps {
@@ -39,6 +47,8 @@ export interface AlpsSessionDeps {
   /** The player's day, on this phone's clock. */
   today(): string;
   onChange(state: AlpsState): void;
+  /** *Fetch all* (none: not offered). */
+  fetchAll?: FetchAllDeps;
   schedule?: (fn: () => void, ms: number) => unknown;
   cancel?: (handle: unknown) => void;
 }
@@ -53,10 +63,28 @@ export class AlpsSession {
   private shown: string | null = null;
   private readonly schedule: (fn: () => void, ms: number) => unknown;
   private readonly cancel: (handle: unknown) => void;
+  /** *Fetch all*'s run (none without it). */
+  private readonly run: PickRunDriver | null;
 
   constructor(private readonly d: AlpsSessionDeps) {
     this.schedule = d.schedule ?? ((fn, ms) => setTimeout(fn, ms));
     this.cancel = d.cancel ?? ((h) => clearTimeout(h as ReturnType<typeof setTimeout>));
+    this.run = d.fetchAll
+      ? new PickRunDriver({
+          ...d.fetchAll,
+          look: async () => ((await this.readNow(false)) ? 'read' : 'unread'),
+          player: (url) => alpsTour.profileIdOf(url),
+          fresh: async () => undefined,
+          send: () => this.sendRun(),
+          // The keeper replaces another player's reports with his own read; nothing goes now.
+          drop: async () => undefined,
+          failed: () => this.set({ phase: 'error' }),
+          today: d.today,
+          onChange: (run) => this.set({ run }),
+          ...(d.schedule ? { schedule: d.schedule } : {}),
+          ...(d.cancel ? { cancel: d.cancel } : {}),
+        })
+      : null;
   }
 
   get now(): AlpsState {
@@ -84,9 +112,10 @@ export class AlpsSession {
     return !!this.state.view?.pairings.length;
   }
 
-  /** The window opened: what is connected and what was kept. */
+  /** The window opened: what is connected and what was kept (and a run left from a window that is gone ended). */
   async start(): Promise<void> {
     await this.loadView();
+    await this.run?.start();
     try {
       const alps = await this.serial(() => this.d.keeper.view());
       this.set({ alps });
@@ -109,6 +138,7 @@ export class AlpsSession {
   moved(url: string): void {
     this.shown = url;
     this.clearTimer();
+    this.run?.moved(url);
     if (this.state.phase !== 'reading') this.set({ phase: 'ready' });
   }
 
@@ -152,12 +182,17 @@ export class AlpsSession {
   /** The window finished loading `url` (or the site moved there): his profile is read as it shows. */
   async loaded(url: string): Promise<void> {
     this.shown = url;
+    // During a run the page is the run's: it reads after each of its picks.
+    if (this.run?.takes(url)) {
+      await this.run.loaded(url);
+      return;
+    }
     await this.look(url);
   }
 
   /** He picked another report in the page's own select: read again a moment later, once the site shows it. */
   picked(url: string): void {
-    if (this.closed || !this.connected || !onAlpsProfile(url) || url !== this.shown) return;
+    if (this.closed || this.run?.running || !this.connected || !onAlpsProfile(url) || url !== this.shown) return;
     this.clearTimer();
     this.timer = this.schedule(() => {
       this.timer = null;
@@ -170,7 +205,7 @@ export class AlpsSession {
 
   /** His tap on *Send*, on his profile `url`: read the report once more, then his season to every connected app. */
   async send(url: string): Promise<void> {
-    if (this.reading || !onAlpsProfile(url)) return;
+    if (this.reading || this.run?.running || !onAlpsProfile(url)) return;
     this.reading = true;
     this.clearTimer(); // the read now takes in a pick waiting
     this.set({ phase: 'reading' });
@@ -191,6 +226,36 @@ export class AlpsSession {
     }
   }
 
+  /** His tap on *Fetch all*, on his profile `url`: the three reports picked for him, one after the other. */
+  async fetchAll(url: string): Promise<void> {
+    if (!this.run || this.closed || this.reading || !this.connected || !onAlpsProfile(url)) return;
+    this.clearTimer(); // the run reads the report shown itself
+    this.set({ phase: 'ready' });
+    await this.run.fetchAll(url);
+  }
+
+  /** His tap on *Stop*: the run ends where it is, and what it read goes out. */
+  async stop(): Promise<void> {
+    await this.run?.stop();
+  }
+
+  /** A run ended: his season as read goes to every connected app, within the reach (two years, at most 50 tournaments). */
+  private async sendRun(): Promise<void> {
+    try {
+      const today = this.d.today();
+      const page = await this.serial(() => this.d.keeper.page(today));
+      if (!page) {
+        // Nothing read that could go: the bar says which report to pick.
+        this.set({ phase: 'ready' });
+        return;
+      }
+      this.set({ view: await this.d.pro.send(pickRun.withinReach(page, today)), phase: 'done' });
+      if (this.shown && onAlpsProfile(this.shown)) await this.d.lastPage.set(this.shown).catch(() => undefined);
+    } catch {
+      this.set({ phase: 'error' });
+    }
+  }
+
   /** His answer to *Is this page yours?*. */
   async answer(yes: boolean): Promise<void> {
     try {
@@ -200,9 +265,13 @@ export class AlpsSession {
     }
   }
 
-  /** The window closes: a pick waiting is dropped; what was read stays kept for the next *Send*. */
+  /**
+   * The window closes: a pick waiting is dropped; what was read stays kept for the next *Send*. A run going on ends and
+   * what it read goes out, as on *Stop*.
+   */
   close(): void {
     this.closed = true;
     this.clearTimer();
+    void this.run?.close();
   }
 }

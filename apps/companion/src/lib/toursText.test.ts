@@ -191,3 +191,53 @@ describe('the tour window’s bar on the Alps Tour', () => {
     expect(alpsBar(null, all, ALPS_PROFILE, 'ready', 'en', app).text).toBe('');
   });
 });
+
+describe('Fetch all on the bars of the tours whose pages show a part at a time (decision 57)', () => {
+  const ALPS = 'https://www.alpstourgolf.com/playerprofile/TST001';
+  const ET = 'https://www.europeantour.com/players/jonas-beispiel-99002/results/?tour=dpworld-tour';
+  const LET = 'https://letaccess.com/player-profiles/990001/';
+  const LET_OOM = 'https://letaccess.com/letas-order-of-merits?id=2026&oom=LO';
+  const PGA_STATS = 'https://www.pgatour.com/player/99002/max-erfunden/stats';
+  const idle = { view: { running: null, ended: null }, limit: false };
+  const running = (family: 'alps' | 'europeantour' | 'tour:let_access' | 'pgatour') => ({ view: { running: { family, done: 2, total: 9, tab: 1 }, ended: null }, limit: false });
+  const read = { who: 'Paul Platzhalter', read: null, totals: false, rank: null };
+
+  it('offers Fetch all where the extension\'s line does (his Alps profile, any page of his on europeantour.com, her profile, Results and Stats); not without it', () => {
+    expect(alpsBar(view(), read, ALPS, 'ready', 'en', app, idle)).toMatchObject({ fetchAll: true, send: true });
+    // Before anything was read, the bar points to Fetch all first, as the extension's line does.
+    expect(alpsBar(view(), read, ALPS, 'ready', 'en', app, idle).text).toContain('Fetch all');
+    expect(etBar(view(), ET, 'ready', null, 'en', app, idle)).toMatchObject({ fetchAll: true });
+    expect(ocsBar(view(), null, 'tour:let_access', LET, 'ready', null, 'en', app, idle)).toMatchObject({ fetchAll: true });
+    expect(ocsBar(view(), { who: { id: '990001', name: 'Mia Muster' } } as never, 'tour:let_access', LET_OOM, 'ready', null, 'en', app, idle)).toMatchObject({ fetchAll: false, send: true });
+    expect(seasonBar(view(), 'tour:pga_tour', PGA_STATS, 'ready', null, 'en', app, idle)).toMatchObject({ fetchAll: true });
+    // Without Fetch all handed in (an older window), and while a read goes on: not offered.
+    expect(alpsBar(view(), read, ALPS, 'ready', 'en', app)).toMatchObject({ fetchAll: false });
+    expect(etBar(view(), ET, 'reading', null, 'en', app, idle)).toMatchObject({ fetchAll: false });
+    // Elsewhere on the site: where his page is.
+    expect(alpsBar(view(), read, 'https://www.alpstourgolf.com/stats', 'ready', 'en', app, idle)).toEqual({ text: '[tours.findAlps]', warn: false, send: false, fetchAll: false, stop: false, ask: false });
+  });
+
+  it('while a run goes on, only how far it got and Stop, in the extension\'s words', () => {
+    const want = { text: 'Hole alles für dich: Schritt 2 von 9 …', warn: false, send: false, fetchAll: false, stop: true, ask: false };
+    expect(alpsBar(view(), read, ALPS, 'ready', 'de', app, running('alps'))).toEqual(want);
+    expect(etBar(view(), ET, 'ready', null, 'de', app, running('europeantour'))).toEqual(want);
+    expect(ocsBar(view(), null, 'tour:let_access', LET_OOM, 'ready', null, 'de', app, running('tour:let_access'))).toEqual(want);
+    expect(seasonBar(view(), 'tour:pga_tour', PGA_STATS, 'ready', null, 'de', app, running('pgatour'))).toEqual(want);
+    // A question still comes first: it waits for his answer.
+    const question = { site: 'tour:alps', siteName: 'Alps Tour', name: 'Paul Platzhalter', targets: [], at: '2026-11-26T10:00:00Z' };
+    expect(alpsBar(view({ question } as unknown as Partial<ProView>), read, ALPS, 'ready', 'en', app, running('alps'))).toMatchObject({ ask: true, stop: false });
+  });
+
+  it('refused today, or stopped by a page that didn\'t answer or another player\'s: said so; a run he stopped or that ran through: the send says it', () => {
+    expect(etBar(view(), ET, 'ready', null, 'en', app, { ...idle, limit: true }).text).toBe('Fetch all has run often enough today; tomorrow again.');
+    const other = { view: { running: null, ended: { family: 'alps' as const, how: 'other_player' as const } }, limit: false };
+    expect(alpsBar(view(), read, ALPS, 'ready', 'en', app, other)).toMatchObject({ text: 'Fetch all stopped: another player’s page opened. Nothing was sent.', warn: true, fetchAll: true });
+    const sent = view({ pairings: [pairing({ at: '2026-11-26T10:00:00Z', site: 'tour:pga_tour', status: 'sent', tournaments: 3 })] });
+    const missed = { view: { running: null, ended: { family: 'pgatour' as const, how: 'no_answer' as const } }, limit: false };
+    expect(seasonBar(sent, 'tour:pga_tour', PGA_STATS, 'done', null, 'en', app, missed).text).toBe('Fetch all stopped: the page didn’t answer. What was read so far went out.');
+    const done = { view: { running: null, ended: { family: 'pgatour' as const, how: 'done' as const } }, limit: false };
+    expect(seasonBar(sent, 'tour:pga_tour', PGA_STATS, 'done', null, 'en', app, done, 'tour:pga_tour').text).toBe('Sent to Example App.');
+    // Another tour's run says nothing here.
+    expect(etBar(view(), ET, 'ready', null, 'en', app, other).text).not.toContain('stopped');
+  });
+});

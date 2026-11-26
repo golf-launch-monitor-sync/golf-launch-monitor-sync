@@ -164,7 +164,7 @@ portal in a sign-in window - so that window lives here, in a small app that does
   `EtKeeper` (`@glmsync/browser/europeantour`); when he picks another season or tour in the page's own select, the page
   script only posts that he picked (`readPickMessage`: nothing read, nothing of his) and the app asks for the read
   1.5 s later. *Send*, on any page of his, reads it once more and sends a page per tour with something of it
-  (`src/lib/etSession.ts`). No *Fetch all*: his *Wins & Results* page has the rounds, a season at a time. A read is
+  (`src/lib/etSession.ts`). *Fetch all* since 0.11.0 (below). A read is
   taken only of the player whose page the window shows (`readTourMessage`), only with a connection for a pro's pages,
   only while the window is open.
   **The LET and the LET Access Series** (ladieseuropeantour.com, letaccess.com; companion 0.6.0): a window per tour
@@ -176,7 +176,7 @@ portal in a sign-in window - so that window lives here, in a small app that does
   page once more and sends her profile with her rank of that season (`src/lib/ocsSession.ts`, the bar's words `ocsBar`).
   Both sites change their address without loading a page, which the web view doesn't always tell: the page script looks
   at the address every second and posts only that it changed (`readMovedMessage`), and the window takes its address as
-  a new page. No *Fetch all*: her profile has the rounds. A profile is taken only of the profile the window shows, a
+  a new page. *Fetch all* on her profile since 0.11.0 (below). A profile is taken only of the profile the window shows, a
   line only from that tour's Order of Merit (`readTourMessage`), only with a connection for a pro's pages, only while the
   window is open.
   **The season pages** (PGA Tour and Korn Ferry Tour on pgatour.com, LPGA Tour, Epson Tour; companion 0.7.0): his
@@ -191,7 +191,7 @@ portal in a sign-in window - so that window lives here, in a small app that does
   so. These sites move between their pages without loading them too, so the page script watches their address as on
   the LET's. A season is taken only from his *Results* page, only of the player whose page the window shows, only of a
   tour of that site (`readTourMessage`), only with a connection for a pro's pages, only while the window is open; the
-  window opens on that page next time. No *Fetch all*: nothing needs opening.
+  window opens on that page next time. *Fetch all* on *Results* and *Stats* since 0.11.0 (below).
   **The Alps Tour** (alpstourgolf.com; companion 0.9.0): a window of its own (*Open Alps Tour* opens the site's Order of
   Merit, where he finds his name), the extension's way there: his profile (`/playerprofile/<code>`) shows one report at a
   time under *Select Report*, and the report shown is read once his profile has loaded (`alps.readPage`, his name from
@@ -203,7 +203,25 @@ portal in a sign-in window - so that window lives here, in a small app that does
   season's tournaments that are over, with their rounds, and his rank (`src/lib/alpsSession.ts`). The site changes its
   address without loading a page, so the page script watches it as on the LET's. A report is taken only of the profile
   the window shows (`readTourMessage`), only with a connection for a pro's pages, only while the window is open; the
-  window opens on his profile next time. No *Fetch all*: his profile has the rounds.
+  window opens on his profile next time. *Fetch all* on his profile since 0.11.0 (below).
+  **Fetch all on every tour** (companion 0.11.0; decision 57 of the target's owner, the extension's *Fetch all on every
+  tour* since its 0.21.0): where he picks a part at a time - the Alps Tour's reports, europeantour.com's seasons and
+  tours, the LET's seasons and Orders of Merit, the season pages' seasons and tours on *Results* and *Stats* - *Fetch
+  all* in the bar does those picks for him, in the window, one step at a time. The run is the extension's: planned only
+  from the window's address on his tap (`runPlanOf`), kept by its `RunKeeper` (`@glmsync/browser/runs`, three runs a day
+  per tour, the window being its one tab), at its pace (6-10 s after each answer, 30 s for an answer, three without one
+  end it, at most 30 steps); it opens only his own pages there (`runMayOpen`, checked before each open) and picks only in
+  the page's own pickers. A pick is the page script's second function (`pickScript`): it picks as a person does, with the
+  extension's very steps (`operate.pickSettled`: a `<select>` set with `input` and `change`, a picker the page draws
+  pressed and its entry chosen, then waited for until the new table shows), and posts only how it went
+  (`readPickAnswer`: `picked`, `already`, `absent`, `missing`); the page's own `change` of that pick isn't told the app
+  as his. After each pick, and on each page the run opened once it has loaded, the app asks for the read as always and
+  keeps it as always (the season pages' reads in the extension's `SeasonKeeper` until the run ends). At the end (or on
+  *Stop*, or when the window closes) what was read goes out once, within the reach (the last two years, at most 50
+  tournaments, `run.withinReach`); another player's page opened meanwhile ends it, and nothing goes. While it runs the
+  bar says *Fetching all for you: step n of m* with only *Stop*; the window's own reads and *Send* wait. A run of a
+  window that is gone (the app was closed during it) ends when a window opens again; what it read stays kept. The run
+  without the window lives in `src/lib/pickRun.ts`, each tour's part in its session.
 - **Demo**: a made-up player (`@glmsync/provider-demo`) for trying the app without an account, and
   for app reviews. Its "requests" go through the guard too, so counters and log behave as for real.
 - **Save as file**: a sync into an olmd file (the share sheet), planned gently by the file target -
@@ -256,6 +274,8 @@ share the web view's cookies), and whether iOS lets a web view behind the screen
 | What his pages on europeantour.com showed, merged: his ranks, his tournaments with their rounds of the seasons he picked, his season statistics (the extension's `EtKeeper`) | app storage; another player's page replaces it all |
 | Per tour of the LET's her profile of each season read and her line of each season's Order of Merit (the extension's `OcsKeeper`; one season only until 0.20.0 of the extension) | app storage; another player's profile replaces it |
 | The reports of his Alps Tour profile he picked, merged: the season's tournaments with their rounds, the totals to par, his line per season of the Order of Merit (the extension's `AlpsKeeper`) | app storage; another player's profile replaces it all |
+| *Fetch all* on the other tours (since 0.11.0): the run going on in the tour window with its steps, and the starts of each tour's runs of the last day (the extension's `RunKeeper`) | app storage; a run ends at its end, on *Stop*, when the window closes, or when a window opens after the app was closed during it |
+| The season pages (PGA Tour, Korn Ferry Tour, LPGA Tour, Epson Tour) a run of *Fetch all* read, merged per tour (the extension's `SeasonKeeper`) | app storage, until the run ends and they go out (or another player's page ends it); a new run starts without them |
 | The sites' cookies (a consent banner's choice) | the window's web view, on this phone |
 
 Android backups leave the secure store out (`allowBackup: false`). A sign-in goes to the provider

@@ -34,20 +34,33 @@
  * script reads the report shown once his profile has loaded, again a moment after he picks another (it only says that he
  * picked, `PICKED`, as on europeantour.com), and on his tap on *Send*; the app keeps the reports merged. The site changes
  * its address without loading a page, so the page script watches it as on the LET's.
+ *
+ * *Fetch all* on these tours (decision 57; `run` and `tour-runs` of `@glmsync/provider-tours`, the extension's very
+ * runs): on his tap the app plans the run from the window's address and takes its steps one at a time at the
+ * extension's pace - an open is the window going to one of his own pages there, a pick the page script picking in the
+ * page's own picker as a person does it (`pickScript`, `operate.pickSettled`), after which the app asks for a read as
+ * always. The page script only says how the pick went (`readPickAnswer`), never what the page showed.
  */
 
-import { alps, checkTourPage, europeantour, isSeasonSite, isTourSite, lpga, ocs, pgatour, progolftour, seasonSiteOf, TOUR_SITES, type TourPage, type TourSite } from '@glmsync/provider-tours';
+import { alps, checkTourPage, europeantour, isSeasonSite, isTourSite, lpga, ocs, type operate, pgatour, progolftour, seasonSiteOf, TOUR_SITES, type TourPage, type TourSite } from '@glmsync/provider-tours';
 
 /** What the page script posts (and nothing else counts): its tag, the app's ask it answers, and what it read or why not. */
 export const TOUR_MESSAGE = 'tour-page';
 /** The function the page script gives the page, which the app calls (`readScript`). */
 export const READ_FUNCTION = '__glmsyncReadTour';
+/** The function the page script gives the page for a pick of *Fetch all*, which the app calls (`pickScript`). */
+export const PICK_FUNCTION = '__glmsyncPickTour';
 /** How long the page script waits for the page's table (the site fills the final result in a moment after the page). */
 export const TABLE_WAIT_MS = 10_000;
 /** How long the app waits for the page script's answer before it takes the read as failed. */
 export const ANSWER_MS = TABLE_WAIT_MS + 10_000;
 /** After a pick in the page's own select, the site needs a moment to show the new table (as in the extension). */
 export const AFTER_PICK_MS = 1500;
+/**
+ * How long the app waits for a pick of *Fetch all* to be done in the page (a picker still drawn, its list opened, the
+ * new table waited for: `operate.pickSettled`) before it takes the pick as failed.
+ */
+export const PICK_ANSWER_MS = 25_000;
 /** How often the page script looks at the address of the LET's sites (they change it without loading a page; as the extension). */
 export const WATCH_MS = 1000;
 /**
@@ -221,6 +234,44 @@ export function readScript(ask: string, who: string | null, today: string | null
 /** Whether a call of the page script's function is one the app could have made. */
 export function callFits(ask: unknown, who: unknown, today?: unknown): ask is string {
   return typeof ask === 'string' && ASK.test(ask) && whoFits(who) && dayFits(today);
+}
+
+/** A picker's label or a value to pick as the runs write them ("Season", "2025", "This Season record"). */
+const pickWordFits = (v: unknown, most: number): v is string => typeof v === 'string' && v.length >= 1 && v.length <= most && !/[\u0000-\u001f]/.test(v);
+
+/** Whether a pick is one a run makes: the picker's label (or none: the page's `<select>`) and a value. */
+export function pickFits(ask: unknown, picker: unknown, value: unknown): ask is string {
+  return typeof ask === 'string' && ASK.test(ask) && (picker === null || pickWordFits(picker, 40)) && pickWordFits(value, 80);
+}
+
+/**
+ * The script the app injects for a pick of *Fetch all*: it only calls the page script's pick function with the ask and
+ * the pick (a run's step, `run.PickStep`). null when the values aren't ones the app makes.
+ */
+export function pickScript(ask: string, picker: string | null, value: string): string | null {
+  if (!pickFits(ask, picker, value)) return null;
+  return `(function(){try{var f=window[${JSON.stringify(PICK_FUNCTION)}];if(typeof f==='function')f(${JSON.stringify(ask)},${JSON.stringify(picker)},${JSON.stringify(value)});}catch(e){}})();true;`;
+}
+
+/** A page a run of *Fetch all* picks on: his Alps Tour profile, his page on europeantour.com, her LET profile, his *Results* or *Stats*. */
+export const runPicksOn = (url: unknown): boolean => onAlpsProfile(url) || onEtPage(url) || onOcsProfile(url) || onSeasonResults(url);
+
+const PICK_RESULTS: ReadonlySet<string> = new Set(['picked', 'already', 'absent', 'missing']);
+
+/**
+ * The page script's answer to a pick (how it went, nothing the page showed): only from a page a run picks on, only in
+ * exactly that shape, only answering the app's open ask. null: not one.
+ */
+export function readPickAnswer(pageUrl: unknown, data: unknown, ask: string | null): operate.PickResult | null {
+  if (!ask || !runPicksOn(pageUrl) || typeof data !== 'string' || data.length > 200) return null;
+  try {
+    const m = JSON.parse(data) as unknown;
+    if (!m || typeof m !== 'object' || Array.isArray(m) || Object.keys(m).length !== 3) return null;
+    const { glmsync, ask: answers, pick } = m as { glmsync?: unknown; ask?: unknown; pick?: unknown };
+    return glmsync === TOUR_MESSAGE && answers === ask && typeof pick === 'string' && PICK_RESULTS.has(pick) ? (pick as operate.PickResult) : null;
+  } catch {
+    return null;
+  }
 }
 
 export type Unread = progolftour.Unread['why'];

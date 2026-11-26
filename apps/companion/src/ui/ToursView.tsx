@@ -20,13 +20,18 @@
  *   has loaded and again a moment after he picks another, kept merged, and *Send* sends his season with its rounds and
  *   his rank (lib/alpsSession.ts). The site moves without loading pages too, watched as the LET's.
  *
+ * *Fetch all* (decision 57) on the Alps Tour, europeantour.com, the LET's and the season pages: the extension's very
+ * run (lib/pickRun.ts) - his own pages there opened in the window, the page's own pickers picked by the page script as a
+ * person picks them, each page read as above, at the extension's pace; *Stop* in the bar, and closing the window ends
+ * it and sends what it read.
+ *
  * The page loads as this phone's web view is: its own engine and user agent, nothing added. The app sends the site
  * nothing of its own, and nothing the page opens leaves the window (lib/toursPage.ts, `tourWindowRules`). The window
  * opens on his page last sent from here, else on the tour's list of players, where he finds his name.
  */
 
 import { translator } from '@glmsync/browser/i18n';
-import { TOUR_SITES, type TourSite } from '@glmsync/provider-tours';
+import { TOUR_SITES, type operate, type TourSite } from '@glmsync/provider-tours';
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { WebView, type WebViewMessageEvent, type WebViewNavigation } from 'react-native-webview';
@@ -37,7 +42,8 @@ import { AlpsSession, type AlpsState } from '../lib/alpsSession';
 import { EtSession, type EtState } from '../lib/etSession';
 import { OcsSession, type OcsState } from '../lib/ocsSession';
 import { SeasonSession, type SeasonState } from '../lib/seasonSession';
-import { ANSWER_MS, isAlps, isEt, isOcs, isSeason, keptTourPage, openInTourWindow, readMovedMessage, readPickMessage, readScript, readTourMessage, sameWindow, tourWindowRules, type TourAnswer } from '../lib/toursPage';
+import type { FetchAllDeps } from '../lib/pickRun';
+import { ANSWER_MS, isAlps, isEt, isOcs, isSeason, keptTourPage, openInTourWindow, PICK_ANSWER_MS, pickScript, readMovedMessage, readPickAnswer, readPickMessage, readScript, readTourMessage, sameWindow, tourWindowRules, type TourAnswer } from '../lib/toursPage';
 import { TOURS_PAGE_SCRIPT } from '../lib/toursPageScript';
 import { TourSession, type TourState } from '../lib/toursSession';
 import { alpsBar, etBar, ocsBar, seasonBar, toursBar } from '../lib/toursText';
@@ -67,6 +73,8 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
   const web = useRef<WebView<object>>(null);
   /** The open ask to the page script, with how to hand its answer back. */
   const ask = useRef<{ id: string; resolve: (a: TourAnswer | null) => void; timer: ReturnType<typeof setTimeout> } | null>(null);
+  /** The open pick of *Fetch all* in the page, with how to hand its outcome back. */
+  const picking = useRef<{ id: string; resolve: (r: operate.PickResult | null) => void; timer: ReturnType<typeof setTimeout> } | null>(null);
   const shown = useRef<string | null>(null);
   /** The address last told the sessions as loaded (the LET's page script tells a move the web view may have told as loading). */
   const loadedAt = useRef<string | null>(null);
@@ -84,8 +92,8 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
     /** Ask the page script for a read of the page shown; one at a time, no answer in time taken as none. */
     const read = (who: string | null) =>
       new Promise<TourAnswer | null>((resolve) => {
-        if (ask.current) {
-          resolve(null); // one read at a time
+        if (ask.current || picking.current) {
+          resolve(null); // one read at a time, and none while a pick is being done
           return;
         }
         const id = askId();
@@ -103,9 +111,39 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
         web.current.injectJavaScript(script);
       });
     const today = () => dayOf(new Date());
+    /** Ask the page script for a pick of *Fetch all*; one at a time (and not during a read), no answer in time taken as none. */
+    const pick: FetchAllDeps['pick'] = (step) =>
+      new Promise<operate.PickResult | null>((resolve) => {
+        if (picking.current || ask.current) {
+          resolve(null);
+          return;
+        }
+        const id = askId();
+        const script = pickScript(id, step.picker, step.value);
+        if (!script || !web.current) {
+          resolve(null);
+          return;
+        }
+        const timer = setTimeout(() => {
+          picking.current = null;
+          resolve(null);
+        }, PICK_ANSWER_MS);
+        picking.current = { id, resolve, timer };
+        try {
+          web.current.injectJavaScript(script);
+        } catch {
+          // The web view is going away: no pick, the run counts it as nothing read.
+          clearTimeout(timer);
+          picking.current = null;
+          resolve(null);
+        }
+      });
+    /** One of his own pages opened in the window, as its link would (the run checked it may). */
+    const open = (to: string) => web.current?.injectJavaScript(`window.location.assign(${JSON.stringify(to)}); true;`);
+    const fetchAll: FetchAllDeps = { runs: svc.runs, pick, open };
     let close: () => void;
     if (alpsTour) {
-      const made = new AlpsSession({ keeper: svc.alps, pro: svc.pro, lastPage: svc.lastPage, read: () => read(null), today, onChange: (st) => live && setAlpsState(st) });
+      const made = new AlpsSession({ keeper: svc.alps, pro: svc.pro, lastPage: svc.lastPage, read: () => read(null), today, fetchAll, onChange: (st) => live && setAlpsState(st) });
       setAlpsSession(made);
       setSeasonSession(null);
       setOcsSession(null);
@@ -114,7 +152,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
       void made.start();
       close = () => made.close();
     } else if (season) {
-      const made = new SeasonSession({ pro: svc.pro, lastPage: svc.lastPage, read: () => read(null), onChange: (st) => live && setSeasonState(st) });
+      const made = new SeasonSession({ pro: svc.pro, lastPage: svc.lastPage, read: () => read(null), fetchAll: { ...fetchAll, pages: svc.seasonPages, today }, onChange: (st) => live && setSeasonState(st) });
       setSeasonSession(made);
       setAlpsSession(null);
       setOcsSession(null);
@@ -123,7 +161,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
       void made.start();
       close = () => made.close();
     } else if (lets) {
-      const made = new OcsSession({ site: lets, keeper: svc.ocs, pro: svc.pro, lastPage: svc.lastPage, read, today, onChange: (st) => live && setOcsState(st) });
+      const made = new OcsSession({ site: lets, keeper: svc.ocs, pro: svc.pro, lastPage: svc.lastPage, read, today, fetchAll, onChange: (st) => live && setOcsState(st) });
       setOcsSession(made);
       setAlpsSession(null);
       setSeasonSession(null);
@@ -132,7 +170,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
       void made.start();
       close = () => made.close();
     } else if (et) {
-      const made = new EtSession({ keeper: svc.et, pro: svc.pro, lastPage: svc.lastPage, read: () => read(null), today, onChange: (st) => live && setEtState(st) });
+      const made = new EtSession({ keeper: svc.et, pro: svc.pro, lastPage: svc.lastPage, read: () => read(null), today, fetchAll, onChange: (st) => live && setEtState(st) });
       setEtSession(made);
       setAlpsSession(null);
       setSeasonSession(null);
@@ -146,7 +184,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
         pro: svc.pro,
         lastPage: svc.lastPage,
         read,
-        open: (to) => web.current?.injectJavaScript(`window.location.assign(${JSON.stringify(to)}); true;`),
+        open,
         today,
         onChange: (st) => live && setState(st),
       });
@@ -170,6 +208,11 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
         ask.current.resolve(null);
         ask.current = null;
       }
+      if (picking.current) {
+        clearTimeout(picking.current.timer);
+        picking.current.resolve(null);
+        picking.current = null;
+      }
       close();
     };
   }, [svc, site, info, et, lets, season, alpsTour]);
@@ -182,7 +225,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
       session?.moved();
       etSession?.moved(to);
       ocsSession?.moved(to);
-      seasonSession?.moved();
+      seasonSession?.moved(to);
       alpsSession?.moved(to);
     }
     // A page the run opened (the Pro Golf Tour), a page of his (europeantour.com, the LET's, the Alps Tour) is read once it has loaded.
@@ -191,6 +234,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
       void session?.loaded(to);
       void etSession?.loaded(to);
       void ocsSession?.loaded(to);
+      void seasonSession?.loaded(to);
       void alpsSession?.loaded(to);
     }
   }
@@ -209,6 +253,15 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
     // The Alps Tour: he picked another report under *Select Report* - read it a moment later.
     if (alpsSession && readPickMessage(e.nativeEvent.url, e.nativeEvent.data)) {
       alpsSession.picked(e.nativeEvent.url);
+      return;
+    }
+    // A pick of *Fetch all* done in the page: only how it went.
+    const pickOpen = picking.current;
+    const picked = readPickAnswer(e.nativeEvent.url, e.nativeEvent.data, pickOpen?.id ?? null);
+    if (pickOpen && picked) {
+      clearTimeout(pickOpen.timer);
+      picking.current = null;
+      pickOpen.resolve(picked);
       return;
     }
     const open = ask.current;
@@ -241,15 +294,17 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
   }
 
   const bar = alpsTour
-    ? alpsBar(alpsState.view, alpsState.alps, url, alpsState.phase, lang, (k) => t(k))
+    ? alpsBar(alpsState.view, alpsState.alps, url, alpsState.phase, lang, (k) => t(k), alpsState.run)
     : season
-      ? seasonBar(seasonState.view, site, url, seasonState.phase, seasonState.note, lang, (k) => t(k))
+      ? seasonBar(seasonState.view, site, url, seasonState.phase, seasonState.note, lang, (k) => t(k), seasonState.run, seasonState.sent ?? null)
       : lets
-        ? ocsBar(ocsState.view, ocsState.ocs, lets, url, ocsState.phase, ocsState.note, lang, (k) => t(k))
+        ? ocsBar(ocsState.view, ocsState.ocs, lets, url, ocsState.phase, ocsState.note, lang, (k) => t(k), ocsState.run)
         : et
-          ? etBar(etState.view, url, etState.phase, etState.sent, lang, (k) => t(k))
+          ? etBar(etState.view, url, etState.phase, etState.sent, lang, (k) => t(k), etState.run)
           : toursBar(state.view, state.tour, site, url, state.phase, state.limit, lang, (k) => t(k));
   const unread = alpsTour ? alpsState.unread : season ? seasonState.unread : lets ? ocsState.unread : et ? etState.unread : state.unread;
+  /** The session of a tour whose pages show a part at a time (its *Fetch all* picks and opens for him). */
+  const partSession = alpsSession ?? seasonSession ?? ocsSession ?? etSession;
   const loadView = () => void (alpsSession ?? seasonSession ?? ocsSession ?? etSession ?? session)?.loadView();
 
   if (!info) {
@@ -279,7 +334,9 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
           {bar.send && url && seasonSession && <Button label={tr('proLine.send')} onPress={() => void seasonSession.send(url)} />}
           {bar.send && url && alpsSession && <Button label={tr('proLine.send')} onPress={() => void alpsSession.send(url)} />}
           {bar.fetchAll && url && session && <Button label={tr('line.fetchAll')} kind="secondary" onPress={() => void session.fetchAll(url)} />}
+          {bar.fetchAll && url && partSession && <Button label={tr('line.fetchAll')} kind="secondary" onPress={() => void partSession.fetchAll(url)} />}
           {bar.stop && session && <Button label={tr('line.stop')} kind="secondary" onPress={() => void session.stop()} />}
+          {bar.stop && partSession && <Button label={tr('line.stop')} kind="secondary" onPress={() => void partSession.stop()} />}
           {unread && <Button label={t('rankings.reload')} kind="secondary" onPress={loadView} />}
           <Button label={t('rankings.done')} kind="secondary" onPress={done} />
         </View>

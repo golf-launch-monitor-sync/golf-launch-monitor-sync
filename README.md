@@ -28,8 +28,8 @@ Syncs your golf data from **your own** accounts into apps of your choice, in ope
   Access Series, in the extension or the companion app's window, her profile (results with rounds) and her own line of
   the Order of Merit; on the Alps Tour, in the extension or the companion app's window, the reports of his profile as he
   picks them (the season's rounds, the totals to par, the Order of Merit), merged. Nobody else's line leaves the page.
-  Where he picks a part at a time (a season, a tour, a report), *Fetch all* in the extension picks them for him on his
-  tap, at a person's pace: the last two years, at most 50 tournaments.
+  Where he picks a part at a time (a season, a tour, a report), *Fetch all* in the extension or the companion app's
+  window picks them for him on his tap, at a person's pace: the last two years, at most 50 tournaments.
 
 > **Unofficial.** This project is not affiliated with, endorsed by or supported by Trackman, any
 > other launch monitor maker, the Deutscher Golf Verband (DGV), golf.de, the OWGR, Rolex or any tour. It uses your own sign-in,
@@ -144,7 +144,7 @@ And, as a rule for every line of code here:
 | [`packages/browser`](packages/browser/README.md) | What the extension and the web app share: the key, pairings, "Is this you?", syncs, texts (English, German). |
 | [`apps/extension`](apps/extension/README.md) | The browser extension (Manifest V3; Chrome, Edge, Firefox): syncs in the background when a target's plan says so; reads along on golf.de; sends a pro's world ranking page on *Send*. |
 | [`apps/web`](apps/web/README.md) | The web app on GitHub Pages: the pairing page, and syncing by hand without the extension. |
-| [`apps/companion`](apps/companion/README.md) | The companion app for the phone (Expo, iOS and Android): the provider's sign-in window, pairing by deep link, syncs when a target's plan says so; reads along on golf.de in its own window; sends a pro's world ranking page from its own window on *Send*. |
+| [`apps/companion`](apps/companion/README.md) | The companion app for the phone (Expo, iOS and Android): the provider's sign-in window, pairing by deep link, syncs when a target's plan says so; reads along on golf.de in its own window; sends a pro's world ranking page and his tour pages from its own window on *Send*, and *Fetch all* there on every tour. |
 
 ## Development
 

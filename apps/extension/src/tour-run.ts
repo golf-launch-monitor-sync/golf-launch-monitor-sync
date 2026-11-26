@@ -15,11 +15,6 @@ import type { RunView } from '@glmsync/browser/runs';
 import { operate, type run } from '@glmsync/provider-tours';
 import type { Reply } from './messages.ts';
 
-/** After a pick, the site needs a moment to show the new table (as after the player's own pick). */
-const AFTER_PICK_MS = 1500;
-/** How long the picker may take to show what was picked. */
-const PICK_WAIT_MS = 5000;
-
 export type RunAsk =
   | { type: 'trun-view' }
   | { type: 'trun-start'; url: string }
@@ -39,14 +34,6 @@ export interface RunHooks {
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-/** The text of the page's tables, to see when a pick changed them. */
-function tablesText(): string {
-  return Array.from(document.querySelectorAll('table'))
-    .slice(0, 20)
-    .map((t) => t.textContent ?? '')
-    .join('|');
-}
 
 /** A person's press and the browser's own way to set a select: events the page's scripts listen for. */
 export const pageEnv: operate.OpEnv = {
@@ -93,23 +80,10 @@ async function tell(h: RunHooks, m: RunAsk): Promise<Extract<Reply, { ok: true }
 async function doPick(h: RunHooks, step: Extract<run.PickStep, { do: 'pick' }>): Promise<run.PickOutcome> {
   h.picking(true);
   try {
-    const root = document as unknown as operate.OpRoot;
-    const before = tablesText();
-    let done = await operate.pick(root, step, pageEnv);
-    // A page still drawing itself (a tap right after it opened) has no picker yet: waited for a little, as a person would.
-    for (let waited = 0; done === 'missing' && waited < PICK_WAIT_MS; waited += 500) {
-      await sleep(500);
-      done = await operate.pick(root, step, pageEnv);
-    }
+    // Waited for as a person would: a picker still being drawn, then the new table (`operate.pickSettled`).
+    const done = await operate.pickSettled(document as unknown as operate.OpRoot, step, pageEnv);
     if (done === 'absent') return 'absent';
     if (done === 'missing') return 'unread';
-    if (done === 'picked') {
-      // A select shows its new value at once, the table a moment later: read only once the page's tables changed (or
-      // after a while, if they don't), never the table of the season before.
-      const started = Date.now();
-      while ((!operate.shows(root, step) || tablesText() === before) && Date.now() - started < PICK_WAIT_MS) await sleep(250);
-      await sleep(AFTER_PICK_MS);
-    }
     return await h.look();
   } catch {
     // A page whose pickers we can't work: nothing read, the run goes on.

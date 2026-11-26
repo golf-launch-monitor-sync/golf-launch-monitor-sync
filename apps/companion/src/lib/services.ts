@@ -11,6 +11,8 @@ import type { ProClient } from '@glmsync/browser/pro';
 import { AlpsKeeper } from '@glmsync/browser/alps';
 import { EtKeeper } from '@glmsync/browser/europeantour';
 import { OcsKeeper } from '@glmsync/browser/ocs';
+import { RunKeeper } from '@glmsync/browser/runs';
+import { SeasonKeeper } from '@glmsync/browser/season';
 import { TourKeeper } from '@glmsync/browser/tours';
 import { Guard, HttpTarget, type FetchLike, type FileOut, type Storage } from '@glmsync/core';
 import { demo } from '@glmsync/provider-demo';
@@ -80,6 +82,13 @@ export interface Services {
   ocs: OcsKeeper;
   /** What the tour window read of his profile on the Alps Tour (the extension's keeper): the reports he picked there, merged. */
   alps: AlpsKeeper;
+  /**
+   * *Fetch all* on the tours whose pages show a part at a time (the Alps Tour, europeantour.com, the LET's, the season
+   * pages; the extension's keeper): the run going on in the tour window and each tour's runs today.
+   */
+  runs: RunKeeper;
+  /** The season pages a run of *Fetch all* read, kept merged per tour until it ends (the extension's keeper). */
+  seasonPages: SeasonKeeper;
   /** The player's page last sent from here (a world ranking's, a tour profile or his page on europeantour.com): where a window opens next time. */
   lastPage: LastPage;
   /** Reads what this phone keeps; call once before using the rest. */
@@ -159,6 +168,8 @@ export function makeServices(platform: Platform): Services {
     et: new EtKeeper(platform.storage),
     ocs: new OcsKeeper(platform.storage),
     alps: new AlpsKeeper(platform.storage),
+    runs: new RunKeeper(platform.storage, platform.now ?? Date.now),
+    seasonPages: new SeasonKeeper(platform.storage),
     lastPage: new LastPage(platform.storage),
     async load() {
       await Promise.all([signIns.load(), pairings.load(), runner.loadRuns()]);

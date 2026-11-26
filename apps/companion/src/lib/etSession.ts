@@ -7,7 +7,12 @@
  * merged (`EtKeeper`, `@glmsync/browser/europeantour`, shared with the extension), and *Send* reads the page once more
  * and sends a page per tour with something of it to every connected app, each after its plan (`ProClient`).
  *
- * Unlike the Pro Golf Tour there is nothing to open: his results page has the rounds, a season at a time. Nothing is
+ * *Fetch all* (decision 57; pickRun.ts, the extension's very run): on his tap on a page of his, his overview of each
+ * tour, *Wins & Results* with each season of the reach and *Stats* with each tour are opened and picked for him at the
+ * extension's pace, each read as above; at the end a page per tour goes out once, within the reach. While it runs the
+ * window's own reads wait.
+ *
+ * Without it there is nothing to open: his results page has the rounds, a season at a time. Nothing is
  * read without a connection for a pro's pages (as the extension's content script reads nothing then), nothing while
  * the window is closed, and the site is asked nothing. Every keeper call runs one after the other, and no failure is
  * left uncaught: on his tap it becomes the bar's `error`; a read of its own that fails says nothing (only a page the
@@ -17,7 +22,8 @@
 import type { EtKeeper, EtView } from '@glmsync/browser/europeantour';
 import type { ProView } from '@glmsync/browser/pro';
 import type { LinePhase } from '@glmsync/browser/proView';
-import type { TourSite } from '@glmsync/provider-tours';
+import { europeantour, run as pickRun, type TourSite } from '@glmsync/provider-tours';
+import { PickRunDriver, type FetchAllDeps, type RunState } from './pickRun.ts';
 import { AFTER_PICK_MS, onEtPage, type TourAnswer } from './toursPage.ts';
 
 export interface EtState {
@@ -28,6 +34,8 @@ export interface EtState {
   phase: LinePhase;
   /** The tour a *Send* sent last (the bar speaks of it: an app keeps what it answered to the tour sent last). */
   sent: TourSite | null;
+  /** *Fetch all*: the run going on, how the last one ended (none: the window offers no *Fetch all*). */
+  run?: RunState;
 }
 
 export interface EtSessionDeps {
@@ -39,6 +47,8 @@ export interface EtSessionDeps {
   /** The player's day, on this phone's clock. */
   today(): string;
   onChange(state: EtState): void;
+  /** *Fetch all* (none: not offered). */
+  fetchAll?: FetchAllDeps;
   schedule?: (fn: () => void, ms: number) => unknown;
   cancel?: (handle: unknown) => void;
 }
@@ -53,10 +63,28 @@ export class EtSession {
   private shown: string | null = null;
   private readonly schedule: (fn: () => void, ms: number) => unknown;
   private readonly cancel: (handle: unknown) => void;
+  /** *Fetch all*'s run (none without it). */
+  private readonly run: PickRunDriver | null;
 
   constructor(private readonly d: EtSessionDeps) {
     this.schedule = d.schedule ?? ((fn, ms) => setTimeout(fn, ms));
     this.cancel = d.cancel ?? ((h) => clearTimeout(h as ReturnType<typeof setTimeout>));
+    this.run = d.fetchAll
+      ? new PickRunDriver({
+          ...d.fetchAll,
+          look: async () => ((await this.readNow(false)) ? 'read' : 'unread'),
+          player: (url) => europeantour.playerPageOf(url)?.id ?? null,
+          fresh: async () => undefined,
+          send: () => this.sendRun(),
+          // The keeper replaces another player's pages with his own read; nothing goes now.
+          drop: async () => undefined,
+          failed: () => this.set({ phase: 'error' }),
+          today: d.today,
+          onChange: (run) => this.set({ run }),
+          ...(d.schedule ? { schedule: d.schedule } : {}),
+          ...(d.cancel ? { cancel: d.cancel } : {}),
+        })
+      : null;
   }
 
   get now(): EtState {
@@ -84,9 +112,10 @@ export class EtSession {
     return !!this.state.view?.pairings.length;
   }
 
-  /** The window opened: what is connected and what was kept. */
+  /** The window opened: what is connected and what was kept (and a run left from a window that is gone ended). */
   async start(): Promise<void> {
     await this.loadView();
+    await this.run?.start();
     try {
       const et = await this.serial(() => this.d.keeper.view());
       this.set({ et });
@@ -109,6 +138,7 @@ export class EtSession {
   moved(url: string): void {
     this.shown = url;
     this.clearTimer();
+    this.run?.moved(url);
     if (this.state.phase !== 'reading') this.set({ phase: 'ready' });
   }
 
@@ -152,12 +182,17 @@ export class EtSession {
   /** The window finished loading `url`: a page of his is read as it shows. */
   async loaded(url: string): Promise<void> {
     this.shown = url;
+    // During a run the page is the run's: it reads the pages it opened and after each of its picks.
+    if (this.run?.takes(url)) {
+      await this.run.loaded(url);
+      return;
+    }
     await this.look(url);
   }
 
   /** He picked another season or tour in the page's own select: read again a moment later, once the site shows it. */
   picked(url: string): void {
-    if (this.closed || !this.connected || !onEtPage(url) || url !== this.shown) return;
+    if (this.closed || this.run?.running || !this.connected || !onEtPage(url) || url !== this.shown) return;
     this.clearTimer();
     this.timer = this.schedule(() => {
       this.timer = null;
@@ -170,7 +205,7 @@ export class EtSession {
 
   /** His tap on *Send*, on his page `url`: read it once more, then a page per tour to every connected app. */
   async send(url: string): Promise<void> {
-    if (this.reading || !onEtPage(url)) return;
+    if (this.reading || this.run?.running || !onEtPage(url)) return;
     this.reading = true;
     this.clearTimer(); // the read now takes in a pick waiting
     this.set({ phase: 'reading' });
@@ -193,6 +228,37 @@ export class EtSession {
     }
   }
 
+  /** His tap on *Fetch all*, on a page of his `url`: his pages of both tours opened and picked for him. */
+  async fetchAll(url: string): Promise<void> {
+    if (!this.run || this.closed || this.reading || !this.connected || !onEtPage(url)) return;
+    this.clearTimer(); // the run reads the pages itself
+    this.set({ phase: 'ready' });
+    await this.run.fetchAll(url);
+  }
+
+  /** His tap on *Stop*: the run ends where it is, and what it read goes out. */
+  async stop(): Promise<void> {
+    await this.run?.stop();
+  }
+
+  /** A run ended: a page per tour as read to every connected app, within the reach (two years, at most 50 tournaments). */
+  private async sendRun(): Promise<void> {
+    try {
+      const today = this.d.today();
+      const pages = await this.serial(() => this.d.keeper.pages(today));
+      if (pages.length === 0) {
+        this.set({ phase: 'ready' });
+        return;
+      }
+      let view = this.state.view;
+      for (const page of pages) view = await this.d.pro.send(pickRun.withinReach(page, today));
+      this.set({ view, phase: 'done', sent: pages.at(-1)?.site ?? this.state.sent });
+      if (this.shown && onEtPage(this.shown)) await this.d.lastPage.set(this.shown).catch(() => undefined);
+    } catch {
+      this.set({ phase: 'error' });
+    }
+  }
+
   /** His answer to *Is this page yours?*. */
   async answer(yes: boolean): Promise<void> {
     try {
@@ -202,9 +268,13 @@ export class EtSession {
     }
   }
 
-  /** The window closes: a pick waiting is dropped; what was read stays kept for the next *Send*. */
+  /**
+   * The window closes: a pick waiting is dropped; what was read stays kept for the next *Send*. A run going on ends and
+   * what it read goes out, as on *Stop*.
+   */
   close(): void {
     this.closed = true;
     this.clearTimer();
+    void this.run?.close();
   }
 }

@@ -18,7 +18,12 @@ import {
   onProfile,
   onSeasonResults,
   openInTourWindow,
+  PICK_FUNCTION,
+  pickFits,
+  pickScript,
   readMovedMessage,
+  readPickAnswer,
+  runPicksOn,
   readPickMessage,
   readScript,
   readTourMessage,
@@ -352,5 +357,44 @@ describe('the tour window on the Alps Tour', () => {
     expect(readPickMessage('https://www.alpstourgolf.com/stats', picked)).toBe(false);
     expect(readPickMessage(LETAS_PROFILE, picked)).toBe(false);
     expect(readPickMessage(ALPS_PROFILE, JSON.stringify({ glmsync: TOUR_MESSAGE, picked: true, read: {} }))).toBe(false);
+  });
+});
+
+describe('a pick of Fetch all asked of the page script', () => {
+  const ALPS = 'https://www.alpstourgolf.com/playerprofile/TST001';
+  const PGA = 'https://www.pgatour.com/player/99002/max-erfunden/stats';
+  const LET = 'https://letaccess.com/player-profiles/990001/';
+  const ET = 'https://www.europeantour.com/players/jonas-beispiel-99002/results/?tour=dpworld-tour';
+
+  it('injects only a call of the page script\'s pick function, with the ask and the pick as the runs write them', () => {
+    const s = pickScript(ASK, 'Season', '2025') as string;
+    expect(s).toContain(JSON.stringify(PICK_FUNCTION));
+    expect(s).toContain(`(${JSON.stringify(ASK)},"Season","2025")`);
+    expect(pickScript(ASK, null, 'This Season record')).toContain(',null,"This Season record")');
+    expect(pickScript(ASK, null, 'O’Neill "x"')).toContain(JSON.stringify('O’Neill "x"'));
+    for (const [a, p, v] of [['x', null, '2025'], [ASK, 7, '2025'], [ASK, null, ''], [ASK, null, '20\n25'], [ASK, 'x'.repeat(41), '2025'], [ASK, null, 'x'.repeat(81)]] as const) {
+      expect(pickScript(a as string, p as never, v as string), `${String(p)} ${v}`).toBeNull();
+      expect(pickFits(a, p, v)).toBe(false);
+    }
+  });
+
+  it('takes the answer only from a page a run picks on, only in its shape, only answering the open ask', () => {
+    const ok = (pick: string) => JSON.stringify({ glmsync: TOUR_MESSAGE, ask: ASK, pick });
+    for (const url of [ALPS, PGA, LET, ET]) {
+      expect(runPicksOn(url), url).toBe(true);
+      expect(readPickAnswer(url, ok('picked'), ASK), url).toBe('picked');
+    }
+    for (const pick of ['already', 'absent', 'missing'] as const) expect(readPickAnswer(ALPS, ok(pick), ASK)).toBe(pick);
+    // Not a page a run picks on (the Order of Merit is only opened), another ask, another shape, another value.
+    expect(runPicksOn('https://letaccess.com/letas-order-of-merits?id=2026&oom=LO')).toBe(false);
+    expect(readPickAnswer('https://www.alpstourgolf.com/stats', ok('picked'), ASK)).toBeNull();
+    expect(readPickAnswer(ALPS, ok('picked'), null)).toBeNull();
+    expect(readPickAnswer(ALPS, ok('picked'), 'ffffffffffffffffffff')).toBeNull();
+    expect(readPickAnswer(ALPS, ok('read'), ASK)).toBeNull();
+    expect(readPickAnswer(ALPS, JSON.stringify({ glmsync: TOUR_MESSAGE, ask: ASK, pick: 'picked', page: 'x' }), ASK)).toBeNull();
+    expect(readPickAnswer(ALPS, '{', ASK)).toBeNull();
+    expect(readPickAnswer(ALPS, ok('picked').padEnd(300, ' '), ASK)).toBeNull();
+    // A read's answer to the same ask is no pick's.
+    expect(readPickAnswer(ALPS, JSON.stringify({ glmsync: TOUR_MESSAGE, ask: ASK, why: 'changed_page' }), ASK)).toBeNull();
   });
 });

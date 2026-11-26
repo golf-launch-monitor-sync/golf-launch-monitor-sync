@@ -266,7 +266,8 @@ steps, three runs a day per tour; a season you didn't play is skipped. The line 
 with **Stop**. At the end (or on *Stop*, or when the tab closes) what was read goes out once: the tournaments of the last
 two years, at most 50. Another player's page opened in the meantime stops it, and then nothing goes. The run is planned
 from your page's address, opens only your own pages of that site (by the site's own addresses) and picks only in the
-page's own pickers; it asks the sites nothing of its own.
+page's own pickers; it asks the sites nothing of its own. The companion app does the same in its own window since its
+0.11.0 (the same plans, keeper and pace; the pick by its page script with the same steps, `operate.pickSettled`).
 
 ## The bridge on the app's page
 

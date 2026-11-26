@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 import { describe, expect, it } from 'vitest';
-import { entryOf, pick, shows, triggerOf, type OpEl, type OpEnv, type OpRoot, type OpSelect } from './operate.ts';
+import { AFTER_PICK_MS, entryOf, pick, pickSettled, PICK_WAIT_MS, shows, tablesText, triggerOf, type OpEl, type OpEnv, type OpRoot, type OpSelect } from './operate.ts';
 
 // A tiny page: elements with a text, attributes and children; `select`s with options. `textContent` runs the texts of
 // the children together, as a browser's does ("Season" and "2026": "Season2026").
@@ -132,5 +132,62 @@ describe('a pick done in the page', () => {
     expect(await pick(page.root, { picker: 'Season', value: '2023' }, e)).toBe('absent');
     expect(e.escaped).toBe(1);
     expect(await pick(page.root, { picker: 'Tour', value: 'PGA Tour' }, e)).toBe('missing');
+  });
+});
+
+describe('a pick waited for until the page shows it (the extension and the companion app alike)', () => {
+  /** A clock that the env's sleep moves on, and what was slept. */
+  function timed(e: ReturnType<typeof env>, onSleep: (at: number) => void = () => undefined) {
+    let at = 0;
+    const slept: number[] = [];
+    e.sleep = async (ms) => {
+      slept.push(ms);
+      at += ms;
+      onSleep(at);
+    };
+    return { now: () => at, slept };
+  }
+
+  it('reads only once the table changed after a pick, and a moment more', async () => {
+    const select = new Select([{ text: '2026', value: 'a', selected: true }, { text: '2025', value: 'b', selected: false }]);
+    const table = el('table', {}, [], 'season 2026');
+    const root: OpRoot = el('body', {}, [select, table]);
+    const e = env();
+    // The site puts the new table in a second after the pick.
+    const clock = timed(e, (at) => {
+      if (at >= 1000) table.own = 'season 2025';
+    });
+    expect(await pickSettled(root, { picker: null, value: '2025' }, e, clock.now)).toBe('picked');
+    expect(tablesText(root)).toBe('season 2025');
+    expect(clock.slept.at(-1)).toBe(AFTER_PICK_MS);
+    expect(clock.now()).toBeGreaterThanOrEqual(1000 + AFTER_PICK_MS);
+  });
+
+  it('a table that never changes is waited for a while, not for ever', async () => {
+    const select = new Select([{ text: '2026', value: 'a', selected: true }, { text: '2025', value: 'b', selected: false }]);
+    const root: OpRoot = el('body', {}, [select, el('table', {}, [], 'same')]);
+    const e = env();
+    const clock = timed(e);
+    expect(await pickSettled(root, { picker: null, value: '2025' }, e, clock.now)).toBe('picked');
+    expect(clock.now()).toBeLessThanOrEqual(PICK_WAIT_MS + 250 + AFTER_PICK_MS);
+  });
+
+  it('a picker still being drawn is looked for again; one that never comes is missing, one already showing waits for nothing', async () => {
+    const select = new Select([{ text: 'Results', value: 'r', selected: false }]);
+    const root = el('body');
+    const e = env();
+    const clock = timed(e, (at) => {
+      if (at === 1000 && !root.kids.includes(select)) root.kids.push(select);
+    });
+    expect(await pickSettled(root, { picker: null, value: 'Results' }, e, clock.now)).toBe('picked');
+    expect(e.chosen).toEqual(['r']);
+
+    const none = timed(e);
+    expect(await pickSettled(el('body'), { picker: null, value: 'Results' }, e, none.now)).toBe('missing');
+    expect(none.now()).toBe(PICK_WAIT_MS);
+
+    const quiet = timed(e);
+    expect(await pickSettled(root, { picker: null, value: 'Results' }, e, quiet.now)).toBe('already');
+    expect(quiet.slept).toEqual([]);
   });
 });

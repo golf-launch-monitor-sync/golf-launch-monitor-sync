@@ -6,14 +6,19 @@
  * of the extension or of a page that isn't his profile. Pure, so it is tested without a phone.
  *
  * As in the world ranking window, *Is this page yours?* is asked right here in the bar. *Send* and *Fetch all* only on
- * his profile, as on the extension's line; while a *Fetch all* run goes on, only how far it got and *Stop*.
+ * his profile, as on the extension's line; while a *Fetch all* run goes on, only how far it got and *Stop*. The same on
+ * the tours whose pages show a part at a time (decision 57): *Fetch all* where the extension's line offers it (his Alps
+ * Tour profile, any page of his on europeantour.com, her LET profile, his *Results* or *Stats*), with the extension's
+ * words while it runs and after it stopped (`runNote`).
  */
 
 import type { ProView } from '@glmsync/browser/pro';
 import { proLineOf, type LinePhase } from '@glmsync/browser/proView';
 import type { TourView } from '@glmsync/browser/tours';
 import { translator } from '@glmsync/browser/i18n';
-import { alps, europeantour, type TourSite } from '@glmsync/provider-tours';
+import { runNote } from '@glmsync/browser/runs';
+import { alps, europeantour, runFamilyOf, TOUR_SITES, type RunFamily, type TourSite } from '@glmsync/provider-tours';
+import type { RunState } from './pickRun.ts';
 import type { OcsView } from '@glmsync/browser/ocs';
 import { alpsNote, type AlpsView } from '@glmsync/browser/alps';
 import type { OcsNote } from './ocsSession.ts';
@@ -61,12 +66,35 @@ export function toursBar(v: ProView | null, tour: TourView | null, site: TourSit
 
 const ET_SITES: readonly TourSite[] = europeantour.TOURS.map((t) => europeantour.SITE[t]);
 
+/** What *Fetch all* puts on the bar: while it runs, how far (with only *Stop*); after it stopped, why; refused today. */
+interface RunPart {
+  running: string | null;
+  /** Why the last run stopped (not after one that ran through or was stopped by him: the send says that). */
+  stopped: string | null;
+  limit: boolean;
+}
+
+function runPart(run: RunState | undefined, family: RunFamily | null, tr: ReturnType<typeof translator>): RunPart {
+  const v = run?.view;
+  if (!v || !family) return { running: null, stopped: null, limit: !!run?.limit };
+  const note = runNote(v, family, tr);
+  const running = v.running?.family === family ? note : null;
+  return { running, stopped: running ? null : note, limit: run.limit };
+}
+
+/** A part's own words, unless *Fetch all* has something to say (refused today; why it stopped, while the bar rests). */
+function withRun(text: string, part: RunPart, phase: LinePhase, tr: ReturnType<typeof translator>): string {
+  if (phase === 'reading' || phase === 'error') return text;
+  if (part.limit) return tr('tourLine.limit');
+  return part.stopped ?? text;
+}
+
 /**
  * The bar on europeantour.com (DP World Tour, HotelPlanner Tour): *Send* on any page of his, no *Fetch all* (his results
  * page has the rounds). It speaks of the tour an app asks about, else of the one sent last, else of the address's - as
  * the extension's line on the site does.
  */
-export function etBar(v: ProView | null, url: string | null, phase: LinePhase, sent: TourSite | null, lang: Lang, app: AppText): ToursBar {
+export function etBar(v: ProView | null, url: string | null, phase: LinePhase, sent: TourSite | null, lang: Lang, app: AppText, run?: RunState): ToursBar {
   const tr = translator(lang);
   if (!v) return { text: '', warn: false, ...none };
   if (!v.pairings.length) return { text: app('pro.pairFirst'), warn: true, ...none };
@@ -74,13 +102,15 @@ export function etBar(v: ProView | null, url: string | null, phase: LinePhase, s
     const targets = v.question.targets.join(', ') || [...new Set(v.pairings.map((p) => p.name))].join(', ');
     return { text: tr('pro.question', { site: v.question.siteName, name: v.question.name, targets }), warn: true, ...none, ask: true };
   }
+  const r = runPart(run, 'europeantour', tr);
+  if (r.running) return { text: r.running, warn: false, ...none, stop: true };
   if (phase === 'changed_page') return { text: app('rankings.changed'), warn: true, ...none };
   const page = onEtPage(url);
-  if (!page && phase === 'ready') return { text: app('tours.findEt'), warn: false, ...none };
+  if (!page && phase === 'ready') return { text: withRun(app('tours.findEt'), r, phase, tr), warn: !!r.stopped, ...none };
   const site = sent && ET_SITES.includes(sent) ? sent : europeantour.siteOfUrl(url);
   const line = proLineOf(v, site, phase, tr);
   if (!line) return { text: app('pro.pairFirst'), warn: true, ...none };
-  return { text: line.text, warn: line.warn, send: page && line.send, fetchAll: false, stop: false, ask: false };
+  return { text: withRun(line.text, r, phase, tr), warn: line.warn || !!r.stopped, send: page && line.send, fetchAll: !!run && page && phase !== 'reading', stop: false, ask: false };
 }
 
 /** What a note of the LET's pages says, in the extension's words (`ocsLine.*`). */
@@ -94,7 +124,7 @@ function noteText(note: OcsNote, tr: ReturnType<typeof translator>): string {
  * of this tour was read (her rank goes with it); no *Fetch all* (her profile has the rounds). What a read found (no
  * results, her rank, not on this table) stands in place of the line's words, as on the extension's line.
  */
-export function ocsBar(v: ProView | null, kept: OcsView | null, site: TourSite, url: string | null, phase: LinePhase, note: OcsNote | null, lang: Lang, app: AppText): ToursBar {
+export function ocsBar(v: ProView | null, kept: OcsView | null, site: TourSite, url: string | null, phase: LinePhase, note: OcsNote | null, lang: Lang, app: AppText, run?: RunState): ToursBar {
   const tr = translator(lang);
   if (!v) return { text: '', warn: false, ...none };
   if (!v.pairings.length) return { text: app('pro.pairFirst'), warn: true, ...none };
@@ -102,13 +132,16 @@ export function ocsBar(v: ProView | null, kept: OcsView | null, site: TourSite, 
     const targets = v.question.targets.join(', ') || [...new Set(v.pairings.map((p) => p.name))].join(', ');
     return { text: tr('pro.question', { site: v.question.siteName, name: v.question.name, targets }), warn: true, ...none, ask: true };
   }
+  const r = runPart(run, runFamilyOf(TOUR_SITES[site]?.start ?? ''), tr);
+  if (r.running) return { text: r.running, warn: false, ...none, stop: true };
   if (phase === 'changed_page') return { text: app('rankings.changed'), warn: true, ...none };
   const page = onOcsProfile(url) || (onOcsOom(url) && !!kept?.who);
-  if (!page && phase === 'ready') return { text: app('tours.findOcs'), warn: false, ...none };
+  if (!page && phase === 'ready') return { text: withRun(app('tours.findOcs'), r, phase, tr), warn: !!r.stopped, ...none };
   const line = proLineOf(v, site, phase, tr);
   if (!line) return { text: app('pro.pairFirst'), warn: true, ...none };
-  const text = note && phase !== 'reading' ? noteText(note, tr) : line.text;
-  return { text, warn: line.warn || note?.kind === 'oomMissing', send: page && line.send && phase !== 'reading', fetchAll: false, stop: false, ask: false };
+  const text = withRun(note && phase !== 'reading' ? noteText(note, tr) : line.text, r, phase, tr);
+  // *Fetch all* on her profile only, as on the extension's line (the run picks her seasons there).
+  return { text, warn: line.warn || note?.kind === 'oomMissing' || !!r.stopped, send: page && line.send && phase !== 'reading', fetchAll: !!run && onOcsProfile(url) && phase !== 'reading', stop: false, ask: false };
 }
 
 /**
@@ -116,7 +149,7 @@ export function ocsBar(v: ProView | null, kept: OcsView | null, site: TourSite, 
  * send it says which report to pick while his rounds weren't read, else what was read (`alpsNote`, the extension's
  * words); a question, a warning or an outcome speaks for itself, as on the extension's line.
  */
-export function alpsBar(v: ProView | null, kept: AlpsView | null, url: string | null, phase: LinePhase, lang: Lang, app: AppText): ToursBar {
+export function alpsBar(v: ProView | null, kept: AlpsView | null, url: string | null, phase: LinePhase, lang: Lang, app: AppText, run?: RunState): ToursBar {
   const tr = translator(lang);
   if (!v) return { text: '', warn: false, ...none };
   if (!v.pairings.length) return { text: app('pro.pairFirst'), warn: true, ...none };
@@ -124,13 +157,16 @@ export function alpsBar(v: ProView | null, kept: AlpsView | null, url: string | 
     const targets = v.question.targets.join(', ') || [...new Set(v.pairings.map((p) => p.name))].join(', ');
     return { text: tr('pro.question', { site: v.question.siteName, name: v.question.name, targets }), warn: true, ...none, ask: true };
   }
+  const r = runPart(run, alps.FAMILY, tr);
+  if (r.running) return { text: r.running, warn: false, ...none, stop: true };
   if (phase === 'changed_page') return { text: app('rankings.changed'), warn: true, ...none };
   const page = onAlpsProfile(url);
-  if (!page && phase === 'ready') return { text: app('tours.findAlps'), warn: false, ...none };
+  if (!page && phase === 'ready') return { text: withRun(app('tours.findAlps'), r, phase, tr), warn: !!r.stopped, ...none };
   const line = proLineOf(v, alps.SITE, phase, tr);
   if (!line) return { text: app('pro.pairFirst'), warn: true, ...none };
-  const text = phase === 'ready' && page && !line.warn && kept ? alpsNote(kept, tr) : line.text;
-  return { text, warn: line.warn, send: page && line.send && phase !== 'reading', fetchAll: false, stop: false, ask: false };
+  // Before a send: which report to pick - or *Fetch all*, where it is offered - as the extension's line says.
+  const text = withRun(phase === 'ready' && page && !line.warn && kept ? alpsNote(kept, tr, !!run) : line.text, r, phase, tr);
+  return { text, warn: line.warn || !!r.stopped, send: page && line.send && phase !== 'reading', fetchAll: !!run && page && phase !== 'reading', stop: false, ask: false };
 }
 
 /**
@@ -139,7 +175,7 @@ export function alpsBar(v: ProView | null, kept: AlpsView | null, url: string | 
  * other tour too, as his page has both). A tour no module reads, or a season with nothing to send yet, stands in place
  * of the line's words, as on the extension's line, and keeps *Send* for another pick.
  */
-export function seasonBar(v: ProView | null, site: TourSite, url: string | null, phase: LinePhase, note: SeasonNote | null, lang: Lang, app: AppText): ToursBar {
+export function seasonBar(v: ProView | null, site: TourSite, url: string | null, phase: LinePhase, note: SeasonNote | null, lang: Lang, app: AppText, run?: RunState, sent: TourSite | null = null): ToursBar {
   const tr = translator(lang);
   if (!v) return { text: '', warn: false, ...none };
   if (!v.pairings.length) return { text: app('pro.pairFirst'), warn: true, ...none };
@@ -147,11 +183,14 @@ export function seasonBar(v: ProView | null, site: TourSite, url: string | null,
     const targets = v.question.targets.join(', ') || [...new Set(v.pairings.map((p) => p.name))].join(', ');
     return { text: tr('pro.question', { site: v.question.siteName, name: v.question.name, targets }), warn: true, ...none, ask: true };
   }
+  const r = runPart(run, runFamilyOf(url ?? '') ?? runFamilyOf(TOUR_SITES[site]?.start ?? ''), tr);
+  if (r.running) return { text: r.running, warn: false, ...none, stop: true };
   if (phase === 'changed_page') return { text: app('rankings.changed'), warn: true, ...none };
   const page = onSeasonResults(url);
-  if (!page && phase === 'ready') return { text: app('tours.findSeason'), warn: false, ...none };
-  const line = proLineOf(v, (page && tourSiteOf(url)) || site, phase, tr);
+  if (!page && phase === 'ready') return { text: withRun(app('tours.findSeason'), r, phase, tr), warn: !!r.stopped, ...none };
+  // After a run, the tour it sent last (pgatour.com's two go as a page each).
+  const line = proLineOf(v, sent ?? ((page && tourSiteOf(url)) || site), phase, tr);
   if (!line) return { text: app('pro.pairFirst'), warn: true, ...none };
-  const text = note && phase !== 'reading' ? tr(note === 'otherTour' ? 'seasonLine.otherTour' : 'seasonLine.nothing') : line.text;
-  return { text, warn: line.warn || !!note, send: page && line.send && phase !== 'reading', fetchAll: false, stop: false, ask: false };
+  const text = withRun(note && phase !== 'reading' ? tr(note === 'otherTour' ? 'seasonLine.otherTour' : 'seasonLine.nothing') : line.text, r, phase, tr);
+  return { text, warn: line.warn || !!note || !!r.stopped, send: page && line.send && phase !== 'reading', fetchAll: !!run && page && phase !== 'reading', stop: false, ask: false };
 }
