@@ -232,7 +232,8 @@ connection.
 `alps-content.ts` runs on every page of the site (it changes its address without loading a page, so the script looks
 again when the address changes) and reads only your profile, and nothing until an app is connected for a pro's pages.
 It keeps the reports of the profile you read last, merged (another player's profile replaces them), in the extension's
-own storage. Prize money is never read. It sends the site nothing and opens no page itself.
+own storage. Prize money is never read. It sends the site nothing and opens no page itself. The companion app reads the
+Alps Tour in its own window the same way since its 0.9.0 (`apps/companion/README.md`).
 
 ## The bridge on the app's page
 

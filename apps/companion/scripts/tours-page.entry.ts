@@ -18,13 +18,17 @@
  * - PGA Tour and Korn Ferry Tour, LPGA Tour and Epson Tour (on the player's tap on *Send*): on his *Results* page the
  *   season it shows, with its rounds and the standing beside it - the leaderboard of others that runs along the top
  *   stays in here. These sites move between their pages without loading them too: watched as the LET's.
+ * - the Alps Tour (once his profile has loaded, after a pick, on *Send*): the report his profile shows now (*This Season
+ *   record*, *Results*, *Order of Merit*), with his name. When he picks another report in the page's own select, it only
+ *   tells the app that he picked; the app asks for the read a moment later. The site moves without loading pages too:
+ *   watched as the LET's.
  *
  * It reads nothing before it is asked, sends the site nothing and changes nothing the page does.
  * scripts/tours-page.mjs bundles it into src/lib/toursPageScript.ts.
  */
 
-import { europeantour, figuresOf, ocs, progolftour, readSeasonPage, seasonShows, seasonSiteOf, seasonTakes, snapshotOf, type DomDocument, type FigureDocument, type Snapshot } from '@glmsync/provider-tours';
-import { callFits, isOcs, isSeason, onTourSite, READ_FUNCTION, TABLE_WAIT_MS, tourSiteOf, TOUR_MESSAGE, watchedSite, WATCH_MS } from '../src/lib/toursPage.ts';
+import { alps, europeantour, figuresOf, ocs, progolftour, readSeasonPage, seasonShows, seasonSiteOf, seasonTakes, snapshotOf, type DomDocument, type FigureDocument, type Snapshot } from '@glmsync/provider-tours';
+import { callFits, isAlps, isOcs, isSeason, onTourSite, READ_FUNCTION, TABLE_WAIT_MS, tourSiteOf, TOUR_MESSAGE, watchedSite, WATCH_MS } from '../src/lib/toursPage.ts';
 
 declare const window: {
   ReactNativeWebView?: { postMessage(data: string): void };
@@ -157,6 +161,43 @@ try {
       };
       look();
     };
+    /**
+     * His profile on the Alps Tour as it shows now, waited for a little until it shows his name and a report (the site
+     * draws it after the page, or after a change of its address): the report picked there. Only his profile goes.
+     */
+    const readAlps = (ask: string, href: string) => {
+      if (!alps.profileIdOf(href)) {
+        post(ask, { why: 'not_player_page' });
+        return;
+      }
+      reading = true;
+      const started = Date.now();
+      const look = () => {
+        try {
+          let snap: Snapshot | null = null;
+          try {
+            snap = alps.snapshotAt(window.document, href);
+          } catch {
+            snap = null;
+          }
+          if (snap && !alps.shows(snap) && Date.now() - started < TABLE_WAIT_MS) {
+            window.setTimeout(look, 500);
+            return;
+          }
+          reading = false;
+          // He went on meanwhile (the site moves without loading a page): that page is read when the app asks for it.
+          if (window.location.href !== href) {
+            post(ask, { why: 'not_player_page' });
+            return;
+          }
+          const r = snap ? alps.readPage(snap) : null;
+          post(ask, r?.kind === 'alps' ? { alps: r } : { why: 'changed_page' });
+        } catch {
+          reading = false; // never in the page's way; the app takes the read as failed after a while
+        }
+      };
+      look();
+    };
     Object.defineProperty(window, READ_FUNCTION, {
       value: (ask: unknown, who: unknown, today?: unknown) => {
         try {
@@ -168,6 +209,10 @@ try {
           }
           if (isSeason(tourSiteOf(href))) {
             readSeason(ask, href, typeof today === 'string' ? today : localDay());
+            return;
+          }
+          if (isAlps(tourSiteOf(href))) {
+            readAlps(ask, href);
             return;
           }
           if (europeantour.playerPageOf(href)) {
@@ -216,14 +261,16 @@ try {
         }
       },
     });
-    // europeantour.com: another season or tour picked in the page's own select. Only that he picked goes to the app
-    // (nothing read, nothing of his); the app asks for the read a moment later, once the site shows the new table.
+    // europeantour.com: another season or tour picked in the page's own select; the Alps Tour: another report. Only that
+    // he picked goes to the app (nothing read, nothing of his); the app asks for the read a moment later, once the site
+    // shows the new table.
     window.document.addEventListener?.(
       'change',
       (e) => {
         try {
           const tag = (e?.target as { tagName?: unknown } | undefined)?.tagName;
-          if (typeof tag !== 'string' || tag.toLowerCase() !== 'select' || !europeantour.playerPageOf(window.location.href)) return;
+          const at = window.location.href;
+          if (typeof tag !== 'string' || tag.toLowerCase() !== 'select' || !(europeantour.playerPageOf(at) || (isAlps(tourSiteOf(at)) && alps.profileIdOf(at)))) return;
           window.ReactNativeWebView?.postMessage(JSON.stringify({ glmsync: TOUR_MESSAGE, picked: true }));
         } catch {
           // never in the page's way
@@ -231,7 +278,7 @@ try {
       },
       true,
     );
-    // The LET's sites and the season pages' change their address without loading a page, which the web view doesn't
+    // The LET's sites, the season pages' and the Alps Tour's change their address without loading a page, which the web view doesn't
     // always tell the app: only that it changed goes (nothing read, nothing of the player's); the app takes the new page.
     if (watchedSite(window.location.href)) {
       let here = window.location.href;

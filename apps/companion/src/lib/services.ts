@@ -8,6 +8,7 @@
 
 import type { HcpClient } from '@glmsync/browser/hcp';
 import type { ProClient } from '@glmsync/browser/pro';
+import { AlpsKeeper } from '@glmsync/browser/alps';
 import { EtKeeper } from '@glmsync/browser/europeantour';
 import { OcsKeeper } from '@glmsync/browser/ocs';
 import { TourKeeper } from '@glmsync/browser/tours';
@@ -74,6 +75,8 @@ export interface Services {
   et: EtKeeper;
   /** What the tour window read of her pages on the LET and the LET Access Series (the extension's keeper): per tour her profile and her rank. */
   ocs: OcsKeeper;
+  /** What the tour window read of his profile on the Alps Tour (the extension's keeper): the reports he picked there, merged. */
+  alps: AlpsKeeper;
   /** The player's page last sent from here (a world ranking's, a tour profile or his page on europeantour.com): where a window opens next time. */
   lastPage: LastPage;
   /** Reads what this phone keeps; call once before using the rest. */
@@ -151,6 +154,7 @@ export function makeServices(platform: Platform): Services {
     tours: new TourKeeper(platform.storage, platform.now ?? Date.now),
     et: new EtKeeper(platform.storage),
     ocs: new OcsKeeper(platform.storage),
+    alps: new AlpsKeeper(platform.storage),
     lastPage: new LastPage(platform.storage),
     async load() {
       await Promise.all([signIns.load(), pairings.load(), runner.loadRuns()]);

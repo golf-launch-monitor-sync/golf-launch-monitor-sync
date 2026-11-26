@@ -3,7 +3,7 @@
 import type { ProView } from '@glmsync/browser/pro';
 import type { TourView } from '@glmsync/browser/tours';
 import { describe, expect, it } from 'vitest';
-import { etBar, ocsBar, seasonBar, toursBar, type AppText } from './toursText.ts';
+import { alpsBar, etBar, ocsBar, seasonBar, toursBar, type AppText } from './toursText.ts';
 
 const SITE = 'tour:pro_golf_tour' as const;
 const PROFILE = 'https://www.progolftour.de/player-profile/99001?year=2026';
@@ -154,5 +154,40 @@ describe('the tour window’s bar on the season pages', () => {
     const question = { site: 'tour:pga_tour', siteName: 'PGA Tour', name: 'Max Erfunden', targets: ['Example App'] };
     expect(seasonBar(view({ question } as Partial<ProView>), 'tour:pga_tour', PGA, 'ready', null, 'en', app)).toMatchObject({ ask: true, send: false, warn: true });
     expect(seasonBar(view(), 'tour:pga_tour', PGA, 'changed_page', null, 'en', app)).toEqual({ text: '[rankings.changed]', warn: true, send: false, fetchAll: false, stop: false, ask: false });
+  });
+});
+
+const ALPS_PROFILE = 'https://www.alpstourgolf.com/playerprofile/TST001';
+
+describe('the tour window’s bar on the Alps Tour', () => {
+  const none = { who: 'Paul Platzhalter', read: null, totals: false, rank: null };
+  const all = { who: 'Paul Platzhalter', read: 3, totals: true, rank: 4 };
+
+  it('on his profile says which report to pick until his rounds were read, then what was read, with Send', () => {
+    expect(alpsBar(view(), none, ALPS_PROFILE, 'ready', 'en', app)).toEqual({
+      text: 'Pick “This Season record” under Select Report: your rounds are there. “Results” adds the par, “Order of Merit” your rank.',
+      warn: false, send: true, fetchAll: false, stop: false, ask: false,
+    });
+    expect(alpsBar(view(), all, ALPS_PROFILE, 'ready', 'de', app)).toMatchObject({ text: '3 Turniere mit Runden gelesen, mit Par, Rang 4. Schick sie, oder wähle vorher noch einen Bericht.', send: true });
+    // Nothing kept yet: the extension's line words.
+    expect(alpsBar(view(), null, ALPS_PROFILE, 'ready', 'en', app)).toMatchObject({ text: 'Golf Stats Sync: send this page to Example App', send: true });
+  });
+
+  it('elsewhere on the site says where his profile is; while reading and after a send, the extension’s words', () => {
+    for (const url of ['https://www.alpstourgolf.com/stats', null]) {
+      expect(alpsBar(view(), all, url, 'ready', 'en', app), String(url)).toEqual({ text: '[tours.findAlps]', warn: false, send: false, fetchAll: false, stop: false, ask: false });
+    }
+    expect(alpsBar(view(), all, ALPS_PROFILE, 'reading', 'en', app)).toMatchObject({ text: 'Reading the page …', send: false });
+    const sent = view({ pairings: [pairing({ at: '2026-11-26T10:00:00Z', site: 'tour:alps', status: 'sent', tournaments: 3 })] });
+    expect(alpsBar(sent, all, ALPS_PROFILE, 'done', 'en', app)).toMatchObject({ text: 'Sent to Example App.', send: false });
+    expect(alpsBar(view(), all, ALPS_PROFILE, 'error', 'en', app)).toMatchObject({ warn: true, send: true });
+  });
+
+  it('a page the module doesn’t know, a question, no connection', () => {
+    expect(alpsBar(view(), all, ALPS_PROFILE, 'changed_page', 'en', app)).toMatchObject({ text: '[rankings.changed]', warn: true, send: false });
+    const q = view({ question: { site: 'tour:alps', siteName: 'Alps Tour', name: 'Paul Platzhalter', targets: ['Example App'], at: '2026-11-26T10:00:00Z' } });
+    expect(alpsBar(q, all, ALPS_PROFILE, 'done', 'en', app)).toMatchObject({ ask: true, send: false, warn: true });
+    expect(alpsBar(view({ pairings: [] }), all, ALPS_PROFILE, 'ready', 'en', app)).toMatchObject({ text: '[pro.pairFirst]', send: false });
+    expect(alpsBar(null, all, ALPS_PROFILE, 'ready', 'en', app).text).toBe('');
   });
 });

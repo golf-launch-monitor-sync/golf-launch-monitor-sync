@@ -13,17 +13,18 @@ import type { ProView } from '@glmsync/browser/pro';
 import { proLineOf, type LinePhase } from '@glmsync/browser/proView';
 import type { TourView } from '@glmsync/browser/tours';
 import { translator } from '@glmsync/browser/i18n';
-import { europeantour, type TourSite } from '@glmsync/provider-tours';
+import { alps, europeantour, type TourSite } from '@glmsync/provider-tours';
 import type { OcsView } from '@glmsync/browser/ocs';
+import { alpsNote, type AlpsView } from '@glmsync/browser/alps';
 import type { OcsNote } from './ocsSession.ts';
 import type { SeasonNote } from './seasonSession.ts';
-import { onEtPage, onOcsOom, onOcsProfile, onProfile, onSeasonResults, tourSiteOf } from './toursPage.ts';
+import { onAlpsProfile, onEtPage, onOcsOom, onOcsProfile, onProfile, onSeasonResults, tourSiteOf } from './toursPage.ts';
 import type { Lang } from './text.ts';
 
 export type { LinePhase };
 
 /** The app's own words (src/i18n), as the bar needs them. */
-export type AppText = (key: 'tours.find' | 'tours.findEt' | 'tours.findOcs' | 'tours.findSeason' | 'rankings.changed' | 'pro.pairFirst') => string;
+export type AppText = (key: 'tours.find' | 'tours.findEt' | 'tours.findOcs' | 'tours.findAlps' | 'tours.findSeason' | 'rankings.changed' | 'pro.pairFirst') => string;
 
 export interface ToursBar {
   text: string;
@@ -108,6 +109,28 @@ export function ocsBar(v: ProView | null, kept: OcsView | null, site: TourSite, 
   if (!line) return { text: app('pro.pairFirst'), warn: true, ...none };
   const text = note && phase !== 'reading' ? noteText(note, tr) : line.text;
   return { text, warn: line.warn || note?.kind === 'oomMissing', send: page && line.send && phase !== 'reading', fetchAll: false, stop: false, ask: false };
+}
+
+/**
+ * The bar on the Alps Tour: *Send* on his profile, no *Fetch all* (his *This Season record* has the rounds). Before a
+ * send it says which report to pick while his rounds weren't read, else what was read (`alpsNote`, the extension's
+ * words); a question, a warning or an outcome speaks for itself, as on the extension's line.
+ */
+export function alpsBar(v: ProView | null, kept: AlpsView | null, url: string | null, phase: LinePhase, lang: Lang, app: AppText): ToursBar {
+  const tr = translator(lang);
+  if (!v) return { text: '', warn: false, ...none };
+  if (!v.pairings.length) return { text: app('pro.pairFirst'), warn: true, ...none };
+  if (v.question) {
+    const targets = v.question.targets.join(', ') || [...new Set(v.pairings.map((p) => p.name))].join(', ');
+    return { text: tr('pro.question', { site: v.question.siteName, name: v.question.name, targets }), warn: true, ...none, ask: true };
+  }
+  if (phase === 'changed_page') return { text: app('rankings.changed'), warn: true, ...none };
+  const page = onAlpsProfile(url);
+  if (!page && phase === 'ready') return { text: app('tours.findAlps'), warn: false, ...none };
+  const line = proLineOf(v, alps.SITE, phase, tr);
+  if (!line) return { text: app('pro.pairFirst'), warn: true, ...none };
+  const text = phase === 'ready' && page && !line.warn && kept ? alpsNote(kept, tr) : line.text;
+  return { text, warn: line.warn, send: page && line.send && phase !== 'reading', fetchAll: false, stop: false, ask: false };
 }
 
 /**

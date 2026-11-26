@@ -16,6 +16,9 @@
  * - PGA Tour and Korn Ferry Tour (pgatour.com, one window for both), LPGA Tour, Epson Tour: his *Results* page shows the
  *   whole season with its rounds; *Send* has the page script read it as it shows and sends it (lib/seasonSession.ts).
  *   These sites move without loading pages too, and their page script tells the window as on the LET's.
+ * - The Alps Tour: his profile shows one report at a time (*Select Report*); the report shown is read once his profile
+ *   has loaded and again a moment after he picks another, kept merged, and *Send* sends his season with its rounds and
+ *   his rank (lib/alpsSession.ts). The site moves without loading pages too, watched as the LET's.
  *
  * The page loads as this phone's web view is: its own engine and user agent, nothing added. The app sends the site
  * nothing of its own, and nothing the page opens leaves the window (lib/toursPage.ts, `tourWindowRules`). The window
@@ -30,13 +33,14 @@ import { WebView, type WebViewMessageEvent, type WebViewNavigation } from 'react
 import { lang, t } from '../i18n';
 import { askId, dayOf } from '../lib/rankingsPage';
 import type { Services } from '../lib/services';
+import { AlpsSession, type AlpsState } from '../lib/alpsSession';
 import { EtSession, type EtState } from '../lib/etSession';
 import { OcsSession, type OcsState } from '../lib/ocsSession';
 import { SeasonSession, type SeasonState } from '../lib/seasonSession';
-import { ANSWER_MS, isEt, isOcs, isSeason, keptTourPage, openInTourWindow, readMovedMessage, readPickMessage, readScript, readTourMessage, sameWindow, tourWindowRules, type TourAnswer } from '../lib/toursPage';
+import { ANSWER_MS, isAlps, isEt, isOcs, isSeason, keptTourPage, openInTourWindow, readMovedMessage, readPickMessage, readScript, readTourMessage, sameWindow, tourWindowRules, type TourAnswer } from '../lib/toursPage';
 import { TOURS_PAGE_SCRIPT } from '../lib/toursPageScript';
 import { TourSession, type TourState } from '../lib/toursSession';
-import { etBar, ocsBar, seasonBar, toursBar } from '../lib/toursText';
+import { alpsBar, etBar, ocsBar, seasonBar, toursBar } from '../lib/toursText';
 import { Body, Button, s, Small, Title } from './parts';
 
 export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; done: () => void }) {
@@ -47,10 +51,13 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
   const lets = isOcs(site) ? site : null;
   /** The season pages: his *Results* page, read on *Send* only. */
   const season = isSeason(site);
+  /** The Alps Tour: his profile, a report at a time, merged. */
+  const alpsTour = isAlps(site);
   const [state, setState] = useState<TourState>({ view: null, unread: false, tour: null, phase: 'ready', limit: false });
   const [etState, setEtState] = useState<EtState>({ view: null, unread: false, et: null, phase: 'ready', sent: null });
   const [ocsState, setOcsState] = useState<OcsState>({ view: null, unread: false, ocs: null, phase: 'ready', note: null });
   const [seasonState, setSeasonState] = useState<SeasonState>({ view: null, unread: false, phase: 'ready', note: null });
+  const [alpsState, setAlpsState] = useState<AlpsState>({ view: null, unread: false, alps: null, phase: 'ready' });
   /** Where the window opens: null while it is decided. */
   const [start, setStart] = useState<string | null>(null);
   const [url, setUrl] = useState<string | null>(null);
@@ -70,6 +77,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
   const [etSession, setEtSession] = useState<EtSession | null>(null);
   const [ocsSession, setOcsSession] = useState<OcsSession | null>(null);
   const [seasonSession, setSeasonSession] = useState<SeasonSession | null>(null);
+  const [alpsSession, setAlpsSession] = useState<AlpsSession | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -96,9 +104,19 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
       });
     const today = () => dayOf(new Date());
     let close: () => void;
-    if (season) {
+    if (alpsTour) {
+      const made = new AlpsSession({ keeper: svc.alps, pro: svc.pro, lastPage: svc.lastPage, read: () => read(null), today, onChange: (st) => live && setAlpsState(st) });
+      setAlpsSession(made);
+      setSeasonSession(null);
+      setOcsSession(null);
+      setEtSession(null);
+      setSession(null);
+      void made.start();
+      close = () => made.close();
+    } else if (season) {
       const made = new SeasonSession({ pro: svc.pro, lastPage: svc.lastPage, read: () => read(null), onChange: (st) => live && setSeasonState(st) });
       setSeasonSession(made);
+      setAlpsSession(null);
       setOcsSession(null);
       setEtSession(null);
       setSession(null);
@@ -107,6 +125,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
     } else if (lets) {
       const made = new OcsSession({ site: lets, keeper: svc.ocs, pro: svc.pro, lastPage: svc.lastPage, read, today, onChange: (st) => live && setOcsState(st) });
       setOcsSession(made);
+      setAlpsSession(null);
       setSeasonSession(null);
       setEtSession(null);
       setSession(null);
@@ -115,6 +134,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
     } else if (et) {
       const made = new EtSession({ keeper: svc.et, pro: svc.pro, lastPage: svc.lastPage, read: () => read(null), today, onChange: (st) => live && setEtState(st) });
       setEtSession(made);
+      setAlpsSession(null);
       setSeasonSession(null);
       setOcsSession(null);
       setSession(null);
@@ -134,6 +154,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
       setEtSession(null);
       setOcsSession(null);
       setSeasonSession(null);
+      setAlpsSession(null);
       void made.start();
       close = () => void made.close();
     }
@@ -151,7 +172,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
       }
       close();
     };
-  }, [svc, site, info, et, lets, season]);
+  }, [svc, site, info, et, lets, season, alpsTour]);
 
   /** The window shows `to` (`loaded`: it has loaded): every session hears of a new address once. */
   function show(to: string, loaded: boolean) {
@@ -162,25 +183,32 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
       etSession?.moved(to);
       ocsSession?.moved(to);
       seasonSession?.moved();
+      alpsSession?.moved(to);
     }
-    // A page the run opened (the Pro Golf Tour), a page of his (europeantour.com, the LET's) is read once it has loaded.
+    // A page the run opened (the Pro Golf Tour), a page of his (europeantour.com, the LET's, the Alps Tour) is read once it has loaded.
     if (loaded) {
       loadedAt.current = to;
       void session?.loaded(to);
       void etSession?.loaded(to);
       void ocsSession?.loaded(to);
+      void alpsSession?.loaded(to);
     }
   }
 
   function onMessage(e: WebViewMessageEvent) {
-    // The LET's sites or a season page's changed their address without loading a page: the window's address is a new page.
-    if ((ocsSession || seasonSession) && readMovedMessage(e.nativeEvent.url, e.nativeEvent.data)) {
+    // The LET's sites, a season page's or the Alps Tour's changed their address without loading a page: the window's address is a new page.
+    if ((ocsSession || seasonSession || alpsSession) && readMovedMessage(e.nativeEvent.url, e.nativeEvent.data)) {
       if (loadedAt.current !== e.nativeEvent.url) show(e.nativeEvent.url, true);
       return;
     }
     // europeantour.com: he picked another season or tour in the page's own select - read it again a moment later.
     if (etSession && readPickMessage(e.nativeEvent.url, e.nativeEvent.data)) {
       etSession.picked(e.nativeEvent.url);
+      return;
+    }
+    // The Alps Tour: he picked another report under *Select Report* - read it a moment later.
+    if (alpsSession && readPickMessage(e.nativeEvent.url, e.nativeEvent.data)) {
+      alpsSession.picked(e.nativeEvent.url);
       return;
     }
     const open = ask.current;
@@ -202,7 +230,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
   }
 
   async function answer(yes: boolean) {
-    const s = seasonSession ?? ocsSession ?? etSession ?? session;
+    const s = alpsSession ?? seasonSession ?? ocsSession ?? etSession ?? session;
     if (!s) return;
     setBusy(true);
     try {
@@ -212,15 +240,17 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
     }
   }
 
-  const bar = season
-    ? seasonBar(seasonState.view, site, url, seasonState.phase, seasonState.note, lang, (k) => t(k))
-    : lets
-      ? ocsBar(ocsState.view, ocsState.ocs, lets, url, ocsState.phase, ocsState.note, lang, (k) => t(k))
-      : et
-        ? etBar(etState.view, url, etState.phase, etState.sent, lang, (k) => t(k))
-        : toursBar(state.view, state.tour, site, url, state.phase, state.limit, lang, (k) => t(k));
-  const unread = season ? seasonState.unread : lets ? ocsState.unread : et ? etState.unread : state.unread;
-  const loadView = () => void (seasonSession ?? ocsSession ?? etSession ?? session)?.loadView();
+  const bar = alpsTour
+    ? alpsBar(alpsState.view, alpsState.alps, url, alpsState.phase, lang, (k) => t(k))
+    : season
+      ? seasonBar(seasonState.view, site, url, seasonState.phase, seasonState.note, lang, (k) => t(k))
+      : lets
+        ? ocsBar(ocsState.view, ocsState.ocs, lets, url, ocsState.phase, ocsState.note, lang, (k) => t(k))
+        : et
+          ? etBar(etState.view, url, etState.phase, etState.sent, lang, (k) => t(k))
+          : toursBar(state.view, state.tour, site, url, state.phase, state.limit, lang, (k) => t(k));
+  const unread = alpsTour ? alpsState.unread : season ? seasonState.unread : lets ? ocsState.unread : et ? etState.unread : state.unread;
+  const loadView = () => void (alpsSession ?? seasonSession ?? ocsSession ?? etSession ?? session)?.loadView();
 
   if (!info) {
     // A tour this version doesn't read (an older link): nothing to open.
@@ -247,6 +277,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
           {bar.send && url && etSession && <Button label={tr('proLine.send')} onPress={() => void etSession.send(url)} />}
           {bar.send && url && ocsSession && <Button label={tr('proLine.send')} onPress={() => void ocsSession.send(url)} />}
           {bar.send && url && seasonSession && <Button label={tr('proLine.send')} onPress={() => void seasonSession.send(url)} />}
+          {bar.send && url && alpsSession && <Button label={tr('proLine.send')} onPress={() => void alpsSession.send(url)} />}
           {bar.fetchAll && url && session && <Button label={tr('line.fetchAll')} kind="secondary" onPress={() => void session.fetchAll(url)} />}
           {bar.stop && session && <Button label={tr('line.stop')} kind="secondary" onPress={() => void session.stop()} />}
           {unread && <Button label={t('rankings.reload')} kind="secondary" onPress={loadView} />}

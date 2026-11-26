@@ -29,9 +29,14 @@
  * its standing; the snapshot, with the leaderboard's names that run along the top, stays in the page script. These
  * sites move between their pages without loading them too, so the page script watches their address as on the LET's.
  * pgatour.com is one site for both of its tours, and his page has both (the page's *Tour* picker): one window for both.
+ *
+ * The Alps Tour (`alps`): his profile shows one report at a time, picked in its own select (*Select Report*); the page
+ * script reads the report shown once his profile has loaded, again a moment after he picks another (it only says that he
+ * picked, `PICKED`, as on europeantour.com), and on his tap on *Send*; the app keeps the reports merged. The site changes
+ * its address without loading a page, so the page script watches it as on the LET's.
  */
 
-import { checkTourPage, europeantour, isSeasonSite, isTourSite, lpga, ocs, pgatour, progolftour, seasonSiteOf, TOUR_SITES, type TourPage, type TourSite } from '@glmsync/provider-tours';
+import { alps, checkTourPage, europeantour, isSeasonSite, isTourSite, lpga, ocs, pgatour, progolftour, seasonSiteOf, TOUR_SITES, type TourPage, type TourSite } from '@glmsync/provider-tours';
 
 /** What the page script posts (and nothing else counts): its tag, the app's ask it answers, and what it read or why not. */
 export const TOUR_MESSAGE = 'tour-page';
@@ -66,7 +71,7 @@ function httpsHost(url: string): string | null {
 
 /** The tours whose module the window's page script runs (the window neither offers nor loads any other). */
 const APP_TOURS: readonly TourSite[] = [
-  'tour:pro_golf_tour', 'tour:dp_world', 'tour:hotelplanner', 'tour:let', 'tour:let_access', 'tour:pga_tour', 'tour:korn_ferry', 'tour:lpga', 'tour:epson',
+  'tour:pro_golf_tour', 'tour:dp_world', 'tour:hotelplanner', 'tour:let', 'tour:let_access', 'tour:alps', 'tour:pga_tour', 'tour:korn_ferry', 'tour:lpga', 'tour:epson',
 ];
 /** The two tours of europeantour.com: one site, one page per player for both. */
 const ET_SITES: readonly TourSite[] = europeantour.TOURS.map((t) => europeantour.SITE[t]);
@@ -76,6 +81,8 @@ export const isEt = (site: TourSite | null | undefined): boolean => !!site && ET
 export const isOcs = (site: TourSite | null | undefined): site is ocs.OcsTourSite => ocs.isOcsSite(site) && APP_TOURS.includes(site);
 /** Whether a tour is one of the season pages' (PGA Tour, Korn Ferry, LPGA, Epson: his *Results* page, read on *Send*). */
 export const isSeason = (site: TourSite | null | undefined): boolean => !!site && isSeasonSite(site) && APP_TOURS.includes(site);
+/** Whether a tour is the Alps Tour (his profile, a report at a time, merged; without *Fetch all*). */
+export const isAlps = (site: TourSite | null | undefined): boolean => site === alps.SITE && APP_TOURS.includes(site);
 /** The two tours of pgatour.com: one site, his page has both. */
 const PGA_SITES: readonly TourSite[] = ['tour:pga_tour', 'tour:korn_ferry'];
 const isPga = (site: TourSite | null | undefined): boolean => !!site && PGA_SITES.includes(site);
@@ -167,6 +174,9 @@ export const onOcsProfile = (url: unknown): boolean => isOcs(tourSiteOf(url)) &&
 /** That tour's Order of Merit (her line is read there once her profile was). */
 export const onOcsOom = (url: unknown): boolean => isOcs(tourSiteOf(url)) && ocs.isOomPage(url);
 
+/** His profile on the Alps Tour (each report read once it shows, and on *Send*). */
+export const onAlpsProfile = (url: unknown): boolean => isAlps(tourSiteOf(url)) && alps.profileIdOf(url) !== null;
+
 /**
  * His *Results* page on a season page's tour (read on *Send*), or his *Stats* page there (the season's statistics,
  * since 0.8.0). On pgatour.com only an address of a tour the module reads (not PGA Tour Champions' or Americas'); which
@@ -177,7 +187,7 @@ export const onSeasonResults = (url: unknown): boolean => isSeason(tourSiteOf(ur
 /** Whether the page script watches this page's address: the sites that move between their pages without loading them. */
 export const watchedSite = (url: unknown): boolean => {
   const at = tourSiteOf(url);
-  return isOcs(at) || isSeason(at);
+  return isOcs(at) || isSeason(at) || isAlps(at);
 };
 
 /** The address of her profile on that tour, by her id: where the window opens next time after a *Send* from the Order of Merit. */
@@ -224,6 +234,7 @@ export type TourAnswer =
   | { ok: true; et: europeantour.EtRead }
   | { ok: true; ocs: ocs.Profile | ocs.OomLine }
   | { ok: true; ocsUnread: Unread }
+  | { ok: true; alps: alps.AlpsRead }
   | { ok: true; season: TourPage }
   | { ok: true; seasonUnread: SeasonUnread }
   | { ok: true; key: string; line: progolftour.OwnLine }
@@ -235,7 +246,8 @@ export type TourAnswer =
  * answering the app's open ask, and what it read read again as the extension's side reads it (a page can post
  * anything) - a profile only of the profile the window shows, a line only of the tournament it shows, a read of
  * europeantour.com only of the player whose page it shows, on the LET's sites a profile only of the profile shown and a
- * line of the Order of Merit only from that tour's Order of Merit (whose line it is, the keeper checks). null: not one.
+ * line of the Order of Merit only from that tour's Order of Merit (whose line it is, the keeper checks), on the Alps
+ * Tour a report only of the profile the window shows. null: not one.
  */
 export function readTourMessage(pageUrl: unknown, data: unknown, ask: string | null): TourAnswer | null {
   if (!ask || !onTourSite(pageUrl)) return null;
@@ -247,7 +259,7 @@ export function readTourMessage(pageUrl: unknown, data: unknown, ask: string | n
     return null;
   }
   if (!msg || typeof msg !== 'object') return null;
-  const m = msg as { glmsync?: unknown; ask?: unknown; why?: unknown; profile?: unknown; key?: unknown; line?: unknown; unread?: unknown; read?: unknown; ocs?: unknown; ocsUnread?: unknown; season?: unknown; seasonUnread?: unknown };
+  const m = msg as { glmsync?: unknown; ask?: unknown; why?: unknown; profile?: unknown; key?: unknown; line?: unknown; unread?: unknown; read?: unknown; ocs?: unknown; ocsUnread?: unknown; season?: unknown; seasonUnread?: unknown; alps?: unknown };
   if (m.glmsync !== TOUR_MESSAGE || m.ask !== ask) return null;
   if (m.why === 'not_player_page' || m.why === 'changed_page') return { ok: false, why: m.why };
   const at = tourSiteOf(pageUrl);
@@ -255,6 +267,13 @@ export function readTourMessage(pageUrl: unknown, data: unknown, ask: string | n
   if (m.season !== undefined || m.seasonUnread !== undefined) return null; // a read of a season page from any other page
   if (isOcs(at)) return ocsAnswer(pageUrl, at, m);
   if (m.ocs !== undefined || m.ocsUnread !== undefined) return null; // a read of the LET's sites from any other page
+  if (isAlps(at)) {
+    const id = alps.profileIdOf(pageUrl);
+    const read = id && m.alps !== undefined ? alps.checkRead(m.alps) : null;
+    // The window moved on to someone else's profile meanwhile: nothing of it is taken.
+    return read && read.player_id === id ? { ok: true, alps: read } : null;
+  }
+  if (m.alps !== undefined) return null; // a read of the Alps Tour from any other page
   const et = onEtPage(pageUrl) ? europeantour.playerPageOf(pageUrl) : null;
   if (et) {
     const read = m.read !== undefined ? europeantour.checkRead(m.read) : null;
@@ -314,7 +333,7 @@ function seasonAnswer(pageUrl: unknown, m: { season?: unknown; seasonUnread?: un
 }
 
 /**
- * The page script's note that the address of a LET's site or a season page's site changed without a page loading
+ * The page script's note that the address of a LET's site, a season page's site or the Alps Tour's changed without a page loading
  * (nothing read, nothing of the player's): only from one of their pages, only in exactly that shape. The app then takes the window's address as a new page.
  */
 export function readMovedMessage(pageUrl: unknown, data: unknown): boolean {
@@ -328,11 +347,12 @@ export function readMovedMessage(pageUrl: unknown, data: unknown): boolean {
 }
 
 /**
- * The page script's note that he picked another season or tour in the page's own select (nothing read, nothing of
- * his): only from a player's page of europeantour.com, only in exactly that shape. The app then asks for a read.
+ * The page script's note that he picked another season or tour (europeantour.com) or another report (the Alps Tour) in
+ * the page's own select (nothing read, nothing of his): only from a player's page of europeantour.com or his profile on
+ * the Alps Tour, only in exactly that shape. The app then asks for a read.
  */
 export function readPickMessage(pageUrl: unknown, data: unknown): boolean {
-  if (!onEtPage(pageUrl) || typeof data !== 'string' || data.length > 200) return false;
+  if (!(onEtPage(pageUrl) || onAlpsProfile(pageUrl)) || typeof data !== 'string' || data.length > 200) return false;
   try {
     const m = JSON.parse(data) as unknown;
     return !!m && typeof m === 'object' && !Array.isArray(m) && Object.keys(m).length === 2 && (m as { glmsync?: unknown }).glmsync === TOUR_MESSAGE && (m as { picked?: unknown }).picked === true;
@@ -343,5 +363,5 @@ export function readPickMessage(pageUrl: unknown, data: unknown): boolean {
 
 /** The address kept to open the window there next time: only a profile on a tour's site, or his page there (europeantour.com, his *Results*). */
 export function keptTourPage(url: unknown): string | null {
-  return typeof url === 'string' && url.length <= 2048 && (onProfile(url) || onEtPage(url) || onOcsProfile(url) || onSeasonResults(url)) ? url : null;
+  return typeof url === 'string' && url.length <= 2048 && (onProfile(url) || onEtPage(url) || onOcsProfile(url) || onAlpsProfile(url) || onSeasonResults(url)) ? url : null;
 }

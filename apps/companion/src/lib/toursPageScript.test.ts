@@ -2,8 +2,8 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { europeantour, lpga, ocs, pgatour, progolftour } from '@glmsync/provider-tours';
-import { docOf, ET_TITLE, etOverview, etResults, etStats, h, lpgaFigures, lpgaResults, ocsOom, ocsProfile, pgaFigures, pgaResults, pgtLine, pgtProfile, pgtResult, type El } from '@glmsync/provider-tours/testing';
+import { alps, europeantour, lpga, ocs, pgatour, progolftour } from '@glmsync/provider-tours';
+import { alpsHead, alpsOom, alpsRecord, docOf, ET_TITLE, etOverview, etResults, etStats, h, lpgaFigures, lpgaResults, ocsOom, ocsProfile, pgaFigures, pgaResults, pgtLine, pgtProfile, pgtResult, type El } from '@glmsync/provider-tours/testing';
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error - a plain script of the build, without types
 import { moduleText, OUT } from '../../scripts/tours-page.mjs';
@@ -413,5 +413,76 @@ describe('the page script on the season pages', () => {
     const p = site(PGA, docOf(pgaResults()));
     delete p.win.ReactNativeWebView;
     expect(() => p.read(null, ASK, TODAY)).not.toThrow();
+  });
+});
+
+const ALPS_PROFILE = 'https://www.alpstourgolf.com/playerprofile/TST001';
+
+describe('the page script on the Alps Tour', () => {
+  it('reads nothing until the app asks; then the report his profile shows, with his name above *Represents*', () => {
+    const p = site(ALPS_PROFILE, alpsHead());
+    expect(p.posted).toEqual([]);
+    p.read();
+    expect(readTourMessage(ALPS_PROFILE, p.posted[0], ASK)).toEqual({
+      ok: true,
+      alps: { kind: 'alps', player_id: 'tst001', player_name: 'Paul Platzhalter', totals: [{ ref: 'alps-2026-02-17-sample-desert-open', total: 209, to_par: -7 }], oom: [] },
+    });
+    expect(p.asked).toEqual([]); // it asked the site nothing of its own
+  });
+
+  it('each report as it shows: his rounds of *This Season record*, his rank of *Order of Merit*', () => {
+    const p = site(ALPS_PROFILE, docOf(alpsRecord()));
+    p.read();
+    expect(readTourMessage(ALPS_PROFILE, p.posted[0], ASK)).toEqual({ ok: true, alps: alps.readPage(alpsRecord()) });
+    const q = site(ALPS_PROFILE, docOf(alpsOom()));
+    q.read();
+    expect(readTourMessage(ALPS_PROFILE, q.posted[0], ASK)).toMatchObject({ ok: true, alps: { oom: [{ season: 2026, rank: 4, points: 26845.35, events: 9 }, { season: 2025 }] } });
+  });
+
+  it('waits a little for his name and a report, then says the page changed; a page of the site that isn’t his profile is none to read', () => {
+    const p = site(ALPS_PROFILE, h('html', [h('body', [h('div', ['Loading'])])]));
+    p.read();
+    expect(p.posted).toEqual([]);
+    p.tick(TABLE_WAIT_MS + 1);
+    expect(p.posted.map((d) => JSON.parse(d).why)).toEqual(['changed_page']);
+    const q = site('https://www.alpstourgolf.com/stats', docOf(alpsOom()));
+    q.read();
+    expect(q.posted.map((d) => JSON.parse(d).why)).toEqual(['not_player_page']);
+  });
+
+  it('a profile he left while it waited is none to read (the site moved on without loading a page)', () => {
+    const p = site(ALPS_PROFILE, h('html', [h('body', [h('div', ['Loading'])])]));
+    p.read();
+    p.win.document = docOf(alpsRecord({ url: 'https://www.alpstourgolf.com/playerprofile/VAN054' }));
+    (p.win.location as { href: string }).href = 'https://www.alpstourgolf.com/playerprofile/VAN054';
+    p.tick(500);
+    expect(p.posted.map((d) => JSON.parse(d).why)).toEqual(['not_player_page']);
+  });
+
+  it('a pick under *Select Report* only says that he picked - nothing read, nothing of his', () => {
+    const { doc, fire } = listened(alpsHead(), '');
+    const p = site(ALPS_PROFILE, doc);
+    fire({ tagName: 'SELECT' });
+    expect(p.posted).toEqual([JSON.stringify({ glmsync: 'tour-page', picked: true })]);
+    expect(readPickMessage(ALPS_PROFILE, p.posted[0])).toBe(true);
+    fire({ tagName: 'INPUT' });
+    expect(p.posted).toHaveLength(1);
+    // A pick on a page of the site that isn't a profile (the Order of Merit's season): nothing.
+    const listing = listened(docOf(alpsOom()), '');
+    const q = site('https://www.alpstourgolf.com/stats', listing.doc);
+    listing.fire({ tagName: 'SELECT' });
+    expect(q.posted).toEqual([]);
+  });
+
+  it('tells the app only that the address changed (the site moves without loading a page), nothing read', () => {
+    const p = site('https://www.alpstourgolf.com/', h('html', [h('body', [])]));
+    expect(p.every.map((e) => e.ms)).toEqual([WATCH_MS]);
+    p.win.document = alpsHead();
+    p.go(ALPS_PROFILE);
+    expect(p.posted).toEqual([JSON.stringify({ glmsync: 'tour-page', moved: true })]);
+    expect(readMovedMessage(ALPS_PROFILE, p.posted[0])).toBe(true);
+    // The page goes on reading where it is now.
+    p.read();
+    expect(readTourMessage(ALPS_PROFILE, p.posted[1], ASK)).toMatchObject({ ok: true, alps: { player_id: 'tst001' } });
   });
 });

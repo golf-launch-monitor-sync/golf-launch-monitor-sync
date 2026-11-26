@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
-import { europeantour, lpga, ocs, pgatour, progolftour, type TourPage } from '@glmsync/provider-tours';
-import { ET_TITLE, etResults, lpgaFigures, lpgaResults, lpgaStats, ocsOom, ocsProfile, pgaFigures, pgaResults, pgaStats, pgtLine, pgtProfile, pgtResult } from '@glmsync/provider-tours/testing';
+import { alps, europeantour, lpga, ocs, pgatour, progolftour, type TourPage } from '@glmsync/provider-tours';
+import { alpsOom, alpsRecord, ET_TITLE, etResults, lpgaFigures, lpgaResults, lpgaStats, ocsOom, ocsProfile, pgaFigures, pgaResults, pgaStats, pgtLine, pgtProfile, pgtResult } from '@glmsync/provider-tours/testing';
 import { describe, expect, it } from 'vitest';
 import {
   callFits,
+  isAlps,
   isEt,
   isOcs,
   isSeason,
   keptTourPage,
   ocsProfileUrl,
+  onAlpsProfile,
   onEtPage,
   onOcsOom,
   onOcsProfile,
@@ -43,7 +45,7 @@ describe('the tour window', () => {
   const frame = (url: string) => tourWindowRules.onShouldStartLoadWithRequest({ url, isTopFrame: false });
 
   it('shows the tours’ own pages, nothing else', () => {
-    expect(WINDOW_TOURS).toEqual(['tour:pro_golf_tour', 'tour:dp_world', 'tour:hotelplanner', 'tour:let', 'tour:let_access', 'tour:pga_tour', 'tour:korn_ferry', 'tour:lpga', 'tour:epson']);
+    expect(WINDOW_TOURS).toEqual(['tour:pro_golf_tour', 'tour:dp_world', 'tour:hotelplanner', 'tour:let', 'tour:let_access', 'tour:alps', 'tour:pga_tour', 'tour:korn_ferry', 'tour:lpga', 'tour:epson']);
     expect(tourWindowRules.originWhitelist).toEqual(['*']); // every load decided here, none handed to the system
     for (const url of [PROFILE, RESULT, 'https://progolftour.de/', 'https://www.progolftour.de/order-of-merit-en', 'about:blank', ET_RESULTS, 'https://www.europeantour.com/hotelplanner-tour/players/', 'https://europeantour.com/', 'https://letaccess.com/players', 'https://ladieseuropeantour.com/player-profiles/990001/', 'https://www.pgatour.com/', 'https://pgatour.com/korn-ferry-tour/players', 'https://www.lpga.com/athletes/directory', 'https://www.epsontour.com/']) {
       expect(top(url), url).toBe(true);
@@ -299,5 +301,56 @@ describe('the tour window on the season pages (PGA Tour, Korn Ferry, LPGA, Epson
     expect([watchedSite(PGA), watchedSite('https://www.pgatour.com/'), watchedSite(LPGA), watchedSite(EPSON), watchedSite(LETAS_PROFILE), watchedSite(ET_RESULTS), watchedSite(PROFILE)]).toEqual([true, true, true, true, true, false, false]);
     const moved = JSON.stringify({ glmsync: TOUR_MESSAGE, moved: true });
     expect([readMovedMessage(PGA, moved), readMovedMessage('https://www.lpga.com/', moved), readMovedMessage(ET_RESULTS, moved), readMovedMessage('https://www.owgr.com/', moved)]).toEqual([true, true, false, false]);
+  });
+});
+
+const ALPS_PROFILE = 'https://www.alpstourgolf.com/playerprofile/TST001';
+const alpsRead = (snap: Parameters<typeof alps.readPage>[0]) => alps.readPage(snap) as alps.AlpsRead;
+
+describe('the tour window on the Alps Tour', () => {
+  const top = (url: string) => tourWindowRules.onShouldStartLoadWithRequest({ url, isTopFrame: true });
+
+  it('is a tour of its own, his profile among its pages, with and without www', () => {
+    expect([tourSiteOf(ALPS_PROFILE), tourSiteOf('https://alpstourgolf.com/stats'), tourSiteOf('https://www.alpstourgolf.com.evil.test/')]).toEqual(['tour:alps', 'tour:alps', null]);
+    expect([isAlps('tour:alps'), isAlps('tour:let'), isAlps(null)]).toEqual([true, false, false]);
+    expect([onAlpsProfile(ALPS_PROFILE), onAlpsProfile('https://alpstourgolf.com/playerprofile/VAN054/'), onAlpsProfile('https://www.alpstourgolf.com/stats'), onAlpsProfile(LETAS_PROFILE)]).toEqual([true, true, false, false]);
+    expect([top(ALPS_PROFILE), top('https://www.alpstourgolf.com/'), top('http://www.alpstourgolf.com/'), top('https://www.alpstourgolf.com.evil.test/')]).toEqual([true, true, false, false]);
+    expect([isEt('tour:alps'), isOcs('tour:alps'), isSeason('tour:alps')]).toEqual([false, false, false]);
+    expect([sameWindow(ALPS_PROFILE, 'tour:alps'), sameWindow(ALPS_PROFILE, 'tour:let_access')]).toEqual([true, false]);
+  });
+
+  it('keeps his profile to open the window there next time; its address is watched by the page script', () => {
+    expect([keptTourPage(ALPS_PROFILE), keptTourPage('https://www.alpstourgolf.com/stats')]).toEqual([ALPS_PROFILE, null]);
+    expect([watchedSite(ALPS_PROFILE), watchedSite('https://www.alpstourgolf.com/')]).toEqual([true, true]);
+    const moved = JSON.stringify({ glmsync: TOUR_MESSAGE, moved: true });
+    expect([readMovedMessage(ALPS_PROFILE, moved), readMovedMessage('https://www.alpstourgolf.com/stats', moved)]).toEqual([true, true]);
+  });
+
+  it('takes a report only from the profile the window shows', () => {
+    const record = alpsRead(alpsRecord());
+    expect(readTourMessage(ALPS_PROFILE, msg({ alps: record }), ASK)).toEqual({ ok: true, alps: record });
+    expect(readTourMessage(ALPS_PROFILE, msg({ alps: alpsRead(alpsOom()) }), ASK)).toMatchObject({ ok: true, alps: { oom: [{ season: 2026, rank: 4 }, { season: 2025, rank: 57 }] } });
+    // The window moved on to someone else's profile, or a page that isn't one; another shape; another ask: nothing.
+    expect(readTourMessage('https://www.alpstourgolf.com/playerprofile/VAN054', msg({ alps: record }), ASK)).toBeNull();
+    expect(readTourMessage('https://www.alpstourgolf.com/stats', msg({ alps: record }), ASK)).toBeNull();
+    expect(readTourMessage(ALPS_PROFILE, msg({ alps: { ...record, kind: 'ocs' } }), ASK)).toBeNull();
+    expect(readTourMessage(ALPS_PROFILE, msg({ alps: record }, 'ffffffffffffffff'), ASK)).toBeNull();
+    // Nothing of another site's shape from here, and nothing of the Alps Tour's from another site.
+    expect(readTourMessage(ALPS_PROFILE, msg({ read: etRead }), ASK)).toBeNull();
+    expect(readTourMessage(ALPS_PROFILE, msg({ profile }), ASK)).toBeNull();
+    expect(readTourMessage(LETAS_PROFILE, msg({ alps: record }), ASK)).toBeNull();
+    expect(readTourMessage(ET_RESULTS, msg({ alps: record }), ASK)).toBeNull();
+    expect(readTourMessage(PROFILE, msg({ alps: record }), ASK)).toBeNull();
+    // Why a page wasn't read.
+    expect(readTourMessage(ALPS_PROFILE, msg({ why: 'changed_page' }), ASK)).toEqual({ ok: false, why: 'changed_page' });
+    expect(readTourMessage('https://www.alpstourgolf.com/stats', msg({ why: 'not_player_page' }), ASK)).toEqual({ ok: false, why: 'not_player_page' });
+  });
+
+  it('that he picked another report: only from his profile, only in exactly that shape', () => {
+    const picked = JSON.stringify({ glmsync: TOUR_MESSAGE, picked: true });
+    expect(readPickMessage(ALPS_PROFILE, picked)).toBe(true);
+    expect(readPickMessage('https://www.alpstourgolf.com/stats', picked)).toBe(false);
+    expect(readPickMessage(LETAS_PROFILE, picked)).toBe(false);
+    expect(readPickMessage(ALPS_PROFILE, JSON.stringify({ glmsync: TOUR_MESSAGE, picked: true, read: {} }))).toBe(false);
   });
 });

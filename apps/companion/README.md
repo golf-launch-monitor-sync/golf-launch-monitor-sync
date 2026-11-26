@@ -182,6 +182,18 @@ portal in a sign-in window - so that window lives here, in a small app that does
   the LET's. A season is taken only from his *Results* page, only of the player whose page the window shows, only of a
   tour of that site (`readTourMessage`), only with a connection for a pro's pages, only while the window is open; the
   window opens on that page next time. No *Fetch all*: nothing needs opening.
+  **The Alps Tour** (alpstourgolf.com; companion 0.9.0): a window of its own (*Open Alps Tour* opens the site's Order of
+  Merit, where he finds his name), the extension's way there: his profile (`/playerprofile/<code>`) shows one report at a
+  time under *Select Report*, and the report shown is read once his profile has loaded (`alps.readPage`, his name from
+  the box above *Represents*) and again 1.5 s after he picks another (the page script only posts that he picked,
+  `readPickMessage`: nothing read, nothing of his); the reports are kept merged in the extension's `AlpsKeeper`
+  (`@glmsync/browser/alps`; another player's profile replaces them). *This Season record* brings his rounds, *Results* the
+  par, *Order of Merit* his rank; the bar says which report to pick until his rounds were read, then what was read
+  (`alpsNote`, the extension's words; `alpsBar`). *Send* on his profile reads the report once more and sends the
+  season's tournaments that are over, with their rounds, and his rank (`src/lib/alpsSession.ts`). The site changes its
+  address without loading a page, so the page script watches it as on the LET's. A report is taken only of the profile
+  the window shows (`readTourMessage`), only with a connection for a pro's pages, only while the window is open; the
+  window opens on his profile next time. No *Fetch all*: his profile has the rounds.
 - **Demo**: a made-up player (`@glmsync/provider-demo`) for trying the app without an account, and
   for app reviews. Its "requests" go through the guard too, so counters and log behave as for real.
 - **Save as file**: a sync into an olmd file (the share sheet), planned gently by the file target -
@@ -206,6 +218,8 @@ portal in a sign-in window - so that window lives here, in a small app that does
 | The address of the player's own ranking page, tour profile or page on europeantour.com last sent from here (where the window opens next time) | app storage, until the player disconnects the last app for a pro's pages here |
 | His tour profile as last read, his own line of each tournament read, which tournament pages were opened when, the runs of *Fetch all* (the extension's `TourKeeper`) | app storage; another player's profile replaces it all |
 | What his pages on europeantour.com showed, merged: his ranks, his tournaments with their rounds of the seasons he picked, his season statistics (the extension's `EtKeeper`) | app storage; another player's page replaces it all |
+| Per tour of the LET's her profile as last read and her line of the Order of Merit (the extension's `OcsKeeper`) | app storage; another player's profile replaces it |
+| The reports of his Alps Tour profile he picked, merged: the season's tournaments with their rounds, the totals to par, his line per season of the Order of Merit (the extension's `AlpsKeeper`) | app storage; another player's profile replaces it all |
 | The sites' cookies (a consent banner's choice) | the window's web view, on this phone |
 
 Android backups leave the secure store out (`allowBackup: false`). A sign-in goes to the provider
