@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 import { europeantour, lpga, ocs, pgatour, progolftour, type TourPage } from '@glmsync/provider-tours';
-import { ET_TITLE, etResults, lpgaFigures, lpgaResults, ocsOom, ocsProfile, pgaFigures, pgaResults, pgtLine, pgtProfile, pgtResult } from '@glmsync/provider-tours/testing';
+import { ET_TITLE, etResults, lpgaFigures, lpgaResults, lpgaStats, ocsOom, ocsProfile, pgaFigures, pgaResults, pgaStats, pgtLine, pgtProfile, pgtResult } from '@glmsync/provider-tours/testing';
 import { describe, expect, it } from 'vitest';
 import {
   callFits,
@@ -272,6 +272,18 @@ describe('the tour window on the season pages (PGA Tour, Korn Ferry, LPGA, Epson
     expect(readTourMessage(PGA, msg({ ocs: ocsRead }), ASK)).toBeNull();
     expect(readTourMessage(PGA, msg({ profile }), ASK)).toBeNull();
     expect(readTourMessage(PGA, msg({ read: etRead }), ASK)).toBeNull();
+  });
+
+  it('takes the season\'s statistics from his Stats page the same way (0.8.0), only his', () => {
+    const STATS = 'https://www.pgatour.com/player/99002/max-erfunden/stats';
+    const LPGA_STATS = 'https://www.lpga.com/athletes/lena-ausgedacht/99003/stats';
+    const pgaStatsPage = (pgatour.readStats(pgaStats(), {}, '2026-11-26') as { kind: 'page'; page: TourPage }).page;
+    const lpgaStatsPage = (lpga.readStats(lpgaStats(), {}, '2026-11-26') as { kind: 'page'; page: TourPage }).page;
+    expect([onSeasonResults(STATS), onSeasonResults(LPGA_STATS), keptTourPage(STATS)]).toEqual([true, true, STATS]);
+    expect(readTourMessage(STATS, msg({ season: pgaStatsPage }), ASK)).toEqual({ ok: true, season: pgaStatsPage });
+    expect(readTourMessage(LPGA_STATS, msg({ season: lpgaStatsPage }), ASK)).toEqual({ ok: true, season: lpgaStatsPage });
+    expect(readTourMessage('https://www.pgatour.com/player/99012/otto-erfunden/stats', msg({ season: pgaStatsPage }), ASK)).toBeNull();
+    expect(readTourMessage('https://www.pgatour.com/americas/player/99002/max-erfunden/stats', msg({ season: pgaStatsPage }), ASK)).toBeNull();
   });
 
   it('why his page gave nothing, and why it isn’t one', () => {

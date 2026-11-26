@@ -168,8 +168,9 @@ export const onOcsProfile = (url: unknown): boolean => isOcs(tourSiteOf(url)) &&
 export const onOcsOom = (url: unknown): boolean => isOcs(tourSiteOf(url)) && ocs.isOomPage(url);
 
 /**
- * His *Results* page on a season page's tour (read on *Send*). On pgatour.com only an address of a tour the module
- * reads (not PGA Tour Champions' or Americas'); which tour the page shows, its picker says when it is read.
+ * His *Results* page on a season page's tour (read on *Send*), or his *Stats* page there (the season's statistics,
+ * since 0.8.0). On pgatour.com only an address of a tour the module reads (not PGA Tour Champions' or Americas'); which
+ * tour the page shows, its picker says when it is read.
  */
 export const onSeasonResults = (url: unknown): boolean => isSeason(tourSiteOf(url)) && seasonSiteOf(url) !== null;
 
@@ -291,15 +292,16 @@ function ocsAnswer(pageUrl: unknown, site: ocs.OcsTourSite, m: { ocs?: unknown; 
   return l && l.site === site ? { ok: true, ocs: l } : null;
 }
 
-/** The id of the player whose *Results* page this is, on its site (pgatour.com, lpga.com, epsontour.com). */
+/** The id of the player whose *Results* or *Stats* page this is, on its site (pgatour.com, lpga.com, epsontour.com). */
 function seasonPlayerOf(url: unknown): string | null {
   if (!onSeasonResults(url)) return null;
-  return (isPga(tourSiteOf(url)) ? pgatour.resultsPageOf(url)?.id : lpga.resultsPageOf(url)?.id) ?? null;
+  const at = isPga(tourSiteOf(url)) ? (pgatour.resultsPageOf(url) ?? pgatour.statsPageOf(url)) : (lpga.resultsPageOf(url) ?? lpga.statsPageOf(url));
+  return at?.id ?? null;
 }
 
 /**
  * What the page script read on a season page, read again as the extension's background reads it (`checkTourPage`):
- * only from his *Results* page, only of the player whose page the window shows, only of a tour of that site (on
+ * only from his *Results* or *Stats* page, only of the player whose page the window shows, only of a tour of that site (on
  * pgatour.com the page's picker decides between its two tours).
  */
 function seasonAnswer(pageUrl: unknown, m: { season?: unknown; seasonUnread?: unknown }): TourAnswer | null {

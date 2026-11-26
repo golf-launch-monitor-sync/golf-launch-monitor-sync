@@ -134,6 +134,7 @@ show();
 /** A made-up player's pages on pgatour.com (made-up name, made-up tournaments). */
 export const PGA_OVERVIEW = 'https://www.pgatour.com/player/99002/max-erfunden/overview';
 export const LPGA_RESULTS = 'https://www.lpga.com/athletes/lena-ausgedacht/99003/results';
+export const LPGA_STATS = 'https://www.lpga.com/athletes/lena-ausgedacht/99003/stats';
 
 /**
  * The made-up pgatour.com player page, as the site builds it: a leaderboard strip of other players at the top, the head,
@@ -153,17 +154,36 @@ function pgaPlayerPage(path: string): string {
   const results = `<div>${picker('Tour', 'PGA Tour')}${picker('Season', '2026')}</div>
 <div><img alt="FedExCup Standings"><div><div>83</div><div>PTS: 494</div></div></div>
 <div><img alt="FedExCup Fall Standings"><div><div>83</div><div>PTS: 663</div></div></div><div id="season">…</div>`;
+  // *Stats*: the pickers, the strokes gained chart (labels only, never read) and the table, its first cell with the
+  // arrow icon's hidden text, as the site writes it.
+  const stat = (label: string, value: string, rank: string) =>
+    `<tr><td><a href="/stats/detail/1">${label}<span><span>Right Arrow</span><img alt=""><span>Right Arrow</span></span></a></td><td><span>${value}</span></td><td><span>${rank}</span></td><td><div><span>Measured Rounds</span><span>(61)</span></div></td><td></td></tr>`;
+  const statsTable = `<h2>Stat Rankings</h2><table><thead><tr></tr><tr>${['STAT', 'VALUE', 'RANK', 'SUPPORTING STAT', 'VALUE'].map((h) => `<th><span>${h}</span></th>`).join('')}</tr></thead><tbody>${[
+    stat('SG: Total', '0.912', '21'),
+    stat('SG: Off-the-Tee', '-0.104', '110'),
+    stat('Driving Distance', '301.4', '60'),
+    stat('Greens in Regulation Percentage', '68.40%', '50'),
+    stat('Proximity to Hole', "37' 6", '90'),
+    stat('Scoring Average (Actual)', '70.31', '40'),
+    stat('Official Money', '$1,234,567', '70'),
+  ].join('')}</tbody></table>`;
+  const stats = `<div>${picker('Tour', 'PGA Tour')}${picker('Season', '2026')}</div><div><span>SG: Total</span><span>SG: Putting</span></div><div id="season">…</div>`;
   const script = `
-    const show = () => {
-      document.getElementById('tab').innerHTML = ${JSON.stringify(results)};
-      setTimeout(() => { document.getElementById('season').innerHTML = ${JSON.stringify(table)}; }, 700);
+    const show = (html, later) => {
+      document.getElementById('tab').innerHTML = html;
+      setTimeout(() => { document.getElementById('season').innerHTML = later; }, 700);
     };
-    document.getElementById('results').addEventListener('click', (e) => { e.preventDefault(); history.pushState({}, '', '/player/99002/max-erfunden/results'); show(); });
-    if (location.pathname.endsWith('/results')) show();`;
+    const go = (id, part, html, later) => document.getElementById(id).addEventListener('click', (e) => {
+      e.preventDefault(); history.pushState({}, '', '/player/99002/max-erfunden/' + part); show(html, later);
+    });
+    go('results', 'results', ${JSON.stringify(results)}, ${JSON.stringify(table)});
+    go('stats', 'stats', ${JSON.stringify(stats)}, ${JSON.stringify(statsTable)});
+    if (location.pathname.endsWith('/results')) show(${JSON.stringify(results)}, ${JSON.stringify(table)});
+    if (location.pathname.endsWith('/stats')) show(${JSON.stringify(stats)}, ${JSON.stringify(statsTable)});`;
   return `<!doctype html><html><head><title>Max Erfunden PGA Tour Player Profile (made up)</title></head><body>
 <div><a href="/leaderboard?player=1">O. Erfunden</a><div>Pos</div><div>1</div></div>
 <main><h1><span>Max</span><span>Erfunden</span></h1><div><div><div>World Rank (OWGR)</div></div><div>122</div></div>
-<div role="tablist"><a href="${path.replace(/\/[a-z-]+$/, '/overview')}">Overview</a><a id="results" href="/player/99002/max-erfunden/results">Results</a></div>
+<div role="tablist"><a href="${path.replace(/\/[a-z-]+$/, '/overview')}">Overview</a><a id="results" href="/player/99002/max-erfunden/results">Results</a><a id="stats" href="/player/99002/max-erfunden/stats">Stats</a></div>
 <div id="tab">Overview of a made-up player</div></main><script>${script}</script></body></html>`;
 }
 
@@ -182,6 +202,31 @@ function lpgaResultsPage(): string {
 <main><h1><span>Lena</span><span>Ausgedacht</span></h1><div><div>143</div></div>
 <div><p>Seasons</p><div><div>2026</div></div></div>
 <h2>Race to CME Globe</h2><div>${fig('134', 'CME Points Rank')}${fig('134', 'CME Points Rank Previous')}${fig('63.688', 'CME Points')}${fig('3,980.187', 'CME Points Behind')}</div>
+<div id="season">…</div></main>
+<script>setTimeout(() => { document.getElementById('season').innerHTML = ${JSON.stringify(table)}; }, 700);</script></body></html>`;
+}
+
+/**
+ * The made-up lpga.com *Stats* page: the season picker and the strokes gained cards at once (a label, its value after
+ * it), the table *PERFORMANCE, YEAR TO DATE, RANKING* a moment later, its labels as row headers.
+ */
+function lpgaStatsPage(): string {
+  const card = (label: string, value: string) => `<div><div><div>${label}</div><button><img alt=""></button></div><div>${value}</div><div><p>40</p></div></div>`;
+  const row = (label: string, value: string, rank: string) => `<tr><th><p>${label}</p></th><td><p>${value}</p></td><td><p>${rank}</p></td></tr>`;
+  const table = `<h2>Top Stats</h2><table><thead><tr>${['PERFORMANCE', 'YEAR TO DATE', 'RANKING'].map((h) => `<th><p>${h}</p></th>`).join('')}</tr></thead><tbody><div>${[
+    row('Official Money', '$412,000', '61'),
+    row('CME Points', '1,021.500', '57'),
+    row('Drive Distance Avg', '255.40', '88'),
+    row('Greens in Regulation Pct', '70.02 %', '41'),
+    row('Scoring Avg Per Round', '71.02', '39'),
+    row('Birdies', '240', '50'),
+    row('Rounds Played', '75', '30'),
+    row('Cuts Made', '17', '20'),
+  ].join('')}</div></tbody></table>`;
+  return `<!doctype html><html><head><title>Lena Ausgedacht | Statistics | LPGA (made up)</title></head><body>
+<main><h1><span>Lena</span><span>Ausgedacht</span></h1>
+<div><p>Seasons</p><div><div>2026</div></div></div>
+<h2>Strokes Gained Insights</h2><div>${card('SG Total', '0.41')}${card('SG Putting', '0.36')}</div>
 <div id="season">…</div></main>
 <script>setTimeout(() => { document.getElementById('season').innerHTML = ${JSON.stringify(table)}; }, 700);</script></body></html>`;
 }
@@ -451,7 +496,8 @@ export class World {
     await context.route('https://www.lpga.com/**', (route) => {
       const req = route.request();
       this.seasonSaw.push({ url: req.url(), type: req.resourceType() });
-      const body = new URL(req.url()).pathname.endsWith('/results') ? lpgaResultsPage() : '<!doctype html><title>LPGA (made up)</title><h1>LPGA (made up)</h1>';
+      const path = new URL(req.url()).pathname;
+      const body = path.endsWith('/results') ? lpgaResultsPage() : path.endsWith('/stats') ? lpgaStatsPage() : '<!doctype html><title>LPGA (made up)</title><h1>LPGA (made up)</h1>';
       return route.fulfill({ status: 200, body, headers: { 'content-type': 'text/html; charset=utf-8' } });
     });
     // The made-up LET Access Series: one app for every address.

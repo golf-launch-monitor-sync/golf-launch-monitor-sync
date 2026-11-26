@@ -4,13 +4,14 @@
  * A pro's season page as a player meets it (spec/prores.md, `@glmsync/provider-tours` `seasonPage`): paired for a
  * pro's pages, the player opens his made-up profile on pgatour.com and goes to *Results* (the site changes the page
  * without loading it), taps *Send*; then her made-up *Results* page on lpga.com. Of the page only his own season
- * leaves it (not the leaderboard strip of others, not a team event's rounds); the extension asks the sites nothing.
+ * leaves it (not the leaderboard strip of others, not a team event's rounds); the extension asks the sites nothing. His
+ * *Stats* tab and her *Stats* page send the season's statistics the same way.
  */
 
-import { LPGA_RESULTS, PGA_OVERVIEW, PRO_CODE, PRO_TARGET, pairUrl } from '../../../tools/e2e/world.ts';
+import { LPGA_RESULTS, LPGA_STATS, PGA_OVERVIEW, PRO_CODE, PRO_TARGET, pairUrl } from '../../../tools/e2e/world.ts';
 import { connectWindow, expect, test } from './fixture.ts';
 
-test('sends his PGA Tour season from his Results page, and her LPGA season, on Send only', async ({ context, world, extensionId }) => {
+test('sends his PGA Tour season from his Results page, and her LPGA season, on Send only; their statistics from Stats', async ({ context, world, extensionId }) => {
   test.setTimeout(90_000);
   // Not connected yet: no line, and nothing read.
   const before = await context.newPage();
@@ -67,7 +68,34 @@ test('sends his PGA Tour season from his Results page, and her LPGA season, on S
     tournaments: [{ ref: 'lpga-2026-made-up-links-open', tour: 'lpga', start: '2026-07-23', place: 44, tied: true, points: 9.07 }],
   });
   expect(world.pro.imports[1]?.tournaments).toHaveLength(1);
-  expect(world.pro.plans).toEqual(['manual', 'manual']);
+
+  // His Stats tab (no page load): the season's statistics, metric; no ranking (the tab shows no standing), no tournament.
+  world.pro.player = 'Max Erfunden';
+  await page.goto(PGA_OVERVIEW);
+  await page.locator('#stats').click();
+  await expect(line).toContainText('Golf Stats Sync: send this page to Example App');
+  await page.getByTestId('season-send').click();
+  await expect(line).toContainText('Sent to Example App.');
+  expect(world.pro.imports[2]).toMatchObject({
+    site: 'tour:pga_tour',
+    player: { name: 'Max Erfunden' },
+    stats: [{ tour: 'pga_tour', season: 2026, values: { sg_total: 0.912, sg_off_tee: -0.104, driving_distance_m: 275.6, gir_pct: 68.4, proximity_m: 11.4, scoring_average: 70.31 } }],
+  });
+  expect([world.pro.imports[2]?.rankings, world.pro.imports[2]?.tournaments]).toEqual([undefined, undefined]);
+  expect(Object.keys(world.pro.imports[2]?.stats?.[0]?.values ?? {})).toHaveLength(6);
+
+  // Her Stats page: the cards and the table, the standing's row as the ranking.
+  world.pro.player = 'Lena Ausgedacht';
+  await page.goto(LPGA_STATS);
+  await expect(line).toContainText('Golf Stats Sync: send this page to Example App');
+  await page.getByTestId('season-send').click();
+  await expect(line).toContainText('Sent to Example App.');
+  expect(world.pro.imports[3]).toMatchObject({
+    site: 'tour:lpga',
+    rankings: [{ source: 'tour:lpga', rank: 57, points: 1021.5 }],
+    stats: [{ tour: 'lpga', season: 2026, values: { sg_total: 0.41, sg_putting: 0.36, driving_distance_m: 233.5, gir_pct: 70.02, scoring_average: 71.02, rounds: 75, cuts_made: 17, birdies_per_round: 3.2 } }],
+  });
+  expect(world.pro.plans).toEqual(['manual', 'manual', 'manual', 'manual']);
   // The sites saw only the pages the player opened: documents, never a request of the extension's.
   expect(new Set(world.seasonSaw.map((r) => r.type))).toEqual(new Set(['document']));
 });

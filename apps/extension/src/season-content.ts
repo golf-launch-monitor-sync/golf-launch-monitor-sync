@@ -3,22 +3,22 @@
 /**
  * The extension's side of the tours whose player page shows the whole season with its rounds (PGA Tour and Korn Ferry
  * Tour on pgatour.com, LPGA Tour on lpga.com, Epson Tour on epsontour.com; spec/prores.md, `@glmsync/provider-tours`
- * `seasonPage`), in its own isolated world. On the player's own *Results* page it shows one small line - only when an
- * app is connected for a pro's pages; otherwise nothing at all - and reads the page only when the player taps *Send*:
- * the season the page shows then (the season he picked), as the site's own scripts built it. Nothing is opened for it,
- * and nothing here asks the site anything.
+ * `seasonPage`), in its own isolated world. On the player's own *Results* or *Stats* page it shows one small line - only
+ * when an app is connected for a pro's pages; otherwise nothing at all - and reads the page only when the player taps
+ * *Send*: the season the page shows then (the season he picked: its tournaments with rounds, or its statistics), as
+ * the site's own scripts built it. Nothing is opened for it, and nothing here asks the site anything.
  *
  * The sites move between their pages without loading them, so the script runs on all of a site and shows the line only
- * while the address is a player's *Results* page. When an app finds another name on the page than the player's, the
+ * while the address is a player's *Results* or *Stats* page. When an app finds another name on the page than the player's, the
  * line offers *Answer*, which only brings the extension's own page to the front. The line lives in a shadow root.
  */
 
 import { pickLang, proLineOf, translator, type LinePhase, type ProView } from '@glmsync/browser';
-import { figuresOf, readSeasonPage, seasonSiteOf, seasonTakes, snapshotOf, type TourSite } from '@glmsync/provider-tours';
+import { figuresOf, readSeasonPage, seasonShows, seasonSiteOf, seasonTakes, snapshotOf, type TourSite } from '@glmsync/provider-tours';
 import type { Reply } from './messages.ts';
 
 const t = translator(pickLang(navigator.languages));
-/** How long *Send* waits for the season's table (the site puts it in a moment after the page). */
+/** How long *Send* waits for the page's table (the site puts it in a moment after the page). */
 const TABLE_WAIT_MS = 15_000;
 
 let host: HTMLElement | null = null;
@@ -106,7 +106,7 @@ async function sendPage(): Promise<void> {
   const takes = seasonTakes(url);
   const started = Date.now();
   let snap = snapshotOf(document, url, takes.labels);
-  while (!snap.tables.some((x) => x.head.some((h) => h.toUpperCase() === 'R1')) && Date.now() - started < TABLE_WAIT_MS) {
+  while (!seasonShows(snap) && Date.now() - started < TABLE_WAIT_MS) {
     await new Promise((resolve) => setTimeout(resolve, 500));
     snap = snapshotOf(document, url, takes.labels);
   }

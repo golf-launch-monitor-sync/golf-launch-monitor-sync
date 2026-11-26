@@ -88,7 +88,7 @@ export function manifest(browser: Browser, version: string, testHosts: string[] 
       { matches: [...progolftour.PAGE_MATCHES], js: ['tours-content.js'], run_at: 'document_idle', all_frames: false },
       // europeantour.com: only a player's pages (DP World Tour, HotelPlanner Tour); the line with *Send*.
       { matches: [...europeantour.PAGE_MATCHES], js: ['europeantour-content.js'], run_at: 'document_idle', all_frames: false },
-      // The tours whose player page shows the season (PGA Tour, Korn Ferry, LPGA, Epson): the line on his Results page.
+      // The tours whose player page shows the season (PGA Tour, Korn Ferry, LPGA, Epson): the line on his Results and Stats pages.
       { matches: [...SEASON_PAGE_MATCHES], js: ['season-content.js'], run_at: 'document_idle', all_frames: false },
       // The LET's and LET Access Series' pages: every page, because each site is one app that changes its address
       // without loading a page; the script reads only her profile and her line of the Order of Merit.

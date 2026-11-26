@@ -76,3 +76,92 @@ export function lpgaResults(over: Partial<Snapshot> = {}, rows?: Cell[][]): Snap
 
 /** The standing above its labels (`figuresOf` with lpga.FIGURES). */
 export const lpgaFigures = (rank = '134', points = '63.688'): Record<string, string> => ({ rank, points });
+
+/** A line of pgatour.com's *Stats* table: the label (with the arrow's hidden text, as the site writes it), value, rank. */
+export const pgaStatRow = (label: string, value: string, rank = '50'): Cell[] =>
+  cells(`${label} Right Arrow Right Arrow`, value, rank, 'Measured Rounds (61)', '');
+
+/** Max Erfunden's *Stats* page, PGA Tour 2026: made-up values in the site's labels and units (yards, feet and inches). */
+export function pgaStats(over: Partial<Snapshot> = {}, rows?: Cell[][]): Snapshot {
+  return {
+    url: `${PGA}/player/99002/max-erfunden/stats`,
+    title: 'Max Erfunden',
+    lines: ['Max Erfunden', 'Stat Rankings'],
+    pairs: { Tour: 'PGA Tour', Season: '2026' },
+    selected: [],
+    tables: [{
+      head: ['STAT', 'VALUE', 'RANK', 'SUPPORTING STAT', 'VALUE'],
+      rows: rows ?? [
+        pgaStatRow('SG: Total', '0.912'),
+        pgaStatRow('SG: Tee-to-Green', '0.500'),
+        pgaStatRow('SG: Off-the-Tee', '-0.104'),
+        pgaStatRow('SG: Approach the Green', '0.388'),
+        pgaStatRow('SG: Around-the-Green', '0.216'),
+        pgaStatRow('SG: Putting', '0.412'),
+        pgaStatRow('Longest Drives', '371'),
+        pgaStatRow('Driving Distance', '301.4'),
+        pgaStatRow('Driving Distance - All Drives', '290.2'),
+        pgaStatRow('Driving Accuracy Percentage', '61.25%'),
+        pgaStatRow('Greens in Regulation Percentage', '68.40%'),
+        pgaStatRow('Proximity to Hole', "37' 6"),
+        pgaStatRow('Approaches from > 275 yards', "62' 1"),
+        pgaStatRow('Scrambling', '60.12%'),
+        pgaStatRow('Scrambling from the Fringe', '-', '-'),
+        pgaStatRow('Sand Save Percentage', '51.30%'),
+        pgaStatRow('Putting Average', '1.731'),
+        pgaStatRow('Putts Per Round', '28.95'),
+        pgaStatRow('Scoring Average (Adjusted)', '70.012'),
+        pgaStatRow('Scoring Average (Actual)', '70.31'),
+        pgaStatRow('Birdie Average', '3.95'),
+        pgaStatRow('Par 3 Scoring Average', '3.04'),
+        pgaStatRow('Par 4 Scoring Average', '4.01'),
+        pgaStatRow('Par 5 Scoring Average', '4.62'),
+        pgaStatRow('Official Money', '$1,234,567'),
+      ],
+    }],
+    links: [],
+    ...over,
+  };
+}
+
+/** A line of lpga.com's *Stats* table: PERFORMANCE, YEAR TO DATE, RANKING. */
+export const lpgaStatRow = (label: string, value: string, rank = '-'): Cell[] => cells(label, value, rank);
+
+/** Lena Ausgedacht's *Stats* page, LPGA Tour 2026: the strokes gained cards (pairs) and the table, made-up values. */
+export function lpgaStats(over: Partial<Snapshot> = {}, rows?: Cell[][]): Snapshot {
+  return {
+    url: 'https://www.lpga.com/athletes/lena-ausgedacht/99003/stats',
+    title: 'Lena Ausgedacht',
+    lines: ['Lena Ausgedacht', 'Strokes Gained Insights', 'Top Stats'],
+    pairs: { Seasons: '2026', 'SG Total': '0.41', 'SG Off the Tee': '-0.22', 'SG Approach': '0.18', 'SG Around Green': '0.09', 'SG Putting': '0.36' },
+    selected: [],
+    tables: [{
+      head: ['PERFORMANCE', 'YEAR TO DATE', 'RANKING'],
+      rows: rows ?? [
+        lpgaStatRow('Official Money', '$412,000', '61'),
+        lpgaStatRow('CME Points', '1,021.500', '57'),
+        lpgaStatRow('Drive Distance Avg', '255.40', '88'),
+        lpgaStatRow('Drive Accuracy Pct', '70.10 %', '60'),
+        lpgaStatRow('Greens in Regulation Pct', '70.02 %', '41'),
+        lpgaStatRow('Putts Per GIR Avg', '1.79', '44'),
+        lpgaStatRow('Putts Per Round Avg', '29.70', '62'),
+        lpgaStatRow('Sand Save Pct', '45.00 %', '71'),
+        lpgaStatRow('Scoring Avg Per Round', '71.02', '39'),
+        lpgaStatRow('Birdies', '240', '50'),
+        lpgaStatRow('Rounds Played', '75', '30'),
+        lpgaStatRow('Total Events Played', '21'),
+        lpgaStatRow('Events Played', '20'),
+        lpgaStatRow('Putts Per Round 1', '29.10', '40'),
+        lpgaStatRow('Par 3 Scoring Avg', '3.01', '22'),
+        lpgaStatRow('Par 4 Scoring Avg', '4.05', '50'),
+        lpgaStatRow('Par 5 Scoring Avg', '4.70', '45'),
+        lpgaStatRow('Official Wins', '0'),
+        lpgaStatRow('Top 10 Finishes', '3'),
+        lpgaStatRow('Cuts Made', '17', '20'),
+        lpgaStatRow('Low Round', '64', '20'),
+      ],
+    }],
+    links: [],
+    ...over,
+  };
+}

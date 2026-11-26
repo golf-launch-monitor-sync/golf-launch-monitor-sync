@@ -187,9 +187,13 @@ same connection (`kind=pro`).
    counted by the rounds the table has room for (the app marks those days as estimated). A team event (two players'
    score per round: Zurich Classic, Dow Championship …) is left out, as is a tournament not over yet. A tour of
    pgatour.com this doesn't read (PGA Tour Champions, PGA Tour Americas) says so and sends nothing.
+4. Since 0.18.0 also **Stats**: the line shows there too, and **Send** sends the season's statistics of the season (and
+   tour) picked on the page - strokes gained, driving, greens, proximity, scrambling, putting, scoring, par 3/4/5, and on
+   lpga.com and epsontour.com rounds, events, cuts, top 10s and wins with the standing's points and rank - in metres
+   where the page writes yards or feet. Send *Results* and *Stats* each once a season, as you like.
 
 `season-content.ts` runs on those sites in the extension's own world (the whole site, because the sites move to
-*Results* without loading a page; the line shows only there) and reads nothing until an app is connected for a pro's
+*Results* and *Stats* without loading a page; the line shows only there) and reads nothing until an app is connected for a pro's
 pages and you tap *Send*. It keeps nothing of the page and sends the sites nothing.
 
 ### A tour's pages: the Ladies European Tour and the LET Access Series

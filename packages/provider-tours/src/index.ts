@@ -11,7 +11,8 @@
  * - `europeantour`     DP World Tour and HotelPlanner Tour: his pages on europeantour.com (ranks, results with
  *                      rounds, season statistics), each tour a page of its own
  * - `seasonPage`       the tours whose *Results* page shows the whole season with rounds, read on *Send*:
- *                      `pgatour` (PGA Tour, Korn Ferry Tour), `lpga` (LPGA Tour, Epson Tour); `figures` the standing
+ *                      `pgatour` (PGA Tour, Korn Ferry Tour), `lpga` (LPGA Tour, Epson Tour); `figures` the standing;
+ *                      their *Stats* page the season's statistics (`seasonStats`)
  * - `ocs`              Ladies European Tour and LET Access Series: her profile (results with rounds) and her line of the
  *                      Order of Merit
  */
@@ -24,6 +25,7 @@ export * as europeantour from './europeantour.ts';
 export * from './figures.ts';
 export * from './seasonPage.ts';
 export type { SeasonRead, SeasonUnread } from './season.ts';
+export * from './seasonStats.ts';
 export * as pgatour from './pgatour.ts';
 export * as lpga from './lpga.ts';
 export * as ocs from './ocs.ts';

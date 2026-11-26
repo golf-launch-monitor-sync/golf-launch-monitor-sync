@@ -173,7 +173,8 @@ portal in a sign-in window - so that window lives here, in a small app that does
   *Results* page (`/player/<id>/<name>/results`, `/athletes/<name>/<id>/results`) shows the whole season with its rounds,
   so the window reads only on *Send*, as the extension: the page script reads the season the page shows then (the season
   he picked there, on pgatour.com the tour too) with the standing beside it (`readSeasonPage`, `figuresOf`), and the app
-  sends that page (`src/lib/seasonSession.ts`, the bar's words `seasonBar`). The leaderboard of others that runs along
+  sends that page (`src/lib/seasonSession.ts`, the bar's words `seasonBar`). Since 0.8.0 his *Stats* page (`…/stats`)
+  the same way: *Send* there sends the season's statistics (`seasonStats` of `@glmsync/provider-tours`). The leaderboard of others that runs along
   pgatour.com's top stays in the page script. One window for pgatour.com's two tours (*Open PGA Tour*, *Open Korn Ferry
   Tour* open each tour's list of players; his page has both), a window each for the LPGA Tour and the Epson Tour. A tour
   of the site the module doesn't read (PGA Tour Champions, Americas) or a season with nothing finished yet: the bar says

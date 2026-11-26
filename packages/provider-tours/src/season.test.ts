@@ -138,7 +138,7 @@ describe('the season pages as one', () => {
     expect(seasonSiteOf('https://www.pgatour.com/korn-ferry-tour/player/1/x/results')).toBe('tour:korn_ferry');
     expect(seasonSiteOf('https://www.lpga.com/athletes/x/1/results')).toBe('tour:lpga');
     expect(seasonSiteOf('https://www.pgatour.com/leaderboard')).toBeNull();
-    expect(seasonTakes('https://www.lpga.com/x').labels).toEqual(['Seasons']);
+    expect(seasonTakes('https://www.lpga.com/x').labels).toEqual(['Seasons', 'SG Total', 'SG Off the Tee', 'SG Approach', 'SG Around Green', 'SG Putting']);
     expect(seasonTakes('https://example.org/').figures).toEqual([]);
     expect(readSeasonPage(lpgaResults(), lpgaFigures(), TODAY).kind).toBe('page');
     expect(readSeasonPage(pgaResults(), pgaFigures(), TODAY).kind).toBe('page');

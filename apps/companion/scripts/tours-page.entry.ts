@@ -23,7 +23,7 @@
  * scripts/tours-page.mjs bundles it into src/lib/toursPageScript.ts.
  */
 
-import { europeantour, figuresOf, ocs, progolftour, readSeasonPage, seasonSiteOf, seasonTakes, snapshotOf, type DomDocument, type FigureDocument, type Snapshot } from '@glmsync/provider-tours';
+import { europeantour, figuresOf, ocs, progolftour, readSeasonPage, seasonShows, seasonSiteOf, seasonTakes, snapshotOf, type DomDocument, type FigureDocument, type Snapshot } from '@glmsync/provider-tours';
 import { callFits, isOcs, isSeason, onTourSite, READ_FUNCTION, TABLE_WAIT_MS, tourSiteOf, TOUR_MESSAGE, watchedSite, WATCH_MS } from '../src/lib/toursPage.ts';
 
 declare const window: {
@@ -114,8 +114,9 @@ try {
       look();
     };
     /**
-     * His *Results* page on a season page's tour as it shows now, the season's table waited for a little (the site puts
-     * it in a moment after the page): the season the page shows, with the standing beside it. Only his page goes.
+     * His *Results* or *Stats* page on a season page's tour as it shows now, its table waited for a little (the site
+     * puts it in a moment after the page): the season the page shows (its tournaments, or its statistics), with the
+     * standing beside it. Only his page goes.
      */
     const readSeason = (ask: string, href: string, today: string) => {
       if (!seasonSiteOf(href)) {
@@ -133,7 +134,7 @@ try {
           } catch {
             snap = null;
           }
-          if (snap && !snap.tables.some((x) => x.head.some((h) => h.trim().toUpperCase() === 'R1')) && Date.now() - started < TABLE_WAIT_MS) {
+          if (snap && !seasonShows(snap) && Date.now() - started < TABLE_WAIT_MS) {
             window.setTimeout(look, 500);
             return;
           }

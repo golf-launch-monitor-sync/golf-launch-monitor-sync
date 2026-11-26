@@ -147,14 +147,22 @@ function tournamentOf(v: unknown, tour: ProTour): ProTournament | null {
 const STATS: Readonly<Record<string, readonly [number, number]>> = {
   scoring_average: [55, 95], driving_distance_m: [100, 400], driving_accuracy_pct: [0, 100], gir_pct: [0, 100],
   scrambling_pct: [0, 100], sand_saves_pct: [0, 100], putts_per_round: [15, 45], putts_per_gir: [1, 3],
+  birdies_per_round: [0, 18], proximity_m: [0, 100], par3_average: [2, 6], par4_average: [3, 7], par5_average: [3, 8],
+  sg_total: [-15, 15], sg_off_tee: [-10, 10], sg_approach: [-10, 10], sg_around_green: [-10, 10], sg_putting: [-10, 10],
+  rounds: [0, 300], events: [0, 80], cuts_made: [0, 80], top10: [0, 80], wins: [0, 80],
 };
+// Counts are whole numbers.
+const COUNTS = new Set(['rounds', 'events', 'cuts_made', 'top10', 'wins']);
 
 function statsOf(v: unknown, tour: ProTour): ProStats | null {
   const s = obj(v);
   const values = obj(s?.values);
   if (!s || !int(s.season, 1990, 2100) || !day(s.as_of) || !values) return null;
   const kept: Record<string, number> = {};
-  for (const [k, [lo, hi]] of Object.entries(STATS)) if (num(values[k], lo, hi)) kept[k] = values[k];
+  for (const [k, [lo, hi]] of Object.entries(STATS)) {
+    const v = values[k];
+    if (num(v, lo, hi) && (!COUNTS.has(k) || Number.isInteger(v))) kept[k] = v;
+  }
   // A page's statistics are of the page's tour, never another's.
   return Object.keys(kept).length > 0 && (s.tour === undefined || s.tour === tour) ? { tour, season: s.season, as_of: s.as_of, values: kept } : null;
 }
@@ -203,8 +211,9 @@ export function tourBatchOf(page: TourPage, o: TourBatchOptions): ProresBatch {
     generated_at: o.generated_at,
     generator: o.generator,
     player: o.confirmed ? { name: page.name, confirmed: true } : { name: page.name },
-    rankings: [page.ranking],
   };
+  // A ranking needs its rank or points (a page of statistics alone, e.g. a tour's *Stats* page, may show neither).
+  if (page.ranking.rank !== undefined || page.ranking.points !== undefined) b.rankings = [page.ranking];
   if (o.plan_id || o.reason) b.sync = { ...(o.plan_id ? { plan_id: o.plan_id } : {}), ...(o.reason ? { reason: o.reason } : {}) };
   const tournaments: ProTournament[] = [];
   let rounds = 0;
