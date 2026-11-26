@@ -12,7 +12,8 @@ Syncs your golf data from **your own** accounts into apps of your choice, in ope
   and the companion app (in its own golf.de window) only read along while **you** open these pages - or,
   once you signed in and tap *Fetch all*, click through them for you at a person's pace; while you are signed
   in, the extension also does that by itself in a background tab once a day when the app says your record is
-  due. They send golf.de nothing of their own and never sign in for you.
+  due, and the companion app while you have it open (phones don't let it run in the back). They send golf.de
+  nothing of their own and never sign in for you.
 - **A professional's world ranking** — rank, points and tournaments — from the player's own page of the
   Official World Golf Ranking or the Rolex Women's World Golf Rankings, in [prores/1](spec/prores.md)
   (since spec 1.15.0). The extension reads that page only when **you** tap *Send* on it, as it shows it to
@@ -117,7 +118,8 @@ And, as a rule for every line of code here:
 - **golf.de: reads only what golf.de's own page loaded in your tab; sends no request of its own.**
   Nothing happens unless you open the page or tap *Fetch all* there - or, while you are signed in, the app
   you connected says your record is due (once a day at most): then the extension opens golf.de in a
-  background tab by itself. Either way it clicks golf.de's own links and buttons for you, as you would, with a
+  background tab by itself, and the companion app, while it is open, in a window you don't see (it says so on its
+  home page). Either way it clicks golf.de's own links and buttons for you, as you would, with a
   pause between pages ([spec/hcp.md](spec/hcp.md)); golf.de's page asks what it asks. It never signs in for
   you, and you can switch the background fetch off. Names of other players never leave the page.
 - **World rankings: only your own page, only on your tap, only what it shows you; no request of its own**

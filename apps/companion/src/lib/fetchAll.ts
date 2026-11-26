@@ -28,6 +28,8 @@ export function stepScript(step: Step): string | null {
 
 export interface DriverDeps {
   hcp: { runStep(owner: string): Promise<RunTurn> };
+  /** Which page this driver is (the player's window by default; the unseen window: lib/autoFetch.ts `AUTO_OWNER`). */
+  owner?: string;
   inject(script: string): void;
   sleep(ms: number): Promise<void>;
   show(v: HcpView): void;
@@ -58,7 +60,7 @@ export class Driver {
       while (this.on) {
         let turn: RunTurn;
         try {
-          turn = await this.deps.hcp.runStep(WINDOW_OWNER);
+          turn = await this.deps.hcp.runStep(this.deps.owner ?? WINDOW_OWNER);
         } catch {
           return;
         }

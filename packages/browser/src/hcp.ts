@@ -24,7 +24,9 @@
  * *Fetch all* runs on the player's tap, or (spec 1.16.0, the extension) by itself: `autoDue` says whether to start one
  * now - only while golf.de last said the player is signed in, the account confirmed, and a target's plan with `timer`
  * says due - and the extension's background opens golf.de in a tab of its own for it. A run by itself that stops early
- * holds the next until golf.de's page has shown the player signed in outside a run.
+ * holds the next until golf.de's page has shown the player signed in outside a run. The companion app (spec 1.17.0) does
+ * the same only while it is open, in a window the player doesn't see, keeping a run of the day for the player's tap
+ * (`autoDue` with `spare`); the app going to the back interrupts its run without the hold (`interruptFetchAll`).
  *
  * Every method is serialised, and nothing throws at the caller for what can happen (a target down, a token
  * revoked): that is a state to show.
@@ -543,9 +545,10 @@ export class HcpClient {
 
   /**
    * A run is over: what it opened is kept (not opened again for a while), and what it read goes out now - one send at
-   * the end, not one per page (it waited for this). Inside `serial`.
+   * the end, not one per page (it waited for this). `hold: false` for a run the phone cut off (the companion app sent
+   * to the back): nothing went wrong, so a run by itself isn't held for it. Inside `serial`.
    */
-  private async closeRun(): Promise<void> {
+  private async closeRun(opts: { hold?: boolean } = {}): Promise<void> {
     const kr = await this.keptRun();
     if (!kr || kr.closed) return;
     const run = running(kr.run) ? cancelRun(kr.run, this.now()) : kr.run;
@@ -561,7 +564,7 @@ export class HcpClient {
     // By itself: one that finished tells every target it read, even with nothing new, so the plan moves on and doesn't
     // say due again within the day; one that stopped early holds the next until the player is back on golf.de.
     const done = run.phase === 'done';
-    if (!done) await this.changeAuto((a) => ({ ...a, hold: true }));
+    if (!done && opts.hold !== false) await this.changeAuto((a) => ({ ...a, hold: true }));
     await this.sendAll(done);
   }
 
@@ -628,9 +631,10 @@ export class HcpClient {
    * held, no run under way, golf.de last said the player is signed in with the account confirmed and a target paired,
    * runs left today - and then a target's plan with `timer` says due. Asks the targets at most every
    * `auto_look_minutes`, and only the targets; golf.de is asked nothing. Never throws: a target that can't answer
-   * says not due.
+   * says not due. `spare`: runs of the day it leaves for the player's tap (the companion app keeps one, since a run of
+   * its own may be cut off by the phone and would otherwise use up the day's runs).
    */
-  autoDue(): Promise<boolean> {
+  autoDue(opts: { spare?: number } = {}): Promise<boolean> {
     return this.serial(async () => {
       const a = await this.autoState();
       const now = this.now();
@@ -639,6 +643,8 @@ export class HcpClient {
       if (await this.liveRun()) return false;
       const k = await this.kept();
       if ((await this.fetchAllNow(k)) !== 'ready' || !k.subject) return false;
+      const spare = Math.max(0, Math.floor(opts.spare ?? 0));
+      if (spare && (await this.runsToday()).length + spare >= CLICKS.runs_per_day) return false;
       await this.changeAuto((x) => ({ ...x, looked: now }));
       const ref = (p: HcpPairing) => accountRefOf(p.account_salt, PROVIDER_ID, k.subject as string);
       for (const p of await this.pairings()) {
@@ -706,6 +712,22 @@ export class HcpClient {
       if (kr && kr.owner === owner && running(kr.run)) {
         await this.saveRun({ ...kr, run: cancelRun(kr.run, this.now()) });
         await this.closeRun();
+      }
+      return this.viewNow();
+    });
+  }
+
+  /**
+   * The phone sent the companion app to the back (spec 1.17.0): a run under way (of `owner`, if named) ends as
+   * cancelled and what it read goes out, as on *Stop* - but a run by itself isn't held for it, since nothing went
+   * wrong; the next look may start another (the day's runs still count).
+   */
+  interruptFetchAll(owner?: string): Promise<HcpView> {
+    return this.serial(async () => {
+      const kr = await this.keptRun();
+      if (kr && running(kr.run) && (owner === undefined || kr.owner === owner)) {
+        await this.saveRun({ ...kr, run: cancelRun(kr.run, this.now()) });
+        await this.closeRun({ hold: false });
       }
       return this.viewNow();
     });

@@ -44,7 +44,8 @@ format, the target API, the planning rules, the load guard and the deep links.
   own** ([spec/hcp.md](spec/hcp.md), *A client that observes and clicks for the player*). Its API wants
   golf.de's own client id: never sent. Paging and opening pages only in a run of *Fetch all* - on the
   player's tap, or (the extension, since spec 1.16.0) by itself when a target's plan with `timer` says due and
-  golf.de last said the player is signed in, in a background tab of its own, never signing in itself - by
+  golf.de last said the player is signed in, in a background tab of its own (the companion app, since 1.17.0,
+  only while it is open, in a window behind its screen), never signing in itself - by
   golf.de's own links and buttons, at the pace of `spec/hcp/clicks.json`; names and card numbers never leave
   the page script.
 - The README's **"unofficial, not affiliated with or endorsed by …"** stays, and a provider's name is

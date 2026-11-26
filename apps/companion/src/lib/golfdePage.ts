@@ -81,6 +81,28 @@ export const golfdeWindowRules = {
   onShouldStartLoadWithRequest: (req: Navigation): boolean => (req.isTopFrame === false ? frameMayLoad(req.url) : pageMayLoad(req.url)),
 };
 
+/**
+ * The window nobody sees, for a run by itself while the app is open (spec 1.17.0; lib/autoFetch.ts): its top frame
+ * only on the pages the page script reads along on, its frames as in the player's window. Anything else - golf.de's
+ * sign-in, Google's or Apple's, golf.de's start page - doesn't load: this window never signs in, and a page that leads
+ * elsewhere ends its run (`refused`, called with nothing of the address).
+ */
+export function unseenWindowRules(refused: () => void) {
+  return {
+    originWhitelist: ['*'],
+    onShouldStartLoadWithRequest: (req: Navigation): boolean => {
+      if (req.isTopFrame === false) return frameMayLoad(req.url);
+      if (req.url === 'about:blank' || onReadPage(req.url)) return true;
+      try {
+        refused();
+      } catch {
+        // the caller's trouble is its own; the page still doesn't load
+      }
+      return false;
+    },
+  };
+}
+
 /** A new id for a page the script runs in: results of a page go to the account that page named (HcpClient.see). */
 export function pageId(random: (n: number) => Uint8Array): string {
   return Array.from(random(9), (b) => b.toString(16).padStart(2, '0')).join('');

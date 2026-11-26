@@ -42,8 +42,9 @@ page asks what it asks; this module still sends golf.de nothing of its own.
 
 Since spec 1.16.0 the extension may start the same run **by itself** when a target's plan (`timer`) says the record
 is due, only while golf.de last said the player is signed in, in a background tab (*By itself, when the record is
-due*). The run here doesn't know who started it; when to start one by itself is `HcpClient`'s (`@glmsync/browser`),
-the tab the extension's background's.
+due*); since 1.17.0 the companion app too, only while it is open, in a window behind its screen. The run here doesn't
+know who started it; when to start one by itself is `HcpClient`'s (`@glmsync/browser`), the tab the extension's
+background's, the window the companion app's.
 
 ## Pieces
 

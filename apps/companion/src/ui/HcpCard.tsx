@@ -3,7 +3,8 @@
 /**
  * The handicap record on the home page (shown once an app is connected for it, or one ended its connection): the
  * connected apps with what each last answered, what golf.de's pages showed and what is still to send, *Open golf.de*,
- * *Send now*, sending by itself, *Disconnect*. The same parts as the extension's popup, in the app's words where
+ * *Send now*, sending by itself, *Fetch all by itself* (spec 1.17.0: while the app is open; its run shows here with
+ * *Stop*, since its window is behind the screen), *Disconnect*. The same parts as the extension's popup, in the app's words where
  * those speak of the extension. Until the first results went out, connecting stands there as steps (the wizard): open
  * golf.de and sign in, *Is this your golf.de account?*, the first results - and no count before the yes.
  */
@@ -14,12 +15,18 @@ import { factsOfHcp, hcpWhoLine, targetOf, wizardLines, wizardOf } from '@glmsyn
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Switch, Text, View } from 'react-native';
 import { lang, t } from '../i18n';
-import { hcpEnded, hcpLast } from '../lib/hcpText';
+import { autoRunning, hcpEnded, hcpLast, hcpLine } from '../lib/hcpText';
 import type { Services } from '../lib/services';
 import { Body, Button, Card, colors, s, Small, Title } from './parts';
 import { WizardFrame } from './WizardFrame';
 
-/** The view, kept current: loaded at once, after each send of the sender and whenever `refresh` is called. */
+/** How often the card follows a run by itself under way (its window is behind the screen). */
+const RUN_REFRESH_MS = 3000;
+
+/**
+ * The view, kept current: loaded at once, after each send of the sender, whenever `refresh` is called, and while a run
+ * by itself goes on.
+ */
 export function useHcpView(svc: Services) {
   const [view, setView] = useState<HcpView | null>(null);
   const refresh = useCallback(async () => {
@@ -31,7 +38,23 @@ export function useHcpView(svc: Services) {
   }, [svc]);
   useEffect(() => {
     void refresh();
-    return svc.hcpSender.subscribe(setView);
+    const off = svc.hcpSender.subscribe(setView);
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const follow = (st: string) => {
+      void refresh();
+      if (st === 'opening' || st === 'running') timer ??= setInterval(() => void refresh(), RUN_REFRESH_MS);
+      else if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+    const offAuto = svc.auto.subscribe(follow);
+    if (svc.auto.state !== 'idle') follow(svc.auto.state);
+    return () => {
+      off();
+      offAuto();
+      if (timer) clearInterval(timer);
+    };
   }, [svc, refresh]);
   return { view, setView, refresh };
 }
@@ -118,6 +141,8 @@ export function HcpCard({ svc, view, setView, open }: { svc: Services; view: Hcp
       </WizardFrame>
     );
   }
+  const running = autoRunning(view);
+  const runLine = running ? hcpLine(view, lang) : null;
   const notes = [view.waiting ? t('hcp.waiting') : null, view.signed_out ? t('hcp.signedOut') : null, view.changed_page ? t('hcp.changed') : null].filter(
     (x): x is string => !!x,
   );
@@ -154,6 +179,15 @@ export function HcpCard({ svc, view, setView, open }: { svc: Services; view: Hcp
             </Body>
           ))}
           {note && <Body warn>{note}</Body>}
+          {running && (
+            <View style={{ gap: 4 }}>
+              <Body>{t('hcp.autoRun')}</Body>
+              {runLine && <Small>{runLine.text}</Small>}
+              <View style={s.row}>
+                <Button label={translator(lang)('line.stop')} kind="secondary" busy={busy === 'stop'} onPress={() => void act('stop', () => svc.auto.stop())} />
+              </View>
+            </View>
+          )}
           <View style={s.row}>
             <Button label={t('hcp.open')} onPress={open} />
             {view.fresh > 0 && live.length > 0 && (
@@ -168,6 +202,15 @@ export function HcpCard({ svc, view, setView, open }: { svc: Services; view: Hcp
               accessibilityLabel={t('hcp.auto')}
             />
             <Text style={s.body}>{t('hcp.auto')}</Text>
+          </View>
+          <View style={[s.row, { alignItems: 'center' }]}>
+            <Switch
+              value={view.auto_fetch}
+              onValueChange={(on) => void act('autoFetch', () => svc.hcp.setAutoFetch(on))}
+              disabled={busy === 'autoFetch'}
+              accessibilityLabel={t('hcp.autoFetch')}
+            />
+            <Text style={[s.body, { flex: 1 }]}>{t('hcp.autoFetch')}</Text>
           </View>
           <Small>{t('hcp.limits')}</Small>
         </>

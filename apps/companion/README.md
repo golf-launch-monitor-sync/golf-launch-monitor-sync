@@ -112,8 +112,18 @@ portal in a sign-in window - so that window lives here, in a small app that does
   what it last answered, *Open golf.de*, *Send now*, *Send by itself*, *Disconnect*. A read link
   `glmsync://read?kind=hcp` (spec 1.11.0, from a target's reminder that the record is due) opens the window - only
   with a handicap pairing. What the app says plainly: Google or Apple sign-in often doesn't work in an app's window
-  (e-mail and password do); nothing happens in the background; golf.de's own app isn't read. The window keeps every
+  (e-mail and password do); nothing happens in the background (below); golf.de's own app isn't read. The window keeps every
   load in the app (`golfdeWindowRules`, as the Trackman window's).
+- **Clicks through golf.de for the player** (spec 1.14.0, *Fetch all*): once signed in and the account confirmed, *Fetch
+  all* in the window's bar opens every page of the History Sheet, the Scoring Record and the result lists of the last two
+  years for them, at a person's pace (`src/lib/fetchAll.ts` drives `HcpClient`'s run; the page script takes golf.de's own
+  pager and button), and sends once at the end; *Stop*, *Done* or the app going to the back ends it.
+- **Does that by itself while it is open** (spec 1.17.0, companion 0.10.0; [below](#golfde-by-itself-what-the-phone-allows)):
+  when the app comes to the front and a connected app's plan (`timer`) says the record is due, it runs *Fetch all* in a
+  golf.de window the player doesn't see, behind its own screen (`src/ui/UnseenGolfde.tsx`, `src/lib/autoFetch.ts`); the
+  home page's card says so, with the run's progress and *Stop*. Only while golf.de last said the player is signed in, with
+  the account confirmed; it never signs in, and keeps one of the day's three runs for the player's tap. *Fetch all by
+  itself* on the card switches it off.
 - **Sends a pro's world ranking page** (spec 1.15.0, [prores.md](../../spec/prores.md)): a pair link with `kind=pro`
   asks "Connect with *host*" for the world ranking (*Connect world ranking* is the yes; provider `pro` only, no
   `return`), then opens the app's own window on the sites (`src/ui/RankingsView.tsx`): the OWGR for men, the Rolex
@@ -201,6 +211,32 @@ portal in a sign-in window - so that window lives here, in a small app that does
 - **Licences**: every package the app is made of, with its licence text (`scripts/licenses.mjs`
   writes `src/licenses.json` after every install).
 
+## golf.de by itself: what the phone allows
+
+Found out for TE-10b-6 (spec 1.17.0, *By itself, when the record is due*): a run of *Fetch all* takes minutes (a few
+seconds' pause after each page, up to 60 pages of the History Sheet and 100 result lists), and it needs golf.de's page in
+a web view. Neither phone gives an app that in the back:
+
+- **iOS** suspends an app within seconds of going to the back. A background task (`BGAppRefreshTask`, which
+  `expo-background-task` uses) and a silent push (the wake `lm_plan`, [spec/wake.md](../../spec/wake.md)) give it about
+  half a minute, when iOS chooses; a `WKWebView`'s page stops with the app, and WebKit even suspends the page of a web
+  view that isn't at least partly on screen (in the view hierarchy, with a size). So no run in the back, and the wake
+  doesn't start one: it couldn't finish, and an app woken in the back has no screen to keep a window in.
+- **Android** runs the background task (WorkManager, about every 30 minutes, at most ten minutes) and the sync service's
+  task as JavaScript without any view: there is no web view to load golf.de in. Keeping one alive would take a native
+  foreground service with a notification that never goes away, a new build and a store declaration - not for a once-a-
+  day read of a web page.
+
+So the app runs it **only while it is open**: a few seconds after it comes to the front (or starts), at most every half
+hour, `HcpClient.autoDue({ spare: 1 })` asks the connected apps' plans, and only `due` opens golf.de's *Mein Bereich* in
+a window the full size of the screen, behind it (so the phone treats it as shown; it takes no touch and isn't read out).
+Its top frame loads only the pages read along on (`unseenWindowRules`): a sign-in page or golf.de's start page doesn't
+load and ends the run as an early stop (held until the player is back on golf.de, as in the extension). The app going to
+the back, the player opening the golf.de window, a page that doesn't load within a minute or the phone ending the page
+interrupt it instead (`interruptFetchAll`: what was read goes out, no hold - nothing went wrong). Whatever ends it, the
+window goes. Not seen on a real phone yet: whether golf.de keeps the sign-in of the player's window in this one (they
+share the web view's cookies), and whether iOS lets a web view behind the screen load as one in front.
+
 ## What it keeps, and where
 
 | What | Where |
@@ -235,10 +271,11 @@ app.config.ts       ids (from the environment for forks), scheme glmsync, EAS pr
 src/lib/            everything without a screen, tested with vitest: secrets, sign-ins, pairings,
                     links, the runner (pair, sync, history, file, "Is this you?"), test mode (tests),
                     the Android sync service's rules (nudge), whether a new build is out (newBuild),
-                    the wording
+                    golf.de's Fetch all (fetchAll) and when it runs by itself (autoFetch), the wording
 src/ui/             the screens: App (links, opening, quiet renewal), Home, PairView, SignInView,
                     FirstSyncView, SyncView, TestView, Licenses, TrackmanLoginView, PairHcpView, GolfdeView,
-                    HcpCard, PairProView, RankingsView, ToursView, ProCard
+                    UnseenGolfde (the window behind the screen), HcpCard, PairProView, RankingsView, ToursView,
+                    ProCard
 src/platform.ts     the phone's parts: secure store, storage, files, share sheet
 src/background.ts   the background task
 src/nudge.ts        the headless task behind the Android sync service

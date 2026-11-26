@@ -15,6 +15,7 @@ import { TourKeeper } from '@glmsync/browser/tours';
 import { Guard, HttpTarget, type FetchLike, type FileOut, type Storage } from '@glmsync/core';
 import { demo } from '@glmsync/provider-demo';
 import { expiresAt, trackman } from '@glmsync/provider-trackman';
+import { AutoFetch } from './autoFetch.ts';
 import { HcpSender, makeHcp } from './hcp.ts';
 import { Pairings } from './pairings.ts';
 import { LastPage, makePro } from './pro.ts';
@@ -67,6 +68,8 @@ export interface Services {
   hcp: HcpClient;
   /** Sends what the golf.de window saw a little after the last new page. */
   hcpSender: HcpSender;
+  /** *Fetch all* by itself while the app is open, in the window nobody sees (spec 1.17.0; the frame shows it by its state). */
+  auto: AutoFetch;
   /** A pro's own world ranking pages, sent from the app's window on the player's tap, and their pairings (spec/prores.md). */
   pro: ProClient;
   /** What the tour window read of his tour's pages, and its *Fetch all* run (the extension's keeper). */
@@ -150,6 +153,7 @@ export function makeServices(platform: Platform): Services {
     wakes,
     hcp,
     hcpSender: new HcpSender(hcp),
+    auto: new AutoFetch({ hcp }),
     pro,
     tours: new TourKeeper(platform.storage, platform.now ?? Date.now),
     et: new EtKeeper(platform.storage),

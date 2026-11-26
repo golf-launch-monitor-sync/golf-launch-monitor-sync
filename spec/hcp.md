@@ -211,9 +211,27 @@ is the same run in every other way - the same steps, pace, limits, stops and one
   within the day.
 - **The player can switch it off** in the client (on by default); off, only their tap starts a run.
 
-A companion app may do the same where the phone lets an app's window run unseen; until a release says how, it doesn't.
+**A companion app, only while it is open** (since 1.17.0). Neither phone lets an app's web view work while the app is
+in the back: iOS suspends the app within seconds and gives a background task or a silent wake about half a minute, a web
+view's page stops with it, and even in front a web view that is not at least partly on screen may be suspended; Android
+runs its background work without any view, so there is no web view to run. A run takes minutes. So a companion app:
+
+- **Looks when it comes to the front** (and on starting), at most every `auto_look_minutes` as above, and not while its
+  own golf.de window is open (there the player taps). A silent wake ([wake.md](wake.md)) or a background task never
+  starts a run: they have neither the time nor a window.
+- **Runs in a window the player doesn't see**, kept in the screen behind the app's own content (so the phone treats it as
+  shown), on golf.de's *Mein Bereich* as the extension's tab; the run starts once that page has loaded. It **says on its
+  home page that it runs**, with the run's progress and *Stop*.
+- **Leaves a run of the day for the player's tap**: it starts one by itself only while at least two of `runs_per_day` are
+  left, since the phone may cut its runs off.
+- **The app going to the back ends the run** as when the extension's tab closes - what it read goes out once - but that
+  is **not off track**: no hold, the next look may start again (the day's runs still count). Every other early stop
+  (signed out, another account, a changed page, the player's *Stop*) holds the next as above. The player opening the
+  app's golf.de window ends a run by itself the same way, without a hold: they are on golf.de themselves.
+- The player switches it off in the app, as in the extension.
 
 The rule is implemented once, in `@glmsync/provider-golfde` (`clicks.ts`: the run as a value, moved on by
 what the page showed and by time; `operate.ts`: the step taken in the page), and used by the extension
 and the companion app alike. When to start a run by itself is `@glmsync/browser`'s `HcpClient` (`autoDue`, `startFetchAll` with `auto`,
-`setAutoFetch`); the background tab is the extension's background's.
+`setAutoFetch`; `interruptFetchAll` and `autoDue`'s `spare` for the companion app); the background tab is the
+extension's background's, the unseen window the companion app's.

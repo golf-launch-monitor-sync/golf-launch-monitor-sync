@@ -4,6 +4,8 @@
  * The app's frame: loads what the phone keeps, takes the links that open it, syncs when it comes to
  * the front (the plans decide whether anything is fetched), renews an expired Trackman sign-in quietly
  * where it may, sends what the golf.de window saw when the app goes to the back, and shows one view at a time.
+ * While it is open it may fetch the handicap record by itself when it is due (spec 1.17.0, lib/autoFetch.ts): in a
+ * golf.de window kept behind the screen, gone again when the run ends, the app goes to the back or golf.de is opened.
  * A pro's world ranking and tour pages (spec 1.15.0) have their pair link and their windows too.
  */
 
@@ -16,6 +18,7 @@ import { targetOf } from '@glmsync/browser/wizard';
 import { keepScheduled } from '../background';
 import { keepWake } from '../wake';
 import { t } from '../i18n';
+import { LOOK_AFTER_MS } from '../lib/autoFetch';
 import { Once, readIncoming, type Incoming } from '../lib/links';
 import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
 import { testKeys } from '../lib/wizard';
@@ -38,6 +41,7 @@ import { SignInView } from './SignInView';
 import { SyncView } from './SyncView';
 import { TestView } from './TestView';
 import { TrackmanLoginView } from './TrackmanLoginView';
+import { UnseenGolfde } from './UnseenGolfde';
 
 export type Screen =
   /** The main view: *Connect new* and the list of connections; with `focus`, one connection's details. */
@@ -151,6 +155,11 @@ function Main() {
   const once = useRef(new Once());
   /** Starts the older history now, while the app is in front (set by the effect below). */
   const historyNow = useRef<() => void>(() => undefined);
+  /** The screen as the look for a run by itself sees it (it runs later than the render). */
+  const screenNow = useRef<Screen['name']>('home');
+  screenNow.current = screen.name;
+  /** Whether the unseen golf.de window shows (a run by itself, `svc.auto`). */
+  const [unseen, setUnseen] = useState(false);
 
   const start = useCallback(() => {
     setBroken(false);
@@ -165,6 +174,15 @@ function Main() {
       for (const off of offs) off();
     };
   }, [svc]);
+
+  useEffect(() => {
+    if (!svc) return;
+    return svc.auto.subscribe((st) => setUnseen(st === 'opening' || st === 'running'));
+  }, [svc]);
+  // The player opens golf.de themselves: a run by itself gives way (interrupted, no hold - they're on golf.de now).
+  useEffect(() => {
+    if (svc && screen.name === 'golfde') void svc.auto.interrupt();
+  }, [svc, screen.name]);
 
   // The background task runs while there is a target to sync for.
   const paired = svc ? svc.pairings.list().length : 0;
@@ -237,6 +255,16 @@ function Main() {
     let stopped = false;
     let lastOpen = 0;
     let next: ReturnType<typeof setTimeout> | null = null;
+    let looking: ReturnType<typeof setTimeout> | null = null;
+    // A run of Fetch all by itself, a moment after coming to the front (a link picks its screen first); only in front.
+    const lookSoon = () => {
+      if (looking) clearTimeout(looking);
+      looking = setTimeout(() => {
+        looking = null;
+        if (stopped || AppState.currentState !== 'active') return;
+        void svc.auto.look(screenNow.current === 'golfde').catch(() => false);
+      }, LOOK_AFTER_MS);
+    };
     // One loop at a time: a newer start ends the one before at its next step.
     let gen = 0;
     const history = async (mine = ++gen) => {
@@ -266,19 +294,28 @@ function Main() {
           lastOpen = Date.now(); // the link's own sync stands for the opening's
           handle(url);
         } else void open();
+        lookSoon();
       });
     const links = Linking.addEventListener('url', (e) => handle(e.url));
     const front = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         void open();
         void keepWake(svc); // a week on, or a new address: the targets hear it (src/lib/wake.ts decides)
+        lookSoon();
       }
       else {
         if (next) clearTimeout(next);
         // What the golf.de window saw goes before iOS stops the app (a timer may never fire behind it).
         if (state === 'background') {
-          // A run of Fetch all doesn't go on in the back (the phone stops the app): it ends and sends what it read.
-          void svc.hcp.cancelFetchAll().catch(() => undefined);
+          if (looking) clearTimeout(looking);
+          looking = null;
+          // A run of Fetch all doesn't go on in the back (the phone stops the app): it ends and sends what it read -
+          // interrupted, not held: nothing went wrong (spec 1.17.0). The unseen window goes with its run.
+          void svc.auto
+            .interrupt()
+            .catch(() => null)
+            .then(() => svc.hcp.interruptFetchAll())
+            .catch(() => undefined);
           void svc.hcpSender.flush();
         }
       }
@@ -286,6 +323,7 @@ function Main() {
     return () => {
       stopped = true;
       if (next) clearTimeout(next);
+      if (looking) clearTimeout(looking);
       links.remove();
       front.remove();
     };
@@ -384,7 +422,9 @@ function Main() {
 
   return (
     <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
-      {body}
+      {/* Behind the screen, full size (iOS suspends a web view that isn't on screen); the screen covers it. */}
+      {svc && unseen && <UnseenGolfde svc={svc} />}
+      <View style={s.screen}>{body}</View>
       {renewal.on && <TrackmanLoginView hidden onToken={(token) => void renewal.onToken(token)} />}
     </SafeAreaView>
   );

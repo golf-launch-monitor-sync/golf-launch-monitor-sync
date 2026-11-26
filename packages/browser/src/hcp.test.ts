@@ -461,7 +461,7 @@ describe('Fetch all: its page goes away', () => {
   });
 });
 
-describe('Fetch all by itself, when the record is due (spec 1.16.0)', () => {
+describe('Fetch all by itself, when the record is due (spec 1.16.0; the companion app 1.17.0)', () => {
   const page = (nodes: Record<string, unknown>[], total: number, n: number, of: number) =>
     reduce({ kind: 'graphql', op: 'GetHandicapHistorySheet' }, 200, historyAnswer(nodes, total, n, of)) as Seen;
   const PAUSE = 6001;
@@ -618,6 +618,45 @@ describe('Fetch all by itself, when the record is due (spec 1.16.0)', () => {
     ended.target.disconnected = true;
     expect(await ended.client.autoDue()).toBe(false);
     expect((await ended.client.view()).pairings).toHaveLength(0);
+  });
+
+  it('the companion app keeps a run of the day for the tap (spare), and asks no target when none is left', async () => {
+    const w = await ready();
+    w.target.due = true;
+    await w.client.startFetchAll('window');
+    await w.client.cancelFetchAll();
+    expect(await w.client.autoDue({ spare: 1 })).toBe(true); // one run used, two left: one may go by itself
+    await w.client.startFetchAll('hidden', { auto: true });
+    await w.client.interruptFetchAll('hidden');
+    w.clock.advance(LOOK);
+    w.target.plans.length = 0;
+    expect(await w.client.autoDue({ spare: 1 })).toBe(false); // two used: the last is the player's
+    expect(w.target.plans).toHaveLength(0);
+    expect(await w.client.autoDue()).toBe(true); // the extension (no spare) would still look
+    expect((await w.client.startFetchAll('window')).fetch_all).toBe('running'); // and the tap still runs
+  });
+
+  it('the app sent to the back interrupts its run: what was read goes out, and no hold', async () => {
+    const w = await ready();
+    w.target.due = true;
+    expect(await w.client.autoDue({ spare: 1 })).toBe(true);
+    await w.client.startFetchAll('hidden', { auto: true });
+    await w.client.runStep('hidden');
+    await w.client.see('p9', member());
+    await w.client.see('p9', page([own, entry({ tournamentDate: '2026-11-20T10:00:00+01:00', ratedGrossResult: 91 })], 2, 1, 1));
+    // Another page's run isn't touched.
+    let v = await w.client.interruptFetchAll('window');
+    expect(v.fetch_all).toBe('running');
+    v = await w.client.interruptFetchAll('hidden');
+    expect(v.run).toMatchObject({ phase: 'stopped', why: 'cancelled', auto: true });
+    expect(w.target.imports).toHaveLength(2); // the new result went out at once
+    expect(w.target.notice ?? null).toBeNull(); // no notice: nothing went wrong
+    w.target.due = true;
+    w.clock.advance(LOOK);
+    expect(await w.client.autoDue({ spare: 1 })).toBe(true); // not held
+    // A tapped run interrupted the same way just ends, as on Stop.
+    await w.client.startFetchAll('window');
+    expect((await w.client.interruptFetchAll()).run).toMatchObject({ phase: 'stopped', why: 'cancelled' });
   });
 
   it('a run under way starts no other', async () => {

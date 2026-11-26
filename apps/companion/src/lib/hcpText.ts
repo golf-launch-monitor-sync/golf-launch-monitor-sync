@@ -16,6 +16,11 @@ export function hcpLine(v: HcpView, lang: Lang): Line | null {
   return lineOf(v, translator(lang));
 }
 
+/** A run of *Fetch all* by itself under way (spec 1.17.0): its window is behind the screen, so the home page says it. */
+export function autoRunning(v: Pick<HcpView, 'fetch_all' | 'run'>): boolean {
+  return v.fetch_all === 'running' && !!v.run?.auto;
+}
+
 /** What a target last answered; null before anything was sent. */
 export function hcpLast(e: HcpEntry, lang: Lang, now: number): string | null {
   return hcpLastText(e, translator(lang), lang, now);

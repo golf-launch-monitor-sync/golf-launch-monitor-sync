@@ -5,7 +5,7 @@ import { lineOf } from '@glmsync/browser/hcpView';
 import { translator } from '@glmsync/browser/i18n';
 import { describe, expect, it } from 'vitest';
 import en from '../i18n/en.json' with { type: 'json' };
-import { hcpEnded, hcpLast, hcpLine, pairErrorKey } from './hcpText.ts';
+import { autoRunning, hcpEnded, hcpLast, hcpLine, pairErrorKey } from './hcpText.ts';
 
 const view = (over: Partial<HcpView> = {}): HcpView => ({
   pairings: [{ id: 'a', base: 'https://app.example.org/hcp/v1', name: 'Example App', paired_at: '2026-11-22T12:00:00Z', host: 'app.example.org' }],
@@ -26,6 +26,13 @@ const view = (over: Partial<HcpView> = {}): HcpView => ({
 });
 
 describe('the handicap record’s words on the phone', () => {
+  it('a run by itself under way shows on the home page; a tapped one or one that ended doesn’t (spec 1.17.0)', () => {
+    expect(autoRunning({ fetch_all: 'running', run: { phase: 'history', entries: 0, lists_done: 0, lists_total: 0, auto: true } })).toBe(true);
+    expect(autoRunning({ fetch_all: 'running', run: { phase: 'history', entries: 0, lists_done: 0, lists_total: 0 } })).toBe(false);
+    expect(autoRunning({ fetch_all: 'ready', run: { phase: 'done', entries: 0, lists_done: 0, lists_total: 0, auto: true } })).toBe(false);
+    expect(autoRunning({ fetch_all: 'no', run: null })).toBe(false);
+  });
+
   it('the line is the extension’s line, in the phone’s language', () => {
     expect(hcpLine(view(), 'de')).toEqual(lineOf(view(), translator('de')));
     expect(hcpLine(view(), 'de')?.text).toMatch(/12 Ergebnisse gesehen · 3 neu – gehen gleich an Example App/);

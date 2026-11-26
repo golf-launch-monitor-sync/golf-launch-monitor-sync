@@ -3,13 +3,14 @@
 import type { HcpView, RunTurn } from '@glmsync/browser/hcp';
 import type { Step } from '@glmsync/provider-golfde/operate';
 import { describe, expect, it } from 'vitest';
+import { AUTO_OWNER } from './autoFetch.ts';
 import { Driver, STEP_FUNCTION, stepScript, WINDOW_OWNER } from './fetchAll.ts';
 import { HISTORY_SHEET_URL } from './golfdePage.ts';
 import { sendDue } from './hcp.ts';
 
 const view = { fetch_all: 'running' } as HcpView;
 
-function driver(steps: (Step | Error)[]) {
+function driver(steps: (Step | Error)[], owner?: string) {
   const injected: string[] = [];
   const slept: number[] = [];
   const owners: string[] = [];
@@ -28,6 +29,7 @@ function driver(steps: (Step | Error)[]) {
       slept.push(ms);
     },
     show: (v) => shown.push(v),
+    ...(owner ? { owner } : {}),
   });
   return { d, injected, slept, owners, shown };
 }
@@ -49,6 +51,13 @@ describe('the script for a step', () => {
 });
 
 describe('the window drives a run', () => {
+  it('the unseen window asks as itself (spec 1.17.0), never as the player’s window', async () => {
+    const t = driver([{ do: 'open', url: HISTORY_SHEET_URL }, { do: 'end' }], AUTO_OWNER);
+    await t.d.drive();
+    expect(t.owners).toEqual([AUTO_OWNER, AUTO_OWNER]);
+    expect(AUTO_OWNER).not.toBe(WINDOW_OWNER);
+  });
+
   it('step after step, waiting where the run says, as the window', async () => {
     const t = driver([{ do: 'open', url: HISTORY_SHEET_URL }, { do: 'wait', ms: 4000 }, { do: 'click', what: 'scoring' }, { do: 'wait', ms: 50_000 }, { do: 'end' }]);
     await t.d.drive();

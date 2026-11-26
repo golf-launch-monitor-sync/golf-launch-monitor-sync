@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import { PAGE_MATCHES } from '@glmsync/provider-golfde';
 import { describe, expect, it } from 'vitest';
-import { fromGolfde, GOLFDE_MESSAGE, golfdeWindowRules, HISTORY_SHEET_URL, onReadPage, openInGolfdeWindow, pageId, readGolfdeMessage } from './golfdePage.ts';
+import { fromGolfde, GOLFDE_MESSAGE, golfdeWindowRules, HISTORY_SHEET_URL, onReadPage, openInGolfdeWindow, pageId, readGolfdeMessage, unseenWindowRules } from './golfdePage.ts';
 
 const PAGE = 'a1b2c3d4e5f60718293a';
 const msg = (seen: unknown, over: Record<string, unknown> = {}) => JSON.stringify({ glmsync: GOLFDE_MESSAGE, page: PAGE, seen, ...over });
@@ -30,6 +30,25 @@ describe('the pages the golf.de window reads along on', () => {
       null,
     ])
       expect(onReadPage(href), String(href)).toBe(false);
+  });
+});
+
+describe('the window nobody sees (a run by itself, spec 1.17.0)', () => {
+  it('loads only the pages read along on; a sign-in or any other page doesn’t load and ends the run', () => {
+    let refused = 0;
+    const rules = unseenWindowRules(() => refused++);
+    const top = (url: string) => rules.onShouldStartLoadWithRequest({ url, isTopFrame: true });
+    for (const url of ['https://www.golf.de/mein-bereich.html', HISTORY_SHEET_URL, 'https://www.golf.de/sport/turnierkalender/clubturniere.html#/5001/ergebnisse', 'about:blank'])
+      expect(top(url), url).toBe(true);
+    expect(refused).toBe(0);
+    for (const url of ['https://login.golf.de/auth', 'https://accounts.google.com/o/oauth2', 'https://appleid.apple.com/auth', 'https://www.golf.de/', 'https://evil.test/'])
+      expect(top(url), url).toBe(false);
+    expect(refused).toBe(5);
+    // The page's own frames as in the player's window; they end nothing.
+    expect(rules.onShouldStartLoadWithRequest({ url: 'https://consent.example/frame', isTopFrame: false })).toBe(true);
+    expect(rules.onShouldStartLoadWithRequest({ url: 'http://plain.example/', isTopFrame: false })).toBe(false);
+    expect(refused).toBe(5);
+    expect(unseenWindowRules(() => { throw new Error('x'); }).onShouldStartLoadWithRequest({ url: 'https://evil.test/' })).toBe(false);
   });
 });
 
