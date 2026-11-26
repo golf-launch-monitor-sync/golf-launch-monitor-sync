@@ -9,6 +9,8 @@
  *   picked, the season statistics of the tour picked) and hands it to the background, which keeps it merged; when he
  *   picks another season or tour in the page's own select, it reads again a moment later.
  * - *Send* sends what was read, a page per tour, to the apps connected for it.
+ * - *Fetch all* (decision 57) opens his pages and picks the seasons and tours for him, one step at a time at a
+ *   person's pace (tour-run.ts), each page read as when he opens or picks it; what was read goes out once at the end.
  *
  * Nothing here asks the site anything: it reads the document the site's own scripts built. The line lives in a shadow
  * root. A page of another player replaces what was kept (the target checks the name in any case).
@@ -18,6 +20,8 @@ import { pickLang, proLineOf, translator, type LinePhase, type ProView } from '@
 import { europeantour, snapshotOf, type TourSite } from '@glmsync/provider-tours';
 import type { Reply } from './messages.ts';
 import type { EtView } from '@glmsync/browser/europeantour';
+import { runNote, type RunView } from '@glmsync/browser/runs';
+import { resumeRun, startRun, stopRun, type RunHooks } from './tour-run.ts';
 
 const t = translator(pickLang(navigator.languages));
 /** How long a page may take to show its table (the site's scripts build it a moment after the page). */
@@ -34,6 +38,32 @@ let pro: ProView | undefined;
 let et: EtView | undefined;
 /** The tour the line speaks of: the one an app asks about, else the one sent last, else the address's. */
 let lastSent: TourSite | null = null;
+let runView: RunView | undefined;
+/** A pick of *Fetch all* is being done: the page's `change` is the run's, which reads after it itself. */
+let picking = false;
+/** Why *Fetch all* didn't start (run often enough today, or going on in another tab). */
+let note: string | null = null;
+const FAMILY = 'europeantour';
+
+const hooks: RunHooks = {
+  look: async () => ((await look()) ? 'read' : 'unread'),
+  player: () => europeantour.playerPageOf(location.href)?.id ?? null,
+  answer: (r) => take(r),
+  picking: (on) => {
+    picking = on;
+  },
+};
+
+/** What the background answered: the line follows it; a run that just ended sent what was read. */
+function take(r: Extract<Reply, { ok: true }>): void {
+  if (r.pro) pro = r.pro;
+  if (r.et) et = r.et;
+  if (r.run) runView = r.run;
+  // A run sent a page per tour: the line speaks of the one sent last.
+  if (r.sent?.length) lastSent = r.sent.at(-1) ?? lastSent;
+  if (r.runStep?.do === 'end') phase = 'done';
+  draw();
+}
 
 const localDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -43,9 +73,7 @@ async function ask(m: Ask): Promise<Extract<Reply, { ok: true }> | null> {
   try {
     const r = (await chrome.runtime.sendMessage(m)) as Reply | undefined;
     if (!r?.ok) return null;
-    if (r.pro) pro = r.pro;
-    if (r.et) et = r.et;
-    draw();
+    take(r);
     return r;
   } catch {
     // The extension was updated or reloaded meanwhile: the page goes on without the line.
@@ -95,10 +123,17 @@ function draw(): void {
   box.setAttribute('role', 'status');
   box.setAttribute('data-test', 'et-line');
   const text = document.createElement('span');
-  text.textContent = line.text;
+  const running = runView?.running?.family === FAMILY ? runView.running : null;
+  const ran = runView ? runNote(runView, FAMILY, t) : null;
+  text.textContent = running || (ran && phase === 'ready') ? (ran ?? '') : (note ?? line.text);
   box.append(text);
-  if (line.answer) box.append(button(t('proLine.answer'), 'et-answer', () => void ask({ type: 'et-answer' })));
-  if (line.send) box.append(button(t('proLine.send'), 'et-send', () => void send()));
+  if (running) box.append(button(t('line.stop'), 'et-stop', () => void stop()));
+  else {
+    if (line.answer) box.append(button(t('proLine.answer'), 'et-answer', () => void ask({ type: 'et-answer' })));
+    if (line.send) box.append(button(t('proLine.send'), 'et-send', () => void send()));
+    // *Fetch all* stays after a send, as on the Pro Golf Tour: another run brings what changed since.
+    if (!line.answer && phase !== 'reading') box.append(button(t('line.fetchAll'), 'et-fetch-all', () => void fetchAll()));
+  }
   box.append(button('×', 'et-hide', () => {
     hidden = true;
     draw();
@@ -151,13 +186,30 @@ async function send(): Promise<void> {
   draw();
 }
 
+async function fetchAll(): Promise<void> {
+  note = null;
+  phase = 'ready';
+  const r = await startRun(hooks);
+  if (r?.start === 'limit') note = t('tourLine.limit');
+  else if (r?.start === 'busy') note = t('runLine.busy');
+  draw();
+}
+
+async function stop(): Promise<void> {
+  const r = await stopRun(hooks);
+  phase = r ? 'done' : 'error';
+  draw();
+}
+
 void (async () => {
   await ask({ type: 'et-line' });
   if (!pro?.pairings.length) return; // no app connected for a pro's pages: read nothing
-  await look();
+  const read = await look();
+  // A page a run of *Fetch all* opened in this tab: said so, and the run goes on.
+  await resumeRun(hooks, async () => (read ? 'read' : 'unread'));
   // Another season or tour picked in the page's own select: the table it shows next is read too.
   document.addEventListener('change', (e) => {
-    if (!(e.target instanceof HTMLSelectElement)) return;
+    if (picking || !(e.target instanceof HTMLSelectElement)) return;
     setTimeout(() => {
       // Something new to send: *Send* is offered again.
       void look().then((ok) => {

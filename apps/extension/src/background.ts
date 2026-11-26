@@ -18,6 +18,11 @@
  * the same way (the Pro Golf Tour: tours.ts; europeantour.com, a page per tour: `@glmsync/browser/europeantour`; the
  * season pages of PGA Tour, Korn Ferry, LPGA and Epson: season-content.ts, sent as the page showed them).
  *
+ * *Fetch all* on the tours whose pages show a part at a time (`RunKeeper`, @glmsync/browser/runs; decision 57): on the
+ * player's tap, a run planned from his page's address opens his own pages there and picks in their own pickers, one
+ * step at a time at a person's pace, in the tab he tapped in; its tour's pages go out once at its end, within the reach
+ * (two years, at most 50 tournaments).
+ *
  * Woken by alarms, messages and the browser starting; it keeps nothing in memory that matters (a
  * Manifest V3 background may be stopped between events): everything is in chrome.storage.
  */
@@ -28,7 +33,9 @@ import { TourKeeper } from '@glmsync/browser/tours';
 import { EtKeeper } from '@glmsync/browser/europeantour';
 import { OcsKeeper } from '@glmsync/browser/ocs';
 import { AlpsKeeper } from '@glmsync/browser/alps';
-import { ocs } from '@glmsync/provider-tours';
+import { RunKeeper } from '@glmsync/browser/runs';
+import { SeasonKeeper } from '@glmsync/browser/season';
+import { ocs, run as pickRun, SITES_OF, type RunFamily, type TourPage } from '@glmsync/provider-tours';
 import { CLICKS, HISTORY_SHEET_URL, MY_AREA_URL, readSeen } from '@glmsync/provider-golfde';
 import { bridgeMessage, type BridgeReply, type Reason } from '@glmsync/spec';
 import { PORTAL_URL, SIGN_OUT_URL } from '@glmsync/provider-trackman/portal';
@@ -84,6 +91,9 @@ const et = new EtKeeper(storage);
 const ocsPages = new OcsKeeper(storage);
 // His Alps Tour profile (`AlpsKeeper`, @glmsync/browser/alps): the reports he picked there, merged.
 const alpsPages = new AlpsKeeper(storage);
+// *Fetch all* on those tours (`RunKeeper`, @glmsync/browser/runs), and the season pages a run read (`SeasonKeeper`).
+const runs = new RunKeeper(storage);
+const seasonPages = new SeasonKeeper(storage);
 const localDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /** His tour page as read so far, to every app paired for a pro's pages (each after its plan). */
@@ -114,6 +124,44 @@ async function sendAlps(): Promise<Reply> {
   const v = page ? await pro.send(page) : await pro.view();
   await refreshIcon();
   return { ok: true, pro: v, alps: await alpsPages.view() };
+}
+/**
+ * A run of *Fetch all* ended: what its tour's pages hold goes out, within the reach (the last two years, at most 50
+ * tournaments) - not after another player's page stopped it (what is kept may then be his).
+ */
+async function sendRun(family: RunFamily): Promise<Reply> {
+  const today = localDay();
+  const view = await runs.view();
+  let pages: TourPage[] = [];
+  if (view.ended?.family === family && view.ended.how === 'other_player') {
+    await seasonPages.take(SITES_OF[family]);
+  } else if (family === 'alps') {
+    const p = await alpsPages.page(today);
+    pages = p ? [p] : [];
+  } else if (family === 'europeantour') {
+    pages = await et.pages(today);
+  } else if (family === 'tour:let' || family === 'tour:let_access') {
+    const p = await ocsPages.page(family, today);
+    pages = p ? [p] : [];
+  } else {
+    pages = await seasonPages.take(SITES_OF[family]);
+  }
+  let v = await pro.view();
+  for (const page of pages) v = await pro.send(pickRun.withinReach(page, today));
+  await refreshIcon();
+  // Which tours went, the last one last: an app keeps what it answered last, and the line speaks of that one.
+  return { ok: true, pro: v, run: await runs.view(), sent: pages.map((p) => p.site) };
+}
+/**
+ * The address a tour's page says it shows now, taken only on the sender's own site (these sites change their address
+ * without loading a page, which the sender's address doesn't always follow); none otherwise.
+ */
+function onSendersSite(url: string, sender: string | undefined): string | null {
+  try {
+    return sender && new URL(url).origin === new URL(sender).origin ? url : null;
+  } catch {
+    return null;
+  }
 }
 /** A message naming a tour of the LET's only from that tour's own page (both sites run the same script). */
 const fromSite = (url: string | undefined, site: ocs.OcsTourSite): boolean => ocs.siteAt(url)?.site === site;
@@ -770,6 +818,48 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
       // From the site's page: only the connect window comes to the front, where the player answers.
       await openConnectWindow(near);
       return { ok: true, pro: await pro.view() };
+    case 'trun-view': {
+      // Whether the run going on is this tab's: only its pages answer its steps.
+      const view = await runs.view();
+      return { ok: true, pro: await pro.view(), run: view, runHere: view.running !== null && view.running.tab === from.tabId };
+    }
+    case 'trun-start': {
+      if (from.tabId === undefined) return { ok: false, error: 'no_tab' };
+      // The run is planned from the address of the page the tap came from: the one it shows now, of the sender's own site.
+      const url = onSendersSite(m.url, from.url);
+      if (!url) return { ok: false, error: 'wrong_site' };
+      const { outcome, family, fresh } = await runs.start(url, from.tabId, localDay());
+      // A new run of a season site starts from nothing kept (by hand, *Send* keeps nothing).
+      if (fresh && family) await seasonPages.take(SITES_OF[family]);
+      return { ok: true, start: outcome, pro: await pro.view(), run: await runs.view() };
+    }
+    case 'trun-step': {
+      if (from.tabId === undefined) return { ok: false, error: 'no_tab' };
+      const s = await runs.step(from.tabId);
+      if (!s) return { ok: true, run: await runs.view() };
+      // The run just ended: what it read goes out once, now (the player's tap on *Fetch all* asked for it).
+      if (s.step.do === 'end') {
+        const r = await sendRun(s.family);
+        return r.ok ? { ...r, runStep: s.step } : r;
+      }
+      return { ok: true, runStep: s.step, run: await runs.view() };
+    }
+    case 'trun-seen': {
+      const url = onSendersSite(m.url, from.url);
+      if (from.tabId === undefined || !url) return { ok: false, error: 'no_tab' };
+      const seen: pickRun.PickSeen = { url, outcome: m.outcome };
+      if (m.key !== undefined) seen.key = m.key;
+      if (m.player !== undefined) seen.player = m.player.toLowerCase();
+      return { ok: true, pro: await pro.view(), run: await runs.seen(from.tabId, seen) };
+    }
+    case 'trun-stop': {
+      const family = await runs.stop('cancelled', from.tabId);
+      return family ? sendRun(family) : { ok: true, pro: await pro.view(), run: await runs.view() };
+    }
+    case 'season-seen':
+      // A season page a run read: kept (read again strictly) until the run ends.
+      await seasonPages.seen(m.page);
+      return { ok: true, pro: await pro.view() };
     case 'pro-answer': {
       const v = await pro.answer(m.yes);
       await refreshIcon();
@@ -805,6 +895,11 @@ chrome.tabs.onRemoved.addListener((tabId) => {
     .catch(() => undefined);
   const owner = tabOwner(tabId);
   if (owner) void hcp.leaveFetchAll(owner).then(watchRun).catch(() => undefined);
+  // The same for a run on a tour.
+  void runs
+    .stop('cancelled', tabId)
+    .then((family) => (family ? sendRun(family) : undefined))
+    .catch(() => undefined);
 });
 
 void ensureTimer();

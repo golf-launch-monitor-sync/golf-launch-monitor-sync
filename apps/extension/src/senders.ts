@@ -65,7 +65,11 @@ export function sourceOf(sender: SenderLike, extensionId: string, extensionOrigi
   return 'other';
 }
 
-const FROM: Record<Message['type'], Source> = {
+/** The tours whose pages show a part at a time: *Fetch all* there (tour-run.ts). Which tour, the background reads
+ * from the sender's address. */
+const TOUR_RUN: readonly Source[] = ['alps', 'europeantour', 'ocs', 'season'];
+
+const FROM: Record<Message['type'], Source | readonly Source[]> = {
   'portal-key': 'portal',
   'pair-offer': 'pair-page',
   'pair-status': 'pair-page',
@@ -127,6 +131,12 @@ const FROM: Record<Message['type'], Source> = {
   'alps-line': 'alps',
   'alps-send': 'alps',
   'alps-answer': 'alps',
+  'trun-view': TOUR_RUN,
+  'trun-start': TOUR_RUN,
+  'trun-step': TOUR_RUN,
+  'trun-seen': TOUR_RUN,
+  'trun-stop': TOUR_RUN,
+  'season-seen': 'season',
   'pro-status': 'extension',
   'pro-answer': 'extension',
   'pro-unpair': 'extension',
@@ -139,7 +149,9 @@ export function accept(raw: unknown, source: Source): Message | null {
   if (!raw || typeof raw !== 'object') return null;
   const m = raw as Record<string, unknown>;
   const type = m.type;
-  if (typeof type !== 'string' || !Object.hasOwn(FROM, type) || FROM[type as Message['type']] !== source) return null;
+  if (typeof type !== 'string' || !Object.hasOwn(FROM, type)) return null;
+  const from = FROM[type as Message['type']];
+  if (typeof from === 'string' ? from !== source : !from.includes(source)) return null;
   switch (type) {
     case 'portal-key':
       return typeof m.token === 'string' && m.token.length <= 16_384 ? { type, token: m.token } : null;
@@ -202,6 +214,18 @@ export function accept(raw: unknown, source: Source): Message | null {
       if ('profile' in v) return { type, site: m.site, seen: { profile: v.profile } };
       return 'oom' in v ? { type, site: m.site, seen: { oom: v.oom } } : null;
     }
+    case 'trun-start':
+      return typeof m.url === 'string' && m.url.length <= 2048 ? { type, url: m.url } : null;
+    case 'trun-seen': {
+      if (typeof m.url !== 'string' || m.url.length > 2048) return null;
+      if (m.outcome !== 'read' && m.outcome !== 'unread' && m.outcome !== 'absent') return null;
+      if (m.key !== undefined && (typeof m.key !== 'string' || m.key.length > 200)) return null;
+      if (m.player !== undefined && (typeof m.player !== 'string' || !/^[a-z0-9]{1,20}$/i.test(m.player))) return null;
+      return { type, url: m.url, outcome: m.outcome, ...(typeof m.key === 'string' ? { key: m.key } : {}), ...(typeof m.player === 'string' ? { player: m.player } : {}) };
+    }
+    case 'season-seen':
+      // Read again strictly by the background (checkTourPage); here only its frame and size.
+      return m.page && typeof m.page === 'object' && !Array.isArray(m.page) && JSON.stringify(m.page).length <= 262_144 ? { type, page: m.page } : null;
     case 'alps-seen':
       // Read again strictly by the background (checkRead); here only its frame and size.
       return m.read && typeof m.read === 'object' && !Array.isArray(m.read) && JSON.stringify(m.read).length <= 262_144 ? { type, read: m.read } : null;

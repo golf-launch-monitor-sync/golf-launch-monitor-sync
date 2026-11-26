@@ -29,8 +29,9 @@ test('sends his Alps Tour season with every round, the par and his rank, a repor
   await page.getByRole('link', { name: 'Paul Platzhalter' }).click();
   await expect(page).toHaveURL(/\/playerprofile\/TST001$/);
   const line = page.getByTestId('alps-line');
-  // *Statistics* first, as the site shows it: the line asks for the report with his rounds.
-  await expect(line).toContainText('Pick “This Season record”', { timeout: 10_000 });
+  // *Statistics* first, as the site shows it: the line asks for *Fetch all* or the report with his rounds.
+  await expect(line).toContainText('Tap “Fetch all”', { timeout: 10_000 });
+  await expect(line.getByTestId('alps-fetch-all')).toBeVisible();
 
   await page.locator('#report').selectOption('Results');
   await page.waitForTimeout(2500);

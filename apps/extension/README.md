@@ -176,7 +176,8 @@ Since 0.15.0, on **europeantour.com** - one page per player for both tours, with
 
 `europeantour-content.ts` runs only on `europeantour.com/players/*`, in the extension's own world, and reads nothing
 until an app is connected for a pro's pages. It keeps what your pages showed (another player's page replaces it) in the
-extension's own storage. It sends the site nothing, and never asks the site's data service.
+extension's own storage. It sends the site nothing, and never asks the site's data service. Since 0.21.0 **Fetch all**
+(below) opens your pages and picks the seasons and tours for you.
 
 ### A tour's season page: PGA Tour, Korn Ferry Tour, LPGA Tour, Epson Tour
 
@@ -200,7 +201,8 @@ same connection (`kind=pro`).
 
 `season-content.ts` runs on those sites in the extension's own world (the whole site, because the sites move to
 *Results* and *Stats* without loading a page; the line shows only there) and reads nothing until an app is connected for a pro's
-pages and you tap *Send*. It keeps nothing of the page and sends the sites nothing.
+pages and you tap *Send* or *Fetch all* (since 0.21.0, below). By hand it keeps nothing of the page; a run of *Fetch
+all* keeps the seasons it read until it ends. It sends the sites nothing.
 
 ### A tour's pages: the Ladies European Tour and the LET Access Series
 
@@ -219,7 +221,8 @@ connection.
 `ocs-content.ts` runs on every page of both sites (each is one app that changes its address without loading a page,
 so it looks again when the address changes) and reads nothing until an app is connected for a pro's pages. It keeps
 per tour only the profile you read last and your Order of Merit line (another player's profile replaces both), in the
-extension's own storage. It sends the sites nothing and opens no page itself.
+extension's own storage (since 0.21.0 each season read, so a send has them all). It sends the sites nothing; only
+**Fetch all** (below) picks the seasons on your profile and opens the Order of Merit of each.
 
 ### A tour's pages: the Alps Tour
 
@@ -238,8 +241,32 @@ connection.
 `alps-content.ts` runs on every page of the site (it changes its address without loading a page, so the script looks
 again when the address changes) and reads only your profile, and nothing until an app is connected for a pro's pages.
 It keeps the reports of the profile you read last, merged (another player's profile replaces them), in the extension's
-own storage. Prize money is never read. It sends the site nothing and opens no page itself. The companion app reads the
-Alps Tour in its own window the same way since its 0.9.0 (`apps/companion/README.md`).
+own storage. Prize money is never read. It sends the site nothing and opens no page itself; since 0.21.0 **Fetch all**
+(below) picks the three reports for you. The companion app reads the Alps Tour in its own window the same way since its
+0.9.0 (`apps/companion/README.md`).
+
+### Fetch all on every tour
+
+Since 0.21.0 (decision 57 of the target's owner; `run` and `tour-runs` of
+[`@glmsync/provider-tours`](../../packages/provider-tours/README.md), `RunKeeper` of `@glmsync/browser/runs`,
+`tour-run.ts` here). Where you pick a part at a time on your own pages, the line has **Fetch all** beside *Send*, and it
+does those picks for you, one step at a time, in the tab you tapped in:
+
+- **Alps Tour**, on your profile: *This Season record*, *Results* and *Order of Merit* under *Select Report*.
+- **europeantour.com**, on any of your pages: your overview of the DP World Tour and of the HotelPlanner Tour, *Wins &
+  Results* with each season of the last two years picked in its select, *Stats* with each tour picked.
+- **Ladies European Tour, LET Access Series**, on your profile: each season of the last two years, then each of those
+  seasons' Order of Merit.
+- **pgatour.com, lpga.com, epsontour.com**, on your *Results* or *Stats* page: each season of the last two years in the
+  page's own *Season* picker (on pgatour.com for the PGA Tour and the Korn Ferry Tour, picked in *Tour*), on *Results*
+  and then on *Stats*.
+
+Each page is read exactly as when you pick it yourself. A person's pace: 6-10 s after each page's answer, at most 30
+steps, three runs a day per tour; a season you didn't play is skipped. The line says *Fetching all for you: step n of m*
+with **Stop**. At the end (or on *Stop*, or when the tab closes) what was read goes out once: the tournaments of the last
+two years, at most 50. Another player's page opened in the meantime stops it, and then nothing goes. The run is planned
+from your page's address, opens only your own pages of that site (by the site's own addresses) and picks only in the
+page's own pickers; it asks the sites nothing of its own.
 
 ## The bridge on the app's page
 

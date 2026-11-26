@@ -21,7 +21,9 @@
     "./tours": "./src/tours.ts",
     "./europeantour": "./src/europeantour.ts",
     "./ocs": "./src/ocs.ts",
-    "./alps": "./src/alps.ts"
+    "./alps": "./src/alps.ts",
+    "./runs": "./src/runs.ts",
+    "./season": "./src/season.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

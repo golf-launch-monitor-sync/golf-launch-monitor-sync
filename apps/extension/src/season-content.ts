@@ -11,11 +11,20 @@
  * The sites move between their pages without loading them, so the script runs on all of a site and shows the line only
  * while the address is a player's *Results* or *Stats* page. When an app finds another name on the page than the player's, the
  * line offers *Answer*, which only brings the extension's own page to the front. The line lives in a shadow root.
+ *
+ * *Fetch all* (decision 57) does the picks he would do - each season of the reach, on pgatour.com for each of its two
+ * tours, on *Results* and on *Stats* - one step at a time at a person's pace (tour-run.ts); each page is read as on
+ * *Send* and kept by the background until the run ends, when every season read goes out at once.
  */
 
 import { pickLang, proLineOf, translator, type LinePhase, type ProView } from '@glmsync/browser';
-import { figuresOf, readSeasonPage, seasonShows, seasonSiteOf, seasonTakes, snapshotOf, type TourSite } from '@glmsync/provider-tours';
+import { runNote, type RunView } from '@glmsync/browser/runs';
+import {
+  figuresOf, readSeasonPage, runFamilyOf, seasonPlayerOf, seasonShows, seasonSiteOf, seasonTakes, snapshotOf, type SeasonRead,
+  type TourSite,
+} from '@glmsync/provider-tours';
 import type { Reply } from './messages.ts';
+import { resumeRun, startRun, stopRun, type RunHooks } from './tour-run.ts';
 
 const t = translator(pickLang(navigator.languages));
 /** How long *Send* waits for the page's table (the site puts it in a moment after the page). */
@@ -28,6 +37,34 @@ let phase: LinePhase = 'ready';
 let note: string | null = null;
 let last: ProView | undefined;
 let at: { url: string; site: TourSite | null } = { url: '', site: null };
+let runView: RunView | undefined;
+/** The tour a run sent last (pgatour.com's two tours go as a page each): the line speaks of it until he moves on. */
+let sentSite: TourSite | null = null;
+const FAMILY = runFamilyOf(location.href);
+
+const hooks: RunHooks = {
+  look: async () => {
+    // A page a run read is kept by the background until the run ends (by hand, *Send* sends at once).
+    const read = await readNow();
+    if (read.kind !== 'page') return 'unread';
+    return (await ask({ type: 'season-seen', page: read.page })) ? 'read' : 'unread';
+  },
+  player: () => seasonPlayerOf(location.href),
+  answer: (r) => take(r),
+  picking: () => undefined,
+};
+
+/** What the background answered: the line follows it; a run that just ended sent what was read. */
+function take(r: Extract<Reply, { ok: true }>): void {
+  if (r.run) runView = r.run;
+  // A run sent a page per tour of the site: the line speaks of the one sent last.
+  if (r.sent?.length) sentSite = r.sent.at(-1) ?? sentSite;
+  if (r.runStep?.do === 'end') {
+    phase = 'done';
+    note = null;
+  }
+  draw(r.pro);
+}
 
 function today(): string {
   const d = new Date();
@@ -46,7 +83,7 @@ function button(text: string, test: string, act: () => void, plain = false): HTM
 
 function draw(v: ProView | undefined): void {
   if (v) last = v;
-  const line = last && at.site ? proLineOf(last, at.site, phase, t) : null;
+  const line = last && at.site ? proLineOf(last, phase === 'done' && sentSite ? sentSite : at.site, phase, t) : null;
   if (!line || hidden) {
     host?.remove();
     host = null;
@@ -71,10 +108,17 @@ function draw(v: ProView | undefined): void {
   box.setAttribute('role', 'status');
   box.setAttribute('data-test', 'season-line');
   const text = document.createElement('span');
-  text.textContent = note ?? line.text;
+  const running = FAMILY && runView?.running?.family === FAMILY ? runView.running : null;
+  const ran = FAMILY && runView ? runNote(runView, FAMILY, t) : null;
+  text.textContent = running || (ran && phase === 'ready' && !note) ? (ran ?? '') : (note ?? line.text);
   box.append(text);
-  if (line.answer) box.append(button(t('proLine.answer'), 'season-answer', () => void ask({ type: 'season-answer' })));
-  if (line.send) box.append(button(t('proLine.send'), 'season-send', () => void sendPage()));
+  if (running) box.append(button(t('line.stop'), 'season-stop', () => void stop()));
+  else {
+    if (line.answer) box.append(button(t('proLine.answer'), 'season-answer', () => void ask({ type: 'season-answer' })));
+    if (line.send) box.append(button(t('proLine.send'), 'season-send', () => void sendPage()));
+    // *Fetch all* stays after a send, as on the Pro Golf Tour: another run brings what changed since.
+    if (!line.answer && phase !== 'reading') box.append(button(t('line.fetchAll'), 'season-fetch-all', () => void fetchAll()));
+  }
   box.append(button('×', 'season-hide', () => {
     hidden = true;
     draw(undefined);
@@ -82,13 +126,13 @@ function draw(v: ProView | undefined): void {
   root?.replaceChildren(style, box);
 }
 
-type Ask = { type: 'season-line' } | { type: 'season-send'; page: object } | { type: 'season-answer' };
+type Ask = { type: 'season-line' } | { type: 'season-send'; page: object } | { type: 'season-seen'; page: object } | { type: 'season-answer' };
 
 async function ask(m: Ask): Promise<Extract<Reply, { ok: true }> | null> {
   try {
     const r = (await chrome.runtime.sendMessage(m)) as Reply | undefined;
     if (!r?.ok) return null;
-    draw(r.pro);
+    take(r);
     return r;
   } catch {
     // The extension was updated or reloaded meanwhile: the page goes on without the line.
@@ -96,26 +140,31 @@ async function ask(m: Ask): Promise<Extract<Reply, { ok: true }> | null> {
   }
 }
 
-/** The page as it shows now, its season's table waited for a little; then read, and only his season goes on. */
+/** The page as it shows now, its season's table waited for a little; then read: only his season. */
+async function readNow(): Promise<SeasonRead> {
+  try {
+    const url = location.href;
+    const takes = seasonTakes(url);
+    const started = Date.now();
+    let snap = snapshotOf(document, url, takes.labels);
+    while (!seasonShows(snap) && Date.now() - started < TABLE_WAIT_MS) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      snap = snapshotOf(document, url, takes.labels);
+    }
+    return readSeasonPage(snap, figuresOf(document, takes.figures), today());
+  } catch {
+    // A page whose shape we can't walk: read nothing.
+    return { kind: 'unread', why: 'changed_page' };
+  }
+}
+
+/** *Send*: the page as it shows now, and only his season goes on. */
 async function sendPage(): Promise<void> {
   if (!at.site || phase === 'reading') return;
   phase = 'reading';
   note = null;
   draw(undefined);
-  const url = location.href;
-  const takes = seasonTakes(url);
-  const started = Date.now();
-  let snap = snapshotOf(document, url, takes.labels);
-  while (!seasonShows(snap) && Date.now() - started < TABLE_WAIT_MS) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    snap = snapshotOf(document, url, takes.labels);
-  }
-  let read;
-  try {
-    read = readSeasonPage(snap, figuresOf(document, takes.figures), today());
-  } catch {
-    read = { kind: 'unread' as const, why: 'changed_page' as const };
-  }
+  const read = await readNow();
   if (read.kind === 'unread') {
     // A tour of the site no module reads, or a season with nothing in it yet: said so; a page it doesn't know: the
     // line's own word for it.
@@ -133,13 +182,33 @@ async function sendPage(): Promise<void> {
 function look(): void {
   if (location.href === at.url) return;
   at = { url: location.href, site: seasonSiteOf(location.href) };
+  // A run moves the page itself (a tour picked): what it sent stays the line's word while it runs.
+  if (!runView?.running) sentSite = null;
   phase = 'ready';
   note = null;
   if (at.site) void ask({ type: 'season-line' });
   else draw(undefined);
 }
 
+async function fetchAll(): Promise<void> {
+  note = null;
+  phase = 'ready';
+  const r = await startRun(hooks);
+  if (r?.start === 'limit') note = t('tourLine.limit');
+  else if (r?.start === 'busy') note = t('runLine.busy');
+  draw(undefined);
+}
+
+async function stop(): Promise<void> {
+  const r = await stopRun(hooks);
+  phase = r ? 'done' : 'error';
+  note = null;
+  draw(undefined);
+}
+
 look();
+// A page a run of *Fetch all* opened in this tab: read, said so, and the run goes on.
+if (at.site) void resumeRun(hooks, hooks.look);
 let ticks = 0;
 setInterval(() => {
   try {

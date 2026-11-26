@@ -43,8 +43,10 @@ centre of OCS (`ocs-let.com/tic/…`, `alps.ocs-ffg.com/tic/tmtic.cgi`) answers 
   regulation, sand saves, putts per round and per green in regulation - the keys of prores/1; a label the module doesn't
   know is left out. A past season as at its last day, the running one as read.
 - **What goes**: the client keeps what his pages showed (another player's page replaces it all) and sends a page of
-  prores/1 per tour with something of it: its ranking, its tournaments, its statistics. No *Fetch all*: *Wins &
-  Results* has the rounds, a season at a time, as the player picks it; each pick is read as the page shows it.
+  prores/1 per tour with something of it: its ranking, its tournaments, its statistics. *Wins & Results* has the
+  rounds, a season at a time, as the player picks it; each pick is read as the page shows it. *Fetch all*
+  (`europeantour-run.ts`, below) opens his overview of each tour, *Wins & Results* with each season of the reach picked
+  in its select, and *Stats* with each tour picked.
 
 ## Pro Golf Tour
 
@@ -60,14 +62,15 @@ centre of OCS (`ocs-let.com/tic/…`, `alps.ocs-ffg.com/tic/tmtic.cgi`) answers 
 - **Fetch all**, only on the player's tap on his profile: the pages of his finished tournaments of that season whose
   rounds aren't read yet, newest first, at most 30, opened one by one in the same tab as their links would; a pause of
   6-10 s after each page (above the site's crawl delay), a page that doesn't answer in 30 s is skipped, three in a row
-  end the run; three runs a day; a page opened within a week isn't opened again (`TOUR_CLICKS`, which moves down after a
-  measurement, never up without one). What it read goes out once at the end.
+  end the run; three runs a day; a page opened within a week isn't opened again (`TOUR_CLICKS` in `run.ts`, shared with
+  the other tours' *Fetch all*, which moves down after a measurement, never up without one). What it read goes out once
+  at the end.
 
 ## The season pages: PGA Tour, Korn Ferry Tour, LPGA Tour, Epson Tour
 
 - **One page holds the season**: the player's *Results* page shows the season he picked (on pgatour.com also the tour)
   with its standing and a table of the season's tournaments with R1-R4. It is read on his *Send* and nothing is opened
-  for it (no *Fetch all*): `seasonPage.ts` says where a client's script runs, which page is a player's and what to take
+  for it (*Fetch all* only picks, below): `seasonPage.ts` says where a client's script runs, which page is a player's and what to take
   from it (`seasonTakes`), and reads it (`readSeasonPage`).
 - **The standing** (FedExCup, Points List; Race to CME Globe, Race for the Card) is taken beside its label
   (`figures.ts`: "83" before "PTS: 494", "134" above "CME Points Rank") as the ranking `tour:<key>`, with the season's
@@ -75,6 +78,10 @@ centre of OCS (`ocs-let.com/tic/…`, `alps.ocs-ffg.com/tic/tmtic.cgi`) answers 
 - **Days**: pgatour.com names a tournament's last day, lpga.com and epsontour.com its first. The other is counted by
   the round columns the table has (four: the last day minus three); on lpga.com and epsontour.com no `end` is sent. The
   rounds carry no day (the target counts them from `start` and marks them estimated).
+- *Fetch all* (`season-run.ts`) picks for him on *Results* and then on *Stats* each season of the reach in the page's
+  own *Season* (lpga.com, epsontour.com: *Seasons*) picker, on pgatour.com for each of its two tours picked in *Tour*.
+  The pickers are drawn by the sites (pgatour.com a menu, lpga.com and epsontour.com a list box): `operate.ts` presses
+  the picker and then the entry, as a person does.
 - **What is left out**: a tournament not over yet (its last day is today or later), a round not played ("-"), and a
   **team event** (Zurich Classic, Grant Thornton Invitational, Dow Championship, QBE Shootout: a pair's score per
   round, not his strokes), which then isn't sent at all (no tournament without its rounds). Winnings are never read.
@@ -110,8 +117,10 @@ centre of OCS (`ocs-let.com/tic/…`, `alps.ocs-ffg.com/tic/tmtic.cgi`) answers 
   page's script.
 - A tournament goes with its rounds, and only three days after its start (four rounds at most), so one still running
   isn't sent half. The ranking goes with every send: the events of the profile, and rank and points once her line of
-  that season's Order of Merit was read.
-- Nothing is opened for her: one page has the whole season; no *Fetch all*.
+  that season's Order of Merit was read. The client keeps each season she picked (`OcsKeeper`); a send has them all,
+  with the ranking of the newest.
+- *Fetch all* (`ocs-run.ts`) picks each season of the reach on her profile and then opens each of those seasons' Order
+  of Merit, by the address the site writes for it (`?id=<season>&oom=PT` on the LET, `oom=LO` on the LET Access Series).
 
 ## Alps Tour
 
@@ -131,7 +140,32 @@ centre of OCS (`ocs-let.com/tic/…`, `alps.ocs-ffg.com/tic/tmtic.cgi`) answers 
 - **What goes**: the tournaments of *This Season record* with their rounds, three days after their first (so one still
   running isn't sent half), each `alps-<first day>-<name made plain>` (the profile links no tournament); the ranking of
   that season (rank, points, events of its Order of Merit line). Earlier seasons aren't sent: the profile shows their
-  rounds nowhere. Prize money is never read. Nothing is opened for him; no *Fetch all*.
+  rounds nowhere. Prize money is never read. Nothing is opened for him; *Fetch all* (`alps-run.ts`) picks the three
+  reports in *Select Report* one after the other.
+
+## Fetch all on every tour (decision 57 of the target's owner)
+
+Where the player picks a part at a time on his own pages - a season, a tour, a report - the client picks for him on his
+tap. `run.ts` holds what all share:
+
+- **The pace** (`TOUR_CLICKS`, the Pro Golf Tour's): a pause of 6-10 s after each page's answer, 30 s for a page to
+  answer, three pages in a row without an answer end the run, at most 30 steps a run, three runs a day per tour. It
+  moves down after a measurement, never up without one; no option or setting loosens it.
+- **The reach** (decision 51): the seasons from this one back to the one two years ago (`seasonsOf`; on europeantour.com
+  next year's too, its season starts in November), and a run sends only the tournaments of the last two years, the
+  newest 50 (`withinReach`).
+- **The run** (`startPickRun`, `nextPickStep`, `seePickRun`, `stopPickRun`): a value the client keeps, moved on by what
+  the page showed and by time. A step opens one of his own pages by the site's own address (each tour's `mayOpen`), or
+  picks in one of the page's own pickers; a pick the page doesn't offer (a season he didn't play) is skipped at once;
+  another player's page ends the run, and nothing goes then.
+- **The pick in the page** (`operate.ts`): a `<select>` set to one of its own options with its `input` and `change`, or
+  a picker the page draws (a button or combobox whose text is its label and the value it shows) pressed, and the entry
+  of its menu or list box pressed; *Escape* when the entry isn't there. Only the page's own controls; nothing is asked
+  of the site, and the page is read afterwards exactly as when the player picks.
+
+Each tour's steps are in its own file (`alps-run.ts`, `europeantour-run.ts`, `ocs-run.ts`, `season-run.ts`), together
+in `tour-runs.ts` (`runPlanOf`, `runMayOpen`, `runFamilyOf`). The Pro Golf Tour's run opens tournament pages instead
+(`progolftour-run.ts`).
 
 ## Pieces
 
@@ -143,7 +177,10 @@ centre of OCS (`ocs-let.com/tic/…`, `alps.ocs-ffg.com/tic/tmtic.cgi`) answers 
 - `progolftour.ts` - the profile (`readProfile`; `profileOf` by its address), his line of a final result (`ownLine`), what a read hands on
   (`siteRead`), the addresses a run may open (`mayOpen`), the strict re-reads of what a content script sends
   (`checkProfile`, `checkOwnLine`).
-- `progolftour-run.ts` - *Fetch all* as a value: `startRun`, `nextStep`, `seeRun`, `stopRun`, `mayStart`.
+- `progolftour-run.ts` - *Fetch all* on the Pro Golf Tour as a value: `startRun`, `nextStep`, `seeRun`, `stopRun`,
+  `mayStart`.
+- `run.ts`, `operate.ts`, `tour-runs.ts` with `alps-run.ts`, `europeantour-run.ts`, `ocs-run.ts`, `season-run.ts` -
+  *Fetch all* on the other tours (above).
 - `europeantour.ts` - a page of his on europeantour.com (`readPage`, `shows`), what the client keeps of them
   (`mergeRead`, `checkRead`) and a page per tour to send (`pagesOf`).
 - `ocs.ts` - the LET and the LET Access Series: where a page is (`siteAt`, `profileIdOf`, `isOomPage`), her profile

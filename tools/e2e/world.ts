@@ -142,7 +142,9 @@ export const LPGA_STATS = 'https://www.lpga.com/athletes/lena-ausgedacht/99003/s
  * season's table a moment later. It asks nothing of anyone.
  */
 function pgaPlayerPage(path: string): string {
-  const picker = (label: string, value: string) => `<button><div><div><div><p>${label}</p></div></div></div><p>${value}</p></button>`;
+  // The pickers are menu buttons, as the site draws them: a press opens a menu of entries, an entry picks.
+  const picker = (label: string, value: string) =>
+    `<span class="picker"><button aria-haspopup="menu" data-picker="${label}"><div><div><div><p>${label}</p></div></div></div><p class="shows">${value}</p></button></span>`;
   const row = (date: string, name: string, pos: string, r: string[], pts: string, id: string | null) =>
     `<tr><td><span>${date}</span></td><td><span>${name}</span></td><td><span>${pos}</span></td>${r.map((x) => `<td><span>${x}</span></td>`).join('')}<td>${r.filter((x) => x !== '-').reduce((a, b) => a + Number(b), 0)}</td><td>-3</td><td>50</td><td>${pts}</td><td></td><td>-</td><td>-</td><td>$1,000</td><td>${id ? `<a href="https://tourcast.pgatour.com/tourcast.html?id=${id}&webview=true#/hole-view?round=1&hole=1"><img alt="TOURCAST Logo"></a>` : '-'}</td></tr>`;
   const head = ['Date', 'Tournament', 'Pos', 'R1', 'R2', 'R3', 'R4', 'Total', 'To Par', 'Rank', 'Pts', '', 'Rank', 'Pts', 'Winnings', ''];
@@ -151,9 +153,12 @@ function pgaPlayerPage(path: string): string {
     row('2.1.2026', 'Made-up Coast Open', 'T5', ['65', '75', '65', '68'], '105.000', 'R2026904'),
     row('4.26.2026', 'Zurich Classic of Sampletown', 'CUT', ['61', '76', '-', '-'], '-', 'R2026918'),
   ].join('')}</tbody></table>`;
-  const results = `<div>${picker('Tour', 'PGA Tour')}${picker('Season', '2026')}</div>
-<div><img alt="FedExCup Standings"><div><div>83</div><div>PTS: 494</div></div></div>
-<div><img alt="FedExCup Fall Standings"><div><div>83</div><div>PTS: 663</div></div></div><div id="season">…</div>`;
+  // His 2025 season, picked in the *Season* menu; the Korn Ferry Tour he didn't play (an empty table).
+  const table2025 = `<h2>Results &amp; Scorecards</h2><table><thead><tr><th></th><th>FedExCup</th><th></th><th>FedexCup Fall</th></tr><tr></tr><tr>${head.map((h) => `<th><span>${h}</span></th>`).join('')}</tr></thead><tbody>${row('3.9.2025', 'Earlier Sample Classic', 'T9', ['70', '70', '70', '70'], '60.000', 'R2025910')}</tbody></table>`;
+  const tableKft = `<h2>Results &amp; Scorecards</h2><table><thead><tr>${head.map((h) => `<th><span>${h}</span></th>`).join('')}</tr></thead><tbody></tbody></table>`;
+  const results = `<div><button>Season</button><button>Tournament</button></div><div>${picker('Tour', 'PGA Tour')}${picker('Season', '2026')}</div>
+<div id="standing"><div><img alt="FedExCup Standings"><div><div>83</div><div>PTS: 494</div></div></div>
+<div><img alt="FedExCup Fall Standings"><div><div>83</div><div>PTS: 663</div></div></div></div><div id="season">…</div>`;
   // *Stats*: the pickers, the strokes gained chart (labels only, never read) and the table, its first cell with the
   // arrow icon's hidden text, as the site writes it.
   const stat = (label: string, value: string, rank: string) =>
@@ -167,6 +172,7 @@ function pgaPlayerPage(path: string): string {
     stat('Scoring Average (Actual)', '70.31', '40'),
     stat('Official Money', '$1,234,567', '70'),
   ].join('')}</tbody></table>`;
+  const statsTable2025 = statsTable.replace('301.4', '299.0').replace('0.912', '0.715');
   const stats = `<div>${picker('Tour', 'PGA Tour')}${picker('Season', '2026')}</div><div><span>SG: Total</span><span>SG: Putting</span></div><div id="season">…</div>`;
   const script = `
     const show = (html, later) => {
@@ -179,7 +185,40 @@ function pgaPlayerPage(path: string): string {
     go('results', 'results', ${JSON.stringify(results)}, ${JSON.stringify(table)});
     go('stats', 'stats', ${JSON.stringify(stats)}, ${JSON.stringify(statsTable)});
     if (location.pathname.endsWith('/results')) show(${JSON.stringify(results)}, ${JSON.stringify(table)});
-    if (location.pathname.endsWith('/stats')) show(${JSON.stringify(stats)}, ${JSON.stringify(statsTable)});`;
+    if (location.pathname.endsWith('/stats')) show(${JSON.stringify(stats)}, ${JSON.stringify(statsTable)});
+    // The menus: a press on a picker opens its entries, a press on an entry picks it and the season's table follows.
+    const tables = {
+      results: { 'PGA Tour': { 2026: ${JSON.stringify(table)}, 2025: ${JSON.stringify(table2025)} }, 'Korn Ferry Tour': { 2026: ${JSON.stringify(tableKft)}, 2025: ${JSON.stringify(tableKft)} } },
+      stats: { 'PGA Tour': { 2026: ${JSON.stringify(statsTable)}, 2025: ${JSON.stringify(statsTable2025)} }, 'Korn Ferry Tour': { 2026: '', 2025: '' } },
+    };
+    const entries = { Tour: ['PGA Tour', 'Korn Ferry Tour', 'PGA Tour Champions'], Season: ['2026', '2025'] };
+    const shown = (name) => document.querySelector('[data-picker="' + name + '"] .shows')?.textContent;
+    document.addEventListener('click', (e) => {
+      const item = e.target.closest('[role="menuitem"]');
+      if (item) {
+        const name = item.closest('[role="menu"]').dataset.for;
+        document.querySelector('[data-picker="' + name + '"] .shows').textContent = item.textContent;
+        item.closest('[role="menu"]').remove();
+        // A tour he didn't play shows no standing.
+        const standing = document.getElementById('standing');
+        if (standing) {
+          standing.dataset.kept ??= standing.innerHTML;
+          standing.innerHTML = shown('Tour') === 'PGA Tour' ? standing.dataset.kept : '';
+        }
+        const part = location.pathname.endsWith('/stats') ? 'stats' : 'results';
+        document.getElementById('season').innerHTML = '…';
+        setTimeout(() => { document.getElementById('season').innerHTML = tables[part][shown('Tour')]?.[shown('Season')] ?? ''; }, 700);
+        return;
+      }
+      const b = e.target.closest('button[aria-haspopup]');
+      if (!b) return;
+      document.querySelectorAll('[role="menu"]').forEach((m) => m.remove());
+      const name = b.dataset.picker;
+      setTimeout(() => {
+        b.parentElement.insertAdjacentHTML('beforeend', '<div role="menu" data-for="' + name + '">' + entries[name].map((x) => '<button role="menuitem">' + x + '</button>').join('') + '</div>');
+      }, 200);
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('[role="menu"]').forEach((m) => m.remove()); });`;
   return `<!doctype html><html><head><title>Max Erfunden PGA Tour Player Profile (made up)</title></head><body>
 <div><a href="/leaderboard?player=1">O. Erfunden</a><div>Pos</div><div>1</div></div>
 <main><h1><span>Max</span><span>Erfunden</span></h1><div><div><div>World Rank (OWGR)</div></div><div>122</div></div>

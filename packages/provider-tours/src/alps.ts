@@ -27,6 +27,8 @@ import { clean, column, snapshotOf, textOf, type DomDocument, type DomElement, t
 
 export const TOUR = 'alps' as const;
 export const SITE: TourSite = `tour:${TOUR}`;
+/** Its run of *Fetch all* (`alps-run.ts`, `tour-runs.ts`). */
+export const FAMILY = 'alps' as const;
 export const ORIGIN = 'https://www.alpstourgolf.com';
 const ORIGINS = new Set([ORIGIN, 'https://alpstourgolf.com']);
 /** Where the module's scripts run: every page of the site, because it changes its address without loading a page. */

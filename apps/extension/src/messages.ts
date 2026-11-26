@@ -13,6 +13,8 @@ import type { Seen, TourView } from '@glmsync/browser/tours';
 import type { EtView } from '@glmsync/browser/europeantour';
 import type { OcsSeen, OcsView } from '@glmsync/browser/ocs';
 import type { AlpsView } from '@glmsync/browser/alps';
+import type { RunView, StartOutcome } from '@glmsync/browser/runs';
+import type { run, TourSite } from '@glmsync/provider-tours';
 
 type TourStep = progolftourRun.Step;
 import type { GuardLogExport } from '@glmsync/core';
@@ -94,6 +96,21 @@ export type FromAlps =
   | { type: 'alps-line' }
   | { type: 'alps-send' }
   | { type: 'alps-answer' };
+/**
+ * From the content scripts of the tours whose pages show a part at a time (alps-, europeantour-, ocs- and
+ * season-content.ts; tour-run.ts): *Fetch all* (the background plans it from the page's address - the one the page shows
+ * now, taken only of the sender's own site: these sites change their address without loading a page, which the
+ * sender's address doesn't always follow), its steps (only for
+ * the tab it runs in), what the page showed after a step, *Stop*. And from season-content.ts, a season page read during
+ * a run, kept until it ends (by hand, *Send* sends the page as it shows).
+ */
+export type FromTourRun =
+  | { type: 'trun-view' }
+  | { type: 'trun-start'; url: string }
+  | { type: 'trun-step' }
+  | { type: 'trun-seen'; url: string; key?: string; player?: string; outcome: run.PickOutcome }
+  | { type: 'trun-stop' }
+  | { type: 'season-seen'; page: object };
 export type FromPage =
   | { type: 'status' }
   | { type: 'run'; id?: string }
@@ -133,7 +150,7 @@ export type FromPage =
   /** Where the player finds their page: the site's own ranking (it has a search). */
   | { type: 'open-ranking'; site: 'owgr' | 'rolex' };
 
-export type Message = FromPortal | FromPairPage | FromTargetPage | FromGolfde | FromRanking | FromTour | FromEuropeanTour | FromOcs | FromAlps | FromPage;
+export type Message = FromPortal | FromPairPage | FromTargetPage | FromGolfde | FromRanking | FromTour | FromEuropeanTour | FromOcs | FromAlps | FromTourRun | FromPage;
 
 /** A pairing offered by the web app's page, waiting for the player's yes in the connect window. */
 export interface Pending {
@@ -151,7 +168,7 @@ export interface Pending {
 }
 
 export type Reply =
-  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; drive?: boolean; pro?: ProView; tour?: TourView; et?: EtView; ocs?: OcsView; alps?: AlpsView; fetch?: 'started' | 'limit' | 'nothing' }
+  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; runStep?: run.RunStep; drive?: boolean; pro?: ProView; tour?: TourView; et?: EtView; ocs?: OcsView; alps?: AlpsView; fetch?: 'started' | 'limit' | 'nothing'; run?: RunView; runHere?: boolean; start?: StartOutcome; sent?: TourSite[] }
   | { ok: false; error: string };
 
 /** What the pairing page's content script hands on to the page (no code, nothing secret). */

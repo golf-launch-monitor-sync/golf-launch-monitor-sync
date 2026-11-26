@@ -9,6 +9,9 @@
  *   *Send*.
  * - On the Order of Merit it takes only her own line (by the link to the profile read last on this tour), and the line
  *   says so; *Send* there sends the profile with it.
+ * - *Fetch all* (decision 57) on her profile picks the seasons of the reach there and opens each season's Order of
+ *   Merit, one step at a time at a person's pace (tour-run.ts), each read as when she does it; what was read goes out
+ *   once at the end.
  *
  * Each site is one app that changes its address without loading a page, so the script runs on every page of it and
  * looks again whenever the address changes. Nothing here asks the site anything: it reads what the site's own page
@@ -18,7 +21,9 @@
 import { pickLang, proLineOf, translator, type LinePhase, type ProView } from '@glmsync/browser';
 import { ocs, snapshotOf, type Snapshot } from '@glmsync/provider-tours';
 import type { Reply } from './messages.ts';
+import { resumeRun, startRun, stopRun, type RunHooks } from './tour-run.ts';
 import type { OcsView } from '@glmsync/browser/ocs';
+import { runNote, type RunView } from '@glmsync/browser/runs';
 
 const t = translator(pickLang(navigator.languages));
 const SITE = ocs.siteAt(location.href)?.site;
@@ -35,6 +40,27 @@ let pro: ProView | undefined;
 let view: OcsView | undefined;
 let note: string | null = null;
 let here = location.href;
+let runView: RunView | undefined;
+
+const hooks: RunHooks = {
+  look: async () => ((await look()) ? 'read' : 'unread'),
+  player: () => ocs.profileIdOf(location.href),
+  answer: (r) => take(r),
+  // Her profile reads only on loading and on an address changed: a pick of the run reads after it itself.
+  picking: () => undefined,
+};
+
+/** What the background answered: the line follows it; a run that just ended sent what was read. */
+function take(r: Extract<Reply, { ok: true }>): void {
+  if (r.pro) pro = r.pro;
+  if (r.ocs) view = r.ocs;
+  if (r.run) runView = r.run;
+  if (r.runStep?.do === 'end') {
+    phase = 'done';
+    note = null;
+  }
+  draw();
+}
 
 type Ask = { type: 'ocs-line' } | { type: 'ocs-seen'; seen: object } | { type: 'ocs-send' } | { type: 'ocs-answer' };
 
@@ -43,9 +69,7 @@ async function ask(m: Ask): Promise<Extract<Reply, { ok: true }> | null> {
   try {
     const r = (await chrome.runtime.sendMessage(m.type === 'ocs-answer' ? m : { ...m, site: SITE })) as Reply | undefined;
     if (!r?.ok) return null;
-    if (r.pro) pro = r.pro;
-    if (r.ocs) view = r.ocs;
-    draw();
+    take(r);
     return r;
   } catch {
     // The extension was updated or reloaded meanwhile: the page goes on without the line.
@@ -93,10 +117,17 @@ function draw(): void {
   box.setAttribute('role', 'status');
   box.setAttribute('data-test', 'ocs-line');
   const text = document.createElement('span');
-  text.textContent = note ?? line.text;
+  const running = SITE && runView?.running?.family === SITE ? runView.running : null;
+  const ran = SITE && runView ? runNote(runView, SITE, t) : null;
+  text.textContent = running || (ran && phase === 'ready' && !note) ? (ran ?? '') : (note ?? line.text);
   box.append(text);
-  if (line.answer) box.append(button(t('proLine.answer'), 'ocs-answer', () => void ask({ type: 'ocs-answer' })));
-  if (line.send && phase !== 'reading') box.append(button(t('proLine.send'), 'ocs-send', () => void send()));
+  if (running) box.append(button(t('line.stop'), 'ocs-stop', () => void stop()));
+  else {
+    if (line.answer) box.append(button(t('proLine.answer'), 'ocs-answer', () => void ask({ type: 'ocs-answer' })));
+    if (line.send && phase !== 'reading') box.append(button(t('proLine.send'), 'ocs-send', () => void send()));
+    // *Fetch all* starts on her profile, where its seasons are picked.
+    if (kind === 'profile' && !line.answer && phase !== 'reading') box.append(button(t('line.fetchAll'), 'ocs-fetch-all', () => void fetchAll()));
+  }
   box.append(button('×', 'ocs-hide', () => {
     hidden = true;
     draw();
@@ -171,11 +202,29 @@ async function send(): Promise<void> {
   draw();
 }
 
+async function fetchAll(): Promise<void> {
+  note = null;
+  phase = 'ready';
+  const r = await startRun(hooks);
+  if (r?.start === 'limit') note = t('tourLine.limit');
+  else if (r?.start === 'busy') note = t('runLine.busy');
+  draw();
+}
+
+async function stop(): Promise<void> {
+  const r = await stopRun(hooks);
+  phase = r ? 'done' : 'error';
+  note = null;
+  draw();
+}
+
 void (async () => {
   if (!SITE) return;
   await ask({ type: 'ocs-line' });
   if (!pro?.pairings.length) return; // no app connected for a pro's pages: read nothing
-  await look();
+  const read = kindOf(location.href) ? await look() : null;
+  // A page a run of *Fetch all* opened in this tab (an Order of Merit): said so, and the run goes on.
+  await resumeRun(hooks, async () => (read === null ? null : read ? 'read' : 'unread'));
   // The site changes its address without loading a page: a new page of hers is looked at again.
   setInterval(() => {
     if (location.href === here) return;

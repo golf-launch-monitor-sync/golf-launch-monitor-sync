@@ -6,27 +6,16 @@
  * the profile doesn't show). Nothing by itself: no timer, only on his tap, and only pages the profile links to.
  *
  * Pure, as golf.de's run: a run is a value (kept as JSON by the client), moved on by what a page showed (`seeRun`) and
- * by time (`nextStep`). The pace is a person's and the site's own wish (robots.txt: `Crawl-delay: 5`): `TOUR_CLICKS`
- * moves down after a measurement, never up without one, and no option or setting loosens it.
+ * by time (`nextStep`). The pace is a person's and the site's own wish (robots.txt: `Crawl-delay: 5`), shared with the
+ * other tours' *Fetch all* (`run.ts`, `TOUR_CLICKS`): it moves down after a measurement, never up without one, and no
+ * option or setting loosens it.
  */
 
 import type { OwnLine, Profile, Unread } from './progolftour.ts';
 import { resultUrl } from './progolftour.ts';
+import { DAY_MS, mayStart, pauseOf, TOUR_CLICKS } from './run.ts';
 
-export const TOUR_CLICKS = {
-  /** The pause after a page's answer before the next page (at least the site's crawl delay of 5 s). */
-  pause_ms: [6000, 10000] as const,
-  /** How long a page may take to show its final result. */
-  answer_wait_ms: 30000,
-  /** At most this many tournament pages a run. */
-  max_pages: 30,
-  /** Pages that didn't answer in a row before the run gives up. */
-  max_misses: 3,
-  /** Runs a day. */
-  runs_per_day: 3,
-  /** A tournament's page read (or tried) lately isn't opened again within this many days. */
-  again_days: 7,
-} as const;
+export { mayStart, TOUR_CLICKS };
 
 export type Step = { do: 'wait'; ms: number } | { do: 'open'; url: string } | { do: 'end' };
 export type StopWhy = 'changed_page' | 'other_player' | 'no_answer' | 'cancelled';
@@ -46,13 +35,6 @@ export interface RunState {
   phase: 'pages' | 'done' | 'stopped';
   why?: StopWhy;
   ended?: number;
-}
-
-const DAY_MS = 86400000;
-
-/** Whether another run may start now, by the starts of the runs before (kept by the client). */
-export function mayStart(starts: readonly number[], now: number): boolean {
-  return starts.filter((t) => t > now - DAY_MS && t <= now).length < TOUR_CLICKS.runs_per_day;
 }
 
 /**
@@ -81,11 +63,6 @@ export function startRun(
   return run;
 }
 
-function pause(random: () => number): number {
-  const [lo, hi] = TOUR_CLICKS.pause_ms;
-  return Math.round(lo + Math.min(Math.max(random(), 0), 1) * (hi - lo));
-}
-
 function end(run: RunState, now: number, why?: StopWhy): RunState {
   const { awaiting: _gone, ...rest } = run;
   const out: RunState = { ...rest, phase: why ? 'stopped' : 'done', ended: now };
@@ -100,7 +77,7 @@ export function nextStep(run: RunState, now: number, random: () => number = Math
     const left = run.awaiting.since + TOUR_CLICKS.answer_wait_ms - now;
     if (left > 0) return { run, step: { do: 'wait', ms: Math.min(left, 1000) } };
     const { awaiting, ...rest } = run;
-    const missed: RunState = { ...rest, failed: [...run.failed, awaiting.key], misses: run.misses + 1, ready: now + pause(random) };
+    const missed: RunState = { ...rest, failed: [...run.failed, awaiting.key], misses: run.misses + 1, ready: now + pauseOf(random) };
     if (missed.misses >= TOUR_CLICKS.max_misses) return { run: end(missed, now, 'no_answer'), step: { do: 'end' } };
     return nextStep(missed, now, random);
   }
@@ -126,7 +103,7 @@ export function seeRun(run: RunState, read: OwnLine | Unread | Profile | null, k
     done: ok ? [...run.done, awaiting.key] : run.done,
     failed: ok ? run.failed : [...run.failed, awaiting.key],
     misses: 0,
-    ready: now + pause(random),
+    ready: now + pauseOf(random),
   };
 }
 

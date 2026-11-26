@@ -218,7 +218,7 @@ portal in a sign-in window - so that window lives here, in a small app that does
 | The address of the player's own ranking page, tour profile or page on europeantour.com last sent from here (where the window opens next time) | app storage, until the player disconnects the last app for a pro's pages here |
 | His tour profile as last read, his own line of each tournament read, which tournament pages were opened when, the runs of *Fetch all* (the extension's `TourKeeper`) | app storage; another player's profile replaces it all |
 | What his pages on europeantour.com showed, merged: his ranks, his tournaments with their rounds of the seasons he picked, his season statistics (the extension's `EtKeeper`) | app storage; another player's page replaces it all |
-| Per tour of the LET's her profile as last read and her line of the Order of Merit (the extension's `OcsKeeper`) | app storage; another player's profile replaces it |
+| Per tour of the LET's her profile of each season read and her line of each season's Order of Merit (the extension's `OcsKeeper`; one season only until 0.20.0 of the extension) | app storage; another player's profile replaces it |
 | The reports of his Alps Tour profile he picked, merged: the season's tournaments with their rounds, the totals to par, his line per season of the Order of Merit (the extension's `AlpsKeeper`) | app storage; another player's profile replaces it all |
 | The sites' cookies (a consent banner's choice) | the window's web view, on this phone |
 

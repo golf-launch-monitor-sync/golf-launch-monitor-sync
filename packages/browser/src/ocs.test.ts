@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import { MemoryStorage } from '@glmsync/core';
 import { checkTourPage, ocs } from '@glmsync/provider-tours';
-import { ocsOom, ocsProfile } from '@glmsync/provider-tours/testing';
+import { ocsEntry, ocsOom, ocsProfile } from '@glmsync/provider-tours/testing';
 import { describe, expect, it } from 'vitest';
 import { OcsKeeper } from './ocs.ts';
 
@@ -45,17 +45,35 @@ describe('what a client keeps of her LET and LET Access pages', () => {
     expect((await k.page('tour:let_access', TODAY))?.site).toBe('tour:let_access');
   });
 
-  it('another player\'s profile replaces hers, and her rank goes with it; another season leaves the rank out', async () => {
+  it('keeps each season read: the line speaks of the one read last, a send has them all with the newest one\'s rank', async () => {
+    const k = new OcsKeeper(new MemoryStorage());
+    await k.seen('tour:let_access', { profile: profile() });
+    await k.seen('tour:let_access', { oom: oom() });
+    const older = ocs.readProfile(ocsProfile({ selected: ['2025 Season'] }, [ocsEntry('8001', 'Earlier Open', '14/06/25', '4', [71, 70, 72], '-3')]));
+    await k.seen('tour:let_access', { profile: older });
+    expect(await k.view('tour:let_access')).toEqual({ who: { id: '990001', name: 'Erika Erfunden', season: 2025 }, rank: null, read: 1 });
+    const page = await k.page('tour:let_access', TODAY);
+    expect(page?.ranking.rank).toBe(3);
+    expect(page?.tournaments.map((t) => t.start)).toEqual(['2026-04-12', '2026-05-20', '2026-07-08', '2025-06-14']);
+    expect(page && checkTourPage(JSON.parse(JSON.stringify(page)))).toEqual(page);
+  });
+
+  it('another player\'s profile replaces hers, every season, and her ranks go with it', async () => {
     const k = new OcsKeeper(new MemoryStorage());
     await k.seen('tour:let_access', { profile: profile() });
     await k.seen('tour:let_access', { oom: oom() });
     await k.seen('tour:let_access', { profile: profile({ selected: ['2025 Season'] }) });
-    expect((await k.view('tour:let_access')).rank).toBeNull();
-    expect((await k.page('tour:let_access', TODAY))?.ranking.rank).toBeUndefined();
     await k.seen('tour:let_access', { profile: profile({ url: 'https://letaccess.com/player-profiles/990011/' }) });
     expect(await k.view('tour:let_access')).toMatchObject({ who: { id: '990011' }, rank: null });
+    expect((await k.page('tour:let_access', TODAY))?.ranking.rank).toBeUndefined();
     await k.seen('tour:let_access', { profile: profile() });
     expect((await k.view('tour:let_access')).rank).toBeNull();
+  });
+
+  it('reads what an older version kept (one profile, one line)', async () => {
+    const s = new MemoryStorage();
+    await s.set('tours:let_access', JSON.stringify({ profile: profile(), oom: oom() }));
+    expect(await new OcsKeeper(s).view('tour:let_access')).toEqual({ who: { id: '990001', name: 'Erika Erfunden', season: 2026 }, rank: 3, read: 3 });
   });
 
   it('what doesn\'t hold isn\'t kept, and unreadable storage starts afresh', async () => {

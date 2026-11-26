@@ -69,11 +69,12 @@ export class AlpsKeeper {
 }
 
 /**
- * What the line on his profile says while nothing is being sent: which report to pick while his rounds weren't read,
- * else how many tournaments go and what came with them (the par, his rank).
+ * What the line on his profile says while nothing is being sent: which report to pick while his rounds weren't read
+ * (or *Fetch all*, where the client offers it), else how many tournaments go and what came with them (the par, his rank).
  */
-export function alpsNote(v: AlpsView, t: T): string {
-  if (v.read === null) return t('alpsLine.pickRecord');
+export function alpsNote(v: AlpsView, t: T, fetchAll = false): string {
+  // Where the client offers *Fetch all* (the extension since 0.21.0), the line points to it first.
+  if (v.read === null) return t(fetchAll ? 'alpsLine.fetchAll' : 'alpsLine.pickRecord');
   const more = (v.totals ? t('alpsLine.withPar') : '') + (v.rank !== null ? t('alpsLine.withRank', { rank: v.rank }) : '');
   return t('alpsLine.read', { count: v.read, more });
 }
