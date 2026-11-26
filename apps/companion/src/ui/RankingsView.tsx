@@ -39,7 +39,8 @@ import { rankingsBar, type LinePhase } from '../lib/rankingsText';
 import type { Services } from '../lib/services';
 import { Body, Button, s, Small, Title } from './parts';
 
-export function RankingsView({ svc, site, tour, done }: { svc: Services; site?: RankingSite; tour?: (site: TourSite) => void; done: () => void }) {
+/** `backTo`: the app a link came from, when *Done* jumps back to it (spec 1.18.0): the button says so. */
+export function RankingsView({ svc, site, tour, done, backTo }: { svc: Services; site?: RankingSite; tour?: (site: TourSite) => void; done: () => void; backTo?: string }) {
   const [view, setView] = useState<ProView | null>(null);
   /** Where the window opens: null while it is decided, '' to ask which ranking first. */
   const [start, setStart] = useState<string | null>(site ? SITES[site].start : null);
@@ -181,7 +182,7 @@ export function RankingsView({ svc, site, tour, done }: { svc: Services; site?: 
             <Button label={t('rankings.other')} kind="secondary" onPress={() => open(other)} />
           )}
           {unread && <Button label={t('rankings.reload')} kind="secondary" onPress={load} />}
-          <Button label={t('rankings.done')} kind="secondary" onPress={done} />
+          <Button label={backTo ? tr('wizard.back', { target: backTo }) : t('rankings.done')} kind="secondary" onPress={done} />
         </View>
       </View>
       {start === null || start === '' ? null : failed ? (

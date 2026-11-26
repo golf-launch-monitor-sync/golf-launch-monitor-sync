@@ -17,6 +17,8 @@ export interface FakeHcpTargetOptions {
   limits?: { max_bytes: number; max_results: number };
   /** A status to answer a path with instead (e.g. { '/import': 503 }). */
   fail?: Record<string, { status: number; body?: unknown }>;
+  /** Where a pair link may jump back to (spec 1.18.0); none: the answer names no `return_prefixes`, as before. */
+  returnPrefixes?: string[];
 }
 
 /** Which result a target takes a result for: its day, holes, rating and slope, and score. */
@@ -67,7 +69,8 @@ export class FakeHcpTarget {
       this.codes.delete(body.code);
       const token = `hcp-token-${++this.seq}-${'x'.repeat(32)}`;
       this.tokens.add(token);
-      return response(200, { token, target: { name: this.name }, account_salt: this.salt, limits: this.limits, ...(this.accountRef ? { account_ref: this.accountRef } : {}) });
+      const back = this.opts.returnPrefixes ? { return_prefixes: this.opts.returnPrefixes } : {};
+      return response(200, { token, target: { name: this.name, ...back }, account_salt: this.salt, limits: this.limits, ...(this.accountRef ? { account_ref: this.accountRef } : {}) });
     }
     const auth = headers.Authorization ?? headers.authorization ?? '';
     if (!this.tokens.has(auth.replace(/^Bearer /, ''))) return response(401, { error: { code: 'token_invalid', message: 'no' } });

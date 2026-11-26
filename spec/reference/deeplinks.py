@@ -2,13 +2,13 @@
 # Copyright (c) 2026 Reginald Stadlbauer
 """The deep links and the pairing fragment (spec/deep-links.md).
 
-    glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp|pro][&return=<URL to go back to>]
+    glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>[,<id>…]][&kind=hcp|pro][&return=<URL to go back to>]
     glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
     glmsync://test?[target=<target base URL>&]code=<test code>           (1.8.0, spec/test-mode.md)
     glmsync://read?kind=hcp|pro                                          (1.11.0, spec/hcp.md; pro 1.15.0)
     Android: a bound service with the action glmsync.intent.action.SYNC, data glmsync://sync?target=…,
              extra glmsync.extra.REASON = open | manual
-    https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp|pro]
+    https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>[,<id>…]][&kind=hcp|pro]
 
 Parsed by hand rather than with a URL library, so that every port reads the same strings the same
 way. A link is data from outside: anything unexpected makes it invalid rather than guessed at.
@@ -36,6 +36,9 @@ KINDS = {"lm", "hcp", "pro"}
 # What a read link may open (1.11.0): a client's way of reading along - the handicap record (spec/hcp.md) and (1.15.0) a
 # professional's own pages (spec/prores.md).
 READ_KINDS = {"hcp", "pro"}
+# A launch monitor target that takes only some providers names them (1.18.0): one id as before, or several separated by
+# commas, at most this many; none named means any the client can connect.
+MAX_PROVIDERS = 10
 BAD_ESCAPE = re.compile(r"%(?![0-9A-Fa-f]{2})")  # a '%' that starts no escape: invalid, not guessed at
 
 
@@ -83,6 +86,18 @@ def valid_return(url: str) -> bool:
     return url.startswith(scheme + "://")
 
 
+def providers_of(provider: str | None) -> list[str] | None:
+    """The providers a link's `provider` names (1.18.0): `trackman`, or `trackman,other` - each a lower-case id, none
+    twice, at most MAX_PROVIDERS. None for a value that isn't one (the link is then invalid); an empty list for no
+    `provider` at all: any provider the client can connect."""
+    if provider is None:
+        return []
+    ids = provider.split(",")
+    if len(ids) > MAX_PROVIDERS or len(set(ids)) != len(ids) or not all(PROVIDER.fullmatch(i) for i in ids):
+        return None
+    return ids
+
+
 def _pair(p: dict[str, str]) -> dict[str, Any]:
     if "target" not in p or "code" not in p:
         return {"ok": False, "error": "missing:" + ("target" if "target" not in p else "code")}
@@ -90,7 +105,7 @@ def _pair(p: dict[str, str]) -> dict[str, Any]:
         return {"ok": False, "error": "invalid:target"}
     if not CODE.fullmatch(p["code"]):
         return {"ok": False, "error": "invalid:code"}
-    if "provider" in p and not PROVIDER.fullmatch(p["provider"]):
+    if "provider" in p and providers_of(p["provider"]) is None:
         return {"ok": False, "error": "invalid:provider"}
     if "kind" in p and p["kind"] not in KINDS:
         return {"ok": False, "error": "invalid:kind"}
@@ -126,7 +141,8 @@ def parse_link(url: str) -> dict[str, Any]:
         return {"ok": True, "action": "test", **{k: p[k] for k in ("target", "code") if k in p}}
     if action == "read":
         # 1.11.0: open the client's way of reading along for `kind` (a companion app: its window on golf.de). It
-        # never pairs, sends nothing by itself and has no `return` (a handicap pairing names no return_prefixes).
+        # never pairs, sends nothing by itself and has no `return` (one window reads for every pairing of its kind, so
+        # no one target's return_prefixes could vouch for the address).
         p = _params(query, {"kind"})
         if isinstance(p, str):
             return {"ok": False, "error": p}

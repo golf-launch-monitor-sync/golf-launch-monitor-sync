@@ -98,6 +98,13 @@ the step and `wizardLines` says it (English, German). A connection with a client
 (`chosen` absent). `serviceChoices` gives the first step's buttons: one service that fits, one button by its kind
 (*Connect launch monitor*, *Connect handicap record*, or the client's own words for it); several, each by its name.
 
+`focus.ts` (pure): a link's focus (spec 1.18.0, [deep-links.md](../../spec/deep-links.md), *The focus of a link*). A
+player an app sent for one thing sees only that thing from the first step to *Done*: `focusOf` reads it from what the
+client knows of the link (the extension's pending offer, the web app's fragment, the companion app's screen; null when
+the player opened the client themselves), `inFocus` says whether a kind's steps, card or notices show, `focusServices`
+which launch monitors the first step offers (those of the client's the link names, all without names), and
+`pairingProvider` which one `POST /pair` names (the one tapped, if the link allows it).
+
 `connections.ts` (pure): the main view's list - one connection per service and account (`connectionsOfStatus`: the
 signed-in account's pairings, and each pairing in test mode; `connectionOfHcp`: golf.de's record; the companion app
 its own), each with its state (`connectionState`: test, not set up yet, run out, another account, last fetch failed,

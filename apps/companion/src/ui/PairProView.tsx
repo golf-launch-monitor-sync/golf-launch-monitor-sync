@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { lang, t } from '../i18n';
 import { pairErrorKey } from '../lib/hcpText';
-import type { Incoming } from '../lib/links';
+import { backAfterPairing, type Incoming } from '../lib/links';
 import type { Services } from '../lib/services';
 import { wizardText } from '../lib/wizard';
 import type { Screen } from './App';
@@ -49,7 +49,9 @@ export function PairProView({ svc, link, go }: { svc: Services; link: Extract<In
     try {
       const out = await svc.pro.offerPairing({ target: link.target, code: link.code, provider: link.provider });
       if (out.ok) {
-        go({ name: 'rankings' });
+        // Its *Done* jumps back where the target named the link's `return` as its own (spec 1.18.0), else this card.
+        const back = backAfterPairing(link, { target: { return_prefixes: out.return_prefixes ?? [] } });
+        go({ name: 'rankings', linked: true, ...(back ? { back: { url: back, name: out.name } } : {}) });
         return;
       }
       setError(t(pairErrorKey(out.error)));

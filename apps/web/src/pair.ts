@@ -18,7 +18,7 @@
  * extension and no way by hand.
  */
 
-import { BrowserClient, canHaveExtension, INSTALL_URL, storeFor } from '@glmsync/browser';
+import { BrowserClient, canHaveExtension, focusOf, focusServices, INSTALL_URL, pairingProvider, storeFor } from '@glmsync/browser';
 import { fill, h, offerWizard, type OfferContext } from '@glmsync/browser/render';
 import { $, client, t, texts } from './common.ts';
 
@@ -117,7 +117,8 @@ function byHand(target: { target: string; code: string; provider?: string }): vo
           state,
           kind: 'lm',
           host,
-          services: [{ id: client.provider.id, name: client.provider.name }],
+          // Of this page's launch monitors those the link names (spec 1.18.0: it may name several).
+          services: focusServices(focusOf({ kind: 'lm', provider: target.provider }), [{ id: client.provider.id, name: client.provider.name }]),
           error,
           connectLabel: t('pair.useWeb', { host }),
         },
@@ -132,7 +133,8 @@ function byHand(target: { target: string; code: string; provider?: string }): vo
             state = 'working';
             error = null;
             draw();
-            client.offerPairing({ ...target, provider: target.provider ?? id }).then(
+            const provider = pairingProvider(target.provider, id);
+            client.offerPairing({ target: target.target, code: target.code, ...(provider ? { provider } : {}) }).then(
               (out) => {
                 if (out.ok) {
                   forgetCode();

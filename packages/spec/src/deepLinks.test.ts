@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 import { describe, expect, it } from 'vitest';
-import { pairLink, parseLink, parsePairFragment, parseSyncIntent, readLink, returnAllowed, testLink } from './deepLinks.ts';
+import { pairLink, parseLink, parsePairFragment, parseSyncIntent, providersOf, readLink, returnAllowed, testLink } from './deepLinks.ts';
 import { readVectors } from './vectors.ts';
 
 type Case = { rule: string; input: unknown; expected: unknown };
@@ -17,11 +17,12 @@ describe('deep links answer the vectors', () => {
     } else if (c.rule === 'parse_sync_intent') {
       const { data, reason } = c.input as { data: unknown; reason: unknown };
       expect(parseSyncIntent(data, reason)).toEqual(c.expected);
-    } else throw new Error(`unknown rule ${c.rule}`);
+    } else if (c.rule === 'providers_of') expect(providersOf(c.input as string | null)).toEqual(c.expected);
+    else throw new Error(`unknown rule ${c.rule}`);
   });
 
   it('covers every rule', () => {
-    expect(new Set(cases.map((c) => c.rule))).toEqual(new Set(['parse_link', 'parse_pair_fragment', 'return_allowed', 'parse_sync_intent']));
+    expect(new Set(cases.map((c) => c.rule))).toEqual(new Set(['parse_link', 'parse_pair_fragment', 'return_allowed', 'parse_sync_intent', 'providers_of']));
   });
 });
 

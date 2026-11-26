@@ -49,7 +49,8 @@ import { TourSession, type TourState } from '../lib/toursSession';
 import { alpsBar, etBar, ocsBar, seasonBar, toursBar } from '../lib/toursText';
 import { Body, Button, s, Small, Title } from './parts';
 
-export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; done: () => void }) {
+/** `backTo`: the app a link came from, when *Done* jumps back to it (spec 1.18.0): the button says so. */
+export function ToursView({ svc, site, done, backTo }: { svc: Services; site: TourSite; done: () => void; backTo?: string }) {
   const info = TOUR_SITES[site];
   /** europeantour.com: its own way of reading (each page of his, no *Fetch all*). */
   const et = isEt(site);
@@ -312,7 +313,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
     return (
       <View style={s.scroll}>
         <Body warn>{t('error.generic')}</Body>
-        <Button label={t('rankings.done')} onPress={done} />
+        <Button label={backTo ? tr('wizard.back', { target: backTo }) : t('rankings.done')} onPress={done} />
       </View>
     );
   }
@@ -338,7 +339,7 @@ export function ToursView({ svc, site, done }: { svc: Services; site: TourSite; 
           {bar.stop && session && <Button label={tr('line.stop')} kind="secondary" onPress={() => void session.stop()} />}
           {bar.stop && partSession && <Button label={tr('line.stop')} kind="secondary" onPress={() => void partSession.stop()} />}
           {unread && <Button label={t('rankings.reload')} kind="secondary" onPress={loadView} />}
-          <Button label={t('rankings.done')} kind="secondary" onPress={done} />
+          <Button label={backTo ? tr('wizard.back', { target: backTo }) : t('rankings.done')} kind="secondary" onPress={done} />
         </View>
       </View>
       {start === null ? null : failed ? (

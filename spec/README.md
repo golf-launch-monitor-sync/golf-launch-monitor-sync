@@ -11,7 +11,7 @@ Everything another implementation needs, in one place, independent of this proje
 | The **target API** an app implements to receive data | [target-api.md](target-api.md) | [api/target-api.yaml](api/target-api.yaml) |
 | The **planning rules** a target keeps (when the player is there: since 1.12.0; the lease is a client's, busy names its holder: since 1.13.0) | [planning.md](planning.md) | [plan/rules.json](plan/rules.json) |
 | The **load guard** every client keeps | [guard.md](guard.md) | [guard/limits.json](guard/limits.json) |
-| **Deep links** (the read link since 1.11.0), the pairing page and the Android sync service | [deep-links.md](deep-links.md) | — |
+| **Deep links** (the read link since 1.11.0; a link's focus, several providers and a way back for every kind since 1.18.0), the pairing page and the Android sync service | [deep-links.md](deep-links.md) | — |
 | **Test mode**: a target's test scenarios, played back to the real provider code (since 1.8.0) | [test-mode.md](test-mode.md) | [api/target-api.yaml](api/target-api.yaml) (`/test-scenario`) |
 | The extension's **bridge** on a target's page (*fetch now*, the sign-in) | [page-bridge.md](page-bridge.md) | — |
 | The **wake**: a silent push from the target when a plan is due (since 1.9.0) | [wake.md](wake.md) | [api/target-api.yaml](api/target-api.yaml) (`/wake`) |

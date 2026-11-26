@@ -89,6 +89,11 @@ as [deep-links.md](deep-links.md) says since 1.10.0). A client that doesn't know
 for launch monitor data, and a handicap target refuses that pairing (`provider_unknown`), so nothing
 half-paired remains.
 
+Since 1.18.0 the answer to `POST /pair` may name `return_prefixes`, as the launch monitor one does: where the companion
+app may jump back to after this pairing (the pair link's `return`, [deep-links.md](deep-links.md)). A target that names
+none keeps the player in the companion app, which then shows this one connection's card. A client older than 1.18.0
+ignores the field.
+
 ### When a client reads
 
 The target plans ([reference/hcp.py](reference/hcp.py), `is_due`): `manual` always; `connect` unless a

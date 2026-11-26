@@ -42,6 +42,15 @@ describe('pairing with a handicap target', () => {
     expect((await w.client.view()).pairings).toMatchObject([{ id: hcpPairingId(TARGET), name: 'Example App', host: 'app.example.org' }]);
   });
 
+  it('hands on where a pair link may jump back to, as the target named it (spec 1.18.0)', async () => {
+    const w = world({ returnPrefixes: ['exampleapp://', 'https://app.example.org/', 'https://bad.example', 'javascript://x/'] });
+    const out = await w.client.offerPairing({ target: TARGET, code: 'H7M2PQ9X' });
+    // Only prefixes that can't be stretched to another host, of a scheme that may open a page or an app.
+    expect(out).toEqual({ ok: true, id: hcpPairingId(TARGET), name: 'Example App', replaced: false, return_prefixes: ['exampleapp://', 'https://app.example.org/'] });
+    // A target that names none (as before 1.18.0): nothing to jump back to.
+    expect(await world().client.offerPairing({ target: TARGET, code: 'H7M2PQ9X' })).not.toHaveProperty('return_prefixes');
+  });
+
   it('says what went wrong', async () => {
     const w = world();
     expect(await w.client.offerPairing({ target: TARGET, code: 'WRONG123' })).toEqual({ ok: false, error: 'code' });

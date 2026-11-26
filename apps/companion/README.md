@@ -76,7 +76,13 @@ portal in a sign-in window - so that window lives here, in a small app that does
 - **Jumps back** after `glmsync://sync?return=…` - only to an address that starts with a prefix the
   paired target named as its own at pairing; otherwise it stays and says what it did. A pair link's
   `return` (spec 1.2.0) the same way, once paired: right away when signed in already, else after the
-  sign-in ("Then back to *name*"), and only to a prefix the target named in its answer to the pairing.
+  sign-in ("Then back to *name*"), and only to a prefix the target named in its answer to the pairing. Since spec
+  1.18.0 (companion 0.12.0) golf.de's record and a pro's pages too: *Back to …* in their window.
+- **Keeps a link's focus** (spec 1.18.0, [deep-links.md](../../spec/deep-links.md), *The focus of a link*;
+  `src/lib/done.ts`): a link shows only the kind it came for, from its first step to *Done* - a launch monitor link
+  only the launch monitors it names (one button each where it names several), golf.de's only golf.de. Where *Done* can't
+  jump back (no `return`, an address the target didn't name, the app gone), it shows that one connection's card with
+  *Done*, not the list; the list comes when the player opens the app themselves (also once it went to the back).
 - **Fetches without a switch on Android**: a target app in front binds to the sync service
   (`glmsync.intent.action.SYNC`, [spec](../../spec/deep-links.md#android)); every bind runs a sync of
   that target's pairings as a headless JavaScript task (`modules/glmsync-sync`, `src/nudge.ts`), in
@@ -100,7 +106,7 @@ portal in a sign-in window - so that window lives here, in a small app that does
   account, an app without test mode, a provider this app lacks, no network, a real account refusing test data).
 - **Reads along on golf.de** for the handicap record (spec 1.10.0/1.11.0, [hcp.md](../../spec/hcp.md), *A client that
   only observes*): a pair link with `kind=hcp` asks "Connect with *host*" for the handicap record (*Connect handicap record* is the yes) (provider `golfde`
-  only; no `return`: a handicap pairing names no return prefixes), then opens golf.de in the app's own window
+  only; its `return` since 1.18.0, when the target names return prefixes), then opens golf.de in the app's own window
   (`src/ui/GolfdeView.tsx`) - golf.de's History Sheet, loaded as this web view is, nothing added; the player signs in
   there. The extension's page script (`@glmsync/provider-golfde/page`) is injected before golf.de's own scripts, only
   on the pages the extension reads too (`src/lib/golfdePage.ts`, `onReadPage`), and posts what golf.de's page loaded,
@@ -125,8 +131,8 @@ portal in a sign-in window - so that window lives here, in a small app that does
   the account confirmed; it never signs in, and keeps one of the day's three runs for the player's tap. *Fetch all by
   itself* on the card switches it off.
 - **Sends a pro's world ranking page** (spec 1.15.0, [prores.md](../../spec/prores.md)): a pair link with `kind=pro`
-  asks "Connect with *host*" for the world ranking (*Connect world ranking* is the yes; provider `pro` only, no
-  `return`), then opens the app's own window on the sites (`src/ui/RankingsView.tsx`): the OWGR for men, the Rolex
+  asks "Connect with *host*" for the world ranking (*Connect world ranking* is the yes; provider `pro` only, its
+  `return` since 1.18.0), then opens the app's own window on the sites (`src/ui/RankingsView.tsx`): the OWGR for men, the Rolex
   Women's World Golf Rankings for women, loaded as this web view is, nothing added. The player searches for their name
   there and opens their own page; only then does *Send* appear in the app's bar. A page script (`scripts/rankings-page.entry.ts`,
   bundled into `src/lib/rankingsPageScript.ts`) gives the page one function and nothing else: on *Send* the app calls it

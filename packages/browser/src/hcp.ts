@@ -404,7 +404,8 @@ export class HcpClient {
       await this.saveEntries([...(await this.entries()).filter((e) => e.id !== id), entry]);
       // A new pairing has nothing from here yet: what was seen before goes to it with the next send.
       await this.opts.storage.remove(SENT + id);
-      return { ok: true, id, name: pairing.target.name, replaced: !!old } as const;
+      const back = pairing.target.return_prefixes?.length ? { return_prefixes: pairing.target.return_prefixes } : {};
+      return { ok: true, id, name: pairing.target.name, replaced: !!old, ...back } as const;
     });
   }
 

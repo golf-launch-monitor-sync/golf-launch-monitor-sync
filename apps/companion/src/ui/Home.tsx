@@ -7,6 +7,9 @@
  * now, the request log to export - or the handicap record read along on golf.de (HcpCard), a pro's world ranking
  * pages (ProCard), or a test's card. Under
  * Trackman's sign-in, small, *Enter a test code* instead; a connection in test mode never asks for the sign-in.
+ *
+ * `linked` (spec 1.18.0, lib/done.ts): a link brought the player here for this one connection and there was no way back
+ * to its app - its card alone, *Done* instead of the way to the list, nothing of the other connections.
  */
 
 import type { GuardCounts } from '@glmsync/core';
@@ -38,6 +41,7 @@ const REPO = 'https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sy
 export function Home({
   svc,
   focus,
+  linked,
   message,
   dismiss,
   go,
@@ -46,6 +50,8 @@ export function Home({
   svc: Services;
   /** The connection whose details are open (`lm:<provider>`, `test:<key>`, `hcp`, `pro`); none: the list. */
   focus?: string;
+  /** A link's focus: this card alone, no way to the list but *Done*. */
+  linked?: boolean;
   message: string | null;
   dismiss: () => void;
   go: (s: Screen) => void;
@@ -200,7 +206,7 @@ export function Home({
       )}
 
       {!focus && <Connections list={list} add={() => go({ name: 'new' })} open={(id) => go({ name: 'home', focus: id })} />}
-      {focus && <BackToList onPress={toList} />}
+      {focus && !linked && <BackToList onPress={toList} />}
 
       {lmFocus === 'trackman' && setupText && (
         <WizardFrame view={setupText.view} lines={setupText.lines}>
@@ -327,6 +333,9 @@ export function Home({
           />
         </Card>
       )}
+
+      {/* The link's card: *Done* ends its focus; the list is what the player then opens. */}
+      {focus && linked && <Button label={translator(lang)('wizard.title.done')} onPress={toList} />}
 
       <View style={{ gap: 8, paddingBottom: 24 }}>
         {!focus && (

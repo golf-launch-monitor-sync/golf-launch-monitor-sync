@@ -27,7 +27,7 @@
  * Manifest V3 background may be stopped between events): everything is in chrome.storage.
  */
 
-import { badge, BrowserClient, HcpClient, IdbBlobs, pickLang, ProClient, SEND_AFTER_MS, translator, type HcpView } from '@glmsync/browser';
+import { badge, BrowserClient, HcpClient, IdbBlobs, pairingProvider, pickLang, ProClient, SEND_AFTER_MS, translator, type HcpView } from '@glmsync/browser';
 import { SITES } from '@glmsync/provider-rankings';
 import { TourKeeper } from '@glmsync/browser/tours';
 import { EtKeeper } from '@glmsync/browser/europeantour';
@@ -574,7 +574,8 @@ async function confirmPairing(chosen?: string): Promise<Reply> {
     return { ok: true, pending: next };
   }
   await setPending({ ...p, state: 'working' });
-  const provider = p.provider ?? chosen;
+  // The link may name several launch monitors (spec 1.18.0): the pairing goes out with the one tapped, if it names it.
+  const provider = pairingProvider(p.provider, chosen);
   const offerOf = { target: p.target, code: p.code, ...(provider ? { provider } : {}) };
   // The handicap record (kind=hcp) pairs with its own API and reads along on golf.de; nothing to fetch now.
   // A pro's world ranking pages (kind=pro) likewise: they are sent on the player's tap on their page.

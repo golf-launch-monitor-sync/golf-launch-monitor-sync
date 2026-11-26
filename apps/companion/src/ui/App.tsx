@@ -7,6 +7,9 @@
  * While it is open it may fetch the handicap record by itself when it is due (spec 1.17.0, lib/autoFetch.ts): in a
  * golf.de window kept behind the screen, gone again when the run ends, the app goes to the back or golf.de is opened.
  * A pro's world ranking and tour pages (spec 1.15.0) have their pair link and their windows too.
+ *
+ * A link keeps its focus (spec 1.18.0, lib/done.ts): from its first step to *Done* only the kind it came for, and after
+ * *Done* back to the app - or, where there is no way back, this one connection's card (`linked`), not the list.
  */
 
 import * as Linking from 'expo-linking';
@@ -19,6 +22,8 @@ import { keepScheduled } from '../background';
 import { keepWake } from '../wake';
 import { t } from '../i18n';
 import { LOOK_AFTER_MS } from '../lib/autoFetch';
+import { afterDone, afterLeaving, type DoneHow } from '../lib/done';
+import { goBack } from '../lib/firstSync';
 import { Once, readIncoming, type Incoming } from '../lib/links';
 import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
 import { testKeys } from '../lib/wizard';
@@ -43,26 +48,33 @@ import { TestView } from './TestView';
 import { TrackmanLoginView } from './TrackmanLoginView';
 import { UnseenGolfde } from './UnseenGolfde';
 
+/** Where *Back to …* jumps (a link's `return`, once its target named it as its own) and the app's name. */
+export type Back = { url: string; name: string };
+
 export type Screen =
-  /** The main view: *Connect new* and the list of connections; with `focus`, one connection's details. */
-  | { name: 'home'; focus?: string }
+  /**
+   * The main view: *Connect new* and the list of connections; with `focus`, one connection's details - `linked`: a
+   * link's focus (spec 1.18.0), that card alone, *Done* instead of the way to the list.
+   */
+  | { name: 'home'; focus?: string; linked?: true }
   /** *Connect new* before any app asked: where to start (or the demo). */
   | { name: 'new' }
   | { name: 'pair'; link: Extract<Incoming, { kind: 'pair' }> }
   /** A pair link for the handicap record (kind=hcp). */
   | { name: 'pairHcp'; link: Extract<Incoming, { kind: 'pair-hcp' }> }
-  /** golf.de in the app's window, read along for the handicap record. */
-  | { name: 'golfde' }
+  /** golf.de in the app's window, read along for the handicap record; `linked`/`back`: opened by a link (1.18.0). */
+  | { name: 'golfde'; linked?: true; back?: Back }
   /** A pair link for a pro's world ranking pages (kind=pro). */
   | { name: 'pairPro'; link: Extract<Incoming, { kind: 'pair-pro' }> }
   /** The world ranking window: on `site`'s ranking, else the page last sent, else asking which. */
-  | { name: 'rankings'; site?: RankingSite }
+  | { name: 'rankings'; site?: RankingSite; linked?: true; back?: Back }
   /** His tour's pages (a pro's pages too): the window on the tour's site. */
-  | { name: 'tours'; site: TourSite }
-  | { name: 'signin'; provider: ProviderId; back?: { url: string; name: string } }
+  | { name: 'tours'; site: TourSite; linked?: true; back?: Back }
+  /** `focus`: the connection a link was for (`lm:<provider>`), kept to *Done* (1.18.0). */
+  | { name: 'signin'; provider: ProviderId; back?: Back; focus?: string }
   | { name: 'sync'; link: { target?: string; return?: string } }
   /** Just signed in: the first sync shown as the wizard's steps 4 and 5, then (with `back`) *Back to …*. */
-  | { name: 'first'; target?: string; back?: { url: string; name: string } }
+  | { name: 'first'; target?: string; back?: Back; focus?: string }
   /**
    * Test mode (spec 1.8.0): a test code for one of `keys`' pairings instead of the sign-in, typed (step 2) or from a
    * link; `back` as after a sign-in.
@@ -220,7 +232,8 @@ function Main() {
         setMessage(null);
         setScreen({ name: 'pairPro', link: incoming });
       } else if (incoming.kind === 'read') {
-        // Only with a connection of that kind: without one there is nobody to send what was read to.
+        // Only with a connection of that kind: without one there is nobody to send what was read to. A read link keeps
+        // its focus too (spec 1.18.0): its window, then its card.
         const pro = incoming.what === 'pro';
         void (pro ? svc.pro.view() : svc.hcp.view()).then(
           async (v) => {
@@ -229,7 +242,7 @@ function Main() {
               // A pro's pages: the window of the page last sent from here (his tour profile or page, or a world ranking's).
               const last = pro ? await svc.lastPage.get().catch(() => null) : null;
               const tour = tourSiteOf(last);
-              setScreen(!pro ? { name: 'golfde' } : tour ? { name: 'tours', site: tour } : { name: 'rankings' });
+              setScreen(!pro ? { name: 'golfde', linked: true } : tour ? { name: 'tours', site: tour, linked: true } : { name: 'rankings', linked: true });
             } else {
               setMessage(t(pro ? 'pro.pairFirst' : 'hcp.pairFirst'));
               setScreen({ name: 'home' });
@@ -307,6 +320,8 @@ function Main() {
         if (next) clearTimeout(next);
         // What the golf.de window saw goes before iOS stops the app (a timer may never fire behind it).
         if (state === 'background') {
+          // A link's focus ends here: whoever opens the app next opens it themselves (spec 1.18.0).
+          setScreen((now) => afterLeaving(now));
           if (looking) clearTimeout(looking);
           looking = null;
           // A run of Fetch all doesn't go on in the back (the phone stops the app): it ends and sends what it read -
@@ -343,12 +358,28 @@ function Main() {
   const firstSync = useCallback(() => connectSync(firstTarget), [connectSync, firstTarget]);
   // The first sync is through: the older history follows a chunk at a time while the app is in front.
   const firstThrough = useCallback(() => historyNow.current(), []);
+  const firstFocus = screen.name === 'first' ? screen.focus : undefined;
   const firstDone = useCallback(
-    (how: 'back' | 'stayed' | 'here') => {
-      home();
+    (how: DoneHow) => {
+      setScreen(afterDone(firstFocus, how));
       if (how === 'stayed') setMessage(t('sync.stayed'));
     },
-    [home],
+    [firstFocus],
+  );
+  /**
+   * *Done* in a window a link opened (golf.de's, a pro's pages): back to the app where it may, else this connection's
+   * card; opened by the player from its card or the list, the window goes back where it came from.
+   */
+  const windowDone = useCallback(
+    (focus: 'hcp' | 'pro', from: { linked?: true; back?: Back }) => {
+      if (!from.linked) return setScreen(focus === 'pro' ? { name: 'home', focus: 'pro' } : { name: 'home' });
+      if (!from.back) return setScreen(afterDone(focus, 'here'));
+      void goBack(from.back.url, (url) => Linking.openURL(url)).then((how) => {
+        setScreen(afterDone(focus, how));
+        if (how === 'stayed') setMessage(t('sync.stayed'));
+      });
+    },
+    [],
   );
   /** The app the data of a provider goes to, for the wizard's words (null: several, or none). */
   const targetFor = (provider: string) => (svc ? targetOf(svc.pairings.list().filter((p) => p.provider === provider).map((p) => p.target.name)) : null);
@@ -375,20 +406,25 @@ function Main() {
   } else if (screen.name === 'pairHcp') {
     body = <PairHcpView svc={svc} link={screen.link} go={setScreen} />;
   } else if (screen.name === 'golfde') {
-    body = <GolfdeView svc={svc} done={home} />;
+    const from = screen;
+    body = <GolfdeView svc={svc} {...(from.back ? { backTo: from.back.name } : {})} done={() => windowDone('hcp', from)} />;
   } else if (screen.name === 'pairPro') {
     body = <PairProView svc={svc} link={screen.link} go={setScreen} />;
   } else if (screen.name === 'rankings') {
+    const from = screen;
+    const keep = { ...(from.linked ? { linked: true as const } : {}), ...(from.back ? { back: from.back } : {}) };
     body = (
       <RankingsView
         svc={svc}
-        {...(screen.site ? { site: screen.site } : {})}
-        tour={(site) => setScreen({ name: 'tours', site })}
-        done={() => setScreen({ name: 'home', focus: 'pro' })}
+        {...(from.site ? { site: from.site } : {})}
+        {...(from.back ? { backTo: from.back.name } : {})}
+        tour={(site) => setScreen({ name: 'tours', site, ...keep })}
+        done={() => windowDone('pro', from)}
       />
     );
   } else if (screen.name === 'tours') {
-    body = <ToursView svc={svc} site={screen.site} done={() => setScreen({ name: 'home', focus: 'pro' })} />;
+    const from = screen;
+    body = <ToursView svc={svc} site={from.site} {...(from.back ? { backTo: from.back.name } : {})} done={() => windowDone('pro', from)} />;
   } else if (screen.name === 'signin') {
     body = (
       <SignInView
@@ -401,8 +437,8 @@ function Main() {
           renewal.allowAgain();
           // Signed in: the first sync, and when paired from a link with a return, back to the target app once it is
           // through (spec 1.2.0; FirstSyncView).
-          if (signedIn) setScreen({ name: 'first', ...(screen.back ? { back: screen.back } : {}) });
-          else home();
+          if (signedIn) setScreen({ name: 'first', ...(screen.back ? { back: screen.back } : {}), ...(screen.focus ? { focus: screen.focus } : {}) });
+          else setScreen(screen.focus ? afterDone(screen.focus, 'here') : { name: 'home' });
         }}
       />
     );
@@ -417,7 +453,7 @@ function Main() {
   } else if (screen.name === 'new') {
     body = <NewView go={setScreen} />;
   } else {
-    body = <Home svc={svc} {...(screen.focus ? { focus: screen.focus } : {})} message={message} dismiss={() => setMessage(null)} go={setScreen} renewing={renewal.on} />;
+    body = <Home svc={svc} {...(screen.focus ? { focus: screen.focus } : {})} {...(screen.linked ? { linked: true } : {})} message={message} dismiss={() => setMessage(null)} go={setScreen} renewing={renewal.on} />;
   }
 
   return (

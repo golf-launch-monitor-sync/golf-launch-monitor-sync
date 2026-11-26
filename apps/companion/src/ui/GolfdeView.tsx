@@ -33,7 +33,8 @@ import { Body, Button, s, Small, Title } from './parts';
 /** How often the line follows a send under way while the window is open. */
 const REFRESH_MS = 3000;
 
-export function GolfdeView({ svc, done }: { svc: Services; done: () => void }) {
+/** `backTo`: the app a link came from, when *Done* jumps back to it (spec 1.18.0): the button says so. */
+export function GolfdeView({ svc, done, backTo }: { svc: Services; done: () => void; backTo?: string }) {
   const [view, setView] = useState<HcpView | null>(null);
   const [failed, setFailed] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -141,7 +142,7 @@ export function GolfdeView({ svc, done }: { svc: Services; done: () => void }) {
           {line?.fetchAll && <Button label={tr('line.fetchAll')} onPress={fetchAll} />}
           {line?.stop && <Button label={tr('line.stop')} kind="secondary" onPress={stopFetchAll} />}
           {line?.send && <Button label={t('hcp.send')} onPress={() => void svc.hcpSender.now()} disabled={!!view?.sending} />}
-          <Button label={t('golfde.done')} kind="secondary" onPress={close} />
+          <Button label={backTo ? tr('wizard.back', { target: backTo }) : t('golfde.done')} kind="secondary" onPress={close} />
         </View>
       </View>
       {failed ? (

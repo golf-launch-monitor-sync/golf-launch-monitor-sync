@@ -21,7 +21,10 @@ background, while your browser is open — reads your handicap record along on g
    would go to, and **what to connect** - *Connect launch monitor* is the yes, and the browser asks once for that one
    address on the same click (refused, the step stays and says so) -, and it is connected. The pairing page closes itself once the extension took over (when the app opened it; otherwise it
    says it may be closed). *Connect new* in the popup opens the same page at its first step, which says to start in
-   the app and goes on by itself once the app's pairing page hands over its code.
+   the app and goes on by itself once the app's pairing page hands over its code. An app's pairing keeps the page **in
+   its focus** (spec 1.18.0, [deep-links.md](../../spec/deep-links.md), *The focus of a link*): to *Back to …* only the
+   kind it asked for - a launch monitor's steps show nothing of golf.de's record or a pro's pages, connected or not, and
+   golf.de's nothing of the launch monitor. Where the app names several launch monitors, one button each.
 3. The steps go on in the connect page (and from the popup's row): open the Trackman portal (`portal.trackmangolf.com`)
    and sign in, or just open it if you are.
    The extension takes your sign-in from there and asks **"Is this your Trackman account?"** (the name, the newest

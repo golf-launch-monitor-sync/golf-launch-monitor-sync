@@ -64,7 +64,8 @@ ranking's line.
   `glmsync://pair?target=…&code=…&provider=pro&kind=pro`. A client older than 1.15.0 doesn't know the kind and refuses
   the link (`invalid:kind`), so nothing half-paired remains.
 - One connection of this kind per player, beside a handicap record's (a target may keep both). Its `PairResponse` has
-  no `account_ref`: each site's page is an account of its own (below).
+  no `account_ref`: each site's page is an account of its own (below). Since 1.18.0 it may name `return_prefixes` as in
+  [hcp.md](hcp.md), and the pair link a `return`.
 - `GET /hcp/v1/plan` as in [hcp.md](hcp.md): before every batch, with the reason `manual` (the player tapped), for the
   lease, `disconnected`, and whether the target wants it now. A plan of this kind names neither `cards_have` nor
   `max_cards` nor `account_ref`. One plan covers all of the player's pages.

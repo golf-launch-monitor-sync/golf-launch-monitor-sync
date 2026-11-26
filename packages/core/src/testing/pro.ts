@@ -27,8 +27,12 @@ export class FakeProTarget {
   /** A status to answer an import with instead. */
   fail: number | null = null;
 
-  constructor(opts: { base?: string } = {}) {
+  /** Where a pair link may jump back to (spec 1.18.0); none: the answer names no `return_prefixes`, as before. */
+  readonly returnPrefixes: string[] | undefined;
+
+  constructor(opts: { base?: string; returnPrefixes?: string[] } = {}) {
     this.base = opts.base ?? 'https://app.example.org/hcp/v1';
+    this.returnPrefixes = opts.returnPrefixes;
   }
 
   fetch: FetchLike = async (url, init) => {
@@ -43,7 +47,8 @@ export class FakeProTarget {
       this.codes.delete(b.code);
       const token = `pro-token-${this.tokens.size + 1}-${'x'.repeat(32)}`;
       this.tokens.add(token);
-      return response(200, { token, target: { name: 'Example App' }, account_salt: this.salt, limits: { max_bytes: 2_097_152, max_results: 500 } });
+      const back = this.returnPrefixes ? { return_prefixes: this.returnPrefixes } : {};
+      return response(200, { token, target: { name: 'Example App', ...back }, account_salt: this.salt, limits: { max_bytes: 2_097_152, max_results: 500 } });
     }
     const auth = init.headers.Authorization ?? init.headers.authorization ?? '';
     if (!this.tokens.has(auth.replace(/^Bearer /, ''))) return response(401, { error: { code: 'token_invalid', message: 'no' } });

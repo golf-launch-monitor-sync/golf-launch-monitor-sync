@@ -211,6 +211,11 @@ components:
           required: [name]
           properties:
             name: { type: string, minLength: 1, maxLength: 100 }
+            return_prefixes:
+              type: array
+              maxItems: 10
+              description: "Since 1.18.0: where a pair link's `return` may jump back to once paired (spec/deep-links.md). Each ends with '/' or '://'."
+              items: { type: string, minLength: 4, maxLength: 200 }
         account_salt: { type: string, minLength: 16, maxLength: 128, description: "The salt of `account_ref` (spec/olmd.md), fixed per player and target." }
         account_ref:
           type: string

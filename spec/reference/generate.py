@@ -399,20 +399,36 @@ def deep_link_vectors() -> dict[str, Any]:
              "glmsync://read?kind=hcp%ZZ",
              # 1.15.0: a professional's own pages (spec/prores.md)
              f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=pro&kind=pro", f"glmsync://pair?target={t}&code=K7M2PQ9X&kind=PRO",
-             "glmsync://read?kind=pro", "glmsync://read?kind=pro&kind=hcp"]
+             "glmsync://read?kind=pro", "glmsync://read?kind=pro&kind=hcp",
+             # 1.18.0: several launch monitors a target takes; and a way back after a handicap or pro pairing too
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=trackman%2Cdemo",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=trackman,demo&kind=lm",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=trackman,trackman",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=trackman,",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=,trackman",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=trackman%2C%20demo",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=trackman,Demo",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=" + ",".join(f"p{i}x" for i in range(11)),
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=golfde&kind=hcp&return=exampleapp%3A%2F%2Fprofile%3Ffocus%3Dhcp",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=pro&kind=pro&return=https%3A%2F%2Fapp.example.org%2Fprofile",
+             f"glmsync://pair?target={t}&code=K7M2PQ9X&kind=hcp&return=javascript%3Aalert(1)"]
     cases: list[dict[str, Any]] = [{"rule": "parse_link", "input": u, "expected": deeplinks.parse_link(u)} for u in links]
     frags = [f"#target={t}&code=K7M2PQ9X", f"target={t}&code=K7M2PQ9X&provider=demo", "#code=K7M2PQ9X", "#",
              f"#target={t}&code=K7M2PQ9X&target={t}",
              f"#target={t}&code=K7M2PQ9X&return=exampleapp%3A%2F%2Fprofile",
              f"#target={t}&code=K7M2PQ9X&kind=hcp", f"#target={t}&code=K7M2PQ9X&kind=lm",
              f"#kind=hcp&target={t}&code=K7M2PQ9X&provider=golfde", f"#target={t}&code=K7M2PQ9X&kind=other",
-             f"#target={t}&code=K7M2PQ9X&kind=hcp&kind=hcp", f"#target={t}&code=K7M2PQ9X&kind=pro"]
+             f"#target={t}&code=K7M2PQ9X&kind=hcp&kind=hcp", f"#target={t}&code=K7M2PQ9X&kind=pro",
+             f"#target={t}&code=K7M2PQ9X&provider=trackman%2Cdemo", f"#target={t}&code=K7M2PQ9X&provider=trackman,,demo"]
     cases += [{"rule": "parse_pair_fragment", "input": f, "expected": deeplinks.parse_pair_fragment(f)} for f in frags]
     prefixes = ["https://app.example.org/", "exampleapp://", "https://app.example.net"]
     for u in ["https://app.example.org/profile", "https://app.example.org.evil.test/", "exampleapp://synced",
               "exampleapp:synced", "https://app.example.net/x", "javascript://app.example.org/", "otherapp://x"]:
         cases.append({"rule": "return_allowed", "input": {"url": u, "prefixes": prefixes},
                       "expected": deeplinks.return_allowed(u, prefixes)})
+    for v in [None, "trackman", "trackman,demo", "demo,trackman", "trackman,trackman", "trackman,", "Trackman", "a",
+              ",".join(f"p{i}x" for i in range(10)), ",".join(f"p{i}x" for i in range(11))]:
+        cases.append({"rule": "providers_of", "input": v, "expected": deeplinks.providers_of(v)})
     sync = f"glmsync://sync?target={t}"
     intents: list[tuple[Any, Any]] = [
         (sync, "open"), (sync, "manual"), (sync, None), (sync, "timer"), (sync, "backfill"), (sync, "OPEN"),
@@ -429,7 +445,9 @@ def deep_link_vectors() -> dict[str, Any]:
                "sync, (1.8.0) test or (1.11.0) read; kind (1.10.0) lm, hcp or (1.15.0) pro, only where the link names it "
                "(read: always, and only hcp or pro). parse_sync_intent "
                "(the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> "
-               "{ok: true, target, reason} or {ok: false, error}.", cases)
+               "{ok: true, target, reason} or {ok: false, error}. provider (1.18.0) may name several, separated by "
+               "commas, and stays the string as given; providers_of (that string, or null: none named) -> the list of "
+               "ids ([]: any the client can connect), or null when it names none validly.", cases)
 
 
 def signin_vectors() -> dict[str, Any]:

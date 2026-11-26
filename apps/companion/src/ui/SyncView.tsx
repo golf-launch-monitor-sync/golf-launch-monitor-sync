@@ -4,13 +4,15 @@
  * `glmsync://sync?return=…`: a target app asks to fetch now (on iOS an app can start another only by
  * a visible switch). The plans are asked like for any manual sync - nothing is fetched that the plan
  * doesn't want - and then the app jumps back, but only to an address the paired target named as its
- * own; otherwise it stays here and says what it did.
+ * own; otherwise it stays here and says what it did, and *OK* shows the card of the launch monitor it synced for (the
+ * link's focus, spec 1.18.0), not the list.
  */
 
 import * as Linking from 'expo-linking';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { lang, t } from '../i18n';
+import { afterDone, lmFocus } from '../lib/done';
 import { backTo } from '../lib/links';
 import type { LastRun } from '../lib/runner';
 import type { Services } from '../lib/services';
@@ -87,7 +89,7 @@ export function SyncView({
           </Body>
         ))}
         {stayed && <Body warn>{t('sync.stayed')}</Body>}
-        {runs && <Button label={t('action.ok')} onPress={() => go({ name: 'home' })} />}
+        {runs && <Button label={t('action.ok')} onPress={() => go(afterDone(lmFocus(of), 'here'))} />}
       </Card>
     </ScrollView>
   );

@@ -12,11 +12,11 @@ The scheme is open: any app may implement the receiving side. Reference:
 ## Links
 
 ```
-glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp|pro][&return=<URL to go back to>]
+glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>[,<id>…]][&kind=hcp|pro][&return=<URL to go back to>]
 glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
 glmsync://test?[target=<target base URL>&]code=<test code>
 glmsync://read?kind=hcp|pro
-https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>][&kind=hcp|pro]
+https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>[,<id>…]][&kind=hcp|pro]
 ```
 
 - **pair** opens the companion app (on a phone) with what it needs to call `POST /pair`. On a
@@ -27,7 +27,15 @@ https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<i
   rule as a sync ([below](#where-a-sync-may-jump-back-to)), against the `return_prefixes` the target
   has just named. Not before: until the pairing stands, nothing says the address is the target's own.
   The fragment of the pairing page takes no `return` (the page stays where it is); a client older than
-  1.2.0 ignores it, so a target says where to go back to in its own words as well.
+  1.2.0 ignores it, so a target says where to go back to in its own words as well. Since 1.18.0 the same holds for
+  `kind=hcp` and `kind=pro`: their `POST /pair` names `return_prefixes` too ([hcp.md](hcp.md)), so a handicap or a pro
+  pairing jumps back like a launch monitor's. A client older than 1.18.0 knows no prefixes there and stays.
+- **provider** (pair and the pairing page): which provider the pairing is for. Without it, a `kind=lm` link means any
+  launch monitor the client can connect; a target that takes only some names them - one id, or since 1.18.0 several
+  separated by commas (`provider=trackman,other`, at most ten, none twice). The client offers those of them it can
+  connect, and sends the one the player chose in `POST /pair`. A client older than 1.18.0 reads a list as invalid
+  (`invalid:provider`), so a target that takes only one names just that one. For `kind=hcp` and `kind=pro` the provider
+  is fixed (`golfde`, `pro`).
 - **kind** (since 1.10.0, pair and the pairing page): which target API the base URL speaks - `lm` (the launch
   monitor one, [target-api.md](target-api.md); also what a link without `kind` means) or `hcp` (the handicap
   one, [hcp.md](hcp.md)), and since 1.15.0 `pro`: the handicap one for a professional's own pages
@@ -44,8 +52,27 @@ https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<i
   window on the provider's page of the handicap record ([hcp.md](hcp.md), *A client that only observes*), where
   the player signs in and opens their record themselves. A target links it from a reminder that the record is due.
   It never pairs (without a handicap pairing the app says to pair first), sends nothing by itself and takes no
-  `target` or `return` (one window reads for every handicap pairing, and a handicap pairing names no
-  `return_prefixes`); such keys are ignored like any unknown one.
+  `target` or `return` (one window reads for every handicap pairing, so no one target's prefixes could vouch for the
+  address); such keys are ignored like any unknown one.
+
+## The focus of a link
+
+Since 1.18.0. A player who comes from an app for one thing should see only that thing. So a link (and the pairing page)
+opens the client **in the focus of its kind**, from its first step to *Done*:
+
+- `kind=lm`: only launch monitors - of those the client can connect, the ones `provider` names (all without it). One:
+  one button *Connect launch monitor*; several: one button each, by name. `kind=hcp`: only the handicap record;
+  `kind=pro`: only a professional's pages. Never *Connect new*, never the list of connections, never a card or a notice
+  of another kind or another connection (that waits until the player opens the client themselves).
+- After *Done* the focus stays: *Back to <app>* is the one button. On a phone it jumps to `return` (by the rule
+  [below](#where-a-sync-may-jump-back-to)); on a computer it closes the client's window or tab, and the target's own page,
+  still open, looks again by itself. Where there is no way back - the link named none, its address isn't among the
+  target's prefixes, or the phone ended the client meanwhile - the client shows the card of this one connection, not
+  the list. The list comes only when the player opens the client themselves.
+- A read link and a sync link likewise: only the window or the card of their kind.
+
+The focus is the client's matter alone: nothing of it goes to a target, and a target needs nothing new for it beyond
+`return` and its `return_prefixes`.
 
 ## Reading a link
 
@@ -59,10 +86,12 @@ A link comes from outside and is read strictly; anything unexpected makes it inv
 - `target`: `https://host[:port][/path]`, or `http://` only to `localhost`, `127.0.0.1` or `[::1]`
   (development); no user info, no query, no fragment;
 - `code` (pair, test): 6–64 of `0-9 A-Z a-z -`;
-- `provider`: a lower-case id (`^[a-z][a-z0-9_-]{1,39}$`);
+- `provider`: a lower-case id (`^[a-z][a-z0-9_-]{1,39}$`), or (1.18.0) up to ten of them separated by `,` (a `,`
+  encoded as `%2C` reads the same), none twice and none empty; the parsed link keeps the string as given
+  (`providers_of` splits it);
 - `kind`: `lm`, `hcp` or (1.15.0) `pro`, nothing else (`HCP` or a kind of a later version is invalid: pairing with an
   API the client doesn't speak would only be refused); in a read link required, and only `hcp` or `pro`;
-- `return` (sync, and pair since 1.2.0): an absolute URL — `https://host/…`, `http://` to this machine, or an app's own scheme
+- `return` (sync, and pair since 1.2.0, of every kind since 1.18.0): an absolute URL — `https://host/…`, `http://` to this machine, or an app's own scheme
   written `scheme://…`; never `javascript:`, `data:`, `file:`, `vbscript:`, `about:`, `blob:` or
   `glmsync:`. At most 2048 characters for every link.
 

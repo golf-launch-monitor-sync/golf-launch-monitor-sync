@@ -7,7 +7,8 @@
  * button *Connect launch monitor*; later more launch monitors) - only then the pairing is made.
  *
  * Then connecting goes on as steps (the wizard): the sign-in when there is none yet, then the first sync, and
- * *Back to …* the link's `return` (spec 1.2.0) - only to an address the target named as its own in its answer.
+ * *Back to …* the link's `return` (spec 1.2.0) - only to an address the target named as its own in its answer. The link
+ * may name several launch monitors (spec 1.18.0): one button each, by name; it keeps its focus to *Done* (lib/done.ts).
  */
 
 import { translator } from '@glmsync/browser/i18n';
@@ -26,22 +27,24 @@ import { WizardFrame } from './WizardFrame';
 export function PairView({ svc, link, go }: { svc: Services; link: Extract<Incoming, { kind: 'pair' }>; go: (s: Screen) => void }) {
   const [step, setStep] = useState<'asking' | 'working'>('asking');
   const [error, setError] = useState<string | null>(null);
-  const provider = svc.providers[link.provider as keyof typeof svc.providers];
+  const nameOf = (id: string) => svc.providers[id as keyof typeof svc.providers]?.name ?? id;
   const tr = translator(lang);
-  const w = wizardText(factsOfOffer(step, 'lm'), lang, { service: provider?.name ?? link.provider, target: link.host });
+  const w = wizardText(factsOfOffer(step, 'lm'), lang, { service: nameOf(link.provider), target: link.host });
 
-  async function choose() {
+  async function choose(chosen: string) {
     setStep('working');
     setError(null);
     try {
-      const p = await svc.runner.pair(link);
+      const p = await svc.runner.pair({ ...link, provider: link.choices.includes(chosen) ? chosen : link.provider });
       const back = backAfterPairing(link, p);
+      // The link's focus to *Done*: this launch monitor's card where there is no way back (lib/done.ts).
+      const focus = `lm:${p.provider}`;
       if (svc.signIns.credential(p.provider)) {
         // Signed in already: the first sync right away (the target's plan decides what it brings), shown as the
         // wizard's steps 4 and 5 with *Back to …* (FirstSyncView: on the iPhone a sync left running behind a jump stops).
-        go({ name: 'first', target: p.base, ...(back ? { back: { url: back, name: p.target.name } } : {}) });
+        go({ name: 'first', target: p.base, focus, ...(back ? { back: { url: back, name: p.target.name } } : {}) });
       } else {
-        go({ name: 'signin', provider: p.provider as 'trackman' | 'demo', ...(back ? { back: { url: back, name: p.target.name } } : {}) });
+        go({ name: 'signin', provider: p.provider as 'trackman' | 'demo', focus, ...(back ? { back: { url: back, name: p.target.name } } : {}) });
       }
     } catch (e) {
       setError(errorText(e, Date.now(), lang, t));
@@ -57,8 +60,8 @@ export function PairView({ svc, link, go }: { svc: Services; link: Extract<Incom
         {link.replaces && <Body warn>{t('pair.replaces')}</Body>}
         <Small>{link.target}</Small>
         {error && <Body warn>{error}</Body>}
-        {serviceChoices('lm', [{ id: link.provider, name: provider?.name ?? link.provider }], tr).map((c) => (
-          <Button key={c.id} label={c.label} onPress={() => void choose()} busy={step === 'working'} />
+        {serviceChoices('lm', link.choices.map((id) => ({ id, name: nameOf(id) })), tr).map((c) => (
+          <Button key={c.id} label={c.label} onPress={() => void choose(c.id)} busy={step === 'working'} />
         ))}
         <Button label={t('pair.no')} kind="secondary" onPress={() => go({ name: 'home' })} disabled={step === 'working'} />
       </WizardFrame>

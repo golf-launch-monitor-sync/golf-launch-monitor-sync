@@ -11,7 +11,7 @@
  */
 
 import { validTarget, type ProresBatch, type Reason } from '@glmsync/spec';
-import { ACCOUNT_REF, CLIENT_KINDS, PROVIDER_ID, type ClientKind } from './api.ts';
+import { ACCOUNT_REF, CLIENT_KINDS, PROVIDER_ID, readReturnPrefixes, type ClientKind } from './api.ts';
 import { TargetError } from './errors.ts';
 import { defaultFetch, parseJson, type FetchLike } from './http.ts';
 import { call, errorOf, trimBase } from './target.ts';
@@ -74,7 +74,8 @@ export interface HcpPairing {
   base: string;
   token: string;
   provider: string;
-  target: { name: string };
+  /** `return_prefixes` (spec 1.18.0): where a pair link may jump back to; absent in a pairing kept from before. */
+  target: { name: string; return_prefixes?: string[] };
   account_salt: string;
   account_ref?: string;
   limits: HcpLimits;
@@ -131,10 +132,20 @@ export function readHcpPairing(data: unknown, base: string, provider: string, no
   const p = obj(data);
   const token = str(p?.token, 32, 256);
   const salt = str(p?.account_salt, 16, 128);
-  const name = str(obj(p?.target)?.name, 1, 100);
+  const target = obj(p?.target);
+  const name = str(target?.name, 1, 100);
   const limits = readHcpLimits(p?.limits);
   if (!p || !token || !salt || !name || !limits) return null;
-  const out: HcpPairing = { base, token, provider, target: { name }, account_salt: salt, limits, paired_at: new Date(now).toISOString() };
+  const prefixes = readReturnPrefixes(target?.return_prefixes);
+  const out: HcpPairing = {
+    base,
+    token,
+    provider,
+    target: { name, ...(prefixes.length ? { return_prefixes: prefixes } : {}) },
+    account_salt: salt,
+    limits,
+    paired_at: new Date(now).toISOString(),
+  };
   if (typeof p.account_ref === 'string' && ACCOUNT_REF.test(p.account_ref)) out.account_ref = p.account_ref;
   return out;
 }

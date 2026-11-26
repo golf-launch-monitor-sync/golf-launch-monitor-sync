@@ -188,7 +188,11 @@ export interface ClientStatus {
 }
 
 export type PairOutcome =
-  | { ok: true; id: string; name: string; replaced: boolean }
+  /**
+   * `return_prefixes`: where a pair link may now jump back to, as the target named them (spec 1.2.0; a handicap or a
+   * pro pairing's since 1.18.0); none named: absent.
+   */
+  | { ok: true; id: string; name: string; replaced: boolean; return_prefixes?: string[] }
   | { ok: false; error: 'link' | 'provider' | 'code' | 'unreachable' | 'refused' | 'rate_limited' | 'answer' };
 
 export type KeyOutcome =
@@ -600,7 +604,8 @@ export class BrowserClient {
         ...(pairing.account_ref ? { account_ref: pairing.account_ref } : {}),
       };
       await this.saveEntries([...(await this.entries()).filter((e) => e.id !== id), entry]);
-      return { ok: true, id, name: pairing.target.name, replaced: !!old } as const;
+      const back = pairing.target.return_prefixes?.length ? { return_prefixes: pairing.target.return_prefixes } : {};
+      return { ok: true, id, name: pairing.target.name, replaced: !!old, ...back } as const;
     });
   }
 

@@ -191,6 +191,17 @@ export function readLimits(data: unknown): ImportLimits | null {
   return out as ImportLimits;
 }
 
+/**
+ * Where a link may jump back to after this target's pairing (`return_prefixes` of `POST /pair`; since spec 1.18.0 a
+ * handicap target's too): only prefixes that can't be stretched to another host, at most ten. Anything else is dropped.
+ */
+export function readReturnPrefixes(v: unknown): string[] {
+  return (Array.isArray(v) ? v : [])
+    .slice(0, 10)
+    .filter((x): x is string => typeof x === 'string' && x.length >= 4 && x.length <= 200)
+    .filter((x) => (x.endsWith('/') || x.endsWith('://')) && validReturn(x));
+}
+
 /** The answer to POST /pair, or null when it isn't one. */
 export function readPairing(data: unknown, base: string, provider: string, now: number): Pairing | null {
   const p = obj(data);
@@ -200,11 +211,7 @@ export function readPairing(data: unknown, base: string, provider: string, now: 
   const name = str(target?.name, 1, 100);
   const limits = readLimits(p?.limits);
   if (!p || !token || !salt || !name || !limits) return null;
-  // Where a sync may jump back to: only prefixes that can't be stretched to another host.
-  const prefixes = (Array.isArray(target?.return_prefixes) ? target.return_prefixes : [])
-    .slice(0, 10)
-    .filter((x): x is string => typeof x === 'string' && x.length >= 4 && x.length <= 200)
-    .filter((x) => (x.endsWith('/') || x.endsWith('://')) && validReturn(x));
+  const prefixes = readReturnPrefixes(target?.return_prefixes);
   const pairing: Pairing = {
     base,
     token,

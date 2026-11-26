@@ -1,6 +1,6 @@
 {
-  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, sync, (1.8.0) test or (1.11.0) read; kind (1.10.0) lm, hcp or (1.15.0) pro, only where the link names it (read: always, and only hcp or pro). parse_sync_intent (the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> {ok: true, target, reason} or {ok: false, error}.",
-  "spec_version": "1.17.0",
+  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, sync, (1.8.0) test or (1.11.0) read; kind (1.10.0) lm, hcp or (1.15.0) pro, only where the link names it (read: always, and only hcp or pro). parse_sync_intent (the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> {ok: true, target, reason} or {ok: false, error}. provider (1.18.0) may name several, separated by commas, and stays the string as given; providers_of (that string, or null: none named) -> the list of ids ([]: any the client can connect), or null when it names none validly.",
+  "spec_version": "1.18.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {
@@ -711,6 +711,111 @@
       }
     },
     {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=trackman%2Cdemo",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "provider": "trackman,demo"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=trackman,demo&kind=lm",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "provider": "trackman,demo",
+        "kind": "lm"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=trackman,trackman",
+      "expected": {
+        "ok": false,
+        "error": "invalid:provider"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=trackman,",
+      "expected": {
+        "ok": false,
+        "error": "invalid:provider"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=,trackman",
+      "expected": {
+        "ok": false,
+        "error": "invalid:provider"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=trackman%2C%20demo",
+      "expected": {
+        "ok": false,
+        "error": "invalid:provider"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=trackman,Demo",
+      "expected": {
+        "ok": false,
+        "error": "invalid:provider"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=p0x,p1x,p2x,p3x,p4x,p5x,p6x,p7x,p8x,p9x,p10x",
+      "expected": {
+        "ok": false,
+        "error": "invalid:provider"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=golfde&kind=hcp&return=exampleapp%3A%2F%2Fprofile%3Ffocus%3Dhcp",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "provider": "golfde",
+        "kind": "hcp",
+        "return": "exampleapp://profile?focus=hcp"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=pro&kind=pro&return=https%3A%2F%2Fapp.example.org%2Fprofile",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "provider": "pro",
+        "kind": "pro",
+        "return": "https://app.example.org/profile"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=hcp&return=javascript%3Aalert(1)",
+      "expected": {
+        "ok": false,
+        "error": "invalid:return"
+      }
+    },
+    {
       "rule": "parse_pair_fragment",
       "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X",
       "expected": {
@@ -827,6 +932,25 @@
       }
     },
     {
+      "rule": "parse_pair_fragment",
+      "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=trackman%2Cdemo",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "provider": "trackman,demo"
+      }
+    },
+    {
+      "rule": "parse_pair_fragment",
+      "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=trackman,,demo",
+      "expected": {
+        "ok": false,
+        "error": "invalid:provider"
+      }
+    },
+    {
       "rule": "return_allowed",
       "input": {
         "url": "https://app.example.org/profile",
@@ -909,6 +1033,75 @@
         ]
       },
       "expected": false
+    },
+    {
+      "rule": "providers_of",
+      "input": null,
+      "expected": []
+    },
+    {
+      "rule": "providers_of",
+      "input": "trackman",
+      "expected": [
+        "trackman"
+      ]
+    },
+    {
+      "rule": "providers_of",
+      "input": "trackman,demo",
+      "expected": [
+        "trackman",
+        "demo"
+      ]
+    },
+    {
+      "rule": "providers_of",
+      "input": "demo,trackman",
+      "expected": [
+        "demo",
+        "trackman"
+      ]
+    },
+    {
+      "rule": "providers_of",
+      "input": "trackman,trackman",
+      "expected": null
+    },
+    {
+      "rule": "providers_of",
+      "input": "trackman,",
+      "expected": null
+    },
+    {
+      "rule": "providers_of",
+      "input": "Trackman",
+      "expected": null
+    },
+    {
+      "rule": "providers_of",
+      "input": "a",
+      "expected": null
+    },
+    {
+      "rule": "providers_of",
+      "input": "p0x,p1x,p2x,p3x,p4x,p5x,p6x,p7x,p8x,p9x",
+      "expected": [
+        "p0x",
+        "p1x",
+        "p2x",
+        "p3x",
+        "p4x",
+        "p5x",
+        "p6x",
+        "p7x",
+        "p8x",
+        "p9x"
+      ]
+    },
+    {
+      "rule": "providers_of",
+      "input": "p0x,p1x,p2x,p3x,p4x,p5x,p6x,p7x,p8x,p9x,p10x",
+      "expected": null
     },
     {
       "rule": "parse_sync_intent",

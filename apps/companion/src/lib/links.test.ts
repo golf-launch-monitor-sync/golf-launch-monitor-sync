@@ -23,7 +23,7 @@ function pairing(base: string, prefixes: string[], provider = 'trackman'): Keyed
 describe('a pair link', () => {
   it('becomes a question naming the host, Trackman when the link names no provider', () => {
     const r = readIncoming('glmsync://pair?target=https%3A%2F%2FApp.Example.org%2Flm%2Fv1&code=K7M2PQ9X', PROVIDERS, []);
-    expect(r).toEqual({ kind: 'pair', target: 'https://App.Example.org/lm/v1', code: 'K7M2PQ9X', provider: 'trackman', host: 'app.example.org', replaces: false });
+    expect(r).toEqual({ kind: 'pair', target: 'https://App.Example.org/lm/v1', code: 'K7M2PQ9X', provider: 'trackman', choices: ['trackman'], host: 'app.example.org', replaces: false });
   });
 
   it('says when it replaces a pairing of the same target', () => {
@@ -49,10 +49,23 @@ describe('a pair link', () => {
     // Another provider with kind=pro (golf.de's, Trackman's) is none this kind has.
     for (const provider of ['golfde', 'trackman', 'owgr'])
       expect(readIncoming(`glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1&code=K7M2PQ9X&provider=${provider}&kind=pro`, PROVIDERS, [])).toEqual({ kind: 'invalid', error: 'unknown:provider' });
-    // A pro's pairing takes no return (it names no return prefixes): the key is ignored, nothing jumps back.
-    expect(readIncoming('glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1&code=K7M2PQ9X&provider=pro&kind=pro&return=exampleapp%3A%2F%2Fx', PROVIDERS, [])).not.toHaveProperty('return');
+    // Spec 1.18.0: a pro's pairing jumps back too, once its target named the address as its own (backAfterPairing).
+    expect(readIncoming('glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1&code=K7M2PQ9X&provider=pro&kind=pro&return=exampleapp%3A%2F%2Fx', PROVIDERS, [])).toMatchObject({ kind: 'pair-pro', return: 'exampleapp://x' });
     expect(readIncoming('glmsync://read?kind=pro', PROVIDERS, [])).toEqual({ kind: 'read', what: 'pro' });
     expect(readIncoming('glmsync://read?kind=hcp', PROVIDERS, [])).toEqual({ kind: 'read', what: 'hcp' });
+  });
+});
+
+describe('several launch monitors in a pair link (spec 1.18.0)', () => {
+  const T = 'https%3A%2F%2Fapp.example.org%2Flm%2Fv1';
+
+  it('offers those of them this app has, in its own order, and pairs the first by default', () => {
+    expect(readIncoming(`glmsync://pair?target=${T}&code=K7M2PQ9X&provider=demo,trackman`, PROVIDERS, [])).toMatchObject({ kind: 'pair', provider: 'trackman', choices: ['trackman', 'demo'] });
+    expect(readIncoming(`glmsync://pair?target=${T}&code=K7M2PQ9X&provider=other,demo`, PROVIDERS, [])).toMatchObject({ kind: 'pair', provider: 'demo', choices: ['demo'] });
+  });
+
+  it('is no link when it names none this app has', () => {
+    expect(readIncoming(`glmsync://pair?target=${T}&code=K7M2PQ9X&provider=other,another`, PROVIDERS, [])).toEqual({ kind: 'invalid', error: 'unknown:provider' });
   });
 });
 
@@ -149,7 +162,7 @@ describe('the host shown', () => {
 describe('the handicap record’s links (spec 1.10.0, 1.11.0)', () => {
   const T = 'https%3A%2F%2Fapp.example.org%2Fhcp%2Fv1';
 
-  it('a pair link with kind=hcp asks about the handicap record, for golf.de, and never jumps back', () => {
+  it('a pair link with kind=hcp asks about the handicap record, for golf.de, and keeps where to jump back to (1.18.0)', () => {
     // Before TE-10b-3 the app took it for launch monitor data (Trackman), which a handicap target refuses.
     expect(readIncoming(`glmsync://pair?target=${T}&code=K7M2PQ9X&kind=hcp`, PROVIDERS, [])).toEqual({
       kind: 'pair-hcp',
@@ -159,8 +172,12 @@ describe('the handicap record’s links (spec 1.10.0, 1.11.0)', () => {
       host: 'app.example.org',
     });
     const r = readIncoming(`glmsync://pair?target=${T}&code=K7M2PQ9X&provider=golfde&kind=hcp&return=exampleapp%3A%2F%2Fback`, PROVIDERS, []);
-    expect(r).toMatchObject({ kind: 'pair-hcp', provider: 'golfde' });
-    expect(r).not.toHaveProperty('return');
+    // Before spec 1.18.0 the return was dropped and the player stayed in this app (GF-1); it is followed only once the
+    // target named the address as its own in its answer to the pairing.
+    expect(r).toMatchObject({ kind: 'pair-hcp', provider: 'golfde', return: 'exampleapp://back' });
+    if (r.kind !== 'pair-hcp') throw new Error(r.kind);
+    expect(backAfterPairing(r, { target: { return_prefixes: ['exampleapp://'] } })).toBe('exampleapp://back');
+    expect(backAfterPairing(r, { target: {} })).toBeNull();
   });
 
   it('refuses another provider for the handicap record, and golf.de for launch monitor data', () => {

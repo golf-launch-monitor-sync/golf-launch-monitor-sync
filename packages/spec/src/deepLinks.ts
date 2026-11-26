@@ -9,7 +9,10 @@
  */
 
 export type LinkResult =
-  /** `kind` (1.10.0): which target API the base URL speaks, only where the link names it (none: the launch monitor one). */
+  /**
+   * `kind` (1.10.0): which target API the base URL speaks, only where the link names it (none: the launch monitor one).
+   * `provider` (1.18.0) may name several, separated by commas, as given: `providersOf` splits it.
+   */
   | { ok: true; action: 'pair'; target: string; code: string; provider?: string; kind?: PairKind; return?: string }
   | { ok: true; action: 'sync'; target?: string; return?: string }
   /** Since 1.8.0: a test code for a pairing (spec/test-mode.md); never pairs, never jumps back. */
@@ -30,6 +33,8 @@ export type ReadKind = 'hcp' | 'pro';
 const READ_KINDS: ReadonlySet<string> = new Set<ReadKind>(['hcp', 'pro']);
 const CODE = /^[0-9A-Za-z-]{6,64}$/;
 const PROVIDER = /^[a-z][a-z0-9_-]{1,39}$/;
+/** A launch monitor target that takes only some providers names them (1.18.0): at most this many. */
+const MAX_PROVIDERS = 10;
 const TARGET =
   /^(?:https:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?|http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?)(?:\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$/;
 const SCHEME = /^([a-z][a-z0-9+.-]*):/;
@@ -84,6 +89,18 @@ export function validReturn(url: string): boolean {
   return url.startsWith(`${scheme}://`);
 }
 
+/**
+ * The providers a link's `provider` names (1.18.0): `trackman`, or `trackman,other` - each a lower-case id, none twice,
+ * at most ten. null for a value that isn't one (the link is then invalid); an empty list for no `provider` at all: any
+ * provider the client can connect.
+ */
+export function providersOf(provider: string | null | undefined): string[] | null {
+  if (provider === undefined || provider === null) return [];
+  const ids = provider.split(',');
+  if (ids.length > MAX_PROVIDERS || new Set(ids).size !== ids.length || !ids.every((i) => PROVIDER.test(i))) return null;
+  return ids;
+}
+
 const PAIR_KEYS = new Set(['target', 'code', 'provider', 'kind']);
 // A pair link may name where to jump back to once paired (1.2.0); the pairing page's fragment may not.
 const PAIR_LINK_KEYS = new Set(['target', 'code', 'provider', 'kind', 'return']);
@@ -99,7 +116,7 @@ function pair(p: Map<string, string>): LinkResult {
   if (!validTarget(target)) return { ok: false, error: 'invalid:target' };
   if (!CODE.test(code)) return { ok: false, error: 'invalid:code' };
   const provider = p.get('provider');
-  if (provider !== undefined && !PROVIDER.test(provider)) return { ok: false, error: 'invalid:provider' };
+  if (provider !== undefined && providersOf(provider) === null) return { ok: false, error: 'invalid:provider' };
   const kind = p.get('kind');
   // Another API than the client knows: invalid, rather than a pairing the target could only refuse.
   if (kind !== undefined && !KINDS.has(kind)) return { ok: false, error: 'invalid:kind' };
@@ -141,7 +158,7 @@ export function parseLink(url: unknown): LinkResult {
     return typeof p === 'string' ? { ok: false, error: p } : test(p);
   }
   if (m[1] === 'read') {
-    // No target, no return: a handicap pairing names no return_prefixes, and one window reads for all of them.
+    // No target, no return: one window reads for every pairing of its kind, so no one target's prefixes vouch for it.
     const p = params(query, READ_KEYS);
     if (typeof p === 'string') return { ok: false, error: p };
     const kind = p.get('kind');

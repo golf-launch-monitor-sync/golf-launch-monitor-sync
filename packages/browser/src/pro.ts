@@ -224,7 +224,8 @@ export class ProClient {
       if (old) await new HcpTarget(old, this.targetOpts()).revoke().catch(() => undefined);
       await this.opts.vault.set(PAIRINGS, JSON.stringify([...(await this.pairings()).filter((p) => proPairingId(p.base) !== id), pairing]));
       await this.saveEntries([...(await this.entries()).filter((e) => e.id !== id), { id, base: pairing.base, name: pairing.target.name, paired_at: pairing.paired_at }]);
-      return { ok: true, id, name: pairing.target.name, replaced: !!old } as const;
+      const back = pairing.target.return_prefixes?.length ? { return_prefixes: pairing.target.return_prefixes } : {};
+      return { ok: true, id, name: pairing.target.name, replaced: !!old, ...back } as const;
     });
   }
 

@@ -17,19 +17,25 @@
  *   signs in and opens their record themselves - it never pairs and sends nothing by itself;
  * - a pair link with `kind=pro` (spec 1.15.0) asks the same question for a pro's own world ranking pages (the provider
  *   `pro`, none other), and its read link only opens the app's window on those sites, where the player opens their page
- *   and taps *Send* themselves.
+ *   and taps *Send* themselves;
+ * - since spec 1.18.0 a launch monitor's pair link may name several providers (this app offers those it has), and the
+ *   pair links of golf.de's record and a pro's pages keep their `return` too, followed by the same rule.
  */
 
 import { PROVIDER_ID as GOLFDE } from '@glmsync/provider-golfde';
-import { parseLink, PRO_PROVIDER, returnAllowed } from '@glmsync/spec';
+import { parseLink, PRO_PROVIDER, providersOf, returnAllowed } from '@glmsync/spec';
 import type { KeyedPairing } from './pairings.ts';
 
 export type Incoming =
-  | { kind: 'pair'; target: string; code: string; provider: string; host: string; replaces: boolean; return?: string }
-  /** The handicap record (kind=hcp): no `return` - a handicap pairing names no return_prefixes, so it never jumps back. */
-  | { kind: 'pair-hcp'; target: string; code: string; provider: string; host: string }
-  /** A pro's world ranking pages (kind=pro, spec 1.15.0): no `return` either, for the same reason. */
-  | { kind: 'pair-pro'; target: string; code: string; provider: string; host: string }
+  /**
+   * A launch monitor: `choices` the providers of this app's the link allows (spec 1.18.0: it may name several; none
+   * named: Trackman - the demo only when a link names it), `provider` the first of them.
+   */
+  | { kind: 'pair'; target: string; code: string; provider: string; choices: string[]; host: string; replaces: boolean; return?: string }
+  /** The handicap record (kind=hcp); `return` since spec 1.18.0, followed once the target named it as its own. */
+  | { kind: 'pair-hcp'; target: string; code: string; provider: string; host: string; return?: string }
+  /** A pro's world ranking pages (kind=pro, spec 1.15.0); `return` likewise. */
+  | { kind: 'pair-pro'; target: string; code: string; provider: string; host: string; return?: string }
   /** Open the golf.de window (spec 1.11.0, `hcp`) or the world ranking window (1.15.0, `pro`). */
   | { kind: 'read'; what: 'hcp' | 'pro' }
   | { kind: 'sync'; target?: string; return?: string }
@@ -51,23 +57,26 @@ export function readIncoming(url: unknown, providers: readonly string[], pairing
   if (link.action === 'pair' && link.kind === 'pro') {
     const provider = link.provider ?? PRO_PROVIDER;
     if (provider !== PRO_PROVIDER) return { kind: 'invalid', error: 'unknown:provider' };
-    return { kind: 'pair-pro', target: link.target, code: link.code, provider, host: hostOf(link.target) };
+    return { kind: 'pair-pro', target: link.target, code: link.code, provider, host: hostOf(link.target), ...(link.return ? { return: link.return } : {}) };
   }
   if (link.action === 'pair' && link.kind === 'hcp') {
     const provider = link.provider ?? GOLFDE;
     if (provider !== GOLFDE) return { kind: 'invalid', error: 'unknown:provider' };
-    return { kind: 'pair-hcp', target: link.target, code: link.code, provider, host: hostOf(link.target) };
+    return { kind: 'pair-hcp', target: link.target, code: link.code, provider, host: hostOf(link.target), ...(link.return ? { return: link.return } : {}) };
   }
   if (link.action === 'pair') {
-    const provider = link.provider ?? 'trackman';
-    if (!providers.includes(provider)) return { kind: 'invalid', error: 'unknown:provider' };
+    const named = link.provider ? (providersOf(link.provider) ?? []) : ['trackman'];
+    const choices = providers.filter((p) => named.includes(p));
+    const provider = choices[0];
+    if (provider === undefined) return { kind: 'invalid', error: 'unknown:provider' };
     const base = link.target.replace(/\/+$/, '');
-    const replaces = pairings.some((p) => p.provider === provider && p.base.replace(/\/+$/, '') === base);
+    const replaces = pairings.some((p) => choices.includes(p.provider) && p.base.replace(/\/+$/, '') === base);
     return {
       kind: 'pair',
       target: link.target,
       code: link.code,
       provider,
+      choices,
       host: hostOf(link.target),
       replaces,
       ...(link.return ? { return: link.return } : {}),
@@ -100,7 +109,7 @@ export function backTo(link: { target?: string; return?: string }, pairings: rea
  * its answer to this pairing. Decided after `POST /pair` - before it, nothing says the address is the target's.
  * null: stay here.
  */
-export function backAfterPairing(link: { return?: string }, paired: Pick<KeyedPairing, 'target'>): string | null {
+export function backAfterPairing(link: { return?: string }, paired: { target: { return_prefixes?: readonly string[] } }): string | null {
   if (!link.return) return null;
   return returnAllowed(link.return, paired.target.return_prefixes ?? []) ? link.return : null;
 }
