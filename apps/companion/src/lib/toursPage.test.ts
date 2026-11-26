@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
-import { europeantour, ocs, progolftour } from '@glmsync/provider-tours';
-import { ET_TITLE, etResults, ocsOom, ocsProfile, pgtLine, pgtProfile, pgtResult } from '@glmsync/provider-tours/testing';
+import { europeantour, lpga, ocs, pgatour, progolftour, type TourPage } from '@glmsync/provider-tours';
+import { ET_TITLE, etResults, lpgaFigures, lpgaResults, ocsOom, ocsProfile, pgaFigures, pgaResults, pgtLine, pgtProfile, pgtResult } from '@glmsync/provider-tours/testing';
 import { describe, expect, it } from 'vitest';
 import {
   callFits,
   isEt,
   isOcs,
+  isSeason,
   keptTourPage,
   ocsProfileUrl,
   onEtPage,
   onOcsOom,
   onOcsProfile,
   onProfile,
+  onSeasonResults,
   openInTourWindow,
   readMovedMessage,
   readPickMessage,
@@ -22,6 +24,7 @@ import {
   TOUR_MESSAGE,
   tourSiteOf,
   tourWindowRules,
+  watchedSite,
   WINDOW_TOURS,
 } from './toursPage.ts';
 
@@ -40,13 +43,13 @@ describe('the tour window', () => {
   const frame = (url: string) => tourWindowRules.onShouldStartLoadWithRequest({ url, isTopFrame: false });
 
   it('shows the tours’ own pages, nothing else', () => {
-    expect(WINDOW_TOURS).toEqual(['tour:pro_golf_tour', 'tour:dp_world', 'tour:hotelplanner', 'tour:let', 'tour:let_access']);
+    expect(WINDOW_TOURS).toEqual(['tour:pro_golf_tour', 'tour:dp_world', 'tour:hotelplanner', 'tour:let', 'tour:let_access', 'tour:pga_tour', 'tour:korn_ferry', 'tour:lpga', 'tour:epson']);
     expect(tourWindowRules.originWhitelist).toEqual(['*']); // every load decided here, none handed to the system
-    for (const url of [PROFILE, RESULT, 'https://progolftour.de/', 'https://www.progolftour.de/order-of-merit-en', 'about:blank', ET_RESULTS, 'https://www.europeantour.com/hotelplanner-tour/players/', 'https://europeantour.com/', 'https://letaccess.com/players', 'https://ladieseuropeantour.com/player-profiles/990001/']) {
+    for (const url of [PROFILE, RESULT, 'https://progolftour.de/', 'https://www.progolftour.de/order-of-merit-en', 'about:blank', ET_RESULTS, 'https://www.europeantour.com/hotelplanner-tour/players/', 'https://europeantour.com/', 'https://letaccess.com/players', 'https://ladieseuropeantour.com/player-profiles/990001/', 'https://www.pgatour.com/', 'https://pgatour.com/korn-ferry-tour/players', 'https://www.lpga.com/athletes/directory', 'https://www.epsontour.com/']) {
       expect(top(url), url).toBe(true);
     }
-    // The tours read in the extension only, so far (the season pages): not the window's.
-    for (const url of ['http://www.progolftour.de/', 'https://www.progolftour.de.evil.test/', 'https://www.owgr.com/', 'http://www.europeantour.com/players/x-1/', 'https://www.europeantour.com.evil.test/', 'http://letaccess.com/', 'https://letaccess.com.evil.test/', 'https://www.letaccess.com/', 'https://www.pgatour.com/', 'intent://x', 'javascript:alert(1)']) {
+    // Only over https, only the sites themselves; any other site (a world ranking's, a sponsor's) not in this window.
+    for (const url of ['http://www.progolftour.de/', 'https://www.progolftour.de.evil.test/', 'https://www.owgr.com/', 'http://www.europeantour.com/players/x-1/', 'https://www.europeantour.com.evil.test/', 'http://letaccess.com/', 'https://letaccess.com.evil.test/', 'https://www.letaccess.com/', 'http://www.pgatour.com/', 'https://www.pgatour.com.evil.test/', 'https://tourcast.pgatour.com/', 'http://www.lpga.com/', 'https://www.lpga.com.evil.test/', 'intent://x', 'javascript:alert(1)']) {
       expect(top(url), url).toBe(false);
     }
     // A frame of the page (a consent banner, a video) over https loads in the page, never in the system's browser.
@@ -221,5 +224,68 @@ describe('what the window takes from a page', () => {
   it('a line of another player is never what the page script hands on', () => {
     // The page script runs ownLine itself; this checks what the module gives it for a page without his line.
     expect(progolftour.ownLine(pgtResult('x', [pgtLine('1', 'Otto Erfunden', 66, 67, 68)]), 'Lena Beispiel')).toEqual({ kind: 'unread', why: 'not_him' });
+  });
+});
+
+const PGA = 'https://www.pgatour.com/player/99002/max-erfunden/results';
+const KF = 'https://www.pgatour.com/korn-ferry-tour/player/99002/max-erfunden/results';
+const LPGA = 'https://www.lpga.com/athletes/lena-ausgedacht/99003/results';
+const EPSON = 'https://www.epsontour.com/athletes/lena-ausgedacht/99003/results';
+const pgaPage = (pgatour.readResults(pgaResults(), pgaFigures(), '2026-11-25') as { kind: 'page'; page: TourPage }).page;
+const lpgaPage = (lpga.readResults(lpgaResults(), lpgaFigures(), '2026-11-25') as { kind: 'page'; page: TourPage }).page;
+
+describe('the tour window on the season pages (PGA Tour, Korn Ferry, LPGA, Epson)', () => {
+  it('knows each tour by its site and the address, his Results page among their pages', () => {
+    // pgatour.com is one site for two tours: the address's, else the PGA Tour; its other tours' pages are the PGA Tour's window's.
+    expect([tourSiteOf(PGA), tourSiteOf(KF), tourSiteOf('https://www.pgatour.com/korn-ferry-tour/players'), tourSiteOf('https://www.pgatour.com/players'), tourSiteOf('https://www.pgatour.com/americas/player/99002/max-erfunden/results'), tourSiteOf(LPGA), tourSiteOf(EPSON)]).toEqual([
+      'tour:pga_tour', 'tour:korn_ferry', 'tour:korn_ferry', 'tour:pga_tour', 'tour:pga_tour', 'tour:lpga', 'tour:epson',
+    ]);
+    expect([isSeason('tour:pga_tour'), isSeason('tour:korn_ferry'), isSeason('tour:lpga'), isSeason('tour:epson'), isSeason('tour:let'), isSeason(null)]).toEqual([true, true, true, true, false, false]);
+    expect([onSeasonResults(PGA), onSeasonResults(KF), onSeasonResults(LPGA), onSeasonResults(EPSON), onSeasonResults(`${PGA}?season=2025`)]).toEqual([true, true, true, true, true]);
+    // His other pages, a tour the module doesn't read, the players' list, another site's look-alike: no Send.
+    for (const url of ['https://www.pgatour.com/player/99002/max-erfunden', 'https://www.pgatour.com/americas/player/99002/max-erfunden/results', 'https://www.pgatour.com/pgatour-champions/player/99002/max-erfunden/results', 'https://www.lpga.com/athletes/directory', 'https://www.lpga.com.evil.test/athletes/x/1/results', PROFILE, null]) {
+      expect(onSeasonResults(url), String(url)).toBe(false);
+    }
+  });
+
+  it('one window for pgatour.com’s two tours; keeps his Results page to open there next time', () => {
+    expect([sameWindow(KF, 'tour:pga_tour'), sameWindow(PGA, 'tour:korn_ferry'), sameWindow(LPGA, 'tour:epson'), sameWindow(EPSON, 'tour:epson'), sameWindow(PGA, 'tour:lpga')]).toEqual([true, true, false, true, false]);
+    expect([keptTourPage(PGA), keptTourPage(KF), keptTourPage(LPGA), keptTourPage('https://www.pgatour.com/players'), keptTourPage('https://www.pgatour.com/americas/player/99002/max-erfunden/results')]).toEqual([PGA, KF, LPGA, null, null]);
+  });
+
+  it('takes a season only from his Results page, only his, only of a tour of that site', () => {
+    expect(readTourMessage(PGA, msg({ season: pgaPage }), ASK)).toEqual({ ok: true, season: pgaPage });
+    expect(readTourMessage(LPGA, msg({ season: lpgaPage }), ASK)).toEqual({ ok: true, season: lpgaPage });
+    // His page picked on the Korn Ferry Tour while the address still says PGA Tour (the page's picker decides): his.
+    const kf = { ...pgaPage, site: 'tour:korn_ferry', ranking: { ...pgaPage.ranking, source: 'tour:korn_ferry' } };
+    expect(readTourMessage(PGA, msg({ season: kf }), ASK)).toMatchObject({ ok: true, season: { site: 'tour:korn_ferry' } });
+    // Another player's page shown meanwhile, a tour of another site, his other pages, or another tour's window: nothing.
+    expect(readTourMessage('https://www.pgatour.com/player/99012/otto-erfunden/results', msg({ season: pgaPage }), ASK)).toBeNull();
+    expect(readTourMessage(EPSON, msg({ season: lpgaPage }), ASK)).toBeNull();
+    expect(readTourMessage(PGA, msg({ season: lpgaPage }), ASK)).toBeNull();
+    expect(readTourMessage('https://www.pgatour.com/player/99002/max-erfunden', msg({ season: pgaPage }), ASK)).toBeNull();
+    expect(readTourMessage(LETAS_PROFILE, msg({ season: pgaPage }), ASK)).toBeNull();
+    expect(readTourMessage(PROFILE, msg({ season: pgaPage }), ASK)).toBeNull();
+    // Not a page in the module's shape, another ask's answer, or another of the page script's answers in its place.
+    expect(readTourMessage(PGA, msg({ season: { ...pgaPage, id: '../x' } }), ASK)).toBeNull();
+    expect(readTourMessage(PGA, msg({ season: pgaPage }, 'ffffffffffffffffffff'), ASK)).toBeNull();
+    expect(readTourMessage(PGA, msg({ ocs: ocsRead }), ASK)).toBeNull();
+    expect(readTourMessage(PGA, msg({ profile }), ASK)).toBeNull();
+    expect(readTourMessage(PGA, msg({ read: etRead }), ASK)).toBeNull();
+  });
+
+  it('why his page gave nothing, and why it isn’t one', () => {
+    expect(readTourMessage(PGA, msg({ seasonUnread: 'other_tour' }), ASK)).toEqual({ ok: true, seasonUnread: 'other_tour' });
+    expect(readTourMessage(LPGA, msg({ seasonUnread: 'nothing' }), ASK)).toEqual({ ok: true, seasonUnread: 'nothing' });
+    expect(readTourMessage(PGA, msg({ seasonUnread: 'changed_page' }), ASK)).toBeNull();
+    expect(readTourMessage(LETAS_PROFILE, msg({ seasonUnread: 'nothing' }), ASK)).toBeNull();
+    expect(readTourMessage(PGA, msg({ why: 'changed_page' }), ASK)).toEqual({ ok: false, why: 'changed_page' });
+    expect(readTourMessage('https://www.pgatour.com/players', msg({ why: 'not_player_page' }), ASK)).toEqual({ ok: false, why: 'not_player_page' });
+  });
+
+  it('their address is watched by the page script, as the LET’s', () => {
+    expect([watchedSite(PGA), watchedSite('https://www.pgatour.com/'), watchedSite(LPGA), watchedSite(EPSON), watchedSite(LETAS_PROFILE), watchedSite(ET_RESULTS), watchedSite(PROFILE)]).toEqual([true, true, true, true, true, false, false]);
+    const moved = JSON.stringify({ glmsync: TOUR_MESSAGE, moved: true });
+    expect([readMovedMessage(PGA, moved), readMovedMessage('https://www.lpga.com/', moved), readMovedMessage(ET_RESULTS, moved), readMovedMessage('https://www.owgr.com/', moved)]).toEqual([true, true, false, false]);
   });
 });

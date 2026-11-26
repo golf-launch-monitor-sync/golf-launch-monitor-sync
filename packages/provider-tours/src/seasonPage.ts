@@ -3,7 +3,7 @@
 /**
  * The tours whose player page shows a whole season with its rounds (`season.ts`), as one: where a client's script
  * runs, which page is a player's, what to take from it, and the read. A client (the extension's
- * `season-content.ts`) asks only this; a tour of the same kind is one more line in `READERS`.
+ * `season-content.ts`, the companion app's page script) asks only this; a tour of the same kind is one more line in `READERS`.
  */
 
 import type { Wanted } from './figures.ts';
@@ -48,7 +48,7 @@ const READERS: readonly Reader[] = [
   },
 ];
 
-/** Their tours: read from the *Results* page (a client that reads tours page by page, as the companion app's window today, leaves them out). */
+/** Their tours: read from the *Results* page on *Send* (the extension's `season-content.ts`, the companion app's `seasonSession.ts`). */
 export const SEASON_SITES: readonly TourSite[] = ['tour:pga_tour', 'tour:korn_ferry', 'tour:lpga', 'tour:epson'];
 export const isSeasonSite = (site: unknown): boolean => typeof site === 'string' && (SEASON_SITES as readonly string[]).includes(site);
 

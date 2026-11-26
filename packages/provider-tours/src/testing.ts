@@ -97,6 +97,10 @@ export class El implements DomElement {
       this.childNodes.push(n);
     }
   }
+  /** As the browser's: a page script's `figuresOf` walks up from a label. */
+  get parentElement(): El | null {
+    return this.parent;
+  }
   get textContent(): string {
     return this.childNodes.map((n) => n.textContent).join('');
   }

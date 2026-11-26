@@ -21,9 +21,10 @@ Syncs your golf data from **your own** accounts into apps of your choice, in ope
   by *Fetch all* on his tap), in the extension or the companion app's window; on europeantour.com (DP World Tour,
   HotelPlanner Tour), in the extension or the companion app's window, his own pages as he opens them (results with
   rounds, season statistics); on the
-  PGA Tour, the Korn Ferry Tour, the LPGA Tour and the Epson Tour, in the extension, his *Results* page, which shows the
-  whole season (read on *Send*, nothing opened); on the Ladies European Tour and the LET Access Series, in the
-  extension, her profile (results with rounds) and her own line of the Order of Merit. Nobody else's line leaves the page.
+  PGA Tour, the Korn Ferry Tour, the LPGA Tour and the Epson Tour, in the extension or the companion app's window, his
+  *Results* page, which shows the whole season (read on *Send*, nothing opened); on the Ladies European Tour and the LET
+  Access Series, in the extension or the companion app's window, her profile (results with rounds) and her own line of
+  the Order of Merit. Nobody else's line leaves the page.
 
 > **Unofficial.** This project is not affiliated with, endorsed by or supported by Trackman, any
 > other launch monitor maker, the Deutscher Golf Verband (DGV), golf.de, the OWGR, Rolex or any tour. It uses your own sign-in,

@@ -16,13 +16,14 @@ import { translator } from '@glmsync/browser/i18n';
 import { europeantour, type TourSite } from '@glmsync/provider-tours';
 import type { OcsView } from '@glmsync/browser/ocs';
 import type { OcsNote } from './ocsSession.ts';
-import { onEtPage, onOcsOom, onOcsProfile, onProfile } from './toursPage.ts';
+import type { SeasonNote } from './seasonSession.ts';
+import { onEtPage, onOcsOom, onOcsProfile, onProfile, onSeasonResults, tourSiteOf } from './toursPage.ts';
 import type { Lang } from './text.ts';
 
 export type { LinePhase };
 
 /** The app's own words (src/i18n), as the bar needs them. */
-export type AppText = (key: 'tours.find' | 'tours.findEt' | 'tours.findOcs' | 'rankings.changed' | 'pro.pairFirst') => string;
+export type AppText = (key: 'tours.find' | 'tours.findEt' | 'tours.findOcs' | 'tours.findSeason' | 'rankings.changed' | 'pro.pairFirst') => string;
 
 export interface ToursBar {
   text: string;
@@ -107,4 +108,27 @@ export function ocsBar(v: ProView | null, kept: OcsView | null, site: TourSite, 
   if (!line) return { text: app('pro.pairFirst'), warn: true, ...none };
   const text = note && phase !== 'reading' ? noteText(note, tr) : line.text;
   return { text, warn: line.warn || note?.kind === 'oomMissing', send: page && line.send && phase !== 'reading', fetchAll: false, stop: false, ask: false };
+}
+
+/**
+ * The bar on the season pages (PGA Tour and Korn Ferry Tour, LPGA Tour, Epson Tour): *Send* on his *Results* page, no
+ * *Fetch all* (that page has the rounds). It speaks of the tour the page's address names (on pgatour.com the window's
+ * other tour too, as his page has both). A tour no module reads, or a season with nothing to send yet, stands in place
+ * of the line's words, as on the extension's line, and keeps *Send* for another pick.
+ */
+export function seasonBar(v: ProView | null, site: TourSite, url: string | null, phase: LinePhase, note: SeasonNote | null, lang: Lang, app: AppText): ToursBar {
+  const tr = translator(lang);
+  if (!v) return { text: '', warn: false, ...none };
+  if (!v.pairings.length) return { text: app('pro.pairFirst'), warn: true, ...none };
+  if (v.question) {
+    const targets = v.question.targets.join(', ') || [...new Set(v.pairings.map((p) => p.name))].join(', ');
+    return { text: tr('pro.question', { site: v.question.siteName, name: v.question.name, targets }), warn: true, ...none, ask: true };
+  }
+  if (phase === 'changed_page') return { text: app('rankings.changed'), warn: true, ...none };
+  const page = onSeasonResults(url);
+  if (!page && phase === 'ready') return { text: app('tours.findSeason'), warn: false, ...none };
+  const line = proLineOf(v, (page && tourSiteOf(url)) || site, phase, tr);
+  if (!line) return { text: app('pro.pairFirst'), warn: true, ...none };
+  const text = note && phase !== 'reading' ? tr(note === 'otherTour' ? 'seasonLine.otherTour' : 'seasonLine.nothing') : line.text;
+  return { text, warn: line.warn || !!note, send: page && line.send && phase !== 'reading', fetchAll: false, stop: false, ask: false };
 }

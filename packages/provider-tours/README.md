@@ -129,6 +129,6 @@ and `OcsKeeper` of `@glmsync/browser/ocs` keeping what was read; `ProClient` of 
 companion app the same in its own window (`apps/companion`: `ToursView` with the page script
 `scripts/tours-page.entry.ts`; `toursSession.ts` over the same `TourKeeper`, run and `ProClient` for the Pro Golf Tour,
 `etSession.ts` over the same `EtKeeper` for europeantour.com, `ocsSession.ts` over the same `OcsKeeper` for the LET and
-the LET Access Series). A new tour joins the app's window with its module's reading in the page script and its pages in
-`src/lib/toursPage.ts`; the window shows only the sites it reads (`APP_TOURS`): the season pages are read in the
-extension only, so far.
+the LET Access Series, `seasonSession.ts` for the season pages, read on *Send* through `readSeasonPage` and `figuresOf`
+as in the extension). A new tour joins the app's window with its module's reading in the page script and its pages in
+`src/lib/toursPage.ts`; the window shows only the sites it reads (`APP_TOURS`).

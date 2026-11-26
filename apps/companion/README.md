@@ -169,6 +169,18 @@ portal in a sign-in window - so that window lives here, in a small app that does
   a new page. No *Fetch all*: her profile has the rounds. A profile is taken only of the profile the window shows, a
   line only from that tour's Order of Merit (`readTourMessage`), only with a connection for a pro's pages, only while the
   window is open.
+  **The season pages** (PGA Tour and Korn Ferry Tour on pgatour.com, LPGA Tour, Epson Tour; companion 0.7.0): his
+  *Results* page (`/player/<id>/<name>/results`, `/athletes/<name>/<id>/results`) shows the whole season with its rounds,
+  so the window reads only on *Send*, as the extension: the page script reads the season the page shows then (the season
+  he picked there, on pgatour.com the tour too) with the standing beside it (`readSeasonPage`, `figuresOf`), and the app
+  sends that page (`src/lib/seasonSession.ts`, the bar's words `seasonBar`). The leaderboard of others that runs along
+  pgatour.com's top stays in the page script. One window for pgatour.com's two tours (*Open PGA Tour*, *Open Korn Ferry
+  Tour* open each tour's list of players; his page has both), a window each for the LPGA Tour and the Epson Tour. A tour
+  of the site the module doesn't read (PGA Tour Champions, Americas) or a season with nothing finished yet: the bar says
+  so. These sites move between their pages without loading them too, so the page script watches their address as on
+  the LET's. A season is taken only from his *Results* page, only of the player whose page the window shows, only of a
+  tour of that site (`readTourMessage`), only with a connection for a pro's pages, only while the window is open; the
+  window opens on that page next time. No *Fetch all*: nothing needs opening.
 - **Demo**: a made-up player (`@glmsync/provider-demo`) for trying the app without an account, and
   for app reviews. Its "requests" go through the guard too, so counters and log behave as for real.
 - **Save as file**: a sync into an olmd file (the share sheet), planned gently by the file target -

@@ -15,13 +15,16 @@
  *   shown with every round, on the tour's Order of Merit only her own line (by the profile's id the app hands in). The
  *   sites change their address without loading a page: the script looks at it every second and tells the app only that
  *   it changed (nothing read); the app asks for the read of the new page.
+ * - PGA Tour and Korn Ferry Tour, LPGA Tour and Epson Tour (on the player's tap on *Send*): on his *Results* page the
+ *   season it shows, with its rounds and the standing beside it - the leaderboard of others that runs along the top
+ *   stays in here. These sites move between their pages without loading them too: watched as the LET's.
  *
  * It reads nothing before it is asked, sends the site nothing and changes nothing the page does.
  * scripts/tours-page.mjs bundles it into src/lib/toursPageScript.ts.
  */
 
-import { europeantour, ocs, progolftour, snapshotOf, type DomDocument, type Snapshot } from '@glmsync/provider-tours';
-import { callFits, isOcs, onTourSite, READ_FUNCTION, TABLE_WAIT_MS, tourSiteOf, TOUR_MESSAGE, WATCH_MS } from '../src/lib/toursPage.ts';
+import { europeantour, figuresOf, ocs, progolftour, readSeasonPage, seasonSiteOf, seasonTakes, snapshotOf, type DomDocument, type FigureDocument, type Snapshot } from '@glmsync/provider-tours';
+import { callFits, isOcs, isSeason, onTourSite, READ_FUNCTION, TABLE_WAIT_MS, tourSiteOf, TOUR_MESSAGE, watchedSite, WATCH_MS } from '../src/lib/toursPage.ts';
 
 declare const window: {
   ReactNativeWebView?: { postMessage(data: string): void };
@@ -110,6 +113,49 @@ try {
       };
       look();
     };
+    /**
+     * His *Results* page on a season page's tour as it shows now, the season's table waited for a little (the site puts
+     * it in a moment after the page): the season the page shows, with the standing beside it. Only his page goes.
+     */
+    const readSeason = (ask: string, href: string, today: string) => {
+      if (!seasonSiteOf(href)) {
+        post(ask, { why: 'not_player_page' });
+        return;
+      }
+      const takes = seasonTakes(href);
+      reading = true;
+      const started = Date.now();
+      const look = () => {
+        try {
+          let snap: Snapshot | null = null;
+          try {
+            snap = snapshotOf(window.document, href, takes.labels);
+          } catch {
+            snap = null;
+          }
+          if (snap && !snap.tables.some((x) => x.head.some((h) => h.trim().toUpperCase() === 'R1')) && Date.now() - started < TABLE_WAIT_MS) {
+            window.setTimeout(look, 500);
+            return;
+          }
+          reading = false;
+          let r: ReturnType<typeof readSeasonPage> | null = null;
+          if (snap) {
+            let figures: Record<string, string> = {};
+            try {
+              figures = figuresOf(window.document as unknown as FigureDocument, takes.figures);
+            } catch {
+              figures = {}; // the standing is an addition: the season goes without it
+            }
+            r = readSeasonPage(snap, figures, today);
+          }
+          // The snapshot, with the leaderboard's names, stays here.
+          post(ask, r?.kind === 'page' ? { season: r.page } : r?.kind === 'unread' && r.why !== 'changed_page' ? { seasonUnread: r.why } : { why: 'changed_page' });
+        } catch {
+          reading = false; // never in the page's way; the app takes the read as failed after a while
+        }
+      };
+      look();
+    };
     Object.defineProperty(window, READ_FUNCTION, {
       value: (ask: unknown, who: unknown, today?: unknown) => {
         try {
@@ -117,6 +163,10 @@ try {
           const href = window.location.href;
           if (isOcs(tourSiteOf(href))) {
             readOcs(ask, href, who);
+            return;
+          }
+          if (isSeason(tourSiteOf(href))) {
+            readSeason(ask, href, typeof today === 'string' ? today : localDay());
             return;
           }
           if (europeantour.playerPageOf(href)) {
@@ -180,9 +230,9 @@ try {
       },
       true,
     );
-    // The LET's sites change their address without loading a page, which the web view doesn't always tell the app:
-    // only that it changed goes (nothing read, nothing of hers); the app asks for the read of the new page.
-    if (isOcs(tourSiteOf(window.location.href))) {
+    // The LET's sites and the season pages' change their address without loading a page, which the web view doesn't
+    // always tell the app: only that it changed goes (nothing read, nothing of the player's); the app takes the new page.
+    if (watchedSite(window.location.href)) {
       let here = window.location.href;
       window.setInterval?.(() => {
         try {

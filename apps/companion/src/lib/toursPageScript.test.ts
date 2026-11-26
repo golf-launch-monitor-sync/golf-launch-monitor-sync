@@ -2,8 +2,8 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { europeantour, ocs, progolftour } from '@glmsync/provider-tours';
-import { docOf, ET_TITLE, etOverview, etResults, etStats, h, ocsOom, ocsProfile, pgtLine, pgtProfile, pgtResult } from '@glmsync/provider-tours/testing';
+import { europeantour, lpga, ocs, pgatour, progolftour } from '@glmsync/provider-tours';
+import { docOf, ET_TITLE, etOverview, etResults, etStats, h, lpgaFigures, lpgaResults, ocsOom, ocsProfile, pgaFigures, pgaResults, pgtLine, pgtProfile, pgtResult, type El } from '@glmsync/provider-tours/testing';
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error - a plain script of the build, without types
 import { moduleText, OUT } from '../../scripts/tours-page.mjs';
@@ -312,5 +312,106 @@ describe('the page script on the LET and the LET Access Series', () => {
     const p = site(LETAS_PROFILE, docOf(ocsProfile()), false);
     p.read();
     expect(readTourMessage(LETAS_PROFILE, p.posted[0], ASK)).toMatchObject({ ok: true });
+  });
+});
+
+const PGA = 'https://www.pgatour.com/player/99002/max-erfunden/results';
+const LPGA = 'https://www.lpga.com/athletes/lena-ausgedacht/99003/results';
+
+/**
+ * A season page's document, made up: the leaderboard of others along the top (as pgatour.com runs one), the standing as
+ * the site writes it beside its label, then the page (`docOf`).
+ */
+function seasonDoc(page: El, standing: El[]): El {
+  return h('html', [
+    h('div', [h('span', ['Leaderboard']), h('span', ['1']), h('span', ['Otto Erfunden']), h('span', ['-12'])]),
+    h('div', standing),
+    page,
+  ]);
+}
+const pgaStanding = () => [h('div', ['83']), h('div', ['PTS: 494'])];
+const lpgaStanding = () => [h('div', [h('div', ['134']), h('span', ['CME Points Rank'])]), h('div', [h('div', ['63.688']), h('span', ['CME Points'])])];
+
+describe('the page script on the season pages', () => {
+  it('reads nothing until the app asks; then his season as it shows, with its standing and the day the app hands in', () => {
+    const p = site(PGA, seasonDoc(docOf(pgaResults()), pgaStanding()));
+    expect(p.posted).toEqual([]);
+    p.read(null, ASK, TODAY);
+    expect(p.posted).toHaveLength(1);
+    const want = pgatour.readResults(pgaResults(), pgaFigures(), TODAY);
+    expect(want.kind).toBe('page');
+    expect(readTourMessage(PGA, p.posted[0], ASK)).toEqual({ ok: true, season: want.kind === 'page' ? want.page : null });
+    expect(JSON.parse(p.posted[0] as string).season.ranking).toMatchObject({ source: 'tour:pga_tour', rank: 83, points: 494 });
+    // The leaderboard's names stay in the page; it asked the site nothing of its own.
+    expect(p.posted[0]).not.toContain('Otto Erfunden');
+    expect(p.asked).toEqual([]);
+  });
+
+  it('on lpga.com the same, the standing written above its labels; only tournaments over before the app’s day', () => {
+    const p = site(LPGA, seasonDoc(docOf(lpgaResults()), lpgaStanding()));
+    p.read(null, ASK, '2026-07-01');
+    const got = readTourMessage(LPGA, p.posted[0], ASK);
+    const want = lpga.readResults(lpgaResults(), lpgaFigures(), '2026-07-01');
+    expect(got).toEqual({ ok: true, season: want.kind === 'page' ? want.page : null });
+    expect(got && 'season' in got ? got.season.tournaments.map((t) => t.name) : null).toEqual(['Invented Founders Cup']);
+  });
+
+  it('without the standing on the page the season goes all the same', () => {
+    const p = site(PGA, docOf(pgaResults()));
+    p.read(null, ASK, TODAY);
+    const got = readTourMessage(PGA, p.posted[0], ASK);
+    expect(got).toMatchObject({ ok: true, season: { ranking: { source: 'tour:pga_tour', events: 3 } } });
+    expect(got && 'season' in got ? got.season.ranking.rank : 'x').toBeUndefined();
+  });
+
+  it('a tour the module doesn’t read, or nothing finished yet: says so; his other pages are none to read', () => {
+    const champions = site(PGA, docOf(pgaResults({ pairs: { Tour: 'PGA Tour Champions', Season: '2026' } })));
+    champions.read(null, ASK, TODAY);
+    expect(readTourMessage(PGA, champions.posted[0], ASK)).toEqual({ ok: true, seasonUnread: 'other_tour' });
+    const early = site(PGA, docOf(pgaResults()));
+    early.read(null, ASK, '2026-01-01');
+    expect(readTourMessage(PGA, early.posted[0], ASK)).toEqual({ ok: true, seasonUnread: 'nothing' });
+    const overview = site('https://www.pgatour.com/player/99002/max-erfunden', docOf(pgaResults()));
+    overview.read(null, ASK, TODAY);
+    expect(overview.posted.map((d) => JSON.parse(d))).toEqual([{ glmsync: 'tour-page', ask: ASK, why: 'not_player_page' }]);
+  });
+
+  it('waits a little for the season’s table, then says the page changed', () => {
+    const p = site(PGA, docOf(pgaResults({ tables: [] })));
+    p.read(null, ASK, TODAY);
+    expect(p.posted).toEqual([]); // waiting for the table
+    p.read(null, ASK, TODAY); // a second ask while reading does nothing more
+    for (let waited = 0; waited <= TABLE_WAIT_MS; waited += 500) p.tick(500);
+    expect(p.posted.map((d) => JSON.parse(d).why)).toEqual(['changed_page']);
+    // The table comes in a moment later: read then.
+    const q = site(LPGA, docOf(lpgaResults({ tables: [] })));
+    q.read(null, ASK, TODAY);
+    q.win.document = docOf(lpgaResults());
+    q.tick(500);
+    expect(readTourMessage(LPGA, q.posted[0], ASK)).toMatchObject({ ok: true, season: { site: 'tour:lpga' } });
+  });
+
+  it('tells the app only that the address changed (the site moves without loading a page), nothing read', () => {
+    const p = site('https://www.pgatour.com/player/99002/max-erfunden', docOf(pgaResults()));
+    expect(p.every.map((e) => e.ms)).toEqual([WATCH_MS]);
+    p.go(PGA);
+    expect(p.posted).toEqual([JSON.stringify({ glmsync: 'tour-page', moved: true })]);
+    expect(readMovedMessage(PGA, p.posted[0])).toBe(true);
+    p.read(null, ASK, TODAY);
+    expect(readTourMessage(PGA, p.posted[1], ASK)).toMatchObject({ ok: true, season: { id: '99002' } });
+    expect(site(LPGA, docOf(lpgaResults())).every.map((e) => e.ms)).toEqual([WATCH_MS]);
+  });
+
+  it('never stands in the page’s way', () => {
+    const broken = site(PGA, {
+      querySelectorAll: () => {
+        throw new Error('boom');
+      },
+    });
+    expect(() => broken.read(null, ASK, TODAY)).not.toThrow();
+    expect(broken.posted.map((d) => JSON.parse(d).why)).toEqual(['changed_page']);
+    const p = site(PGA, docOf(pgaResults()));
+    delete p.win.ReactNativeWebView;
+    expect(() => p.read(null, ASK, TODAY)).not.toThrow();
   });
 });
