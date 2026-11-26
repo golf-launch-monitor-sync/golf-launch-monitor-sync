@@ -101,6 +101,13 @@ export const TOUR_SITES: Readonly<Partial<Record<TourSite, TourInfo>>> = {
     matches: ['https://letaccess.com/*'],
     start: 'https://letaccess.com/players',
   },
+  // alps.ts: his profile, one report at a time (the season's rounds, the totals to par, the Order of Merit), merged.
+  'tour:alps': {
+    site: 'tour:alps',
+    name: 'Alps Tour',
+    matches: ['https://www.alpstourgolf.com/*', 'https://alpstourgolf.com/*'],
+    start: 'https://www.alpstourgolf.com/stats',
+  },
 };
 
 export const isTourSite = (v: unknown): v is TourSite => typeof v === 'string' && Object.hasOwn(TOUR_SITES, v);

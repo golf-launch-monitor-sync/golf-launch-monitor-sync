@@ -15,6 +15,8 @@
  *                      their *Stats* page the season's statistics (`seasonStats`)
  * - `ocs`              Ladies European Tour and LET Access Series: her profile (results with rounds) and her line of the
  *                      Order of Merit
+ * - `alps`             Alps Tour: his profile, a report at a time (the season's rounds, the totals to par, the Order
+ *                      of Merit), merged
  */
 
 export * from './page.ts';
@@ -29,3 +31,4 @@ export * from './seasonStats.ts';
 export * as pgatour from './pgatour.ts';
 export * as lpga from './lpga.ts';
 export * as ocs from './ocs.ts';
+export * as alps from './alps.ts';

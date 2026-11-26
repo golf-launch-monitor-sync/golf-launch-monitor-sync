@@ -292,3 +292,80 @@ export function ocsOom(over: Partial<Snapshot> = {}, origin = LETAS): Snapshot {
     ...over,
   };
 }
+
+const ALPS = 'https://www.alpstourgolf.com';
+const ALPS_REPORTS = ['Statistics', 'Results', 'Order of Merit', 'This Season record', 'Last Season Highlights', 'Career Highlights'];
+
+/** Paul Platzhalter's profile on the Alps Tour (code TST001), the report picked in *Select Report*, his name taken. */
+function alpsProfile(report: string, table: Snapshot['tables'][number], over: Partial<Snapshot> = {}): Snapshot {
+  return {
+    url: `${ALPS}/playerprofile/TST001`,
+    title: '',
+    lines: ['Represents', 'Age', '27', 'Tournament Wins', 'Tournaments 9', '1', `Select Report ${report}`],
+    pairs: { 'Player name': 'Paul Platzhalter' },
+    tables: [table],
+    links: [],
+    selected: [report],
+    ...over,
+  };
+}
+
+/** *This Season record*: the season's tournaments, every round in one cell; one missed cut (two rounds). */
+export function alpsRecord(over: Partial<Snapshot> = {}, rows?: Cell[][]): Snapshot {
+  const line = (date: string, name: string, pos: string, rounds: number[]): Cell[] =>
+    cells(date, name, pos, rounds.join(' '), String(rounds.reduce((a, b) => a + b, 0)), '1,000.00');
+  return alpsProfile('This Season record', {
+    head: ['Date', 'Name', 'Pos', 'Rounds', 'Score', 'Winnings (EUR)'],
+    rows: rows ?? [
+      line('17/02/26', 'Sample Desert Open', '6=', [69, 67, 73]),
+      line('22/02/26', 'Made-up Lagoon Open', '51=', [70, 71]),
+      line('09/04/26', 'Beispiel Alps Open', '1', [67, 65, 70]),
+    ],
+  }, over);
+}
+
+/** *Results* of a season: total and score to par, no rounds. */
+export function alpsResults(over: Partial<Snapshot> = {}, rows?: Cell[][]): Snapshot {
+  return alpsProfile('Results', {
+    head: ['Date', 'Name', 'Pos', 'Score', 'Par', 'Winnings (EUR)'],
+    rows: rows ?? [
+      cells('17/02/26', 'Sample Desert Open', '6=', '209', '-7', '1,507.50'),
+      cells('22/02/26', 'Made-up Lagoon Open', '51=', '141', '-3', '0.00'),
+      cells('09/04/26', 'Beispiel Alps Open', '1', '202', '-14', '7,120.00'),
+    ],
+  }, over);
+}
+
+/** *Order of Merit*: a line per season. */
+export function alpsOom(over: Partial<Snapshot> = {}): Snapshot {
+  return alpsProfile('Order of Merit', {
+    head: ['Season Name', 'Pos', 'Points', 'Tournament'],
+    rows: [cells('2026 Season', '4', '26,845.35', '9'), cells('2025 Season', '57', '3,210.00', '14')],
+  }, over);
+}
+
+/** *Statistics* (his career, not a season's): nothing of it is read. */
+export function alpsStatistics(over: Partial<Snapshot> = {}): Snapshot {
+  return alpsProfile('Statistics', {
+    head: ['Description', 'Seasons', 'Tournaments', 'Result'],
+    rows: [cells('Stroke Average', '2', '23', '70.41'), cells('Total Prize Money', '2', '23', '12,000.00')],
+  }, over);
+}
+
+/** His profile's head as the site builds it: the name with the flag, then the boxes headed *Represents*, *Age*. */
+export function alpsHead(name = 'Paul Platzhalter'): El {
+  return h('html', [
+    h('body', [
+      h('div', [
+        h('div', [h('div', [name]), h('img', { src: 'flag.svg' })]),
+        h('div', [h('h3', ['Represents']), h('div', [h('h3', [''])])]),
+        h('div', [h('h3', ['Age']), h('h3', ['27'])]),
+      ]),
+      h('select', ALPS_REPORTS.map((r) => (r === 'Results' ? h('option', { checked: '' }, [r]) : h('option', [r])))),
+      h('table', [
+        h('thead', [h('tr', ['Date', 'Name', 'Pos', 'Score', 'Par', 'Winnings (EUR)'].map((x) => h('th', [x])))]),
+        h('tbody', [h('tr', ['17/02/26', 'Sample Desert Open', '6=', '209', '-7', '1,507.50'].map((x) => h('td', [x])))]),
+      ]),
+    ]),
+  ]);
+}

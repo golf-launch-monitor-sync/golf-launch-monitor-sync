@@ -20,7 +20,8 @@
     "./proView": "./src/proView.ts",
     "./tours": "./src/tours.ts",
     "./europeantour": "./src/europeantour.ts",
-    "./ocs": "./src/ocs.ts"
+    "./ocs": "./src/ocs.ts",
+    "./alps": "./src/alps.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

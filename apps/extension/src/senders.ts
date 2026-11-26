@@ -17,11 +17,11 @@ import { PORTAL_ORIGIN } from '@glmsync/provider-trackman/portal';
 import { PAIR_PATH, WEB_APP_ORIGIN } from '@glmsync/browser';
 import { PAGE_ORIGIN as GOLFDE_ORIGIN } from '@glmsync/provider-golfde';
 import { playerPageOf } from '@glmsync/provider-rankings';
-import { europeantour, ocs, onSeasonSite, progolftour } from '@glmsync/provider-tours';
+import { alps, europeantour, ocs, onSeasonSite, progolftour } from '@glmsync/provider-tours';
 import { readBridgeRequest } from '@glmsync/spec';
 import type { Message } from './messages.ts';
 
-export type Source = 'portal' | 'pair-page' | 'golfde' | 'ranking' | 'tour' | 'europeantour' | 'season' | 'ocs' | 'target-page' | 'extension' | 'other';
+export type Source = 'portal' | 'pair-page' | 'golfde' | 'ranking' | 'tour' | 'europeantour' | 'season' | 'ocs' | 'alps' | 'target-page' | 'extension' | 'other';
 
 export interface SenderLike {
   id?: string | undefined;
@@ -58,6 +58,8 @@ export function sourceOf(sender: SenderLike, extensionId: string, extensionOrigi
   // The LET's and LET Access Series' pages (ocs-content.ts): only their top frame. Which of the two it is, the background
   // checks against the tour a message names.
   if (ocs.siteAt(u.href) && sender.tab && sender.frameId === 0) return 'ocs';
+  // The Alps Tour's site (alps-content.ts): only its top frame.
+  if (alps.onSite(u.href) && sender.tab && sender.frameId === 0) return 'alps';
   // The bridge's content script, on some site's page: only its top frame, never the project's own site.
   if ((u.protocol === 'https:' || u.protocol === 'http:') && sender.tab && sender.frameId === 0 && u.origin !== WEB_APP_ORIGIN) return 'target-page';
   return 'other';
@@ -120,6 +122,10 @@ const FROM: Record<Message['type'], Source> = {
   'ocs-line': 'ocs',
   'ocs-send': 'ocs',
   'ocs-answer': 'ocs',
+  'alps-seen': 'alps',
+  'alps-line': 'alps',
+  'alps-send': 'alps',
+  'alps-answer': 'alps',
   'pro-status': 'extension',
   'pro-answer': 'extension',
   'pro-unpair': 'extension',
@@ -193,6 +199,9 @@ export function accept(raw: unknown, source: Source): Message | null {
       if ('profile' in v) return { type, site: m.site, seen: { profile: v.profile } };
       return 'oom' in v ? { type, site: m.site, seen: { oom: v.oom } } : null;
     }
+    case 'alps-seen':
+      // Read again strictly by the background (checkRead); here only its frame and size.
+      return m.read && typeof m.read === 'object' && !Array.isArray(m.read) && JSON.stringify(m.read).length <= 262_144 ? { type, read: m.read } : null;
     case 'pro-answer':
       return typeof m.yes === 'boolean' ? { type, yes: m.yes } : null;
     case 'pro-unpair':

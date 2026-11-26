@@ -27,7 +27,7 @@
 
 import { PAGE_MATCHES as GOLFDE_MATCHES } from '@glmsync/provider-golfde';
 import { PAGE_MATCHES as RANKING_MATCHES } from '@glmsync/provider-rankings';
-import { europeantour, ocs, progolftour, SEASON_PAGE_MATCHES } from '@glmsync/provider-tours';
+import { alps, europeantour, ocs, progolftour, SEASON_PAGE_MATCHES } from '@glmsync/provider-tours';
 
 export type Browser = 'chrome' | 'firefox';
 
@@ -93,6 +93,8 @@ export function manifest(browser: Browser, version: string, testHosts: string[] 
       // The LET's and LET Access Series' pages: every page, because each site is one app that changes its address
       // without loading a page; the script reads only her profile and her line of the Order of Merit.
       { matches: [...ocs.PAGE_MATCHES], js: ['ocs-content.js'], run_at: 'document_idle', all_frames: false },
+      // The Alps Tour: every page (the site changes its address without loading one); it reads only his profile.
+      { matches: [...alps.PAGE_MATCHES], js: ['alps-content.js'], run_at: 'document_idle', all_frames: false },
     ],
     content_security_policy: { extension_pages: CSP },
   };

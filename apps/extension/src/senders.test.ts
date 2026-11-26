@@ -61,6 +61,16 @@ describe('who sent a message', () => {
     expect(accept({ type: 'ocs-seen', site: 'tour:let_access', seen: { profile: 'x'.repeat(70_000) } }, 'ocs')).toBeNull();
     expect(accept({ type: 'ocs-answer' }, 'ocs')).toEqual({ type: 'ocs-answer' });
     expect(accept({ type: 'pro-answer', yes: true }, 'ocs')).toBeNull();
+    // The Alps Tour: its own script, only the top frame; a read only as a frame of its size.
+    expect(from('https://www.alpstourgolf.com/playerprofile/VAN054', { frameId: 0 })).toBe('alps');
+    expect(from('https://alpstourgolf.com/stats', { frameId: 0 })).toBe('alps');
+    expect(from('https://www.alpstourgolf.com/playerprofile/VAN054', { frameId: 2 })).not.toBe('alps');
+    expect(accept({ type: 'alps-seen', read: { kind: 'alps' } }, 'alps')).toEqual({ type: 'alps-seen', read: { kind: 'alps' } });
+    expect(accept({ type: 'alps-seen', read: [1] }, 'alps')).toBeNull();
+    expect(accept({ type: 'alps-seen', read: { x: 'x'.repeat(270_000) } }, 'alps')).toBeNull();
+    expect(accept({ type: 'alps-send' }, 'alps')).toEqual({ type: 'alps-send' });
+    expect(accept({ type: 'alps-send' }, 'ocs')).toBeNull();
+    expect(accept({ type: 'ocs-send', site: 'tour:let' }, 'alps')).toBeNull();
     expect(accept({ type: 'hcp-unpair', id: 'abc' }, 'golfde')).toBeNull();
     expect(accept({ type: 'hcp-unpair', id: 'abc' }, 'extension')).toEqual({ type: 'hcp-unpair', id: 'abc' });
     expect(accept({ type: 'hcp-auto', auto: 'yes' }, 'extension')).toBeNull();

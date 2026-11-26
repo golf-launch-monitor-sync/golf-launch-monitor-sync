@@ -12,6 +12,7 @@ import type { progolftourRun } from '@glmsync/provider-tours';
 import type { Seen, TourView } from '@glmsync/browser/tours';
 import type { EtView } from '@glmsync/browser/europeantour';
 import type { OcsSeen, OcsView } from '@glmsync/browser/ocs';
+import type { AlpsView } from '@glmsync/browser/alps';
 
 type TourStep = progolftourRun.Step;
 import type { GuardLogExport } from '@glmsync/core';
@@ -84,6 +85,15 @@ export type FromOcs =
   | { type: 'ocs-line'; site: OcsTour }
   | { type: 'ocs-send'; site: OcsTour }
   | { type: 'ocs-answer' };
+/**
+ * From alps-content.ts on the Alps Tour's site (`alps` of `@glmsync/provider-tours`): what a report of his profile
+ * showed (read again by the background), the line, *Send*, *Answer*.
+ */
+export type FromAlps =
+  | { type: 'alps-seen'; read: object }
+  | { type: 'alps-line' }
+  | { type: 'alps-send' }
+  | { type: 'alps-answer' };
 export type FromPage =
   | { type: 'status' }
   | { type: 'run'; id?: string }
@@ -121,7 +131,7 @@ export type FromPage =
   /** Where the player finds their page: the site's own ranking (it has a search). */
   | { type: 'open-ranking'; site: 'owgr' | 'rolex' };
 
-export type Message = FromPortal | FromPairPage | FromTargetPage | FromGolfde | FromRanking | FromTour | FromEuropeanTour | FromOcs | FromPage;
+export type Message = FromPortal | FromPairPage | FromTargetPage | FromGolfde | FromRanking | FromTour | FromEuropeanTour | FromOcs | FromAlps | FromPage;
 
 /** A pairing offered by the web app's page, waiting for the player's yes in the connect window. */
 export interface Pending {
@@ -139,7 +149,7 @@ export interface Pending {
 }
 
 export type Reply =
-  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; pro?: ProView; tour?: TourView; et?: EtView; ocs?: OcsView; fetch?: 'started' | 'limit' | 'nothing' }
+  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; pro?: ProView; tour?: TourView; et?: EtView; ocs?: OcsView; alps?: AlpsView; fetch?: 'started' | 'limit' | 'nothing' }
   | { ok: false; error: string };
 
 /** What the pairing page's content script hands on to the page (no code, nothing secret). */

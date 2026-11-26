@@ -215,6 +215,25 @@ so it looks again when the address changes) and reads nothing until an app is co
 per tour only the profile you read last and your Order of Merit line (another player's profile replaces both), in the
 extension's own storage. It sends the sites nothing and opens no page itself.
 
+### A tour's pages: the Alps Tour
+
+Since 0.19.0 (the module `alps` of [`@glmsync/provider-tours`](../../packages/provider-tours/README.md)), with the same
+connection.
+
+1. Open your own profile on **alpstourgolf.com** (the Order of Merit on the start page or *See Full Rankings*, then your
+   name). It shows one report at a time, picked under **Select Report**; the line says which to pick.
+2. Pick **This Season record**: your tournaments of the season with every round. **Results** adds the par (each
+   tournament's score to par; the par is the total minus it, over the rounds), **Order of Merit** your rank, points and
+   tournaments played. Each report is read when you pick it; the line says what was read.
+3. **Send** sends what was read: the tournaments of the season with their rounds, only three days after their first, so
+   one still running isn't sent half, and the season's rank. Earlier seasons aren't sent: the site shows their rounds
+   nowhere on the profile.
+
+`alps-content.ts` runs on every page of the site (it changes its address without loading a page, so the script looks
+again when the address changes) and reads only your profile, and nothing until an app is connected for a pro's pages.
+It keeps the reports of the profile you read last, merged (another player's profile replaces them), in the extension's
+own storage. Prize money is never read. It sends the site nothing and opens no page itself.
+
 ## The bridge on the app's page
 
 [spec/page-bridge.md](../../spec/page-bridge.md). A small content script (`bridge-content.ts`) goes on the pages

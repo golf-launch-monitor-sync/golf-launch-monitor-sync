@@ -275,6 +275,51 @@ show();
 </script></body></html>`;
 }
 
+export const ALPS_HOME = 'https://www.alpstourgolf.com/';
+
+/**
+ * The made-up Alps Tour: one app for every address (it changes its address without loading a page), the start page
+ * with the Order of Merit, Paul Platzhalter's profile (TST001) with its reports picked in *Select Report*.
+ */
+function alpsPage(): string {
+  const table = (head: string[], rows: string[][]) =>
+    `<table><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  const reports: Record<string, string> = {
+    'Statistics': table(['Description', 'Seasons', 'Tournaments', 'Result'], [['Stroke Average', '2', '23', '70.41']]),
+    'Results': `<button>2026</button>${table(['Date', 'Name', 'Pos', 'Score', 'Par', 'Winnings (EUR)'], [['17/02/26', 'Sample Desert Open', '6=', '209', '-7', '1,507.50'], ['22/02/26', 'Made-up Lagoon Open', '51=', '141', '-3', '0.00']])}`,
+    'Order of Merit': table(['Season Name', 'Pos', 'Points', 'Tournament'], [['2026 Season', '4', '26,845.35', '9']]),
+    'This Season record': table(['Date', 'Name', 'Pos', 'Rounds', 'Score', 'Winnings (EUR)'], [['17/02/26', 'Sample Desert Open', '6=', '69 67 73', '209', '1,507.50'], ['22/02/26', 'Made-up Lagoon Open', '51=', '70 71', '141', '0.00']]),
+  };
+  const profile = `<div><div><div>Paul Platzhalter</div><img alt=""></div><div><h3>Represents</h3><div><h3></h3></div></div><div><h3>Age</h3><h3>27</h3></div></div>
+<h3>Select Report <select id="report">${Object.keys(reports).map((r) => `<option>${r}</option>`).join('')}</select></h3><div id="report-body"></div>`;
+  const home = `<h1>Alps Tour Golf Order of Merit</h1><ol><li>1 <a href="/playerprofile/OTH001">Otto Erfunden</a> 43,821.32</li><li>4 <a href="/playerprofile/TST001">Paul Platzhalter</a> 26,845.35</li></ol>`;
+  return `<!doctype html><html><head><title>Alps Tour Golf (made up)</title></head><body><main id="app">…</main>
+<script>
+const views = ${JSON.stringify({ profile, home })};
+const reports = ${JSON.stringify(reports)};
+function report() {
+  const body = document.getElementById('report-body');
+  if (!body) return;
+  body.innerHTML = '';
+  setTimeout(() => { body.innerHTML = reports[document.getElementById('report').value]; }, 400);
+}
+function show() {
+  const v = location.pathname === '/playerprofile/TST001' ? views.profile : views.home;
+  document.getElementById('app').innerHTML = '…';
+  setTimeout(() => { document.getElementById('app').innerHTML = v; report(); }, 600);
+}
+document.addEventListener('change', (e) => { if (e.target.id === 'report') report(); });
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a');
+  if (!a || a.origin !== location.origin) return;
+  e.preventDefault();
+  history.pushState(null, '', a.href);
+  show();
+});
+show();
+</script></body></html>`;
+}
+
 export function pairUrl(target = TARGET, code = CODE): string {
   return `${WEB}/pair#target=${encodeURIComponent(target)}&code=${code}`;
 }
@@ -401,6 +446,8 @@ export class World {
   readonly seasonSaw: { url: string; type: string }[] = [];
   /** Every request that reached letaccess.com: only the one page the player opened (the site changes pages itself). */
   readonly letasSaw: { url: string; type: string }[] = [];
+  /** Every request that reached alpstourgolf.com: only the one page the player opened. */
+  readonly alpsSaw: { url: string; type: string }[] = [];
   readonly portal: Portal = { token: null, mode: 'storage' };
   /** How often Trackman's sign-out page was opened. */
   signOuts = 0;
@@ -505,6 +552,12 @@ export class World {
       const req = route.request();
       this.letasSaw.push({ url: req.url(), type: req.resourceType() });
       return route.fulfill({ status: 200, body: letasPage(), headers: { 'content-type': 'text/html; charset=utf-8' } });
+    });
+    // The made-up Alps Tour: one app for every address.
+    await context.route('https://www.alpstourgolf.com/**', (route) => {
+      const req = route.request();
+      this.alpsSaw.push({ url: req.url(), type: req.resourceType() });
+      return route.fulfill({ status: 200, body: alpsPage(), headers: { 'content-type': 'text/html; charset=utf-8' } });
     });
     // The made-up golf.de: its pages, and its API as the pages' own requests reach it.
     await context.route('https://www.golf.de/**', (route) => route.fulfill({ status: 200, body: this.golfde.page(new URL(route.request().url()).pathname), headers: { 'content-type': 'text/html' } }));

@@ -62,6 +62,14 @@ describe('the manifest', () => {
       expect(JSON.stringify(m.host_permissions)).not.toMatch(/ladieseuropeantour|letaccess/);
     });
 
+    it(`${browser}: reads the Alps Tour's pages in their own script, asking no host permission`, () => {
+      const pages = (m.content_scripts as { matches: string[]; js: string[]; world?: string }[]).filter((c) => c.js.includes('alps-content.js'));
+      expect(pages).toHaveLength(1);
+      expect(pages[0]?.matches).toEqual(['https://www.alpstourgolf.com/*', 'https://alpstourgolf.com/*']);
+      expect(pages[0]?.world).toBeUndefined();
+      expect(JSON.stringify(m.host_permissions)).not.toMatch(/alpstourgolf/);
+    });
+
     it(`${browser}: has its version and names from the locales`, () => {
       expect(m.version).toBe(VERSION);
       expect(m.name).toBe('__MSG_name__');

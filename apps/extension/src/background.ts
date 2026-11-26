@@ -24,6 +24,7 @@ import { SITES } from '@glmsync/provider-rankings';
 import { TourKeeper } from '@glmsync/browser/tours';
 import { EtKeeper } from '@glmsync/browser/europeantour';
 import { OcsKeeper } from '@glmsync/browser/ocs';
+import { AlpsKeeper } from '@glmsync/browser/alps';
 import { ocs } from '@glmsync/provider-tours';
 import { HISTORY_SHEET_URL, readSeen } from '@glmsync/provider-golfde';
 import { bridgeMessage, type BridgeReply, type Reason } from '@glmsync/spec';
@@ -78,6 +79,8 @@ const tours = new TourKeeper(storage);
 const et = new EtKeeper(storage);
 // The LET's and LET Access Series' pages (`OcsKeeper`, @glmsync/browser/ocs): her profile and her Order of Merit line, per tour.
 const ocsPages = new OcsKeeper(storage);
+// His Alps Tour profile (`AlpsKeeper`, @glmsync/browser/alps): the reports he picked there, merged.
+const alpsPages = new AlpsKeeper(storage);
 const localDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /** His tour page as read so far, to every app paired for a pro's pages (each after its plan). */
@@ -101,6 +104,13 @@ async function sendOcs(site: ocs.OcsTourSite): Promise<Reply> {
   const v = page ? await pro.send(page) : await pro.view();
   await refreshIcon();
   return { ok: true, pro: v, ocs: await ocsPages.view(site) };
+}
+/** His Alps Tour profile as read so far, to every app paired for a pro's pages (each after its plan). */
+async function sendAlps(): Promise<Reply> {
+  const page = await alpsPages.page(localDay());
+  const v = page ? await pro.send(page) : await pro.view();
+  await refreshIcon();
+  return { ok: true, pro: v, alps: await alpsPages.view() };
 }
 /** A message naming a tour of the LET's only from that tour's own page (both sites run the same script). */
 const fromSite = (url: string | undefined, site: ocs.OcsTourSite): boolean => ocs.siteAt(url)?.site === site;
@@ -634,6 +644,16 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
       return sendOcs(m.site);
     case 'ocs-answer':
       // From the tour's page: only the connect window comes to the front, where the player answers.
+      await openConnectWindow(near);
+      return { ok: true, pro: await pro.view() };
+    case 'alps-seen':
+      return { ok: true, pro: await pro.view(), alps: await alpsPages.seen(m.read) };
+    case 'alps-line':
+      return { ok: true, pro: await pro.view(), alps: await alpsPages.view() };
+    case 'alps-send':
+      return sendAlps();
+    case 'alps-answer':
+      // From the site's page: only the connect window comes to the front, where the player answers.
       await openConnectWindow(near);
       return { ok: true, pro: await pro.view() };
     case 'pro-answer': {
