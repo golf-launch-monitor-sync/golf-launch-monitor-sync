@@ -19,7 +19,9 @@ then asks the provider nothing at all, and the plan comes before sending instead
 Since 1.14.0 such a client may, on the player's tap, **click for the player** on that page (*Fetch all*):
 it operates the provider's own page as the player would and still asks the provider nothing itself. Since 1.16.0 a
 browser extension may start such a run **by itself** when the target's plan says the record is due, only while the
-player is signed in ([below](#by-itself-when-the-record-is-due)).
+player is signed in ([below](#by-itself-when-the-record-is-due)). Since 1.19.0 a client may also hand a target **one
+tournament** of golf.de's tournament calendar, the one whose page the player has open, on their tap, into their own
+calendar there ([below](#taking-one-tournament-dgvevent1)).
 
 | | Machine-readable |
 | --- | --- |
@@ -27,6 +29,7 @@ player is signed in ([below](#by-itself-when-the-record-is-due)).
 | The **handicap target API** | [api/hcp-api.yaml](api/hcp-api.yaml) |
 | Its **rules** (when to read, the lease, which scorecards) | [hcp/rules.json](hcp/rules.json), [reference/hcp.py](reference/hcp.py) |
 | Vectors | [testvectors/hcp-plan.json](testvectors/hcp-plan.json), [testvectors/dgvhcp-examples.json](testvectors/dgvhcp-examples.json) |
+| One tournament, **dgvevent/1** (since 1.19.0) | [hcp/dgvevent-1.schema.json](hcp/dgvevent-1.schema.json), [reference/event.py](reference/event.py), [testvectors/dgvevent-page.json](testvectors/dgvevent-page.json), [testvectors/dgvevent-examples.json](testvectors/dgvevent-examples.json) |
 
 ## The format dgvhcp/1
 
@@ -68,7 +71,7 @@ with `hole`, `par` and as far as shown `si`, `score`, `gbe`, `given`, `points`, 
 
 ## The handicap target API
 
-Five endpoints ([api/hcp-api.yaml](api/hcp-api.yaml)), base URL conventionally ending in `/hcp/v1`.
+Five endpoints, and since 1.19.0 a sixth ([api/hcp-api.yaml](api/hcp-api.yaml)), base URL conventionally ending in `/hcp/v1`.
 They mirror the launch monitor target API ([target-api.md](target-api.md)) and are kept apart from it:
 a handicap import token can't call `/lm/v1`, and a launch monitor token can't call this one.
 
@@ -79,6 +82,7 @@ a handicap import token can't call `/lm/v1`, and a launch monitor token can't ca
 | `POST /import` | A dgvhcp/1 batch. |
 | `GET /status` | "Connected with …", for the client to show. |
 | `DELETE /token` | The client disconnects itself. |
+| `POST /tournament` | Since 1.19.0: one tournament from golf.de's page the player has open ([below](#taking-one-tournament-dgvevent1)). |
 
 ### Pairing
 
@@ -240,3 +244,53 @@ what the page showed and by time; `operate.ts`: the step taken in the page), and
 and the companion app alike. When to start a run by itself is `@glmsync/browser`'s `HcpClient` (`autoDue`, `startFetchAll` with `auto`,
 `setAutoFetch`; `interruptFetchAll` and `autoDue`'s `spare` for the companion app); the background tab is the
 extension's background's, the unseen window the companion app's.
+
+## Taking one tournament (dgvevent/1)
+
+Since 1.19.0. golf.de's tournament calendar has a page for each tournament (a club's, a regional federation's, the
+DGV's): its heading, and under *Turnierinformationen* a line for each detail - the first day and time, the place, the
+form of play and holes, whether it counts for the handicap, the starting tee, the field's size, who may play, guests,
+open or closed, the age group, the deadlines. A player who finds one they want to play can take it into their own
+calendar in a target they paired for golf.de, with one tap on that page.
+
+- **Only the page the player has open, only on their tap.** On a tournament's page
+  (`https://www.golf.de/sport/turnierkalender/<calendar>.html#/<number>`) a client offers to take it, when a target is
+  paired for golf.de; one tap sends **that one** tournament. Never on the list, never several, never without the tap,
+  never in a page a run of *Fetch all* opened, no paging, nothing by itself.
+- **It reads what the page shows, and asks golf.de nothing.** The page's heading and its lines under
+  *Turnierinformationen* (*Tournament Information* on golf.de's English page), each by its **label**, never by its
+  place - the rule is [reference/event.py](reference/event.py), checked by every client against
+  [testvectors/dgvevent-page.json](testvectors/dgvevent-page.json). A label it doesn't know is never read; nothing else
+  of the page is (not the registration box beside it, which may show the signed-in player). Public pages: no sign-in
+  needed, none used.
+- **No person.** The format has no field for one: no start list, no registration, no names, no fee.
+- **The page's address without the search.** A tournament opened from the list carries the list's search after `?`
+  (which would say where the player searched): `url` is the page without it.
+- **The page can't be read** (no heading, or no first day it can read: golf.de changed its page): nothing is sent, and
+  the client says so.
+
+The format **dgvevent/1** ([hcp/dgvevent-1.schema.json](hcp/dgvevent-1.schema.json)): `format`, `provider` (`golfde`),
+optionally `generator`, and `event` - `id` (golf.de's number of the tournament, the one in its address), `url` (its
+page; the number in it is `id`), `name` (the heading), `date` (YYYY-MM-DD), and as far as the page shows them `time`
+(HH:MM, *Startzeit*, else the time of *Turnierdatum*), `venue`, `play_form` (*Turnierart* without its holes), `holes` (9 or 18, as *Turnierart* names them),
+`hcp_relevant`, `tee` (*Starttee*, as written: the pages seen name the starting hole), `max_players`, `gender`,
+`guests`, `open`, `age_class`, `entry_close_online` and `entry_close_club` (a day, with its time where the page names
+one). Days and times are local, as the page shows them. A value that doesn't read as its field is left out, never bent.
+
+`POST /tournament` ([api/hcp-api.yaml](api/hcp-api.yaml)) with the pairing's import token:
+
+- Only a pairing of provider `golfde`; another is `403 wrong_token`. A target that takes no tournaments answers `404`.
+- The target keeps it **once per tournament and player** (`id`): taking it again compares and updates, but never a
+  field the player changed in the target since. It goes into **the player's own calendar** only - never a catalogue,
+  never anyone else's.
+- The answer: `result` - `new`, `known` (there already, as the page says) or `updated` - with `changed` (fields an
+  update changed), `kept` (fields the page says otherwise, kept as the player changed them) and `dropped` (fields of
+  the body left out).
+- A target reads leniently what it can place: a frame it can't (not dgvevent/1, not one tournament, not golf.de's page
+  of that number, no name, no first day) is refused as a whole, `422 invalid_event`; any other value that isn't right
+  is left out and named in `dropped`; a field the format hasn't is never read
+  ([testvectors/dgvevent-examples.json](testvectors/dgvevent-examples.json), `target`).
+- Its own refusals, which a client puts in words: `403 account_inactive` (the player's account in the target isn't
+  active now; the pairing stays), `409 calendar_full`, `422 too_old` / `too_far_ahead` (a first day outside what the
+  target keeps), `429 rate_limited` with `Retry-After` (a target limits how many an hour). `401 token_invalid` and
+  `409 disconnected` end the pairing as for the record.

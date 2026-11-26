@@ -5,7 +5,7 @@
  * popup's part. Pure, so it is tested without a browser. Little text: the line sits on someone else's page.
  */
 
-import type { HcpEntry, HcpView } from './hcp.ts';
+import type { HcpEntry, HcpView, TakeOutcome } from './hcp.ts';
 import { formatWhen, type Lang, type T } from './i18n.ts';
 import type { MessageKey } from './messages.ts';
 import { errorText } from './view.ts';
@@ -82,4 +82,15 @@ export function hcpLastText(e: HcpEntry, t: T, lang: Lang, now: number): string 
   }
   const at = Date.parse(l.at);
   return t('hcp.last', { when: Number.isFinite(at) ? formatWhen(at, now, lang) : '–', what });
+}
+
+/** What taking one tournament came to, in words (spec 1.19.0); `warn` when nothing was added. */
+export function eventText(o: TakeOutcome, t: T): { text: string; warn: boolean } {
+  const name = o.name ?? '–';
+  if (o.ok) {
+    const said = t(`event.${o.result}`, { name });
+    return { text: o.kept.length ? `${said} ${t('event.kept')}` : said, warn: false };
+  }
+  const minutes = Math.max(1, Math.ceil((o.retry_after_s ?? 3600) / 60));
+  return { text: t(`event.error.${o.error}`, { name, minutes }), warn: true };
 }

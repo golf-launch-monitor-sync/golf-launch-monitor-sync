@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./page": "./src/page.ts",
     "./testing": "./src/testing.ts",
-    "./operate": "./src/operate.ts"
+    "./operate": "./src/operate.ts",
+    "./event": "./src/event.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

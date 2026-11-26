@@ -409,6 +409,20 @@ async function golfdeRun(m: { type: 'golfde-fetch-all' | 'golfde-step' | 'golfde
   return { ok: true, hcp: turn.view, step: turn.step };
 }
 
+/**
+ * One tournament from golf.de's page (spec 1.19.0): the apps that may take it, and the player's tap. Never in the tab a
+ * run by itself opened: there no app is offered and nothing is taken.
+ */
+async function golfdeEvent(m: { type: 'golfde-event-line' } | { type: 'golfde-event-take'; target: string; event: object }, tabId: number | undefined): Promise<Reply> {
+  const run = await autoTab().catch(() => null);
+  if (tabId === undefined || (run && run.id === tabId)) return m.type === 'golfde-event-line' ? { ok: true, targets: [] } : { ok: false, error: 'run tab' };
+  if (m.type === 'golfde-event-line') return { ok: true, targets: (await hcp.view()).pairings.map((p) => ({ id: p.id, name: p.name })) };
+  const take = await hcp.takeEvent(m.target, m.event);
+  // A connection the app ended goes from the icon and the popup too.
+  if (!take.ok && take.error === 'ended') await refreshIcon().catch(() => undefined);
+  return { ok: true, take };
+}
+
 async function hcpSendNow(): Promise<Reply> {
   await chrome.alarms.clear(HCP_SEND).catch(() => false);
   return { ok: true, hcp: await hcp.send() };
@@ -728,6 +742,9 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
     case 'golfde-step':
     case 'golfde-stop':
       return golfdeRun(m, from.tabId);
+    case 'golfde-event-line':
+    case 'golfde-event-take':
+      return golfdeEvent(m, from.tabId);
     case 'golfde-confirm':
       // From golf.de's page: only the connect window comes to the front, where the player answers.
       await openConnectWindow(near);

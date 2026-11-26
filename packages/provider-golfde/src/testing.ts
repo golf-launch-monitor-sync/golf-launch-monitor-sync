@@ -182,3 +182,103 @@ export function resultsAnswer(ownRef: string, ownRank = 7, others = 41) {
     ],
   };
 }
+
+// ---------------------------------------------------------------------------
+// A tournament's page (spec/hcp.md, *Taking one tournament*): made up by hand in the shape of golf.de's page of
+// 26 Nov 2026 - the heading, *Turnierinformationen* with a row per line, and the registration box beside it, which
+// shows the signed-in player's name here on purpose: it must never be read.
+// ---------------------------------------------------------------------------
+
+/** The lines of a made-up club tournament's page, as golf.de writes them. */
+export const TOURNAMENT_LINES: [string, string][] = [
+  ['Turnierdatum', 'Sa 12.06.2027 um 09:30 Uhr'],
+  ['Turnierort', 'Golfclub Beispielstadt e.V.'],
+  ['Turnierart', 'Einzel - Stableford; 18 Löcher'],
+  ['Handicap-Relevant', 'Ja'],
+  ['Starttee', '1'],
+  ['Startzeit', '09:30 Uhr'],
+  ['Teilnehmer maximal', '120'],
+  ['Geschlecht', 'Damen & Herren'],
+  ['Gäste', 'Ja'],
+  ['Offenes / Geschlossenes Turnier', 'Offenes Turnier'],
+  ['Altersklasse', 'Offen'],
+  ['Meldeschluss Online', '09.06.2027, 18:00 Uhr'],
+  ['Meldeschluss Club', '10.06.2027, 12:00 Uhr'],
+];
+export const TOURNAMENT_NAME = 'Sommerpreis des Clubs';
+
+/** An element of a made-up page (tests only): its tag, its children or its text, its parent once placed. */
+export class FakeNode {
+  parentElement: FakeNode | null = null;
+  nextElementSibling: FakeNode | null = null;
+  readonly children: FakeNode[];
+  private readonly text: string;
+  constructor(
+    readonly tagName: string,
+    content: string | FakeNode[] = [],
+  ) {
+    this.children = typeof content === 'string' ? [] : content;
+    this.text = typeof content === 'string' ? content : '';
+    this.children.forEach((c, i) => {
+      c.parentElement = this;
+      c.nextElementSibling = this.children[i + 1] ?? null;
+    });
+  }
+  get textContent(): string {
+    return this.text + this.children.map((c) => ` ${c.textContent}`).join('');
+  }
+  /** Every element under this one in document order ('*'), or those of a tag. */
+  querySelectorAll(selector: string): FakeNode[] {
+    const out: FakeNode[] = [];
+    const walk = (n: FakeNode) => {
+      for (const c of n.children) {
+        if (selector === '*' || c.tagName.toLowerCase() === selector.toLowerCase()) out.push(c);
+        walk(c);
+      }
+    };
+    walk(this);
+    return out;
+  }
+}
+
+const n = (tag: string, content: string | FakeNode[] = []) => new FakeNode(tag, content);
+
+/** golf.de's tournament page as a tree of `FakeNode`s (the document is its root). */
+export function tournamentDoc(opts: { name?: string | null; lines?: [string, string][]; title?: string } = {}): FakeNode {
+  const lines = opts.lines ?? TOURNAMENT_LINES;
+  const head = opts.name === null ? [] : [n('H2', opts.name ?? TOURNAMENT_NAME)];
+  return n('HTML', [
+    n('BODY', [
+      n('HEADER', [n('A', 'Login mein Bereich')]),
+      n('MAIN', [
+        n('DIV', [n('A', [n('BUTTON', 'Zurück')]), n('H1', 'Turnierdetails')]),
+        n('DIV', [...head, n('SPAN', lines[0]?.[1] ?? ''), n('P', 'Golfclub Beispielstadt e.V.')]),
+        n('DIV', [
+          n('DIV', [
+            n('DIV', [n('DIV', opts.title ?? 'Turnierinformationen'), n('DIV', lines.map(([l, v]) => n('DIV', [n('DIV', l), n('DIV', v)])))]),
+          ]),
+          n('DIV', [
+            n('DIV', [n('DIV', 'Turnieranmeldung'), n('DIV', [n('SPAN', 'Angemeldet:'), n('P', PERSONAL.nameOnCard), n('P', 'Startzeit 09:30 Uhr')])]),
+          ]),
+        ]),
+      ]),
+      n('FOOTER', [n('H4', 'Service & Hilfe')]),
+    ]),
+  ]);
+}
+
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** The same page as HTML (the click checks' world serves it), its lines appearing `delayMs` after the page loads. */
+export function tournamentHtml(opts: { name?: string; lines?: [string, string][]; delayMs?: number } = {}): string {
+  const lines = opts.lines ?? TOURNAMENT_LINES;
+  const rows = lines.map(([l, v]) => `<div class="row"><div class="label">${esc(l)}</div><div class="value">${esc(v)}</div></div>`).join('');
+  const block = `<div class="head"><h2>${esc(opts.name ?? TOURNAMENT_NAME)}</h2>${esc(lines[0]?.[1] ?? '')}<p>Golfclub Beispielstadt e.V.</p></div>`
+    + `<div class="grid"><div class="cell"><div><div class="title">Turnierinformationen</div><div class="list">${rows}</div></div></div>`
+    + `<div class="cell"><div><div class="title">Turnieranmeldung</div><div><span>Angemeldet:</span><p>${esc(PERSONAL.nameOnCard)}</p></div></div></div></div>`;
+  // golf.de's page loads its lines after the page itself: they arrive a moment later here too.
+  return `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Clubturniere | Golf in Deutschland</title></head><body>`
+    + `<main><div><a href="#/"><button>Zurück</button></a><h1>Turnierdetails</h1></div><div id="details"><p>Lade Daten ..</p></div></main>`
+    + `<script>setTimeout(() => { document.getElementById('details').innerHTML = ${JSON.stringify(block)}; }, ${opts.delayMs ?? 300});</script>`
+    + `</body></html>`;
+}

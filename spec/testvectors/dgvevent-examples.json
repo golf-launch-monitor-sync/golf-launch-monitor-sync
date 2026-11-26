@@ -1,0 +1,355 @@
+{
+  "$comment": "dgvevent/1 bodies that must (valid: true) or must not validate against spec/hcp/dgvevent-1.schema.json, and what a target does reading each (target: refused, or the fields it left out as dropped).",
+  "spec_version": "1.19.0",
+  "generated_by": "spec/reference/generate.py",
+  "cases": [
+    {
+      "name": "everything_the_page_shows",
+      "why": "A club tournament's page with every line, as a client writes it.",
+      "valid": true,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "generator": {
+          "name": "Golf Stats Sync for Chrome and Edge",
+          "version": "0.23.0"
+        },
+        "event": {
+          "id": "490000000001",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/490000000001",
+          "name": "Sommerpreis des Clubs",
+          "date": "2027-06-12",
+          "time": "09:30",
+          "venue": "Golfclub Beispielstadt e.V.",
+          "play_form": "Einzel - Stableford",
+          "holes": 18,
+          "hcp_relevant": true,
+          "tee": "1",
+          "max_players": 120,
+          "gender": "Damen & Herren",
+          "guests": true,
+          "open": true,
+          "age_class": "Offen",
+          "entry_close_online": "2027-06-09T18:00",
+          "entry_close_club": "2027-06-10T12:00"
+        }
+      },
+      "target": {
+        "dropped": []
+      }
+    },
+    {
+      "name": "the_least_a_page_has",
+      "why": "The page's number and address, the heading and the first day.",
+      "valid": true,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "event": {
+          "id": "42",
+          "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+          "name": "Kreismeisterschaft",
+          "date": "2027-05-01"
+        }
+      },
+      "target": {
+        "dropped": []
+      }
+    },
+    {
+      "name": "number_as_a_number_and_nulls",
+      "why": "Not as the schema has it, but a target still reads it: the number as a JSON number, unknown values as null.",
+      "valid": false,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "event": {
+          "id": 42,
+          "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+          "name": "Kreismeisterschaft",
+          "date": "2027-05-01",
+          "time": null,
+          "tee": null
+        }
+      },
+      "target": {
+        "dropped": []
+      }
+    },
+    {
+      "name": "with_the_search",
+      "why": "The address with the search the player came from: a client leaves it out, a target takes it.",
+      "valid": false,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "event": {
+          "id": "42",
+          "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42?radius=50",
+          "name": "Kreismeisterschaft",
+          "date": "2027-05-01"
+        }
+      },
+      "target": {
+        "dropped": []
+      }
+    },
+    {
+      "name": "without_www",
+      "why": "golf.de without www: a target takes it.",
+      "valid": false,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "event": {
+          "id": "42",
+          "url": "https://golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+          "name": "Kreismeisterschaft",
+          "date": "2027-05-01"
+        }
+      },
+      "target": {
+        "dropped": []
+      }
+    },
+    {
+      "name": "wrong_format",
+      "why": "Another format.",
+      "valid": false,
+      "body": {
+        "format": "dgvhcp/1",
+        "provider": "golfde",
+        "event": {
+          "id": "42",
+          "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+          "name": "Kreismeisterschaft",
+          "date": "2027-05-01"
+        }
+      },
+      "target": {
+        "refused": true
+      }
+    },
+    {
+      "name": "a_list",
+      "why": "One tournament, never a list.",
+      "valid": false,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "event": [
+          {
+            "id": "42",
+            "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+            "name": "Kreismeisterschaft",
+            "date": "2027-05-01"
+          }
+        ]
+      },
+      "target": {
+        "refused": true
+      }
+    },
+    {
+      "name": "another_provider",
+      "why": "A tournament comes from golf.de only.",
+      "valid": false,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "egr",
+        "event": {
+          "id": "42",
+          "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+          "name": "Kreismeisterschaft",
+          "date": "2027-05-01"
+        }
+      },
+      "target": {
+        "refused": true
+      }
+    },
+    {
+      "name": "another_site",
+      "why": "The page is golf.de's.",
+      "valid": false,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "event": {
+          "id": "42",
+          "url": "https://golf.example/sport/turnierkalender/lgv-turniere.html#/42",
+          "name": "Kreismeisterschaft",
+          "date": "2027-05-01"
+        }
+      },
+      "target": {
+        "refused": true
+      }
+    },
+    {
+      "name": "the_list_not_a_page",
+      "why": "The list's address, not a tournament's.",
+      "valid": false,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "event": {
+          "id": "42",
+          "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/?radius=50",
+          "name": "Kreismeisterschaft",
+          "date": "2027-05-01"
+        }
+      },
+      "target": {
+        "refused": true
+      }
+    },
+    {
+      "name": "another_pages_number",
+      "why": "The number is the page's: id and the number in url agree (which the schema can't say).",
+      "valid": true,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "event": {
+          "id": "43",
+          "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+          "name": "Kreismeisterschaft",
+          "date": "2027-05-01"
+        }
+      },
+      "target": {
+        "refused": true
+      }
+    },
+    {
+      "name": "no_name",
+      "why": "A tournament has its name.",
+      "valid": false,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "event": {
+          "id": "42",
+          "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+          "name": "  ",
+          "date": "2027-05-01"
+        }
+      },
+      "target": {
+        "refused": true
+      }
+    },
+    {
+      "name": "day_as_german",
+      "why": "Days are YYYY-MM-DD.",
+      "valid": false,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "event": {
+          "id": "42",
+          "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+          "name": "Kreismeisterschaft",
+          "date": "01.05.2027"
+        }
+      },
+      "target": {
+        "refused": true
+      }
+    },
+    {
+      "name": "no_day",
+      "why": "A tournament has its first day.",
+      "valid": false,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "event": {
+          "id": "42",
+          "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+          "name": "Kreismeisterschaft"
+        }
+      },
+      "target": {
+        "refused": true
+      }
+    },
+    {
+      "name": "bad_values_cost_themselves",
+      "why": "Each value that isn't right is left out on its own; the tournament stays.",
+      "valid": false,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "event": {
+          "id": "42",
+          "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+          "name": "Kreismeisterschaft",
+          "date": "2027-05-01",
+          "time": "9:30 Uhr",
+          "holes": 27,
+          "hcp_relevant": "ja",
+          "max_players": 0,
+          "entry_close_online": "15.09.2027",
+          "tee": "Gelb, Rot, Blau, Orange, Weiß, Schwarz und alle anderen Farben, die der Club noch hat"
+        }
+      },
+      "target": {
+        "dropped": [
+          "time",
+          "holes",
+          "hcp_relevant",
+          "max_players",
+          "entry_close_online",
+          "tee"
+        ]
+      }
+    },
+    {
+      "name": "fields_the_format_has_not",
+      "why": "A start list, a fee, a contact: no field of the format, never read.",
+      "valid": false,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "event": {
+          "id": "42",
+          "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+          "name": "Kreismeisterschaft",
+          "date": "2027-05-01",
+          "start_list": [
+            {
+              "name": "Erika Mustermann",
+              "hcp": 12.3
+            }
+          ],
+          "fee": "45 €",
+          "contact": "Max Mustermann, 040 123456"
+        }
+      },
+      "target": {
+        "dropped": []
+      }
+    },
+    {
+      "name": "unknown_top_level",
+      "why": "Nothing beside the tournament.",
+      "valid": false,
+      "body": {
+        "format": "dgvevent/1",
+        "provider": "golfde",
+        "event": {
+          "id": "42",
+          "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+          "name": "Kreismeisterschaft",
+          "date": "2027-05-01"
+        },
+        "player": "Erika Mustermann"
+      },
+      "target": {
+        "dropped": []
+      }
+    }
+  ]
+}

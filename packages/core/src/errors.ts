@@ -89,6 +89,16 @@ export type TargetErrorCode =
   | 'code_expired'
   // A pro's page (spec 1.15.0, spec/prores.md) names someone else than the player: ask them, then send confirmed.
   | 'other_player'
+  // One tournament (spec 1.19.0, spec/hcp.md *Taking one tournament*): the player's account in the target isn't active,
+  // a pairing of another provider, a full calendar, a tournament it can't place, a first day outside what it keeps.
+  | 'account_inactive'
+  | 'wrong_token'
+  | 'calendar_full'
+  | 'invalid_event'
+  | 'too_old'
+  | 'too_far_ahead'
+  // A target that takes no tournaments (404): not from its answer's code but about it.
+  | 'not_offered'
   // Not from the target's answer but about it:
   | 'unreachable'
   | 'unavailable'

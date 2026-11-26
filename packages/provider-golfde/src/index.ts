@@ -9,6 +9,7 @@
  * - `batch`    dgvhcp/1 batches of what was seen, cut to a target's limits
  * - `clicks`   *Fetch all*: the clicks a run makes for the player on golf.de's own page, and when
  * - `operate`  taking such a step in the page
+ * - `event`    one tournament from the page the player has open (dgvevent/1, spec 1.19.0), on their tap
  */
 
 export * from './batch.ts';
@@ -16,3 +17,4 @@ export * from './mapping.ts';
 export * from './observe.ts';
 export * from './clicks.ts';
 export * from './operate.ts';
+export * from './event.ts';

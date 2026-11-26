@@ -1,0 +1,1466 @@
+{
+  "$comment": "A golf.de tournament page as a client sees it -> dgvevent/1's event (spec/reference/event.py). input: {address, heading, lines: [[label, value], ...]} (the lines under Turnierinformationen in the page's order); expected: {event} or {refused: not_a_tournament | changed_page}. Compare as JSON values.",
+  "spec_version": "1.19.0",
+  "generated_by": "spec/reference/generate.py",
+  "labels": {
+    "turnierdatum": "date",
+    "tournament date": "date",
+    "turnierort": "venue",
+    "tournament location": "venue",
+    "turnierart": "play_form",
+    "tournament type": "play_form",
+    "handicap-relevant": "hcp_relevant",
+    "handicap relevant": "hcp_relevant",
+    "starttee": "tee",
+    "start tee": "tee",
+    "startzeit": "time",
+    "start time": "time",
+    "teilnehmer maximal": "max_players",
+    "participants maximum": "max_players",
+    "geschlecht": "gender",
+    "gender": "gender",
+    "gäste": "guests",
+    "guests": "guests",
+    "offenes / geschlossenes turnier": "open",
+    "open / closed tournament": "open",
+    "altersklasse": "age_class",
+    "age group": "age_class",
+    "meldeschluss online": "entry_close_online",
+    "registration deadline online": "entry_close_online",
+    "meldeschluss club": "entry_close_club",
+    "registration deadline club": "entry_close_club"
+  },
+  "cases": [
+    {
+      "name": "club_page",
+      "why": "A club tournament's page with every line, opened from the list (its search after '?' stays out of url).",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/490000000001?endtage=180&latitude=53.55&longitude=9.99&radius=50&offenundgeschlosseneTurniere=OPEN",
+        "heading": "Sommerpreis des Clubs",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 12.06.2027 um 09:30 Uhr"
+          ],
+          [
+            "Turnierort",
+            "Golfclub Beispielstadt e.V."
+          ],
+          [
+            "Turnierart",
+            "Einzel - Stableford; 18 Löcher"
+          ],
+          [
+            "Handicap-Relevant",
+            "Ja"
+          ],
+          [
+            "Starttee",
+            "1"
+          ],
+          [
+            "Startzeit",
+            "09:30 Uhr"
+          ],
+          [
+            "Teilnehmer maximal",
+            "120"
+          ],
+          [
+            "Geschlecht",
+            "Damen & Herren"
+          ],
+          [
+            "Gäste",
+            "Ja"
+          ],
+          [
+            "Offenes / Geschlossenes Turnier",
+            "Offenes Turnier"
+          ],
+          [
+            "Altersklasse",
+            "Offen"
+          ],
+          [
+            "Meldeschluss Online",
+            "09.06.2027, 18:00 Uhr"
+          ],
+          [
+            "Meldeschluss Club",
+            "10.06.2027, 12:00 Uhr"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "490000000001",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/490000000001",
+          "name": "Sommerpreis des Clubs",
+          "date": "2027-06-12",
+          "time": "09:30",
+          "venue": "Golfclub Beispielstadt e.V.",
+          "play_form": "Einzel - Stableford",
+          "holes": 18,
+          "hcp_relevant": true,
+          "tee": "1",
+          "max_players": 120,
+          "gender": "Damen & Herren",
+          "guests": true,
+          "open": true,
+          "age_class": "Offen",
+          "entry_close_online": "2027-06-09T18:00",
+          "entry_close_club": "2027-06-10T12:00"
+        }
+      }
+    },
+    {
+      "name": "no_start_lines",
+      "why": "A page without Starttee and Startzeit (they are left out on golf.de) and a day without a time: a foursome whose Turnierart names the holes.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/490000000002",
+        "heading": "Grünkohl-Vierer",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Fr 27.08.2027"
+          ],
+          [
+            "Turnierort",
+            "Golf Club Musterdorf e.V."
+          ],
+          [
+            "Turnierart",
+            "Chapman-Vierer - Stableford; 18 Löcher"
+          ],
+          [
+            "Handicap-Relevant",
+            "Nein"
+          ],
+          [
+            "Teilnehmer maximal",
+            "80"
+          ],
+          [
+            "Geschlecht",
+            "Damen & Herren"
+          ],
+          [
+            "Gäste",
+            "Ja"
+          ],
+          [
+            "Offenes / Geschlossenes Turnier",
+            "Offenes Turnier"
+          ],
+          [
+            "Altersklasse",
+            "Offen"
+          ],
+          [
+            "Meldeschluss Online",
+            "26.08.2027, 11:00 Uhr"
+          ],
+          [
+            "Meldeschluss Club",
+            "26.08.2027, 11:00 Uhr"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "490000000002",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/490000000002",
+          "name": "Grünkohl-Vierer",
+          "date": "2027-08-27",
+          "venue": "Golf Club Musterdorf e.V.",
+          "play_form": "Chapman-Vierer - Stableford",
+          "holes": 18,
+          "hcp_relevant": false,
+          "max_players": 80,
+          "gender": "Damen & Herren",
+          "guests": true,
+          "open": true,
+          "age_class": "Offen",
+          "entry_close_online": "2027-08-26T11:00",
+          "entry_close_club": "2027-08-26T11:00"
+        }
+      }
+    },
+    {
+      "name": "english_page",
+      "why": "golf.de's page in English: the same lines in English words.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/490000000001",
+        "heading": "Sommerpreis des Clubs",
+        "lines": [
+          [
+            "Tournament Date",
+            "Sat 12.06.2027 at 09:30"
+          ],
+          [
+            "Tournament Location",
+            "Golfclub Beispielstadt e.V."
+          ],
+          [
+            "Tournament type",
+            "Single - Stableford; 18 holes"
+          ],
+          [
+            "Handicap Relevant",
+            "Yes"
+          ],
+          [
+            "Start tee",
+            "1"
+          ],
+          [
+            "Start time",
+            "09:30"
+          ],
+          [
+            "Participants maximum",
+            "120"
+          ],
+          [
+            "Gender",
+            "Woman & Men"
+          ],
+          [
+            "Guests",
+            "Yes"
+          ],
+          [
+            "Open / Closed tournament",
+            "Open tournament"
+          ],
+          [
+            "Age group",
+            "Open"
+          ],
+          [
+            "Registration Deadline Online",
+            "09.06.2027, 18:00"
+          ],
+          [
+            "Registration Deadline Club",
+            "10.06.2027, 12:00"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "490000000001",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/490000000001",
+          "name": "Sommerpreis des Clubs",
+          "date": "2027-06-12",
+          "time": "09:30",
+          "venue": "Golfclub Beispielstadt e.V.",
+          "play_form": "Single - Stableford",
+          "holes": 18,
+          "hcp_relevant": true,
+          "tee": "1",
+          "max_players": 120,
+          "gender": "Woman & Men",
+          "guests": true,
+          "open": true,
+          "age_class": "Open",
+          "entry_close_online": "2027-06-09T18:00",
+          "entry_close_club": "2027-06-10T12:00"
+        }
+      }
+    },
+    {
+      "name": "federation_page",
+      "why": "A regional federation's calendar; nine holes, closed, no guests, not for the handicap.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+        "heading": "Kreismeisterschaft der Senioren",
+        "lines": [
+          [
+            "Turnierdatum",
+            "So 02.05.2027 um 08:00 Uhr"
+          ],
+          [
+            "Turnierort",
+            "Golfpark Beispielheide"
+          ],
+          [
+            "Turnierart",
+            "Zählspiel; 9 Löcher"
+          ],
+          [
+            "Handicap-Relevant",
+            "Nein"
+          ],
+          [
+            "Gäste",
+            "Nein"
+          ],
+          [
+            "Offenes / Geschlossenes Turnier",
+            "Geschlossenes Turnier"
+          ],
+          [
+            "Altersklasse",
+            "AK 50"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "42",
+          "url": "https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42",
+          "name": "Kreismeisterschaft der Senioren",
+          "date": "2027-05-02",
+          "time": "08:00",
+          "venue": "Golfpark Beispielheide",
+          "play_form": "Zählspiel",
+          "holes": 9,
+          "hcp_relevant": false,
+          "guests": false,
+          "open": false,
+          "age_class": "AK 50"
+        }
+      }
+    },
+    {
+      "name": "dgv_page",
+      "why": "The DGV's own calendar, as little as a page may have: the heading and the day.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/dgv-turniere.html#/987",
+        "heading": "Offene Meisterschaft",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 03.07.2027"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "987",
+          "url": "https://www.golf.de/sport/turnierkalender/dgv-turniere.html#/987",
+          "name": "Offene Meisterschaft",
+          "date": "2027-07-03"
+        }
+      }
+    },
+    {
+      "name": "result_list",
+      "why": "A tournament's result list is no tournament's page.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/490000000001/ergebnisse",
+        "heading": "Sommerpreis des Clubs",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 12.06.2027 um 09:30 Uhr"
+          ],
+          [
+            "Turnierort",
+            "Golfclub Beispielstadt e.V."
+          ],
+          [
+            "Turnierart",
+            "Einzel - Stableford; 18 Löcher"
+          ],
+          [
+            "Handicap-Relevant",
+            "Ja"
+          ],
+          [
+            "Starttee",
+            "1"
+          ],
+          [
+            "Startzeit",
+            "09:30 Uhr"
+          ],
+          [
+            "Teilnehmer maximal",
+            "120"
+          ],
+          [
+            "Geschlecht",
+            "Damen & Herren"
+          ],
+          [
+            "Gäste",
+            "Ja"
+          ],
+          [
+            "Offenes / Geschlossenes Turnier",
+            "Offenes Turnier"
+          ],
+          [
+            "Altersklasse",
+            "Offen"
+          ],
+          [
+            "Meldeschluss Online",
+            "09.06.2027, 18:00 Uhr"
+          ],
+          [
+            "Meldeschluss Club",
+            "10.06.2027, 12:00 Uhr"
+          ]
+        ]
+      },
+      "expected": {
+        "refused": "not_a_tournament"
+      }
+    },
+    {
+      "name": "the_list",
+      "why": "The list of tournaments is no tournament's page.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/?endtage=180&latitude=53.55&longitude=9.99&radius=50&offenundgeschlosseneTurniere=OPEN",
+        "heading": "Clubturniere",
+        "lines": []
+      },
+      "expected": {
+        "refused": "not_a_tournament"
+      }
+    },
+    {
+      "name": "the_search",
+      "why": "golf.de's search form is no tournament's page.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/filter?endtage=180&latitude=53.55&longitude=9.99&radius=50&offenundgeschlosseneTurniere=OPEN",
+        "heading": "Clubturniere",
+        "lines": []
+      },
+      "expected": {
+        "refused": "not_a_tournament"
+      }
+    },
+    {
+      "name": "another_host",
+      "why": "Only golf.de's own pages (www, https).",
+      "input": {
+        "address": "https://golf.de/sport/turnierkalender/clubturniere.html#/490000000001",
+        "heading": "X",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 12.06.2027 um 09:30 Uhr"
+          ],
+          [
+            "Turnierort",
+            "Golfclub Beispielstadt e.V."
+          ],
+          [
+            "Turnierart",
+            "Einzel - Stableford; 18 Löcher"
+          ],
+          [
+            "Handicap-Relevant",
+            "Ja"
+          ],
+          [
+            "Starttee",
+            "1"
+          ],
+          [
+            "Startzeit",
+            "09:30 Uhr"
+          ],
+          [
+            "Teilnehmer maximal",
+            "120"
+          ],
+          [
+            "Geschlecht",
+            "Damen & Herren"
+          ],
+          [
+            "Gäste",
+            "Ja"
+          ],
+          [
+            "Offenes / Geschlossenes Turnier",
+            "Offenes Turnier"
+          ],
+          [
+            "Altersklasse",
+            "Offen"
+          ],
+          [
+            "Meldeschluss Online",
+            "09.06.2027, 18:00 Uhr"
+          ],
+          [
+            "Meldeschluss Club",
+            "10.06.2027, 12:00 Uhr"
+          ]
+        ]
+      },
+      "expected": {
+        "refused": "not_a_tournament"
+      }
+    },
+    {
+      "name": "not_https",
+      "why": "Only over https.",
+      "input": {
+        "address": "http://www.golf.de/sport/turnierkalender/clubturniere.html#/490000000001",
+        "heading": "X",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 12.06.2027 um 09:30 Uhr"
+          ],
+          [
+            "Turnierort",
+            "Golfclub Beispielstadt e.V."
+          ],
+          [
+            "Turnierart",
+            "Einzel - Stableford; 18 Löcher"
+          ],
+          [
+            "Handicap-Relevant",
+            "Ja"
+          ],
+          [
+            "Starttee",
+            "1"
+          ],
+          [
+            "Startzeit",
+            "09:30 Uhr"
+          ],
+          [
+            "Teilnehmer maximal",
+            "120"
+          ],
+          [
+            "Geschlecht",
+            "Damen & Herren"
+          ],
+          [
+            "Gäste",
+            "Ja"
+          ],
+          [
+            "Offenes / Geschlossenes Turnier",
+            "Offenes Turnier"
+          ],
+          [
+            "Altersklasse",
+            "Offen"
+          ],
+          [
+            "Meldeschluss Online",
+            "09.06.2027, 18:00 Uhr"
+          ],
+          [
+            "Meldeschluss Club",
+            "10.06.2027, 12:00 Uhr"
+          ]
+        ]
+      },
+      "expected": {
+        "refused": "not_a_tournament"
+      }
+    },
+    {
+      "name": "another_section",
+      "why": "A page outside the tournament calendar.",
+      "input": {
+        "address": "https://www.golf.de/mein-bereich.html#/490000000001",
+        "heading": "X",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 12.06.2027 um 09:30 Uhr"
+          ],
+          [
+            "Turnierort",
+            "Golfclub Beispielstadt e.V."
+          ],
+          [
+            "Turnierart",
+            "Einzel - Stableford; 18 Löcher"
+          ],
+          [
+            "Handicap-Relevant",
+            "Ja"
+          ],
+          [
+            "Starttee",
+            "1"
+          ],
+          [
+            "Startzeit",
+            "09:30 Uhr"
+          ],
+          [
+            "Teilnehmer maximal",
+            "120"
+          ],
+          [
+            "Geschlecht",
+            "Damen & Herren"
+          ],
+          [
+            "Gäste",
+            "Ja"
+          ],
+          [
+            "Offenes / Geschlossenes Turnier",
+            "Offenes Turnier"
+          ],
+          [
+            "Altersklasse",
+            "Offen"
+          ],
+          [
+            "Meldeschluss Online",
+            "09.06.2027, 18:00 Uhr"
+          ],
+          [
+            "Meldeschluss Club",
+            "10.06.2027, 12:00 Uhr"
+          ]
+        ]
+      },
+      "expected": {
+        "refused": "not_a_tournament"
+      }
+    },
+    {
+      "name": "a_long_number",
+      "why": "golf.de's numbers have at most twelve digits.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/1234567890123",
+        "heading": "X",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 12.06.2027 um 09:30 Uhr"
+          ],
+          [
+            "Turnierort",
+            "Golfclub Beispielstadt e.V."
+          ],
+          [
+            "Turnierart",
+            "Einzel - Stableford; 18 Löcher"
+          ],
+          [
+            "Handicap-Relevant",
+            "Ja"
+          ],
+          [
+            "Starttee",
+            "1"
+          ],
+          [
+            "Startzeit",
+            "09:30 Uhr"
+          ],
+          [
+            "Teilnehmer maximal",
+            "120"
+          ],
+          [
+            "Geschlecht",
+            "Damen & Herren"
+          ],
+          [
+            "Gäste",
+            "Ja"
+          ],
+          [
+            "Offenes / Geschlossenes Turnier",
+            "Offenes Turnier"
+          ],
+          [
+            "Altersklasse",
+            "Offen"
+          ],
+          [
+            "Meldeschluss Online",
+            "09.06.2027, 18:00 Uhr"
+          ],
+          [
+            "Meldeschluss Club",
+            "10.06.2027, 12:00 Uhr"
+          ]
+        ]
+      },
+      "expected": {
+        "refused": "not_a_tournament"
+      }
+    },
+    {
+      "name": "no_heading",
+      "why": "No heading: golf.de changed its page; nothing is sent.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/7",
+        "heading": "  ",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 12.06.2027 um 09:30 Uhr"
+          ],
+          [
+            "Turnierort",
+            "Golfclub Beispielstadt e.V."
+          ],
+          [
+            "Turnierart",
+            "Einzel - Stableford; 18 Löcher"
+          ],
+          [
+            "Handicap-Relevant",
+            "Ja"
+          ],
+          [
+            "Starttee",
+            "1"
+          ],
+          [
+            "Startzeit",
+            "09:30 Uhr"
+          ],
+          [
+            "Teilnehmer maximal",
+            "120"
+          ],
+          [
+            "Geschlecht",
+            "Damen & Herren"
+          ],
+          [
+            "Gäste",
+            "Ja"
+          ],
+          [
+            "Offenes / Geschlossenes Turnier",
+            "Offenes Turnier"
+          ],
+          [
+            "Altersklasse",
+            "Offen"
+          ],
+          [
+            "Meldeschluss Online",
+            "09.06.2027, 18:00 Uhr"
+          ],
+          [
+            "Meldeschluss Club",
+            "10.06.2027, 12:00 Uhr"
+          ]
+        ]
+      },
+      "expected": {
+        "refused": "changed_page"
+      }
+    },
+    {
+      "name": "heading_too_long",
+      "why": "A heading longer than a tournament's name can be.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/7",
+        "heading": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 12.06.2027 um 09:30 Uhr"
+          ],
+          [
+            "Turnierort",
+            "Golfclub Beispielstadt e.V."
+          ],
+          [
+            "Turnierart",
+            "Einzel - Stableford; 18 Löcher"
+          ],
+          [
+            "Handicap-Relevant",
+            "Ja"
+          ],
+          [
+            "Starttee",
+            "1"
+          ],
+          [
+            "Startzeit",
+            "09:30 Uhr"
+          ],
+          [
+            "Teilnehmer maximal",
+            "120"
+          ],
+          [
+            "Geschlecht",
+            "Damen & Herren"
+          ],
+          [
+            "Gäste",
+            "Ja"
+          ],
+          [
+            "Offenes / Geschlossenes Turnier",
+            "Offenes Turnier"
+          ],
+          [
+            "Altersklasse",
+            "Offen"
+          ],
+          [
+            "Meldeschluss Online",
+            "09.06.2027, 18:00 Uhr"
+          ],
+          [
+            "Meldeschluss Club",
+            "10.06.2027, 12:00 Uhr"
+          ]
+        ]
+      },
+      "expected": {
+        "refused": "changed_page"
+      }
+    },
+    {
+      "name": "no_date_line",
+      "why": "Without its first day there is no tournament to take.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/7",
+        "heading": "Herbstpreis",
+        "lines": [
+          [
+            "Turnierort",
+            "Golfclub Beispielstadt e.V."
+          ],
+          [
+            "Turnierart",
+            "Einzel - Stableford; 18 Löcher"
+          ],
+          [
+            "Handicap-Relevant",
+            "Ja"
+          ],
+          [
+            "Starttee",
+            "1"
+          ],
+          [
+            "Startzeit",
+            "09:30 Uhr"
+          ],
+          [
+            "Teilnehmer maximal",
+            "120"
+          ],
+          [
+            "Geschlecht",
+            "Damen & Herren"
+          ],
+          [
+            "Gäste",
+            "Ja"
+          ],
+          [
+            "Offenes / Geschlossenes Turnier",
+            "Offenes Turnier"
+          ],
+          [
+            "Altersklasse",
+            "Offen"
+          ],
+          [
+            "Meldeschluss Online",
+            "09.06.2027, 18:00 Uhr"
+          ],
+          [
+            "Meldeschluss Club",
+            "10.06.2027, 12:00 Uhr"
+          ]
+        ]
+      },
+      "expected": {
+        "refused": "changed_page"
+      }
+    },
+    {
+      "name": "date_unreadable",
+      "why": "A day it can't read.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/7",
+        "heading": "Herbstpreis",
+        "lines": [
+          [
+            "Turnierdatum",
+            "im Herbst"
+          ],
+          [
+            "Turnierort",
+            "Golfclub Beispielstadt e.V."
+          ],
+          [
+            "Turnierart",
+            "Einzel - Stableford; 18 Löcher"
+          ],
+          [
+            "Handicap-Relevant",
+            "Ja"
+          ],
+          [
+            "Starttee",
+            "1"
+          ],
+          [
+            "Startzeit",
+            "09:30 Uhr"
+          ],
+          [
+            "Teilnehmer maximal",
+            "120"
+          ],
+          [
+            "Geschlecht",
+            "Damen & Herren"
+          ],
+          [
+            "Gäste",
+            "Ja"
+          ],
+          [
+            "Offenes / Geschlossenes Turnier",
+            "Offenes Turnier"
+          ],
+          [
+            "Altersklasse",
+            "Offen"
+          ],
+          [
+            "Meldeschluss Online",
+            "09.06.2027, 18:00 Uhr"
+          ],
+          [
+            "Meldeschluss Club",
+            "10.06.2027, 12:00 Uhr"
+          ]
+        ]
+      },
+      "expected": {
+        "refused": "changed_page"
+      }
+    },
+    {
+      "name": "date_not_a_day",
+      "why": "A day no calendar has.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/7",
+        "heading": "Herbstpreis",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Mi 31.02.2027"
+          ],
+          [
+            "Turnierort",
+            "Golfclub Beispielstadt e.V."
+          ],
+          [
+            "Turnierart",
+            "Einzel - Stableford; 18 Löcher"
+          ],
+          [
+            "Handicap-Relevant",
+            "Ja"
+          ],
+          [
+            "Starttee",
+            "1"
+          ],
+          [
+            "Startzeit",
+            "09:30 Uhr"
+          ],
+          [
+            "Teilnehmer maximal",
+            "120"
+          ],
+          [
+            "Geschlecht",
+            "Damen & Herren"
+          ],
+          [
+            "Gäste",
+            "Ja"
+          ],
+          [
+            "Offenes / Geschlossenes Turnier",
+            "Offenes Turnier"
+          ],
+          [
+            "Altersklasse",
+            "Offen"
+          ],
+          [
+            "Meldeschluss Online",
+            "09.06.2027, 18:00 Uhr"
+          ],
+          [
+            "Meldeschluss Club",
+            "10.06.2027, 12:00 Uhr"
+          ]
+        ]
+      },
+      "expected": {
+        "refused": "changed_page"
+      }
+    },
+    {
+      "name": "lines_moved_and_more",
+      "why": "Lines by their label, not their place; labels it doesn't know (a fee, a contact) are never read.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/8",
+        "heading": "Preis des Präsidenten",
+        "lines": [
+          [
+            "Ansprechpartner",
+            "Max Mustermann, 040 123456"
+          ],
+          [
+            "Gäste",
+            "Ja"
+          ],
+          [
+            "Nenngeld",
+            "45 €"
+          ],
+          [
+            "Turnierart",
+            "Texas Scramble"
+          ],
+          [
+            "Turnierdatum",
+            "Sa 07.08.2027 um 13:00 Uhr"
+          ],
+          [
+            "Startliste",
+            "Erika Mustermann, Max Mustermann"
+          ],
+          [
+            "Turnierort",
+            "Golfclub Beispielstadt e.V."
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "8",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/8",
+          "name": "Preis des Präsidenten",
+          "date": "2027-08-07",
+          "time": "13:00",
+          "venue": "Golfclub Beispielstadt e.V.",
+          "play_form": "Texas Scramble",
+          "guests": true
+        }
+      }
+    },
+    {
+      "name": "labels_written_otherwise",
+      "why": "A colon after a label, double and non-breaking spaces, another case.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/9",
+        "heading": "  Herbst Vierer  ",
+        "lines": [
+          [
+            "Turnierdatum:",
+            "Sa 11.09.2027  um 10:00 Uhr"
+          ],
+          [
+            "teilnehmer  maximal",
+            " 60 "
+          ],
+          [
+            "HANDICAP-RELEVANT",
+            "ja"
+          ],
+          [
+            "Gäste:",
+            "NEIN"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "9",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/9",
+          "name": "Herbst Vierer",
+          "date": "2027-09-11",
+          "time": "10:00",
+          "hcp_relevant": true,
+          "max_players": 60,
+          "guests": false
+        }
+      }
+    },
+    {
+      "name": "values_that_dont_read",
+      "why": "A value that isn't one of its field is left out, the rest stays.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/10",
+        "heading": "Herbstpreis",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 18.09.2027"
+          ],
+          [
+            "Startzeit",
+            "nach Absprache"
+          ],
+          [
+            "Turnierart",
+            "Stableford; 27 Löcher"
+          ],
+          [
+            "Handicap-Relevant",
+            "vielleicht"
+          ],
+          [
+            "Teilnehmer maximal",
+            "unbegrenzt"
+          ],
+          [
+            "Gäste",
+            "auf Anfrage"
+          ],
+          [
+            "Offenes / Geschlossenes Turnier",
+            "weiß nicht"
+          ],
+          [
+            "Meldeschluss Online",
+            "bald"
+          ],
+          [
+            "Meldeschluss Club",
+            "31.09.2027"
+          ],
+          [
+            "Starttee",
+            "Gelb, Rot, Blau, Orange, Weiß, Schwarz und alle anderen Farben"
+          ],
+          [
+            "Altersklasse",
+            "-"
+          ],
+          [
+            "Geschlecht",
+            "–"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "10",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/10",
+          "name": "Herbstpreis",
+          "date": "2027-09-18",
+          "play_form": "Stableford"
+        }
+      }
+    },
+    {
+      "name": "numbers_out_of_range",
+      "why": "Nobody plays with none or more than 9999; 25:00 is no time.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/11",
+        "heading": "Herbstpreis",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 18.09.2027 um 25:00 Uhr"
+          ],
+          [
+            "Teilnehmer maximal",
+            "0"
+          ],
+          [
+            "Startzeit",
+            "24:30 Uhr"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "11",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/11",
+          "name": "Herbstpreis",
+          "date": "2027-09-18"
+        }
+      }
+    },
+    {
+      "name": "too_many_players",
+      "why": "More than 9999 isn't a field's size.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/12",
+        "heading": "Herbstpreis",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 18.09.2027"
+          ],
+          [
+            "Teilnehmer maximal",
+            "10000"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "12",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/12",
+          "name": "Herbstpreis",
+          "date": "2027-09-18"
+        }
+      }
+    },
+    {
+      "name": "start_time_first",
+      "why": "Startzeit before the time the day's line names.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/13",
+        "heading": "Herbstpreis",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 18.09.2027 um 08:00 Uhr"
+          ],
+          [
+            "Startzeit",
+            "9:05 Uhr"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "13",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/13",
+          "name": "Herbstpreis",
+          "date": "2027-09-18",
+          "time": "09:05"
+        }
+      }
+    },
+    {
+      "name": "first_line_counts",
+      "why": "A label twice: the first counts.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/14",
+        "heading": "Herbstpreis",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 18.09.2027"
+          ],
+          [
+            "Turnierort",
+            "Platz A"
+          ],
+          [
+            "Turnierort",
+            "Platz B"
+          ],
+          [
+            "Turnierdatum",
+            "So 19.09.2027"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "14",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/14",
+          "name": "Herbstpreis",
+          "date": "2027-09-18",
+          "venue": "Platz A"
+        }
+      }
+    },
+    {
+      "name": "holes_alone",
+      "why": "Turnierart that names only the holes.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/15",
+        "heading": "Herbstpreis",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 18.09.2027"
+          ],
+          [
+            "Turnierart",
+            "18 Löcher"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "15",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/15",
+          "name": "Herbstpreis",
+          "date": "2027-09-18",
+          "holes": 18
+        }
+      }
+    },
+    {
+      "name": "holes_first",
+      "why": "The holes before the form of play.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/16",
+        "heading": "Herbstpreis",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 18.09.2027"
+          ],
+          [
+            "Turnierart",
+            "9 Loch - Stableford"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "16",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/16",
+          "name": "Herbstpreis",
+          "date": "2027-09-18",
+          "play_form": "Stableford",
+          "holes": 9
+        }
+      }
+    },
+    {
+      "name": "deadline_without_time",
+      "why": "A deadline without its time is its day.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/17",
+        "heading": "Herbstpreis",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 18.09.2027"
+          ],
+          [
+            "Meldeschluss Online",
+            "15.09.2027"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "17",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/17",
+          "name": "Herbstpreis",
+          "date": "2027-09-18",
+          "entry_close_online": "2027-09-15"
+        }
+      }
+    },
+    {
+      "name": "lines_that_arent",
+      "why": "What isn't a pair of label and value is passed over.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/18",
+        "heading": "Herbstpreis",
+        "lines": [
+          [
+            "Turnierdatum"
+          ],
+          5,
+          [
+            "Turnierort",
+            7
+          ],
+          null,
+          [
+            "Turnierdatum",
+            "Sa 18.09.2027"
+          ],
+          [
+            "Turnierort",
+            "Golfclub Beispielstadt e.V.",
+            "zu viel"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "18",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/18",
+          "name": "Herbstpreis",
+          "date": "2027-09-18"
+        }
+      }
+    },
+    {
+      "name": "long_texts",
+      "why": "A text longer than its field is left out, not cut.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/19",
+        "heading": "Herbstpreis",
+        "lines": [
+          [
+            "Turnierdatum",
+            "Sa 18.09.2027"
+          ],
+          [
+            "Turnierort",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
+          ],
+          [
+            "Turnierart",
+            "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+          ],
+          [
+            "Geschlecht",
+            "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
+          ]
+        ]
+      },
+      "expected": {
+        "event": {
+          "id": "19",
+          "url": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/19",
+          "name": "Herbstpreis",
+          "date": "2027-09-18",
+          "gender": "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
+        }
+      }
+    },
+    {
+      "name": "no_lines",
+      "why": "No lines at all: golf.de changed its page.",
+      "input": {
+        "address": "https://www.golf.de/sport/turnierkalender/clubturniere.html#/20",
+        "heading": "Herbstpreis",
+        "lines": "lines"
+      },
+      "expected": {
+        "refused": "changed_page"
+      }
+    },
+    {
+      "name": "not_a_page",
+      "why": "Not a page at all.",
+      "input": "page",
+      "expected": {
+        "refused": "not_a_tournament"
+      }
+    }
+  ]
+}

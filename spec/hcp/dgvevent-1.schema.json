@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://golf-launch-monitor-sync.github.io/schemas/dgvevent-1.schema.json",
+  "title": "One tournament from golf.de's tournament calendar, version 1 (dgvevent/1)",
+  "description": "The one tournament whose page the player has open on golf.de, as its lines show it, sent on the player's tap to their own calendar in a target (spec/hcp.md, *Taking one tournament*). One tournament, never a list. No person: the format has no field for one (no start list, no registration, no fee). Days as YYYY-MM-DD and times as HH:MM, both local to the tournament as the page shows them. Unknown values are left out, never null. SPDX-License-Identifier: MIT. Copyright (c) 2026 Reginald Stadlbauer.",
+  "type": "object",
+  "required": ["format", "provider", "event"],
+  "additionalProperties": false,
+  "properties": {
+    "format": { "const": "dgvevent/1" },
+    "provider": { "const": "golfde", "description": "Where the page was read." },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "version": { "type": "string", "minLength": 1, "maxLength": 50 }
+      }
+    },
+    "event": {
+      "type": "object",
+      "description": "The page's lines under *Turnierinformationen* (*Tournament Information*), by their label, and its heading.",
+      "required": ["id", "url", "name", "date"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9]{1,12}$",
+          "description": "golf.de's number of the tournament: the one in its page's address after '#/'."
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://www\\.golf\\.de/sport/turnierkalender/[A-Za-z0-9_-]{1,60}\\.html#/[0-9]{1,12}$",
+          "description": "The tournament's page, without the search the player came from (its query would say where they searched)."
+        },
+        "name": { "type": "string", "$ref": "#/$defs/text", "maxLength": 200, "description": "The page's heading." },
+        "date": { "$ref": "#/$defs/day", "description": "*Turnierdatum*: the first day." },
+        "time": { "$ref": "#/$defs/hhmm", "description": "*Startzeit*, else the time *Turnierdatum* names." },
+        "venue": { "type": "string", "$ref": "#/$defs/text", "maxLength": 200, "description": "*Turnierort*, as written." },
+        "play_form": {
+          "type": "string", "$ref": "#/$defs/text",
+          "maxLength": 100,
+          "description": "*Turnierart* as written, without its number of holes (e.g. 'Chapman-Vierer - Stableford')."
+        },
+        "holes": { "enum": [9, 18], "description": "The number of holes *Turnierart* names." },
+        "hcp_relevant": { "type": "boolean", "description": "*Handicap-Relevant*." },
+        "tee": { "type": "string", "$ref": "#/$defs/text", "maxLength": 60, "description": "*Starttee*, as written (the pages seen name the starting hole)." },
+        "max_players": { "type": "integer", "minimum": 1, "maximum": 9999, "description": "*Teilnehmer maximal*." },
+        "gender": { "type": "string", "$ref": "#/$defs/text", "maxLength": 60, "description": "*Geschlecht*, as written." },
+        "guests": { "type": "boolean", "description": "*Gäste*: whether guests may play." },
+        "open": { "type": "boolean", "description": "*Offenes / Geschlossenes Turnier*: true for an open one." },
+        "age_class": { "type": "string", "$ref": "#/$defs/text", "maxLength": 60, "description": "*Altersklasse*, as written." },
+        "entry_close_online": { "$ref": "#/$defs/deadline", "description": "*Meldeschluss Online*." },
+        "entry_close_club": { "$ref": "#/$defs/deadline", "description": "*Meldeschluss Club*." }
+      }
+    }
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "pattern": "^\\S(.*\\S)?$" },
+    "day": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$" },
+    "hhmm": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+    "deadline": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])(T([01][0-9]|2[0-3]):[0-5][0-9])?$",
+      "description": "A day, with its time where the page names one (local, no zone)."
+    }
+  }
+}

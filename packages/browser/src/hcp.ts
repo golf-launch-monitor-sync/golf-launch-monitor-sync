@@ -28,6 +28,10 @@
  * the same only while it is open, in a window the player doesn't see, keeping a run of the day for the player's tap
  * (`autoDue` with `spare`); the app going to the back interrupts its run without the hold (`interruptFetchAll`).
  *
+ * One tournament (spec 1.19.0, *Taking one tournament*): `takeEvent` sends the one tournament whose page the player has
+ * open, on their tap, to the target they picked - read again strictly first (it may come from a page script). It needs
+ * no golf.de account and no yes to one: the page is public and names no one.
+ *
  * Every method is serialised, and nothing throws at the caller for what can happen (a target down, a token
  * revoked): that is a state to show.
  */
@@ -50,6 +54,8 @@ import {
 } from '@glmsync/core';
 import {
   batchOf,
+  eventBody,
+  readEvent,
   cancelRun,
   CLICKS,
   nextStep,
@@ -127,6 +133,29 @@ export interface HcpEntry {
   /** Results this target took as new or with more, all sends together (the wizard's "12 results sent"). */
   total?: number;
 }
+
+/** What taking one tournament came to, for the player (spec 1.19.0): its words are `eventText`'s. */
+export type TakeOutcome =
+  | { ok: true; name: string; result: 'new' | 'known' | 'updated'; kept: string[] }
+  | {
+      ok: false;
+      name?: string;
+      error:
+        | 'no_pairing'
+        | 'changed_page'
+        | 'not_offered'
+        | 'account_inactive'
+        | 'ended'
+        | 'rate_limited'
+        | 'calendar_full'
+        | 'too_old'
+        | 'too_far_ahead'
+        | 'refused'
+        | 'unreachable'
+        | 'failed';
+      /** With `rate_limited`: how long the target asked to wait. */
+      retry_after_s?: number;
+    };
 
 export interface HcpView {
   pairings: (HcpEntry & { host: string })[];
@@ -883,6 +912,52 @@ export class HcpClient {
       else if (code === 'other_account') await this.update(id, (x) => ({ ...x, other_account: true, last: { at, status: 'other_account' } }));
       else await this.update(id, (x) => ({ ...x, last: { at, status: 'failed', error: code } }));
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // One tournament (spec 1.19.0)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Sends the one tournament the player took on golf.de's page to the target `id` (POST /tournament). `event` is read
+   * again strictly: one that isn't dgvevent/1's is `changed_page` and goes nowhere. A token the target no longer knows,
+   * or a connection the player ended there, ends the pairing as for the record.
+   */
+  takeEvent(id: string, event: unknown): Promise<TakeOutcome> {
+    return this.serial(async () => {
+      const p = (await this.pairings()).find((x) => hcpPairingId(x.base) === id);
+      const name = (await this.entries()).find((e) => e.id === id)?.name ?? p?.target.name;
+      if (!p) return { ok: false, error: 'no_pairing', ...(name ? { name } : {}) } as const;
+      const ev = readEvent(event);
+      if (!ev) return { ok: false, name: name ?? p.target.name, error: 'changed_page' } as const;
+      const who = name ?? p.target.name;
+      try {
+        const got = await new HcpTarget(p, this.targetOpts()).tournament(eventBody(ev, { name: this.opts.name, version: this.opts.version }));
+        return { ok: true, name: who, result: got.result, kept: got.kept } as const;
+      } catch (e) {
+        const code = e instanceof TargetError ? e.code : 'error';
+        if (code === 'token_invalid') await this.forget(id, 'revoked');
+        if (code === 'disconnected') await this.forget(id, 'disconnected');
+        const map: Partial<Record<string, Extract<TakeOutcome, { ok: false }>['error']>> = {
+          token_invalid: 'ended',
+          disconnected: 'ended',
+          not_offered: 'not_offered',
+          account_inactive: 'account_inactive',
+          rate_limited: 'rate_limited',
+          calendar_full: 'calendar_full',
+          too_old: 'too_old',
+          too_far_ahead: 'too_far_ahead',
+          invalid_event: 'refused',
+          too_large: 'refused',
+          wrong_token: 'refused',
+          bad_request: 'refused',
+          unreachable: 'unreachable',
+          unavailable: 'unreachable',
+        };
+        const wait = e instanceof TargetError && e.code === 'rate_limited' && e.retryAfterS ? { retry_after_s: e.retryAfterS } : {};
+        return { ok: false, name: who, error: map[code] ?? 'failed', ...wait } as const;
+      }
+    });
   }
 
   // -------------------------------------------------------------------------

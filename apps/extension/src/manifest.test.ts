@@ -22,8 +22,11 @@ describe('the manifest', () => {
     });
 
     it(`${browser}: reads along on golf.de only on the player's own pages and a result list, never golf.de's API`, () => {
-      const golf = (m.content_scripts as { matches: string[]; js: string[]; world?: string }[]).filter((c) => c.matches.some((x) => x.includes('golf.de')));
-      expect(golf.map((c) => c.js[0])).toEqual(['golfde-main.js', 'golfde-relay.js']);
+      const all = (m.content_scripts as { matches: string[]; js: string[]; world?: string; run_at: string }[]).filter((c) => c.matches.some((x) => x.includes('golf.de')));
+      expect(all.map((c) => c.js[0])).toEqual(['golfde-main.js', 'golfde-relay.js', 'golfde-event.js']);
+      // The tournament calendar (spec 1.19.0): only its pages, in the extension's own world, once the page is there.
+      expect(all[2]).toEqual({ matches: ['https://www.golf.de/sport/turnierkalender/*'], js: ['golfde-event.js'], run_at: 'document_idle', all_frames: false });
+      const golf = all.slice(0, 2);
       for (const c of golf) {
         expect(c.matches).toEqual(['https://www.golf.de/mein-bereich.html*', 'https://www.golf.de/mein-bereich/*', 'https://www.golf.de/sport/turnierkalender/clubturniere.html*']);
       }

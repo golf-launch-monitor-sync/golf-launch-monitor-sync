@@ -3,9 +3,10 @@
 import { describe, expect, it } from 'vitest';
 import { accountRefOf, MemoryStorage, type HcpResult } from '@glmsync/core';
 import { FakeHcpTarget, VirtualClock } from '@glmsync/core/testing';
-import { reduce, type Seen } from '@glmsync/provider-golfde';
-import { AUTH_FAILED, entry, historyAnswer, memberAnswer, PERSONAL, resultsAnswer, scoringAnswer } from '@glmsync/provider-golfde/testing';
+import { readEventPage, reduce, type Seen } from '@glmsync/provider-golfde';
+import { AUTH_FAILED, entry, historyAnswer, memberAnswer, PERSONAL, resultsAnswer, scoringAnswer, TOURNAMENT_LINES, TOURNAMENT_NAME } from '@glmsync/provider-golfde/testing';
 import hcpSchema from '../../../spec/hcp/dgvhcp-1.schema.json' with { type: 'json' };
+import eventSchema from '../../../spec/hcp/dgvevent-1.schema.json' with { type: 'json' };
 import { makeAjv } from '../../spec/src/check.ts';
 import { HcpClient, hcpPairingId } from './hcp.ts';
 
@@ -675,5 +676,68 @@ describe('Fetch all by itself, when the record is due (spec 1.16.0; the companio
     await w.client.runStep('tab:1');
     expect(await w.client.autoDue()).toBe(false);
     expect((await w.client.startFetchAll('tab:9', { auto: true })).run).not.toHaveProperty('auto');
+  });
+});
+
+describe('one tournament from golf.de’s page (spec 1.19.0)', () => {
+  const page = readEventPage({
+    address: 'https://www.golf.de/sport/turnierkalender/clubturniere.html#/490000000001?radius=50',
+    heading: TOURNAMENT_NAME,
+    lines: TOURNAMENT_LINES,
+  }) as unknown as { event: Record<string, unknown> };
+  const event = page.event;
+  const checkEvent = makeAjv().compile(eventSchema);
+
+  it('goes to the target picked, as dgvevent/1, with no golf.de account and no yes needed', async () => {
+    const w = await paired();
+    const id = hcpPairingId(TARGET);
+    expect(await w.client.takeEvent(id, event)).toEqual({ ok: true, name: 'Example App', result: 'new', kept: [] });
+    expect(await w.client.takeEvent(id, event)).toEqual({ ok: true, name: 'Example App', result: 'known', kept: [] });
+    expect(await w.client.takeEvent(id, { ...event, time: '10:00' })).toMatchObject({ ok: true, result: 'updated' });
+    const sent = w.target.tournamentBodies[0];
+    expect(checkEvent(sent), JSON.stringify(checkEvent.errors)).toBe(true);
+    expect(sent).toMatchObject({ format: 'dgvevent/1', provider: 'golfde', generator: { name: 'Golf Stats Sync for Chrome and Edge', version: '0.9.0' } });
+    // Nothing else went there: no plan, no import - and the search the player came from stays out.
+    expect(w.target.received.map((r) => r.url.replace(TARGET, ''))).toEqual(['/pair', '/tournament', '/tournament', '/tournament']);
+    expect(JSON.stringify(sent)).not.toContain('radius');
+  });
+
+  it('sends nothing that isn’t a tournament as the schema has it', async () => {
+    const w = await paired();
+    const id = hcpPairingId(TARGET);
+    expect(await w.client.takeEvent(id, { ...event, start_list: [PERSONAL.other] })).toEqual({ ok: false, name: 'Example App', error: 'changed_page' });
+    expect(await w.client.takeEvent(id, null)).toMatchObject({ ok: false, error: 'changed_page' });
+    expect(await w.client.takeEvent('nobody', event)).toEqual({ ok: false, error: 'no_pairing' });
+    expect(w.target.tournamentBodies).toEqual([]);
+  });
+
+  it('says each refusal in its own words, and ends the pairing only as the record would', async () => {
+    const cases: [number, string, string][] = [
+      [403, 'account_inactive', 'account_inactive'],
+      [409, 'calendar_full', 'calendar_full'],
+      [422, 'too_old', 'too_old'],
+      [422, 'too_far_ahead', 'too_far_ahead'],
+      [422, 'invalid_event', 'refused'],
+      [403, 'wrong_token', 'refused'],
+      [503, 'unavailable', 'unreachable'],
+    ];
+    for (const [status, code, error] of cases) {
+      const w = await paired(world({ fail: { '/tournament': { status, body: { error: { code, message: 'no' } } } } }));
+      expect([code, await w.client.takeEvent(hcpPairingId(TARGET), event)]).toEqual([code, { ok: false, name: 'Example App', error }]);
+      expect((await w.client.view()).pairings).toHaveLength(1);
+    }
+    const slow = await paired(world({ fail: { '/tournament': { status: 429, body: { error: { code: 'rate_limited' } } } } }));
+    expect(await slow.client.takeEvent(hcpPairingId(TARGET), event)).toMatchObject({ ok: false, error: 'rate_limited' });
+    const none = await paired(world({ noTournaments: true }));
+    expect(await none.client.takeEvent(hcpPairingId(TARGET), event)).toEqual({ ok: false, name: 'Example App', error: 'not_offered' });
+    // A connection the player ended there, or a token it no longer knows: the pairing ends, as for the record.
+    const ended = await paired();
+    ended.target.disconnected = true;
+    expect(await ended.client.takeEvent(hcpPairingId(TARGET), event)).toEqual({ ok: false, name: 'Example App', error: 'ended' });
+    expect((await ended.client.view()).pairings).toEqual([]);
+    const revoked = await paired();
+    revoked.target.tokens.clear();
+    expect(await revoked.client.takeEvent(hcpPairingId(TARGET), event)).toMatchObject({ ok: false, error: 'ended' });
+    expect((await revoked.client.view()).ended).toMatchObject([{ name: 'Example App', why: 'revoked' }]);
   });
 });

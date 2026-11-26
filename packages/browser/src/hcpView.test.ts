@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import { describe, expect, it } from 'vitest';
 import type { HcpView } from './hcp.ts';
-import { hcpLastText, lineOf } from './hcpView.ts';
+import { eventText, hcpLastText, lineOf } from './hcpView.ts';
 import { translator } from './i18n.ts';
 
 const t = translator('en');
@@ -63,5 +63,27 @@ describe('what a target last answered', () => {
     expect(hcpLastText({ ...pairing, last: { at: '2026-11-21T19:29:00Z', status: 'sent', brought: 0 } }, t, 'en', now)).toContain('nothing new');
     expect(hcpLastText({ ...pairing, last: { at: 'x', status: 'failed', error: 'unreachable' } }, t, 'en', now)).toContain('–');
     expect(hcpLastText({ ...pairing, last: { at: '2026-11-21T19:29:00Z', status: 'other_account' } }, t, 'en', now)).toBeNull();
+  });
+});
+
+describe('what taking one tournament came to, in words (spec 1.19.0)', () => {
+  const de = translator('de');
+  const en = translator('en');
+  it('says where it went, and that what the player changed there stays', () => {
+    expect(eventText({ ok: true, name: 'Example App', result: 'new', kept: [] }, de)).toEqual({ text: 'In deinen Kalender in Example App übernommen.', warn: false });
+    expect(eventText({ ok: true, name: 'Example App', result: 'updated', kept: ['tee_time'] }, en)).toEqual({ text: 'Updated in your calendar in Example App. What you changed there stays.', warn: false });
+  });
+
+  it('puts every refusal in words the player can act on, never a code', () => {
+    const errors = ['no_pairing', 'changed_page', 'not_offered', 'account_inactive', 'ended', 'rate_limited', 'calendar_full', 'too_old', 'too_far_ahead', 'refused', 'unreachable', 'failed'] as const;
+    for (const error of errors) {
+      for (const t of [de, en]) {
+        const said = eventText({ ok: false, name: 'Example App', error, retry_after_s: 1800 }, t);
+        expect(said.warn).toBe(true);
+        expect(said.text).not.toMatch(/event\.|\{|_/);
+      }
+    }
+    expect(eventText({ ok: false, name: 'Example App', error: 'rate_limited', retry_after_s: 1800 }, de).text).toBe('Genug Turniere für den Moment – in 30 Min. wieder.');
+    expect(eventText({ ok: false, error: 'changed_page' }, de).text).toBe('Diese Seite kann ich nicht lesen – golf.de hat sie wohl geändert. Nichts gesendet.');
   });
 });

@@ -116,6 +116,15 @@ What it does, and doesn't:
 - **Whose record**: the account *Mein Bereich* names (its stable number, sent only as `account_ref`); another account's
   record drops what was kept of the one before, and goes to no app that has another.
 - **Not read**: a scorecard's holes (golf.de shows them only as a picture).
+- **One tournament into the app** (spec 1.19.0, extension 0.23.0, [hcp.md](../../spec/hcp.md), *Taking one
+  tournament*): on a tournament's page of golf.de's calendar (a club's, a regional federation's, the DGV's), by its
+  heading, *Add to …* for each app connected for golf.de. One tap reads that page's lines under *Turnierinformationen*
+  by their label (`golfde-event.ts`, the rule in `@glmsync/provider-golfde/event`) and sends that one tournament to that
+  app (`POST /tournament`, read again by the background); beside the button what came of it - *Added to your calendar
+  in …*, *Already in …*, or the refusal in words. Nothing without the tap, never on the list or a result list, never in
+  the tab a run by itself opened; no golf.de account needed (the page is public), the page's search after `?` stays
+  out of the address sent, and the registration box beside the lines is never read. A page whose lines can't be found
+  (golf.de changed it) still gets the button after a few seconds; its tap says so and sends nothing.
 
 ## A pro's world ranking page
 

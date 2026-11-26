@@ -12,7 +12,7 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FetchLike } from '../../packages/core/src/http.ts';
 import { FakeHcpTarget, FakeProTarget, FakeTarget, type PlanAsked } from '../../packages/core/src/testing/index.ts';
-import { entry, historyAnswer, memberAnswer, resultsAnswer, scoringAnswer } from '../../packages/provider-golfde/src/testing.ts';
+import { entry, historyAnswer, memberAnswer, resultsAnswer, scoringAnswer, tournamentHtml } from '../../packages/provider-golfde/src/testing.ts';
 import { GRAPHQL_URL } from '../../packages/provider-trackman/src/client.ts';
 import { FakeTrackman, fakeToken } from '../../packages/provider-trackman/src/testing.ts';
 
@@ -416,6 +416,12 @@ export class GolfDe {
    * once (the reading-along checks).
    */
   built = false;
+  /**
+   * The tournament calendar's pages show one tournament (spec 1.19.0, *Taking one tournament*): golf.de's page of a
+   * tournament as made up in provider-golfde/testing (its lines a moment after the page), whatever its `#/…` says - a
+   * client goes by the address. `title` other than golf.de's: a page golf.de changed. Off: the result list's page.
+   */
+  tournament: { title?: string } | null = null;
   readonly apiSaw: { url: string; op: string | null; page: boolean }[] = [];
 
   /** golf.de's API, as the page's own requests reach it. */
@@ -439,6 +445,10 @@ export class GolfDe {
 
   /** A made-up page of *Mein Bereich* or the result list: it asks golf.de's API itself, as golf.de's page does. */
   page(path: string): string {
+    if (this.tournament && path.startsWith('/sport/turnierkalender/')) {
+      const html = tournamentHtml();
+      return this.tournament.title ? html.replaceAll('Turnierinformationen', this.tournament.title) : html;
+    }
     const header = JSON.stringify({ 'content-type': 'application/json', 'x-client-id': 'made-up-page-client-id', [GOLFDE_PAGE_HEADER]: '1' });
     if (this.built) return this.builtPage(path, header);
     const gql = (op: string) => `fetch('https://api-v2.golf.de/graphql', { method: 'POST', credentials: 'include', headers: ${header}, body: JSON.stringify({ operationName: '${op}', query: 'query ${op} { me { id } }', variables: {} }) })`;

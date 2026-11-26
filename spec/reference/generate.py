@@ -22,9 +22,11 @@ sys.path.insert(0, str(HERE))
 
 import account  # noqa: E402
 import bridge  # noqa: E402
+import cases_event  # noqa: E402
 import cases_trackman  # noqa: E402
 import clubs  # noqa: E402
 import deeplinks  # noqa: E402
+import event  # noqa: E402
 import guard  # noqa: E402
 import hcp  # noqa: E402
 import plan  # noqa: E402
@@ -915,6 +917,22 @@ def wake_vectors() -> dict[str, Any]:
                      "address_max": wake.ADDRESS_MAX})
 
 
+# One tournament from golf.de's page (spec/hcp.md, *Taking one tournament*, 1.19.0)
+def dgvevent_page_vectors() -> dict[str, Any]:
+    cases = [{**c, "expected": event.read_page(copy.deepcopy(c["input"]))} for c in cases_event.pages()]
+    return doc("A golf.de tournament page as a client sees it -> dgvevent/1's event (spec/reference/event.py). input: "
+               "{address, heading, lines: [[label, value], ...]} (the lines under Turnierinformationen in the page's "
+               "order); expected: {event} or {refused: not_a_tournament | changed_page}. Compare as JSON values.",
+               cases, labels=event.LABELS)
+
+
+def dgvevent_examples() -> dict[str, Any]:
+    full = event.read_page(cases_event.pages()[0]["input"])["event"]
+    return doc("dgvevent/1 bodies that must (valid: true) or must not validate against spec/hcp/dgvevent-1.schema.json, "
+               "and what a target does reading each (target: refused, or the fields it left out as dropped).",
+               cases_event.examples(full))
+
+
 FILES = {
     "trackman-olmd.json": trackman_vectors,
     "clubs.json": club_vectors,
@@ -929,6 +947,8 @@ FILES = {
     "test-scenario.json": test_scenario_vectors,
     "hcp-plan.json": hcp_plan_vectors,
     "dgvhcp-examples.json": dgvhcp_examples,
+    "dgvevent-page.json": dgvevent_page_vectors,
+    "dgvevent-examples.json": dgvevent_examples,
     "prores-examples.json": prores_examples,
     "wake.json": wake_vectors,
 }

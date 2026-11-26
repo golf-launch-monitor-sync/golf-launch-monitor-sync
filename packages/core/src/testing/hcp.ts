@@ -19,6 +19,8 @@ export interface FakeHcpTargetOptions {
   fail?: Record<string, { status: number; body?: unknown }>;
   /** Where a pair link may jump back to (spec 1.18.0); none: the answer names no `return_prefixes`, as before. */
   returnPrefixes?: string[];
+  /** A target that takes no tournaments (spec 1.19.0): `/tournament` is a 404. */
+  noTournaments?: boolean;
 }
 
 /** Which result a target takes a result for: its day, holes, rating and slope, and score. */
@@ -42,6 +44,9 @@ export class FakeHcpTarget {
   notice: HcpBatch['notice'] | null = null;
   accountRef: string | null = null;
   disconnected = false;
+  /** One tournament (spec 1.19.0): what it keeps, by golf.de's number; what came in, as it came. */
+  readonly tournaments = new Map<string, Record<string, unknown>>();
+  readonly tournamentBodies: unknown[] = [];
   /** The record is due for a look by itself (`timer`, `open`): a day since the last read, as the test says. */
   due = false;
   salt = 'fake-hcp-salt-000001';
@@ -105,6 +110,20 @@ export class FakeHcpTarget {
       // A read moves the plan on (one that couldn't read, signed out, doesn't).
       if (b.notice?.code !== 'signed_out') this.due = false;
       return response(200, { read: b.results.length, new: fresh, changed, same, skipped: 0, failed: 0 });
+    }
+    if (path === '/tournament' && method === 'POST') {
+      // A target that takes no tournaments has no such path (spec 1.19.0).
+      if (this.opts.noTournaments) return response(404, { error: { code: 'bad_request', message: 'no such path' } });
+      if (this.disconnected) return response(409, { error: { code: 'disconnected', message: 'ended' } });
+      const b = JSON.parse(init.body ?? '{}') as { format?: unknown; event?: Record<string, unknown> };
+      this.tournamentBodies.push(b);
+      const ev = b.event;
+      if (b.format !== 'dgvevent/1' || !ev || typeof ev.id !== 'string') return response(422, { error: { code: 'invalid_event', message: 'no' } });
+      const had = this.tournaments.get(ev.id);
+      this.tournaments.set(ev.id, ev);
+      if (!had) return response(200, { result: 'new', changed: [], kept: [], dropped: [] });
+      const changed = Object.keys({ ...had, ...ev }).filter((k) => JSON.stringify(had[k]) !== JSON.stringify(ev[k]));
+      return response(200, { result: changed.length ? 'updated' : 'known', changed, kept: [], dropped: [] });
     }
     if (path === '/status' && method === 'GET') return response(200, { target: { name: this.name }, connected: !this.disconnected, ...(this.accountRef ? { account_ref: this.accountRef } : {}) });
     if (path === '/token' && method === 'DELETE') {

@@ -14,17 +14,22 @@
  * does the clicks - every page of the History Sheet, the Scoring Record, the result lists of the last two years -
  * with a pause between pages (lib/fetchAll.ts); *Stop*, *Done* or the app going to the back ends it, and what was read
  * goes out once at the end.
+ *
+ * On a tournament's page of golf.de's calendar (spec 1.19.0, *Taking one tournament*) the bar offers *Add to …* for
+ * each connected app: a tap asks the page for that one tournament's lines and sends it there (lib/eventTake.ts).
  */
 
 import type { HcpView } from '@glmsync/browser/hcp';
 import { translator } from '@glmsync/browser/i18n';
+import { eventText } from '@glmsync/browser/hcpView';
 import { hcpWhoLine } from '@glmsync/browser/wizard';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { lang, t } from '../i18n';
 import { Driver, WINDOW_OWNER } from '../lib/fetchAll';
-import { golfdeWindowRules, HISTORY_SHEET_URL, openInGolfdeWindow, readGolfdeMessage } from '../lib/golfdePage';
+import { EventTake, type EventState } from '../lib/eventTake';
+import { golfdeWindowRules, HISTORY_SHEET_URL, openInGolfdeWindow, readEventMessage, readGolfdeMessage } from '../lib/golfdePage';
 import { GOLFDE_PAGE_SCRIPT } from '../lib/golfdePageScript';
 import { hcpLine } from '../lib/hcpText';
 import type { Services } from '../lib/services';
@@ -41,6 +46,17 @@ export function GolfdeView({ svc, done, backTo }: { svc: Services; done: () => v
   const [key, setKey] = useState(0);
   const web = useRef<WebView<object>>(null);
   const driver = useRef<Driver | null>(null);
+  const [event, setEvent] = useState<EventState>({ offer: false, busy: null, said: null });
+  const names = useRef<Record<string, string>>({});
+  const taker = useRef<EventTake | null>(null);
+  if (!taker.current) {
+    taker.current = new EventTake({
+      hcp: svc.hcp,
+      inject: (script) => web.current?.injectJavaScript(script),
+      show: setEvent,
+      nameOf: (id) => names.current[id],
+    });
+  }
   if (!driver.current) {
     driver.current = new Driver({
       hcp: svc.hcp,
@@ -67,9 +83,15 @@ export function GolfdeView({ svc, done, backTo }: { svc: Services; done: () => v
       clearInterval(timer);
       // The window goes: a run of Fetch all ends with it, and what it read goes out.
       driver.current?.stop();
+      taker.current?.stop();
       void svc.hcp.cancelFetchAll().catch(() => undefined);
     };
   }, [svc, refresh]);
+
+  // A connection the app ended on a tap goes from the bar too.
+  useEffect(() => {
+    if (event.said && !event.said.ok && (event.said.error === 'ended' || event.said.error === 'no_pairing')) void refresh();
+  }, [event.said, refresh]);
 
   function fetchAll() {
     svc.hcp.startFetchAll(WINDOW_OWNER).then(
@@ -88,6 +110,11 @@ export function GolfdeView({ svc, done, backTo }: { svc: Services; done: () => v
   }
 
   function onMessage(e: WebViewMessageEvent) {
+    const about = readEventMessage(e.nativeEvent.url, e.nativeEvent.data);
+    if (about) {
+      void taker.current?.message(about);
+      return;
+    }
     const msg = readGolfdeMessage(e.nativeEvent.url, e.nativeEvent.data);
     if (!msg) return; // not the page script's, or not from golf.de: nothing to take
     svc.hcp.see(msg.page, msg.seen).then(
@@ -116,6 +143,8 @@ export function GolfdeView({ svc, done, backTo }: { svc: Services; done: () => v
 
   const line = view ? hcpLine(view, lang) : null;
   const tr = translator(lang);
+  names.current = Object.fromEntries((view?.pairings ?? []).map((p) => [p.id, p.name]));
+  const took = event.said ? eventText(event.said, tr) : null;
   // *Is this your golf.de account?*, in the app's own bar (golf.de's page can't reach it): nothing goes out before the yes.
   const answer = (yes: boolean) =>
     svc.hcp.confirm(yes).then(
@@ -135,6 +164,7 @@ export function GolfdeView({ svc, done, backTo }: { svc: Services; done: () => v
           {line && (line.warn ? <Body warn>{line.text}</Body> : <Small>{line.text}</Small>)}
           {line?.confirm && view && <Body>{hcpWhoLine(view.index, tr, lang)}</Body>}
           {note && <Body warn>{note}</Body>}
+          {took && <Body warn={took.warn}>{took.text}</Body>}
         </View>
         <View style={{ gap: 6 }}>
           {line?.confirm && <Button label={tr('confirm.yes')} onPress={() => void answer(true)} />}
@@ -142,6 +172,17 @@ export function GolfdeView({ svc, done, backTo }: { svc: Services; done: () => v
           {line?.fetchAll && <Button label={tr('line.fetchAll')} onPress={fetchAll} />}
           {line?.stop && <Button label={tr('line.stop')} kind="secondary" onPress={stopFetchAll} />}
           {line?.send && <Button label={t('hcp.send')} onPress={() => void svc.hcpSender.now()} disabled={!!view?.sending} />}
+          {event.offer &&
+            view?.pairings.map((p) => (
+              <Button
+                key={p.id}
+                label={tr('event.take', { name: p.name })}
+                busy={event.busy === p.id}
+                busyLabel={tr('event.taking', { name: p.name })}
+                disabled={event.busy !== null}
+                onPress={() => taker.current?.tap(p.id)}
+              />
+            ))}
           <Button label={backTo ? tr('wizard.back', { target: backTo }) : t('golfde.done')} kind="secondary" onPress={close} />
         </View>
       </View>

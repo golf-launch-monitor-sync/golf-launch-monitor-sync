@@ -64,6 +64,43 @@ export interface HcpResult {
   field?: number;
 }
 
+/** dgvevent/1's `event` (spec 1.19.0, spec/hcp/dgvevent-1.schema.json): one tournament of golf.de's calendar. */
+export interface DgvEvent {
+  id: string;
+  url: string;
+  name: string;
+  date: string;
+  time?: string;
+  venue?: string;
+  play_form?: string;
+  holes?: 9 | 18;
+  hcp_relevant?: boolean;
+  tee?: string;
+  max_players?: number;
+  gender?: string;
+  guests?: boolean;
+  open?: boolean;
+  age_class?: string;
+  entry_close_online?: string;
+  entry_close_club?: string;
+}
+
+/** One tournament the player took from golf.de's page they have open (spec/hcp.md, *Taking one tournament*). */
+export interface DgvEventBody {
+  format: 'dgvevent/1';
+  provider: 'golfde';
+  generator?: { name: string; version?: string };
+  event: DgvEvent;
+}
+
+/** What a target did with it: in the player's calendar now, there already, or there already and now as the page says. */
+export interface TournamentResult {
+  result: 'new' | 'known' | 'updated';
+  changed: string[];
+  kept: string[];
+  dropped: string[];
+}
+
 export interface HcpLimits {
   max_bytes: number;
   max_results: number;
@@ -190,6 +227,16 @@ export function readHcpImportResult(data: unknown): HcpImportResult | null {
   return out as HcpImportResult;
 }
 
+const names = (v: unknown): string[] =>
+  Array.isArray(v) ? v.slice(0, 20).filter((x): x is string => typeof x === 'string' && x.length >= 1 && x.length <= 40) : [];
+
+export function readTournamentResult(data: unknown): TournamentResult | null {
+  const r = obj(data);
+  const result = r?.result;
+  if (result !== 'new' && result !== 'known' && result !== 'updated') return null;
+  return { result, changed: names(r?.changed), kept: names(r?.kept), dropped: names(r?.dropped) };
+}
+
 export function readHcpStatus(data: unknown): HcpStatus | null {
   const s = obj(data);
   const name = str(obj(s?.target)?.name, 1, 100);
@@ -269,6 +316,19 @@ export class HcpTarget {
     if (x.status !== 200) throw errorOf(x);
     const result = readHcpImportResult(parseJson(x.body));
     if (!result) throw new TargetError('bad_answer', 'The target answered the import with something else.');
+    return result;
+  }
+
+  /**
+   * POST /tournament (spec 1.19.0): one tournament into the player's own calendar there. A target that takes none
+   * answers 404: `not_offered`.
+   */
+  async tournament(body: DgvEventBody): Promise<TournamentResult> {
+    const x = await this.send('POST', '/tournament', body);
+    if (x.status === 404 || x.status === 405) throw new TargetError('not_offered', 'This target takes no tournaments.', x.status);
+    if (x.status !== 200) throw errorOf(x);
+    const result = readTournamentResult(parseJson(x.body));
+    if (!result) throw new TargetError('bad_answer', 'The target answered the tournament with something else.');
     return result;
   }
 

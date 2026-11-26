@@ -10,6 +10,8 @@
  * - **golf.de**: the player's *Mein Bereich* and a tournament's result list, to read along with what golf.de's own page
  *   loaded there (spec/hcp.md). Not golf.de's API: the extension sends golf.de nothing of its own. A run by itself opens
  *   *Mein Bereich* in a tab of its own (`chrome.tabs.create`, `chrome.windows.getAll`): neither needs a permission.
+ *   And the tournament calendar's pages (spec 1.19.0): on a tournament's page the player may take that one tournament
+ *   into a connected app with a tap; the script reads the page's lines only then, and asks golf.de nothing.
  * - **The world rankings** (OWGR, Rolex Rankings): only a player's own page, to read what it shows when the player taps
  *   *Send* there (spec/prores.md). Nothing else of the sites, and no request to them.
  * - **A tour's site**: on the Pro Golf Tour the player's profile and his tournaments' pages, to read his ranking and his
@@ -26,7 +28,7 @@
  *   already open when the extension was installed.
  */
 
-import { PAGE_MATCHES as GOLFDE_MATCHES } from '@glmsync/provider-golfde';
+import { EVENT_PAGE_MATCHES, PAGE_MATCHES as GOLFDE_MATCHES } from '@glmsync/provider-golfde';
 import { PAGE_MATCHES as RANKING_MATCHES } from '@glmsync/provider-rankings';
 import { alps, europeantour, ocs, progolftour, SEASON_PAGE_MATCHES } from '@glmsync/provider-tours';
 
@@ -84,6 +86,8 @@ export function manifest(browser: Browser, version: string, testHosts: string[] 
       // golf.de: before the page's own scripts, so their first answers are seen; reads along, sends nothing.
       { matches: GOLFDE_MATCHES, js: ['golfde-main.js'], run_at: 'document_start', world: 'MAIN', all_frames: false },
       { matches: GOLFDE_MATCHES, js: ['golfde-relay.js'], run_at: 'document_start', all_frames: false },
+      // A tournament's page of golf.de's calendar: *Add to …* by its heading; reads the page's lines on that tap only.
+      { matches: EVENT_PAGE_MATCHES, js: ['golfde-event.js'], run_at: 'document_idle', all_frames: false },
       // A player's own page of a world ranking: the line with *Send*; it reads the page only on that tap.
       { matches: [...RANKING_MATCHES], js: ['rankings-content.js'], run_at: 'document_idle', all_frames: false },
       { matches: [...progolftour.PAGE_MATCHES], js: ['tours-content.js'], run_at: 'document_idle', all_frames: false },
@@ -111,8 +115,9 @@ export function manifest(browser: Browser, version: string, testHosts: string[] 
         // Content scripts in the page's world (128), the data consent below (140, an ESR).
         strict_min_version: '140.0',
         // What leaves the browser: launch monitor data the player fetches from their own account, the handicap
-        // record golf.de's page showed them, and their own world ranking page when they tap Send there - to the app
-        // they connect. Nothing goes to the project or anyone else.
+        // record golf.de's page showed them, a tournament's page of golf.de when they tap to take it, and their own
+        // world ranking page when they tap Send there - to the app they connect. Nothing goes to the project or anyone
+        // else.
         data_collection_permissions: { required: ['websiteContent'] },
       },
       // Firefox for Android knows the data consent from 142.

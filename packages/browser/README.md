@@ -21,6 +21,7 @@ pages named; gone when the browser closes).
 | `runStep(owner)` | The one step to take now (`@glmsync/provider-golfde`'s `nextStep`), only for the page that started the run. A run over is closed: the lists it opened are kept for a week, and what it read is sent - once, at the end (nothing goes by itself while it runs). |
 | `cancelFetchAll()`, `leaveFetchAll(owner)` | *Stop*, or the page went away (a run whose page hasn't asked for two minutes ends by itself too): closed as above. |
 | `view()` | What the popup and the line on golf.de show (`lineOf`, `hcpLastText` in `hcpView.ts`), with `fetch_all` and the run's progress. |
+| `takeEvent(id, event)` | One tournament from golf.de's page (spec 1.19.0, *Taking one tournament*), on the player's tap, to the target `id`: read again strictly (`readEvent`), then `POST /tournament`; no golf.de account and no yes to one needed. What came of it (`TakeOutcome`) in words: `eventText` in `hcpView.ts`. A revoked token or an ended connection forgets the pairing, as `send` does. |
 
 ## `ProClient`
 

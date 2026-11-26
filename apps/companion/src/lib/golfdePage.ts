@@ -11,7 +11,7 @@
  * page loaded when the player opened it.
  */
 
-import { HISTORY_SHEET_URL, PAGE_MATCHES, PAGE_ORIGIN, readSeen, type Seen } from '@glmsync/provider-golfde';
+import { EVENT_PAGE_MATCHES, HISTORY_SHEET_URL, PAGE_MATCHES, PAGE_ORIGIN, readSeen, type Seen } from '@glmsync/provider-golfde';
 
 export { HISTORY_SHEET_URL };
 
@@ -21,7 +21,9 @@ const PAGE_ID = /^[0-9a-f]{16,32}$/;
 const MAX_MESSAGE = 1_000_000;
 
 /** The extension's matches as patterns: the very same pages, nowhere else (a `*` stands for anything). */
-const READ_PAGES = PAGE_MATCHES.map((m) => new RegExp(`^${m.replace(/[.?+^$()[\]{}|\\/]/g, '\\$&').replace(/\*/g, '.*')}$`));
+const asPattern = (m: string) => new RegExp(`^${m.replace(/[.?+^$()[\]{}|\\/]/g, '\\$&').replace(/\*/g, '.*')}$`);
+const READ_PAGES = PAGE_MATCHES.map(asPattern);
+const CALENDAR_PAGES = EVENT_PAGE_MATCHES.map(asPattern);
 
 /** Whether the page script reads along on this page: golf.de's *Mein Bereich* and its club tournaments, as in the extension. */
 export function onReadPage(href: unknown): boolean {
@@ -126,4 +128,50 @@ export function readGolfdeMessage(pageUrl: unknown, data: unknown): { page: stri
   if (m.glmsync !== GOLFDE_MESSAGE || typeof m.page !== 'string' || !PAGE_ID.test(m.page)) return null;
   const seen = readSeen(m.seen);
   return seen ? { page: m.page, seen } : null;
+}
+
+// ---------------------------------------------------------------------------
+// One tournament from golf.de's page (spec/hcp.md, *Taking one tournament*, 1.19.0)
+// ---------------------------------------------------------------------------
+
+/** What the page script posts about a tournament's page: whether to offer taking it, and on the tap what it read. */
+export const EVENT_MESSAGE = 'golfde-event';
+/** The function the page script gives golf.de's page for the tap: it reads the page's lines now and posts them. */
+export const TAKE_FUNCTION = '__glmsyncGolfdeTake';
+
+/** Whether the page script looks for a tournament here: golf.de's tournament calendar, as in the extension. */
+export function onCalendarPage(href: unknown): boolean {
+  return typeof href === 'string' && href.length <= 4096 && CALENDAR_PAGES.some((re) => re.test(href));
+}
+
+/** The script the window injects on the player's tap: the page reads its tournament now and posts it. */
+export function takeScript(): string {
+  return `(function () { try { var f = window[${JSON.stringify(TAKE_FUNCTION)}]; if (typeof f === 'function') f(); } catch (e) {} })(); true;`;
+}
+
+export type EventMessage =
+  | { page: string; offer: boolean }
+  | { page: string; event: object }
+  | { page: string; refused: 'not_a_tournament' | 'changed_page' };
+
+/**
+ * A message about a tournament's page, read strictly: only from golf.de's own pages, only in the page script's shape.
+ * The tournament itself is read again by `HcpClient.takeEvent` before it goes anywhere. null: not one.
+ */
+export function readEventMessage(pageUrl: unknown, data: unknown): EventMessage | null {
+  if (!fromGolfde(pageUrl) || httpsHost(String(pageUrl)) !== new URL(PAGE_ORIGIN).hostname) return null;
+  if (typeof data !== 'string' || data.length > 32_768) return null;
+  let msg: unknown;
+  try {
+    msg = JSON.parse(data);
+  } catch {
+    return null;
+  }
+  if (!msg || typeof msg !== 'object') return null;
+  const m = msg as { glmsync?: unknown; page?: unknown; offer?: unknown; event?: unknown; refused?: unknown };
+  if (m.glmsync !== EVENT_MESSAGE || typeof m.page !== 'string' || !PAGE_ID.test(m.page)) return null;
+  if (typeof m.offer === 'boolean') return { page: m.page, offer: m.offer };
+  if (m.event && typeof m.event === 'object' && !Array.isArray(m.event)) return { page: m.page, event: m.event };
+  if (m.refused === 'not_a_tournament' || m.refused === 'changed_page') return { page: m.page, refused: m.refused };
+  return null;
 }

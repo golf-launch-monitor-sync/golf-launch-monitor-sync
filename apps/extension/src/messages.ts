@@ -7,7 +7,7 @@
  * on golf.de, everything else only from the extension's own pages.
  */
 
-import type { ClientStatus, HcpView, PairOutcome, ProView, TestOutcome } from '@glmsync/browser';
+import type { ClientStatus, HcpView, PairOutcome, ProView, TakeOutcome, TestOutcome } from '@glmsync/browser';
 import type { progolftourRun } from '@glmsync/provider-tours';
 import type { Seen, TourView } from '@glmsync/browser/tours';
 import type { EtView } from '@glmsync/browser/europeantour';
@@ -40,7 +40,13 @@ export type FromGolfde =
   /** The tab asks for the run's next step (only the tab that started it gets one). */
   | { type: 'golfde-step' }
   /** *Stop* on the line. */
-  | { type: 'golfde-stop' };
+  | { type: 'golfde-stop' }
+  /**
+   * From golfde-event.ts on a tournament's page (spec 1.19.0): which apps take a tournament (none in a run's tab), and
+   * the player's tap with the page's tournament, read again strictly by the background (`HcpClient.takeEvent`).
+   */
+  | { type: 'golfde-event-line' }
+  | { type: 'golfde-event-take'; target: string; event: object };
 /**
  * From rankings-content.ts on a player's own page of a world ranking (spec/prores.md): the line, *Send* with the page
  * as it showed it (read again strictly by the background), and *Answer*, which only brings the extension's own page to
@@ -168,7 +174,7 @@ export interface Pending {
 }
 
 export type Reply =
-  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; runStep?: run.RunStep; drive?: boolean; pro?: ProView; tour?: TourView; et?: EtView; ocs?: OcsView; alps?: AlpsView; fetch?: 'started' | 'limit' | 'nothing'; run?: RunView; runHere?: boolean; start?: StartOutcome; sent?: TourSite[] }
+  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; runStep?: run.RunStep; drive?: boolean; pro?: ProView; tour?: TourView; et?: EtView; ocs?: OcsView; alps?: AlpsView; fetch?: 'started' | 'limit' | 'nothing'; run?: RunView; runHere?: boolean; start?: StartOutcome; sent?: TourSite[]; targets?: { id: string; name: string }[]; take?: TakeOutcome }
   | { ok: false; error: string };
 
 /** What the pairing page's content script hands on to the page (no code, nothing secret). */

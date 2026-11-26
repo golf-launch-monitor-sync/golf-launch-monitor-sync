@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import { PAGE_MATCHES } from '@glmsync/provider-golfde';
 import { describe, expect, it } from 'vitest';
-import { fromGolfde, GOLFDE_MESSAGE, golfdeWindowRules, HISTORY_SHEET_URL, onReadPage, openInGolfdeWindow, pageId, readGolfdeMessage, unseenWindowRules } from './golfdePage.ts';
+import { fromGolfde, GOLFDE_MESSAGE, golfdeWindowRules, HISTORY_SHEET_URL, onCalendarPage, onReadPage, openInGolfdeWindow, pageId, readEventMessage, readGolfdeMessage, takeScript, TAKE_FUNCTION, unseenWindowRules } from './golfdePage.ts';
 
 const PAGE = 'a1b2c3d4e5f60718293a';
 const msg = (seen: unknown, over: Record<string, unknown> = {}) => JSON.stringify({ glmsync: GOLFDE_MESSAGE, page: PAGE, seen, ...over });
@@ -131,5 +131,32 @@ describe('a page’s id', () => {
     const id = pageId((n) => Uint8Array.from({ length: n }, (_, i) => i * 29));
     expect(id).toMatch(/^[0-9a-f]{18}$/);
     expect(readGolfdeMessage(HISTORY_SHEET_URL, msg({ kind: 'signed_out' }, { page: id }))).not.toBeNull();
+  });
+});
+
+describe('a tournament’s page in the window (spec 1.19.0)', () => {
+  const GOLFDE = 'https://www.golf.de/sport/turnierkalender/clubturniere.html#/42';
+  const msg = (m: Record<string, unknown>) => JSON.stringify({ glmsync: 'golfde-event', page: 'a1b2c3d4e5f6a7b8c9', ...m });
+
+  it('looks for a tournament on golf.de’s calendar only', () => {
+    expect(onCalendarPage('https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42')).toBe(true);
+    expect(onCalendarPage('https://www.golf.de/mein-bereich.html')).toBe(false);
+    expect(onCalendarPage('https://golf.example/sport/turnierkalender/x.html')).toBe(false);
+  });
+
+  it('takes a message about it only from golf.de’s page and in the page script’s shape', () => {
+    expect(readEventMessage(GOLFDE, msg({ offer: true }))).toEqual({ page: 'a1b2c3d4e5f6a7b8c9', offer: true });
+    expect(readEventMessage(GOLFDE, msg({ event: { id: '42' } }))).toEqual({ page: 'a1b2c3d4e5f6a7b8c9', event: { id: '42' } });
+    expect(readEventMessage(GOLFDE, msg({ refused: 'changed_page' }))).toEqual({ page: 'a1b2c3d4e5f6a7b8c9', refused: 'changed_page' });
+    expect(readEventMessage('https://login.golf.de/x', msg({ offer: true }))).toBeNull();
+    expect(readEventMessage('https://evil.example/', msg({ offer: true }))).toBeNull();
+    expect(readEventMessage(GOLFDE, msg({ event: [1] }))).toBeNull();
+    expect(readEventMessage(GOLFDE, msg({ refused: 'why not' }))).toBeNull();
+    expect(readEventMessage(GOLFDE, JSON.stringify({ glmsync: 'golfde-seen', page: 'a1b2c3d4e5f6a7b8c9', offer: true }))).toBeNull();
+    expect(readEventMessage(GOLFDE, 'x'.repeat(40_000))).toBeNull();
+  });
+
+  it('asks the page by the function the page script gives it, and nothing else', () => {
+    expect(takeScript()).toBe(`(function () { try { var f = window["${TAKE_FUNCTION}"]; if (typeof f === 'function') f(); } catch (e) {} })(); true;`);
   });
 });

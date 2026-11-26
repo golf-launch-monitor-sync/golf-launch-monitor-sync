@@ -16,7 +16,8 @@ info:
     The base URL is the target's own, conventionally ending in `/hcp/v1`
     (`https://app.example.org/api/hcp/v1`); every path below is relative to it. All requests but
     `POST /pair` carry `Authorization: Bearer <import token>`. An import token here can only write
-    the player's handicap record and read which scorecards the target has: nothing else of the
+    the player's handicap record and read which scorecards the target has, and (since 1.19.0) put
+    one tournament the player picked on golf.de into their own calendar: nothing else of the
     player, and nothing of the launch monitor API.
 
     See spec/hcp.md for the rules behind each endpoint.
@@ -118,6 +119,53 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/TooMany" }
+  /tournament:
+    post:
+      operationId: takeTournament
+      summary: "Since 1.19.0: one tournament the player took from golf.de's page they have open (dgvevent/1), into their own calendar."
+      description: |
+        Only a pairing of provider `golfde`, only on the player's tap on that one tournament's page (spec/hcp.md,
+        *Taking one tournament*): never a list, never by itself. The target keeps it once per tournament and player
+        (`id`): taking it again compares and updates, but never a field the player changed in the target since. It is
+        the player's own: never a catalogue, never for anyone else. A target that takes no tournaments answers 404 (a
+        client then says so). A frame it can't place is refused as a whole (`invalid_event`); any other value that
+        isn't right is left out and named in `dropped`; a field the format hasn't is never read.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "../hcp/dgvevent-1.schema.json" }
+      responses:
+        "200":
+          description: Taken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TournamentResult" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "`account_inactive`: the player's account in the target isn't active now (the token stays; nothing to pair again); `wrong_token`: a pairing of another provider than `golfde`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: This target takes no tournaments.
+        "409":
+          description: "`disconnected`: the player ended the connection; `calendar_full`: the player's calendar in the target takes no more dates."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413":
+          description: "`too_large`: a body far beyond one tournament."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: "`invalid_event`: not one tournament of golf.de's (the format, the page's number and address, the name, the first day); `too_old` or `too_far_ahead`: a first day outside what the target keeps."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/TooMany" }
   /status:
     get:
@@ -275,6 +323,17 @@ components:
           properties:
             value: { type: number }
             as_of: { $ref: "#/components/schemas/Day" }
+    TournamentResult:
+      type: object
+      additionalProperties: false
+      required: [result]
+      properties:
+        result:
+          enum: [new, known, updated]
+          description: "new: in the player's calendar now; known: there already, as the page says; updated: there already, now as the page says."
+        changed: { type: array, maxItems: 20, items: { type: string, minLength: 1, maxLength: 40 }, description: "Fields an update changed." }
+        kept: { type: array, maxItems: 20, items: { type: string, minLength: 1, maxLength: 40 }, description: "Fields the page says otherwise, kept as the player changed them in the target." }
+        dropped: { type: array, maxItems: 20, items: { type: string, minLength: 1, maxLength: 40 }, description: "Fields of the body left out (a value that wasn't right)." }
     Status:
       type: object
       additionalProperties: false
@@ -302,5 +361,5 @@ components:
           properties:
             code:
               type: string
-              enum: [bad_request, code_invalid, token_invalid, other_account, disconnected, too_large, invalid_batch, rate_limited, provider_unknown, test_data, test_unavailable, not_test_account, code_expired, other_player]
+              enum: [bad_request, code_invalid, token_invalid, other_account, disconnected, too_large, invalid_batch, rate_limited, provider_unknown, test_data, test_unavailable, not_test_account, code_expired, other_player, account_inactive, wrong_token, calendar_full, invalid_event, too_old, too_far_ahead]
             message: { type: string, maxLength: 500 }

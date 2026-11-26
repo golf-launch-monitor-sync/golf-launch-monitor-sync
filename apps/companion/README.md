@@ -130,6 +130,15 @@ portal in a sign-in window - so that window lives here, in a small app that does
   home page's card says so, with the run's progress and *Stop*. Only while golf.de last said the player is signed in, with
   the account confirmed; it never signs in, and keeps one of the day's three runs for the player's tap. *Fetch all by
   itself* on the card switches it off.
+- **Takes one tournament from golf.de's page** (spec 1.19.0, companion 0.13.0, [hcp.md](../../spec/hcp.md), *Taking one
+  tournament*): when the player opens a tournament's page of golf.de's calendar in the window (club, regional federation
+  or DGV), the bar offers *Add to …* for each app connected for golf.de. The page script (on the calendar's pages only,
+  `onCalendarPage`) says whether the page is a tournament's once its lines are there; on the tap the app asks the page
+  (`takeScript`), which reads that page's lines under *Turnierinformationen* by their label and posts that one
+  tournament (`@glmsync/provider-golfde/event`); the app reads it again (`readEventMessage`, `HcpClient.takeEvent`) and
+  sends it to that app, saying what came of it (*Added to your calendar in …*, *Already in …*, or the refusal in words,
+  `src/lib/eventTake.ts`). Nothing without the tap, never on a list or a result list, never in the unseen window; it
+  asks golf.de nothing, and the registration box beside the lines is never read.
 - **Sends a pro's world ranking page** (spec 1.15.0, [prores.md](../../spec/prores.md)): a pair link with `kind=pro`
   asks "Connect with *host*" for the world ranking (*Connect world ranking* is the yes; provider `pro` only, its
   `return` since 1.18.0), then opens the app's own window on the sites (`src/ui/RankingsView.tsx`): the OWGR for men, the Rolex

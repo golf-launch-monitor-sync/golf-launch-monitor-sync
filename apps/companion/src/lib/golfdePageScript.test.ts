@@ -3,12 +3,12 @@
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { GRAPHQL_URL } from '@glmsync/provider-golfde';
-import { entry, historyAnswer, memberAnswer, PERSONAL, resultsAnswer } from '@glmsync/provider-golfde/testing';
+import { entry, FakeNode, historyAnswer, memberAnswer, PERSONAL, resultsAnswer, TOURNAMENT_NAME, tournamentDoc } from '@glmsync/provider-golfde/testing';
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error - a plain script of the build, without types
 import { moduleText, OUT } from '../../scripts/golfde-page.mjs';
 import { STEP_FUNCTION, stepScript } from './fetchAll.ts';
-import { HISTORY_SHEET_URL, readGolfdeMessage } from './golfdePage.ts';
+import { HISTORY_SHEET_URL, readEventMessage, readGolfdeMessage, TAKE_FUNCTION } from './golfdePage.ts';
 import { GOLFDE_PAGE_SCRIPT } from './golfdePageScript.ts';
 
 describe('the golf.de window’s page script', () => {
@@ -118,5 +118,57 @@ describe('the page script in golf.de’s page', () => {
     const q = page(HISTORY_SHEET_URL, {}, [sheet]);
     runInNewContext(viaApp, q.win);
     expect(clicked).toEqual(['Scoring Record', '2', 'Scoring Record']);
+  });
+});
+
+describe('the page script on golf.de’s tournament calendar (spec 1.19.0)', () => {
+  /** A made-up tournament's page: its lines there, or (`loading`) not yet; the script's timer runs by hand. */
+  function calendar(href: string, loading = false) {
+    const posted: string[] = [];
+    const ticks: (() => void)[] = [];
+    const doc = loading ? new FakeNode('HTML', [new FakeNode('P', 'Lade Daten ..')]) : tournamentDoc();
+    const win: Record<string, unknown> = {
+      location: { href, origin: new URL(href).origin, hash: new URL(href).hash, assign: () => undefined },
+      fetch: async () => new Response('{}'),
+      XMLHttpRequest: class {},
+      document: doc,
+      ReactNativeWebView: { postMessage: (data: string) => posted.push(data) },
+      setInterval: (fn: () => void) => ticks.push(fn),
+      Request,
+      Response,
+      URL,
+      crypto: globalThis.crypto,
+      JSON,
+    };
+    win.window = win;
+    runInNewContext(GOLFDE_PAGE_SCRIPT, win);
+    const read = () => posted.map((d) => readEventMessage(href, d));
+    return { win, posted, ticks, read };
+  }
+  const TOURNAMENT = 'https://www.golf.de/sport/turnierkalender/clubturniere.html#/490000000001?radius=50';
+
+  it('offers a tournament’s page once its lines are there, and on the tap posts that one tournament - no person', () => {
+    const p = calendar(TOURNAMENT);
+    expect(p.read()).toMatchObject([{ offer: true }]);
+    (p.win[TAKE_FUNCTION] as () => void)();
+    const took = p.read()[1] as { event: Record<string, unknown> };
+    expect(took.event).toMatchObject({ id: '490000000001', url: 'https://www.golf.de/sport/turnierkalender/clubturniere.html#/490000000001', name: TOURNAMENT_NAME, date: '2027-06-12', holes: 18 });
+    for (const v of Object.values(PERSONAL)) expect(p.posted.join('\n')).not.toContain(String(v));
+    // Nothing more without a change, and nothing asked of golf.de.
+    p.ticks.forEach((t) => t());
+    expect(p.posted).toHaveLength(2);
+  });
+
+  it('offers nothing on a result list; on a page whose lines it can’t find, the tap says so', () => {
+    expect(calendar('https://www.golf.de/sport/turnierkalender/clubturniere.html#/490000000001/ergebnisse').read()).toEqual([{ page: expect.any(String), offer: false }]);
+    const p = calendar(TOURNAMENT, true);
+    expect(p.read()).toMatchObject([{ offer: false }]);
+    (p.win[TAKE_FUNCTION] as () => void)();
+    expect(p.read()[1]).toMatchObject({ refused: 'changed_page' });
+  });
+
+  it('isn’t on the record’s pages', () => {
+    const p = page(HISTORY_SHEET_URL, {});
+    expect(p.win[TAKE_FUNCTION]).toBeUndefined();
   });
 });

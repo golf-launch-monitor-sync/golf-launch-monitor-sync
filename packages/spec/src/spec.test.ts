@@ -6,6 +6,7 @@ import { parse } from 'yaml';
 import schema from '../../../spec/olmd/olmd-1.schema.json' with { type: 'json' };
 import hcpSchema from '../../../spec/hcp/dgvhcp-1.schema.json' with { type: 'json' };
 import hcpRules from '../../../spec/hcp/rules.json' with { type: 'json' };
+import eventSchema from '../../../spec/hcp/dgvevent-1.schema.json' with { type: 'json' };
 import proSchema from '../../../spec/prores/prores-1.schema.json' with { type: 'json' };
 import proTours from '../../../spec/prores/tours.json' with { type: 'json' };
 import { makeAjv } from './check.ts';
@@ -150,9 +151,10 @@ describe('the handicap record (1.6.0)', () => {
     expect(readVectors('hcp-plan.json').rules).toEqual(hcpRules);
   });
 
-  it('has a target API of five endpoints, apart from the launch monitor one', () => {
+  it('has a target API of six endpoints (one tournament since 1.19.0), apart from the launch monitor one', () => {
     expect(hcp.openapi).toMatch(/^3\.1\./);
-    expect(Object.keys(hcp.paths).sort()).toEqual(['/import', '/pair', '/plan', '/status', '/token']);
+    expect(Object.keys(hcp.paths).sort()).toEqual(['/import', '/pair', '/plan', '/status', '/token', '/tournament']);
+    expect(hcp.paths['/tournament'].post.requestBody.content['application/json'].schema.$ref).toBe('../hcp/dgvevent-1.schema.json');
     expect(hcp.security).toEqual([{ importToken: [] }]);
     expect(hcp.paths['/pair'].post.security).toEqual([]);
     expect(hcp.paths['/import'].post.requestBody.content['application/json'].schema.oneOf.map((x: { $ref: string }) => x.$ref))
@@ -178,10 +180,39 @@ describe('the handicap record (1.6.0)', () => {
     }
   });
 
-  it('keeps the error codes of the launch monitor API, and one of its own for a pro’s page (1.15.0)', () => {
+  it('keeps the error codes of the launch monitor API, one of its own for a pro’s page (1.15.0) and those of a tournament (1.19.0)', () => {
     const lm = parse(readFileSync(`${SPEC_DIR}api/target-api.yaml`, 'utf8'));
-    expect(hcp.components.schemas.Error.properties.error.properties.code.enum)
-      .toEqual([...lm.components.schemas.Error.properties.error.properties.code.enum, 'other_player']);
+    expect(hcp.components.schemas.Error.properties.error.properties.code.enum).toEqual([
+      ...lm.components.schemas.Error.properties.error.properties.code.enum,
+      'other_player',
+      'account_inactive',
+      'wrong_token',
+      'calendar_full',
+      'invalid_event',
+      'too_old',
+      'too_far_ahead',
+    ]);
+  });
+});
+
+describe('one tournament from golf.de’s page, dgvevent/1 (1.19.0)', () => {
+  type Example = { name: string; valid: boolean; body: unknown; target: { refused?: true; dropped?: string[] } };
+  const checkEvent = makeAjv().compile(eventSchema);
+  const examples = readVectors<Example>('dgvevent-examples.json').cases;
+
+  it.each(examples.map((c) => [c.name, c] as const))('%s', (_, c) => {
+    expect([c.name, checkEvent(c.body)]).toEqual([c.name, c.valid]);
+    // What the schema takes, a target takes whole - but for what no schema can say (the page's number twice).
+    if (c.valid && !c.target.refused) expect(c.target).toEqual({ dropped: [] });
+  });
+
+  it('takes every tournament the page rule writes', () => {
+    type Page = { name: string; expected: { event?: unknown } };
+    for (const c of readVectors<Page>('dgvevent-page.json').cases) {
+      if (!c.expected.event) continue;
+      const body = { format: 'dgvevent/1', provider: 'golfde', event: c.expected.event };
+      expect([c.name, checkEvent(body), checkEvent.errors ?? null]).toEqual([c.name, true, null]);
+    }
   });
 });
 

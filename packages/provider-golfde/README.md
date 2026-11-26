@@ -28,6 +28,16 @@ strictly (`readSeen`), and keeps of a result list only the line of a result the 
 
 Not read: a scorecard's holes. golf.de shows them only as a picture.
 
+## One tournament, on the player's tap
+
+Since spec 1.19.0 ([spec/hcp.md](../../spec/hcp.md), *Taking one tournament*). On a tournament's page of golf.de's
+calendar (`https://www.golf.de/sport/turnierkalender/<calendar>.html#/<number>`) a client offers to take that one
+tournament into an app connected for golf.de. The tap reads the page's heading and its lines under
+*Turnierinformationen* (*Tournament Information* in English) by their label - date, place, form of play and holes,
+handicap, starting tee, start time, field size, gender, guests, open, age group, the deadlines - into dgvevent/1. No
+person (the format has none), not the registration box beside the lines, not the search the player came from. It reads
+what the page shows and asks golf.de nothing.
+
 ## Fetch all: the clicks, on the player's tap
 
 Since spec 1.14.0 ([spec/hcp.md](../../spec/hcp.md), *Clicking for the player*). Signed in on golf.de, with the account
@@ -60,6 +70,11 @@ background's, the window the companion app's.
 - `steps.ts` — the steps and the only addresses a run may open (`mayOpen`).
 - `operate.ts` — taking a step in golf.de's page: its pager link, its Scoring Record button (open shadow roots
   included), an address of `mayOpen`; written against the little of the DOM it needs.
+- `event.ts` — one tournament from the page the player has open (spec 1.19.0, *Taking one tournament*): the rule
+  (`readEventPage`, the lines by their label, against spec/testvectors/dgvevent-page.json), finding the heading and
+  the lines under *Turnierinformationen* in golf.de's page (`eventLinesOf`, written against the little of the DOM it
+  needs; never the registration box beside it), when to offer it (`offerEvent`), and reading an event again strictly
+  (`readEvent`). Read on the player's tap only; it asks golf.de nothing.
 - `testing.ts` — golf.de's answers made up by hand in their shape (with made-up names, so the tests can show none of
   them leaves the page script). Never a recorded answer.
 

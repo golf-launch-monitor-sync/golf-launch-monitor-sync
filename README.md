@@ -13,7 +13,9 @@ Syncs your golf data from **your own** accounts into apps of your choice, in ope
   once you signed in and tap *Fetch all*, click through them for you at a person's pace; while you are signed
   in, the extension also does that by itself in a background tab once a day when the app says your record is
   due, and the companion app while you have it open (phones don't let it run in the back). They send golf.de
-  nothing of their own and never sign in for you.
+  nothing of their own and never sign in for you. And (since spec 1.19.0) **one tournament** of golf.de's
+  tournament calendar, the one whose page you have open, into your own calendar in the app - on your tap, in
+  [dgvevent/1](spec/hcp.md#taking-one-tournament-dgvevent1).
 - **A professional's world ranking** — rank, points and tournaments — from the player's own page of the
   Official World Golf Ranking or the Rolex Women's World Golf Rankings, in [prores/1](spec/prores.md)
   (since spec 1.15.0). The extension reads that page only when **you** tap *Send* on it, as it shows it to

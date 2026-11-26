@@ -91,6 +91,17 @@ describe('who sent a message', () => {
       expect(accept({ type }, 'extension')).toBeNull();
     }
     expect(accept({ type: 'golfde-confirm' }, 'target-page')).toBeNull();
+    // One tournament (spec 1.19.0): only from golf.de's top frame, one object of a tournament's size, read again later.
+    const event = { id: '42', url: 'https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42', name: 'X', date: '2027-05-01' };
+    expect(from('https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42', { frameId: 0 })).toBe('golfde');
+    expect(from('https://www.golf.de/sport/turnierkalender/lgv-turniere.html#/42', { frameId: 2 })).toBe('other');
+    expect(accept({ type: 'golfde-event-line' }, 'golfde')).toEqual({ type: 'golfde-event-line' });
+    expect(accept({ type: 'golfde-event-take', target: 'abc', event }, 'golfde')).toEqual({ type: 'golfde-event-take', target: 'abc', event });
+    expect(accept({ type: 'golfde-event-take', target: 'abc', event }, 'target-page')).toBeNull();
+    expect(accept({ type: 'golfde-event-take', target: 'abc', event }, 'extension')).toBeNull();
+    expect(accept({ type: 'golfde-event-take', target: 'abc', event: [event] }, 'golfde')).toBeNull();
+    expect(accept({ type: 'golfde-event-take', target: 'x'.repeat(65), event }, 'golfde')).toBeNull();
+    expect(accept({ type: 'golfde-event-take', target: 'abc', event: { ...event, name: 'x'.repeat(20_000) } }, 'golfde')).toBeNull();
   });
 
   it('knows a player\'s pages on europeantour.com (the top frame only) and what may come from there', () => {
