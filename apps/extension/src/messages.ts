@@ -118,6 +118,8 @@ export type FromPage =
   | { type: 'hcp-status' }
   | { type: 'hcp-send' }
   | { type: 'hcp-auto'; auto: boolean }
+  /** *Fetch by itself when due* (spec/hcp.md, *By itself, when the record is due*). */
+  | { type: 'hcp-auto-fetch'; on: boolean }
   | { type: 'hcp-unpair'; id: string }
   | { type: 'hcp-clear-ended' }
   /** The answer to "Is this your golf.de account?" (the connect window, the popup). */
@@ -149,7 +151,7 @@ export interface Pending {
 }
 
 export type Reply =
-  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; pro?: ProView; tour?: TourView; et?: EtView; ocs?: OcsView; alps?: AlpsView; fetch?: 'started' | 'limit' | 'nothing' }
+  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; drive?: boolean; pro?: ProView; tour?: TourView; et?: EtView; ocs?: OcsView; alps?: AlpsView; fetch?: 'started' | 'limit' | 'nothing' }
   | { ok: false; error: string };
 
 /** What the pairing page's content script hands on to the page (no code, nothing secret). */

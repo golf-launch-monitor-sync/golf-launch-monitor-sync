@@ -34,6 +34,8 @@ export const PAGE_MATCHES = [
 export const PAGE_ORIGIN = 'https://www.golf.de';
 /** The History Sheet, where the player goes to have the record read (the target app's reminder links here). */
 export const HISTORY_SHEET_URL = 'https://www.golf.de/mein-bereich/handicap-history-sheet.html';
+/** *Mein Bereich*: where a run by itself starts (its page asks golf.de's session and names the account first). */
+export const MY_AREA_URL = 'https://www.golf.de/mein-bereich.html';
 
 export type Watch = { kind: 'graphql'; op: Operation } | { kind: 'results'; tournament: string } | { kind: 'session' };
 

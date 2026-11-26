@@ -21,6 +21,11 @@
  * account?*, `confirm`), unless a target already has that very account connected (as with a launch monitor's
  * sign-in): on a shared computer someone else may be signed in to golf.de.
  *
+ * *Fetch all* runs on the player's tap, or (spec 1.16.0, the extension) by itself: `autoDue` says whether to start one
+ * now - only while golf.de last said the player is signed in, the account confirmed, and a target's plan with `timer`
+ * says due - and the extension's background opens golf.de in a tab of its own for it. A run by itself that stops early
+ * holds the next until golf.de's page has shown the player signed in outside a run.
+ *
  * Every method is serialised, and nothing throws at the caller for what can happen (a target down, a token
  * revoked): that is a state to show.
  */
@@ -79,6 +84,8 @@ const SESSION = 'glmsync/hcp/session';
 const RUN = 'glmsync/hcp/run';
 const OPENED = 'glmsync/hcp/opened';
 const RUNS = 'glmsync/hcp/runs';
+/** A run by itself (spec 1.16.0): switched off by the player, held after one that stopped early, when it last looked. */
+const AUTO = 'glmsync/hcp/auto';
 /** A run whose page hasn't asked for its next step for this long was left (the tab closed, the player went elsewhere). */
 export const RUN_LEFT_MS = 120_000;
 const DAY_MS = 24 * 3600_000;
@@ -148,7 +155,17 @@ export interface HcpView {
    */
   fetch_all: 'ready' | 'running' | 'limit' | 'no';
   /** The run under way, or the last one of this session (what it read, how it ended). */
-  run: RunView | null;
+  run: (RunView & { auto?: true }) | null;
+  /** *Fetch all* by itself when a target says the record is due (spec 1.16.0): the player's switch, on by default. */
+  auto_fetch: boolean;
+}
+
+interface AutoState {
+  off?: boolean;
+  /** A run by itself stopped early: none again until golf.de's page showed the player signed in outside a run. */
+  hold?: boolean;
+  /** When a look last asked the targets' plans. */
+  looked?: number;
 }
 
 /** A run as it is kept: the run, which page drives it, when that page last asked, and whether it is closed. */
@@ -158,6 +175,8 @@ interface KeptRun {
   asked: number;
   /** Over and what it read sent (once). */
   closed?: boolean;
+  /** Started by itself, not by the player's tap (spec 1.16.0). */
+  auto?: boolean;
 }
 
 /** What a page that may drive a run hears: the step to take, and the view to show. */
@@ -434,6 +453,9 @@ export class HcpClient {
       let k = await this.kept();
       switch (seen.kind) {
         case 'member': {
+          // The player on golf.de themselves (not in a run by itself): a run by itself may come again.
+          const kr = await this.keptRun();
+          if ((await this.autoState()).hold && !(kr?.auto && running(kr.run))) await this.changeAuto((a) => ({ ...a, hold: false }));
           s.subject = seen.subject;
           s.signed_out = false;
           pg.subject = seen.subject;
@@ -498,7 +520,7 @@ export class HcpClient {
     const raw = await read<Partial<KeptRun>>(this.opts.session, RUN, {});
     const run = readRun(raw.run);
     if (!run || typeof raw.owner !== 'string' || typeof raw.asked !== 'number') return null;
-    return { run, owner: raw.owner, asked: raw.asked, ...(raw.closed ? { closed: true } : {}) };
+    return { run, owner: raw.owner, asked: raw.asked, ...(raw.closed ? { closed: true } : {}), ...(raw.auto ? { auto: true } : {}) };
   }
 
   private async saveRun(kr: KeptRun): Promise<void> {
@@ -532,7 +554,28 @@ export class HcpClient {
     for (const t of run.opened) opened[t] = day;
     await this.opts.storage.set(OPENED, JSON.stringify(Object.fromEntries(Object.entries(opened).slice(-500))));
     await this.saveRun({ ...kr, run, closed: true });
-    await this.sendAll();
+    if (!kr.auto) {
+      await this.sendAll();
+      return;
+    }
+    // By itself: one that finished tells every target it read, even with nothing new, so the plan moves on and doesn't
+    // say due again within the day; one that stopped early holds the next until the player is back on golf.de.
+    const done = run.phase === 'done';
+    if (!done) await this.changeAuto((a) => ({ ...a, hold: true }));
+    await this.sendAll(done);
+  }
+
+  private async autoState(): Promise<AutoState> {
+    const a = await read<Partial<AutoState>>(this.opts.storage, AUTO, {});
+    return {
+      ...(a.off === true ? { off: true } : {}),
+      ...(a.hold === true ? { hold: true } : {}),
+      ...(typeof a.looked === 'number' && Number.isFinite(a.looked) ? { looked: a.looked } : {}),
+    };
+  }
+
+  private async changeAuto(change: (a: AutoState) => AutoState): Promise<void> {
+    await this.opts.storage.set(AUTO, JSON.stringify(change(await this.autoState())));
   }
 
   /** A run under way, or null; one left by its page (`RUN_LEFT_MS`) is closed here as cancelled. */
@@ -559,19 +602,84 @@ export class HcpClient {
    * window). Only signed in on golf.de, with the account confirmed and an app connected, a few times a day; else the
    * view says why not. The run's first step is the page's to ask for (`runStep`).
    */
-  startFetchAll(owner: string): Promise<HcpView> {
+  startFetchAll(owner: string, opts: { auto?: boolean } = {}): Promise<HcpView> {
     return this.serial(async () => {
       await this.liveRun();
       const k = await this.kept();
       if ((await this.fetchAllNow(k)) !== 'ready' || !k.subject) return this.viewNow();
+      // By itself only as `autoDue` allows (checked again: the switch or the hold may have changed since).
+      if (opts.auto) {
+        const a = await this.autoState();
+        if (a.off || a.hold) return this.viewNow();
+      }
       const now = this.now();
       const placed = Object.values(k.results)
         .filter((r) => r.ref && r.place !== undefined)
         .map((r) => r.ref as string);
       const run = startRun({ subject: k.subject, now, today: today(now), placed, recent: Object.keys(await this.opened()) });
       await this.opts.storage.set(RUNS, JSON.stringify([...(await this.runsToday()), now]));
-      await this.saveRun({ run, owner, asked: now });
+      await this.saveRun({ run, owner, asked: now, ...(opts.auto ? { auto: true } : {}) });
       return this.viewNow();
+    });
+  }
+
+  /**
+   * Whether to start *Fetch all* by itself now (spec/hcp.md, *By itself, when the record is due*): switched on, not
+   * held, no run under way, golf.de last said the player is signed in with the account confirmed and a target paired,
+   * runs left today - and then a target's plan with `timer` says due. Asks the targets at most every
+   * `auto_look_minutes`, and only the targets; golf.de is asked nothing. Never throws: a target that can't answer
+   * says not due.
+   */
+  autoDue(): Promise<boolean> {
+    return this.serial(async () => {
+      const a = await this.autoState();
+      const now = this.now();
+      // A minute's slack: the alarm that asks comes every `auto_look_minutes`, give or take.
+      if (a.off || a.hold || (a.looked !== undefined && a.looked <= now && now - a.looked < (CLICKS.auto_look_minutes - 1) * 60_000)) return false;
+      if (await this.liveRun()) return false;
+      const k = await this.kept();
+      if ((await this.fetchAllNow(k)) !== 'ready' || !k.subject) return false;
+      await this.changeAuto((x) => ({ ...x, looked: now }));
+      const ref = (p: HcpPairing) => accountRefOf(p.account_salt, PROVIDER_ID, k.subject as string);
+      for (const p of await this.pairings()) {
+        const id = hcpPairingId(p.base);
+        const entry = (await this.entries()).find((e) => e.id === id);
+        if (!entry || entry.other_account || (entry.account_ref && entry.account_ref !== ref(p))) continue;
+        try {
+          const plan = await new HcpTarget(p, this.targetOpts()).plan('timer', this.opts.kind);
+          if (plan.disconnected) {
+            await this.forget(id, 'disconnected');
+            continue;
+          }
+          if (plan.account_ref && plan.account_ref !== ref(p)) {
+            await this.update(id, (e) => ({ ...e, account_ref: plan.account_ref as string, other_account: true }));
+            continue;
+          }
+          if (plan.due) return true;
+        } catch (e) {
+          const code = e instanceof TargetError ? e.code : 'error';
+          if (code === 'token_invalid') await this.forget(id, 'revoked');
+          else if (code === 'disconnected') await this.forget(id, 'disconnected');
+          // Anything else (the target down, busy): not now; the next look asks again.
+        }
+      }
+      return false;
+    });
+  }
+
+  /** The player's switch for *Fetch all* by itself. On again also lifts a hold: they asked for it. */
+  setAutoFetch(on: boolean): Promise<HcpView> {
+    return this.serial(async () => {
+      await this.changeAuto((a) => (on ? { ...(a.looked !== undefined ? { looked: a.looked } : {}) } : { ...a, off: true }));
+      return this.viewNow();
+    });
+  }
+
+  /** The page `owner` drives the run under way (it should ask for its steps). */
+  drives(owner: string): Promise<boolean> {
+    return this.serial(async () => {
+      const kr = await this.keptRun();
+      return !!kr && kr.owner === owner && running(kr.run) && this.now() - kr.asked < RUN_LEFT_MS;
     });
   }
 
@@ -669,17 +777,17 @@ export class HcpClient {
     });
   }
 
-  /** `send` inside `serial`. */
-  private async sendAll(): Promise<void> {
+  /** `send` inside `serial`; `always`: a batch to each target even with nothing new (a run by itself that finished). */
+  private async sendAll(always = false): Promise<void> {
     this.sending = true;
     try {
-      for (const p of await this.pairings()) await this.sendOne(p);
+      for (const p of await this.pairings()) await this.sendOne(p, always);
     } finally {
       this.sending = false;
     }
   }
 
-  private async sendOne(p: HcpPairing): Promise<void> {
+  private async sendOne(p: HcpPairing, always = false): Promise<void> {
     const id = hcpPairingId(p.base);
     const entry = (await this.entries()).find((e) => e.id === id);
     const k = await this.kept();
@@ -697,7 +805,7 @@ export class HcpClient {
     const told = k.told?.[id];
     const notice: HcpBatch['notice'] | undefined =
       k.signed_out && told !== 'signed_out' ? { code: 'signed_out' } : k.changed_page && told !== `changed:${k.changed_page}` ? { code: 'changed_page' } : undefined;
-    if (!fresh.results.length && !fresh.index && !notice) return;
+    if (!fresh.results.length && !fresh.index && !notice && !always) return;
     const target = new HcpTarget(p, this.targetOpts());
     const at = new Date(this.now()).toISOString();
     try {
@@ -788,7 +896,8 @@ export class HcpClient {
       account,
       index: account === 'asking' && k.index ? { value: k.index.value, as_of: k.index.as_of } : null,
       fetch_all: await this.fetchAllNow(k),
-      run: kr ? runView(kr.run) : null,
+      run: kr ? { ...runView(kr.run), ...(kr.auto ? { auto: true as const } : {}) } : null,
+      auto_fetch: !(await this.autoState()).off,
     };
   }
 

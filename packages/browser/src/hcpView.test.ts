@@ -7,7 +7,7 @@ import { translator } from './i18n.ts';
 
 const t = translator('en');
 const pairing = { id: 'a', base: 'https://app.example.org/hcp/v1', host: 'app.example.org', name: 'Example App', paired_at: '2026-11-21T19:00:00Z' };
-const view = (over: Partial<HcpView> = {}): HcpView => ({ pairings: [pairing], auto: true, seen: 0, fresh: 0, waiting: false, signed_out: false, changed_page: false, sending: false, ended: [], account: 'confirmed', index: null, fetch_all: 'no', run: null, ...over });
+const view = (over: Partial<HcpView> = {}): HcpView => ({ pairings: [pairing], auto: true, seen: 0, fresh: 0, waiting: false, signed_out: false, changed_page: false, sending: false, ended: [], account: 'confirmed', index: null, fetch_all: 'no', run: null, auto_fetch: true, ...over });
 
 describe('Fetch all on the line', () => {
   const run = (over: Partial<NonNullable<HcpView['run']>> = {}): HcpView['run'] => ({ phase: 'history', entries: 0, lists_done: 0, lists_total: 0, ...over });

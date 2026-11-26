@@ -7,7 +7,10 @@
  *
  * And it holds the handicap record read along on golf.de (`HcpClient`, spec/hcp.md): what golf.de's own page showed
  * the player arrives from the content script there; a few seconds after the last new page it goes to the apps paired
- * for it, each batch after their plan. golf.de is never asked anything.
+ * for it, each batch after their plan. golf.de is never asked anything. *Fetch all* runs on the player's tap, or by
+ * itself (spec 1.16.0): every `auto_look_minutes` the apps' plans are asked (`timer`), and when one says due while
+ * golf.de last said the player is signed in, *Mein Bereich* opens in a tab that doesn't take the focus, the run goes
+ * on there as on a tap, and the tab closes at its end - unless the player switched to it.
  *
  * And a pro's own world ranking page (`ProClient`, spec/prores.md): the page arrives from the content script there when
  * the player taps *Send*, read as the page showed it, and goes to the apps paired for it, each after its plan. Whether
@@ -26,7 +29,7 @@ import { EtKeeper } from '@glmsync/browser/europeantour';
 import { OcsKeeper } from '@glmsync/browser/ocs';
 import { AlpsKeeper } from '@glmsync/browser/alps';
 import { ocs } from '@glmsync/provider-tours';
-import { HISTORY_SHEET_URL, readSeen } from '@glmsync/provider-golfde';
+import { CLICKS, HISTORY_SHEET_URL, MY_AREA_URL, readSeen } from '@glmsync/provider-golfde';
 import { bridgeMessage, type BridgeReply, type Reason } from '@glmsync/spec';
 import { PORTAL_URL, SIGN_OUT_URL } from '@glmsync/provider-trackman/portal';
 import { answer, bridgeMatches, originOf } from './bridge.ts';
@@ -116,6 +119,7 @@ async function sendAlps(): Promise<Reply> {
 const fromSite = (url: string | undefined, site: ocs.OcsTourSite): boolean => ocs.siteAt(url)?.site === site;
 const HCP_SEND = 'hcp-send';
 const HCP_RUN = 'hcp-run';
+const HCP_AUTO = 'hcp-auto-look';
 const t = () => translator(pickLang(navigator.languages));
 
 // ---------------------------------------------------------------------------
@@ -193,6 +197,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   else if (alarm.name === BACKFILL) void run('backfill');
   else if (alarm.name === HCP_SEND) void hcp.send().catch(() => undefined);
   else if (alarm.name === HCP_RUN) void hcp.view().then(watchRun).catch(() => undefined);
+  else if (alarm.name === HCP_AUTO) void autoLook();
 });
 
 // ---------------------------------------------------------------------------
@@ -220,6 +225,8 @@ async function golfdeSeen(page: string, raw: unknown): Promise<Reply> {
   if (!seen) return { ok: true, hcp: await hcp.view() };
   const v = await hcp.see(page, seen);
   await scheduleHcp(v).catch(() => undefined);
+  // A run may have stopped on what this page showed (signed out, another account): its background tab goes.
+  await settleAutoTab(v).catch(() => undefined);
   if (v.account === 'asking') await refreshIcon();
   return { ok: true, hcp: v };
 }
@@ -234,7 +241,106 @@ const tabOwner = (tabId: number | undefined) => (typeof tabId === 'number' ? `ta
 async function watchRun(v: HcpView): Promise<void> {
   if (v.fetch_all === 'running') await chrome.alarms.create(HCP_RUN, { periodInMinutes: 1 });
   else await chrome.alarms.clear(HCP_RUN).catch(() => false);
+  await settleAutoTab(v).catch(() => undefined);
 }
+
+// ---------------------------------------------------------------------------
+// Fetch all by itself, when the record is due (spec/hcp.md, spec 1.16.0)
+// ---------------------------------------------------------------------------
+
+const AUTO_TAB_KEY = 'glmsync/hcp/auto-tab';
+/** A background tab whose run hasn't started this long after it opened (its page never got going) is closed. */
+const AUTO_TAB_START_MS = 2 * 60_000;
+
+/** The tab a run by itself opened: when, whether its run started, whether the player switched to it (then it's theirs). */
+interface AutoTab {
+  id: number;
+  at: number;
+  started?: boolean;
+  taken?: boolean;
+}
+
+async function autoTab(): Promise<AutoTab | null> {
+  const got = await chrome.storage.session.get(AUTO_TAB_KEY);
+  const v = got[AUTO_TAB_KEY] as Partial<AutoTab> | undefined;
+  return v && typeof v.id === 'number' && typeof v.at === 'number' ? (v as AutoTab) : null;
+}
+
+async function setAutoTab(v: AutoTab | null): Promise<void> {
+  if (v) await chrome.storage.session.set({ [AUTO_TAB_KEY]: v });
+  else await chrome.storage.session.remove(AUTO_TAB_KEY);
+}
+
+/** Its run is over: the background tab closes, unless the player took it up. */
+async function endAutoTab(tab: AutoTab): Promise<void> {
+  await setAutoTab(null);
+  if (!tab.taken) await chrome.tabs.remove(tab.id).catch(() => undefined);
+}
+
+async function settleAutoTab(v: HcpView): Promise<void> {
+  if (v.fetch_all === 'running') return;
+  const tab = await autoTab();
+  if (tab?.started) await endAutoTab(tab);
+}
+
+async function ensureHcpAuto(): Promise<void> {
+  const had = await chrome.alarms.get(HCP_AUTO);
+  if (!had) await chrome.alarms.create(HCP_AUTO, { periodInMinutes: CLICKS.auto_look_minutes, delayInMinutes: 3 });
+}
+
+/** An ordinary window to open the tab in (never a private one); with none open, nothing (no window of its own). */
+async function quietWindow(): Promise<number | null> {
+  const all = await chrome.windows.getAll({ windowTypes: ['normal'] });
+  const fit = all.filter((w) => !w.incognito && typeof w.id === 'number');
+  return (fit.find((w) => w.focused) ?? fit[0])?.id ?? null;
+}
+
+let looking = false;
+
+/**
+ * Whether to start a run by itself now (`HcpClient.autoDue`: the switch, the hold, signed in, the account confirmed,
+ * runs left, a plan with `timer` that says due); if so, *Mein Bereich* in a background tab and the run for it. Its page
+ * asks for the steps as on a tap (golfde-relay.ts); a page that says signed out ends it there - nothing signs in.
+ */
+async function autoLook(): Promise<void> {
+  if (looking) return;
+  looking = true;
+  try {
+    const had = await autoTab();
+    if (had) {
+      // One at a time: a run still under way there, or a page still loading. One left behind (the background was
+      // stopped before it closed the tab) goes now.
+      const live = had.started ? await hcp.drives(`tab:${had.id}`) : Date.now() - had.at < AUTO_TAB_START_MS;
+      if (live) return;
+      await endAutoTab(had);
+    }
+    if (!(await hcp.autoDue())) return;
+    const windowId = await quietWindow();
+    if (windowId === null) return;
+    const tab = await chrome.tabs.create({ url: MY_AREA_URL, active: false, windowId });
+    if (typeof tab.id !== 'number') return;
+    const opened: AutoTab = { id: tab.id, at: Date.now() };
+    await setAutoTab(opened);
+    const v = await hcp.startFetchAll(`tab:${tab.id}`, { auto: true });
+    if (v.fetch_all !== 'running') {
+      await endAutoTab(opened);
+      return;
+    }
+    await setAutoTab({ ...opened, started: true });
+    await chrome.alarms.create(HCP_RUN, { periodInMinutes: 1 });
+  } catch {
+    // The next look tries again (a tab that couldn't open, a target that didn't answer).
+  } finally {
+    looking = false;
+  }
+}
+
+// The player switched to the background tab: it's theirs now and stays open when the run ends.
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  void autoTab()
+    .then((tab) => (tab && tab.id === tabId && !tab.taken ? setAutoTab({ ...tab, taken: true }) : undefined))
+    .catch(() => undefined);
+});
 
 async function golfdeRun(m: { type: 'golfde-fetch-all' | 'golfde-step' | 'golfde-stop' }, tabId: number | undefined): Promise<Reply> {
   const owner = tabOwner(tabId);
@@ -262,11 +368,13 @@ async function hcpSendNow(): Promise<Reply> {
 
 chrome.runtime.onStartup.addListener(() => {
   void ensureTimer();
+  void ensureHcpAuto();
   void run('timer');
 });
 
 chrome.runtime.onInstalled.addListener(() => {
   void ensureTimer();
+  void ensureHcpAuto();
   void refreshIcon();
   void reachOpenPairPages();
   void syncBridges();
@@ -538,7 +646,11 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
       return { ok: true };
     case 'golfde-seen':
       return golfdeSeen(m.page, m.seen);
-    case 'golfde-line':
+    case 'golfde-line': {
+      // The tab that drives a run hears so (a background tab whose page loaded before its run was saved, too).
+      const owner = tabOwner(from.tabId);
+      return { ok: true, hcp: await hcp.view(), ...(owner && (await hcp.drives(owner)) ? { drive: true } : {}) };
+    }
     case 'hcp-status':
       return { ok: true, hcp: await hcp.view() };
     case 'golfde-send':
@@ -550,6 +662,8 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
       else await scheduleHcp(v).catch(() => undefined);
       return { ok: true, hcp: v };
     }
+    case 'hcp-auto-fetch':
+      return { ok: true, hcp: await hcp.setAutoFetch(m.on) };
     case 'hcp-unpair':
       return { ok: true, hcp: await hcp.removePairing(m.id) };
     case 'hcp-clear-ended':
@@ -686,11 +800,15 @@ chrome.runtime.onMessage.addListener((raw, sender, reply) => {
 
 // A run of *Fetch all* whose tab closes ends there, and what it read goes out.
 chrome.tabs.onRemoved.addListener((tabId) => {
+  void autoTab()
+    .then((tab) => (tab?.id === tabId ? setAutoTab(null) : undefined))
+    .catch(() => undefined);
   const owner = tabOwner(tabId);
   if (owner) void hcp.leaveFetchAll(owner).then(watchRun).catch(() => undefined);
 });
 
 void ensureTimer();
+void ensureHcpAuto();
 void refreshIcon();
 // Firefox may forget registered content scripts when it restarts: the bridge is put back on every wake.
 void syncBridges();

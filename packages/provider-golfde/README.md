@@ -34,11 +34,16 @@ Since spec 1.14.0 ([spec/hcp.md](../../spec/hcp.md), *Clicking for the player*).
 confirmed and an app connected, the player may tap *Fetch all*: the client then does the clicks a person would - every
 page of the History Sheet (golf.de's own pager link, or the address that link has, with the cursor golf.de's page
 received), the Scoring Record (golf.de's own button), and the result lists of the player's club tournaments of the
-last two years that lack a place, at most 50, newest first (the address golf.de's own pages use,
+last two years that lack a place, at most 100 (50 before spec 1.16.0), newest first (the address golf.de's own pages use,
 `clubturniere.html#/<n>/ergebnisse`). A pause of 3-6 s after each page's answer, three runs a day, a list not again
 within a week ([spec/hcp/clicks.json](../../spec/hcp/clicks.json)). It stops on *signed out*, another account, a page
 that doesn't answer as known or a button that isn't there, and on *Stop*; what it read goes once, at the end. golf.de's
 page asks what it asks; this module still sends golf.de nothing of its own.
+
+Since spec 1.16.0 the extension may start the same run **by itself** when a target's plan (`timer`) says the record
+is due, only while golf.de last said the player is signed in, in a background tab (*By itself, when the record is
+due*). The run here doesn't know who started it; when to start one by itself is `HcpClient`'s (`@glmsync/browser`),
+the tab the extension's background's.
 
 ## Pieces
 

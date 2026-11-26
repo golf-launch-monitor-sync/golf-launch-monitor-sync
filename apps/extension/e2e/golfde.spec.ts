@@ -7,6 +7,7 @@
  */
 
 import { entry, PERSONAL } from '../../../packages/provider-golfde/src/testing.ts';
+import { MY_AREA_URL as MY_AREA } from '../../../packages/provider-golfde/src/observe.ts';
 import { GOLFDE_HISTORY, GOLFDE_RESULTS, HCP_CODE, HCP_TARGET, pairUrl } from '../../../tools/e2e/world.ts';
 import { chooseService, connectWindow, expect, popup, test } from './fixture.ts';
 
@@ -228,4 +229,99 @@ test('Fetch all stops when golf.de signs the player out, and on Stop', async ({ 
   const n = world.golfde.apiSaw.length;
   await page.waitForTimeout(8000);
   expect(world.golfde.apiSaw.length).toBe(n); // nothing more clicked
+});
+
+test('by itself when due (spec 1.16.0): a background tab, the same run, the tab closed - signed out: nothing, and it waits for the player', async ({ context, world, extensionId, background }) => {
+  test.setTimeout(150_000);
+  const day = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+  world.golfde.built = true;
+  world.golfde.nodes = [entry({ scorecardTournamentNumber: 5203, tournamentDate: day(12) }), entry({ scorecardTournamentNumber: 5202, tournamentDate: day(90) })];
+  const pairPage = await context.newPage();
+  const windowOpens = connectWindow(context, extensionId);
+  await pairPage.goto(`${pairUrl(HCP_TARGET, HCP_CODE)}&kind=hcp`);
+  const connect = await windowOpens;
+  await chooseService(connect, 'golfde');
+  const page = await context.newPage();
+  await page.goto(GOLFDE_HISTORY);
+  await connect.getByTestId('hcp-confirm-yes').click();
+  await expect(connect.getByTestId('wizard')).toHaveAttribute('data-step', 'done', { timeout: 30_000 });
+  await expect.poll(() => world.hcp.results.size).toBe(2);
+  await page.close(); // the player leaves golf.de
+  await pairPage.close();
+
+  // golf.de's tabs as the browser has them (the extension may not read their addresses: no `tabs` permission).
+  // A tab the extension opens loads its first address before the test's routes reach it (Playwright attaches to it
+  // late), so it shows an error page here - not in a real browser. Loaded once more, golf.de's made-up page answers.
+  const routed = async () => {
+    for (let i = 0; i < 60; i++) {
+      const p = context.pages().find((x) => !x.isClosed() && x.url().startsWith('chrome-error://'));
+      if (p) {
+        await p.goto(MY_AREA).catch(() => undefined);
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  };
+  const golfdeTabs = async () => context.pages().filter((p) => !p.isClosed() && p.url().includes('golf.de')).map((p) => p.url());
+  const look = async () => {
+    // As if the half hour since the last look had passed (the look's time lives in the extension's storage).
+    await background.evaluate(async () => {
+      const raw = (await chrome.storage.local.get('glmsync/hcp/auto'))['glmsync/hcp/auto'];
+      const a = typeof raw === 'string' ? (JSON.parse(raw) as Record<string, unknown>) : {};
+      delete a.looked;
+      await chrome.storage.local.set({ 'glmsync/hcp/auto': JSON.stringify(a) });
+      await chrome.alarms.create('hcp-auto-look', { when: Date.now() + 200 });
+    });
+  };
+
+  // Not due: the app is asked (timer), golf.de isn't opened.
+  const plans = world.hcp.plans.length;
+  await look();
+  await expect.poll(() => world.hcp.plans.slice(plans).some((p) => p.reason === 'timer'), { timeout: 30_000 }).toBe(true);
+  await new Promise((r) => setTimeout(r, 1500));
+  expect(await golfdeTabs()).toEqual([]);
+
+  // Due: Mein Bereich in a tab that doesn't take the focus, the run there, one send at its end, the tab closed.
+  world.hcp.due = true;
+  const imports = world.hcp.imports.length;
+  const asked = world.golfde.apiSaw.length;
+  await look();
+  await routed();
+  await expect.poll(async () => (await golfdeTabs()).length, { timeout: 30_000 }).toBe(1);
+  // It didn't take the focus (headless pages all say visible: the browser's own word on the tab).
+  expect(await background.evaluate(async () => {
+    const t = (await chrome.storage.session.get('glmsync/hcp/auto-tab'))['glmsync/hcp/auto-tab'] as { id: number };
+    return (await chrome.tabs.get(t.id)).active;
+  })).toBe(false);
+  await expect.poll(() => world.hcp.imports.length, { timeout: 90_000 }).toBe(imports + 1);
+  await expect.poll(async () => (await golfdeTabs()).length, { timeout: 20_000 }).toBe(0);
+  expect(world.hcp.due).toBe(false); // the app's plan moved on
+  const placed = [...world.hcp.results.values()].filter((r) => r.place !== undefined);
+  expect(placed).toHaveLength(2);
+  const saw = world.golfde.apiSaw.slice(asked);
+  expect(saw.every((r) => r.page)).toBe(true); // only golf.de's page's own requests
+  expect(saw.filter((r) => r.url.includes('/results'))).toHaveLength(2);
+  const sent = JSON.stringify(world.hcp.received);
+  for (const v of Object.values(PERSONAL)) expect(sent).not.toContain(v);
+
+  // Signed out meanwhile: the tab opens, golf.de's page says so, the run stops there, nothing is signed in, the tab goes.
+  world.hcp.due = true;
+  world.golfde.signedIn = false;
+  await look();
+  await routed();
+  await expect.poll(async () => (await golfdeTabs()).length, { timeout: 30_000 }).toBe(1);
+  await expect.poll(() => world.hcp.notice?.code ?? null, { timeout: 60_000 }).toBe('signed_out');
+  await expect.poll(async () => (await golfdeTabs()).length, { timeout: 20_000 }).toBe(0);
+  // And then none by itself until the player has been on golf.de signed in again.
+  const timerLooks = world.hcp.plans.filter((p) => p.reason === 'timer').length;
+  await look();
+  await new Promise((r) => setTimeout(r, 2500));
+  expect(await golfdeTabs()).toEqual([]);
+  expect(world.hcp.plans.filter((p) => p.reason === 'timer').length).toBe(timerLooks);
+
+  // Switched off in the popup: it stays off.
+  const pop = await popup(context, extensionId, 'hcp');
+  await expect(pop.getByTestId('hcp-auto-fetch')).toBeChecked();
+  await pop.getByTestId('hcp-auto-fetch').uncheck();
+  await expect.poll(() => background.evaluate(async () => (await chrome.storage.local.get('glmsync/hcp/auto'))['glmsync/hcp/auto'])).toContain('"off":true');
 });

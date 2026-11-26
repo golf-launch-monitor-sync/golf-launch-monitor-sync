@@ -8,7 +8,8 @@
  *   (to fetch). Nothing else of anyone's.
  * - **The web app's pairing page**: to pick up a pairing code from its fragment.
  * - **golf.de**: the player's *Mein Bereich* and a tournament's result list, to read along with what golf.de's own page
- *   loaded there (spec/hcp.md). Not golf.de's API: the extension sends golf.de nothing of its own.
+ *   loaded there (spec/hcp.md). Not golf.de's API: the extension sends golf.de nothing of its own. A run by itself opens
+ *   *Mein Bereich* in a tab of its own (`chrome.tabs.create`, `chrome.windows.getAll`): neither needs a permission.
  * - **The world rankings** (OWGR, Rolex Rankings): only a player's own page, to read what it shows when the player taps
  *   *Send* there (spec/prores.md). Nothing else of the sites, and no request to them.
  * - **A tour's site**: on the Pro Golf Tour the player's profile and his tournaments' pages, to read his ranking and his

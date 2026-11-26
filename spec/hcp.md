@@ -17,7 +17,9 @@ only when the target's plan says so, and never past its load guard. Since 1.10.0
 **only observe** the provider's own page ([below](#a-client-that-observes-and-clicks-for-the-player)): it
 then asks the provider nothing at all, and the plan comes before sending instead of before reading.
 Since 1.14.0 such a client may, on the player's tap, **click for the player** on that page (*Fetch all*):
-it operates the provider's own page as the player would and still asks the provider nothing itself.
+it operates the provider's own page as the player would and still asks the provider nothing itself. Since 1.16.0 a
+browser extension may start such a run **by itself** when the target's plan says the record is due, only while the
+player is signed in ([below](#by-itself-when-the-record-is-due)).
 
 | | Machine-readable |
 | --- | --- |
@@ -114,26 +116,28 @@ Errors are `{"error": {"code", "message"}}` with the codes of the launch monitor
 
 ## A client that observes and clicks for the player
 
-Since 1.10.0 (observing), 1.14.0 (clicking for the player, [below](#clicking-for-the-player-fetch-all)). Some providers answer their own web pages only with credentials of their own web app (a
+Since 1.10.0 (observing), 1.14.0 (clicking for the player, [below](#clicking-for-the-player-fetch-all)), 1.16.0 (by
+itself when due, [below](#by-itself-when-the-record-is-due)). Some providers answer their own web pages only with credentials of their own web app (a
 client id built into the page): a client sending that would pose as the provider's app, which the
 project's rules forbid (*no disguise*, *no borrowed client id*). Such a provider is read **only by
 observing**: the player opens the provider's pages in their own browser, signed in as always, and the
 client reads the answers the page itself received - in the player's tab or the companion app's window.
 
 - **No request of its own.** The client never sends anything to the provider: not a page, not a query,
-  not the next page of a list. What the player didn't open - or tap *Fetch all* for (below) - it doesn't
-  read. The provider's own page asks what it asks, with its own credentials, as it does for the player.
+  not the next page of a list. What the player didn't open - or tap *Fetch all* for, or a run by itself
+  opened (below) - it doesn't read. The provider's own page asks what it asks, with its own credentials, as it does for the player.
 - **Only the answers it knows**, only what it maps: the page script looks at the few answers named in
   the provider module (the record, the account's own details, a result list) and turns them into
   dgvhcp/1 **inside the page**. Names, card and member numbers and everything not mapped never leave the
   page's own context; of a result list only the player's own line is kept (by the provider's id of the
   result, which the record named).
-- **Nothing by itself.** No timer, no background reading, nothing the player didn't tap for. The target
-  can't make it read: when the record is due, the target app reminds the player instead (with a link to the provider's page; on a phone,
-  since 1.11.0, the read link `glmsync://read?kind=hcp` that opens the companion app's window there,
+- **Nothing by itself, except a run of *Fetch all* when due** (since 1.16.0, [below](#by-itself-when-the-record-is-due)):
+  no reading in the background of a page the player has open, nothing else the player didn't tap for. The target
+  can't make it read otherwise: when the record is due, the target app reminds the player (with a link to the provider's
+  page; on a phone, since 1.11.0, the read link `glmsync://read?kind=hcp` that opens the companion app's window there,
   [deep-links.md](deep-links.md)).
 - **The plan before sending, not before reading.** Every batch still goes through `GET /plan`, with the
-  reason `manual` (the player opened the page) - for the lease, `disconnected`, `account_ref` - and is
+  reason `manual` (the player opened the page; a run by itself asked the plan with `timer` before it started) - for the lease, `disconnected`, `account_ref` - and is
   sent only when the plan says `due`. The client may send each page as it is seen, or keep what it saw
   until the player says send.
 - **Page by page.** A batch carries what one page brought (`sheet`: `history` for a page of the History
@@ -158,7 +162,7 @@ window) and the client does the clicks a person would, one after the other:
 1. the History Sheet, then each next page of it, by the page's own pager (its link, or the same
    address that link has; the cursor is the one the page received, passed on, never built);
 2. the Scoring Record, by the page's own button;
-3. the result lists of the player's own tournaments of the **last two years**, **at most 50**, newest
+3. the result lists of the player's own tournaments of the **last two years**, **at most 100** (50 before 1.16.0), newest
    first - only club tournaments (no registered private round), only those without a place yet with
    this client, none opened in the last seven days - each by the address the provider's own pages
    use for it.
@@ -168,12 +172,12 @@ What it may and may not do:
 - **It only operates the provider's page**: its links, its buttons, the addresses its own links have.
   The page's own scripts load what they load, with their own credentials; the client reads along as
   above and **still sends the provider nothing of its own** - no request, no header, no client id.
-- **Only on the player's tap**, signed in, with the account confirmed as theirs and a target paired;
-  never by a timer, a plan or a target. A target can't start it.
+- **On the player's tap**, signed in, with the account confirmed as theirs and a target paired - or, since 1.16.0, by
+  itself under the rules [below](#by-itself-when-the-record-is-due). A target can't start it in any other way.
 - **A person's pace** ([hcp/clicks.json](hcp/clicks.json), normative; no option loosens it, the numbers
   move down after a measurement, never up without one): a pause of 3-6 s after each page's answer
-  before the next click, at most 60 pages of the History Sheet and 50 result lists a run, three runs a
-  day, the same list not again within seven days.
+  before the next click, at most 60 pages of the History Sheet and 100 result lists a run, three runs a
+  day (the player's and those by itself together), the same list not again within seven days.
 - **It stops** when the page says the player isn't signed in (`signed_out`), when another account
   shows, when a page doesn't answer as known within 30 s or the thing to click isn't there
   (`changed_page`; a result list may simply not exist - three missing in a row count as a changed page),
@@ -181,6 +185,35 @@ What it may and may not do:
 - **One send at the end**: nothing goes to the target while a run is under way; at its end (or when it
   stops) what it read goes as usual, through the plan with `manual`.
 
+### By itself, when the record is due
+
+Since 1.16.0 (the maintainer's decision: whether the player clicks or the client clicks for them while they are signed
+in makes no difference to what is read). A browser extension may start *Fetch all* without the player's tap. The run
+is the same run in every other way - the same steps, pace, limits, stops and one send at its end:
+
+- **Only while the player is signed in.** It starts one only when golf.de's own page last said the player is signed
+  in, with the account they confirmed as theirs and a target paired. It **never signs in**: it fills in no sign-in form
+  and opens no sign-in page. When the page it opens says the player isn't signed in, the run stops there
+  (`signed_out`, told to the target once).
+- **Only when the target's plan says so.** At most every `auto_look_minutes` ([hcp/clicks.json](hcp/clicks.json)) it
+  asks each target paired for the record, with the reason **`timer`** - due once a day at most
+  ([When a client reads](#when-a-client-reads)); only a plan that says `due` starts a run. No reason of its own is
+  needed: `timer` is the client looking by itself. A target can't start a run in any other way.
+- **In a page of its own, in the background.** It opens golf.de's *Mein Bereich* in a new tab that doesn't take the
+  focus, runs there, and closes that tab when the run is over - unless the player switched to it meanwhile: then the tab
+  is theirs and stays open.
+- **Once off track, it waits for the player.** A run by itself that stops before its end (signed out, another account,
+  a changed page, the player's *Stop*, the tab closed or left) starts no other by itself until golf.de's page has shown
+  the player signed in again outside a run - they opened golf.de themselves.
+- **At its end** what it read goes through the plan with `manual`, as a tapped run's does (the `timer` plan has
+  granted this read and may still hold its lease). When the run finished and nothing is new for a target, it still
+  sends that target a batch without results (with the index), so the target's plan moves on and doesn't ask again
+  within the day.
+- **The player can switch it off** in the client (on by default); off, only their tap starts a run.
+
+A companion app may do the same where the phone lets an app's window run unseen; until a release says how, it doesn't.
+
 The rule is implemented once, in `@glmsync/provider-golfde` (`clicks.ts`: the run as a value, moved on by
 what the page showed and by time; `operate.ts`: the step taken in the page), and used by the extension
-and the companion app alike.
+and the companion app alike. When to start a run by itself is `@glmsync/browser`'s `HcpClient` (`autoDue`, `startFetchAll` with `auto`,
+`setAutoFetch`); the background tab is the extension's background's.

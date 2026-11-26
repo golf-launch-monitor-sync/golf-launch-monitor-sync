@@ -208,6 +208,9 @@ export function hcpPanel(root: HTMLElement, opts: { onGolfde?: () => void; back?
     const auto = h('input', { type: 'checkbox', id: 'hcp-auto', 'data-test': 'hcp-auto' }) as HTMLInputElement;
     auto.checked = v.auto;
     auto.addEventListener('change', () => void send({ type: 'hcp-auto', auto: auto.checked }).then(apply));
+    const autoFetch = h('input', { type: 'checkbox', id: 'hcp-auto-fetch', 'data-test': 'hcp-auto-fetch' }) as HTMLInputElement;
+    autoFetch.checked = v.auto_fetch;
+    autoFetch.addEventListener('change', () => void send({ type: 'hcp-auto-fetch', on: autoFetch.checked }).then(apply));
     const notes = [
       v.waiting ? t('hcp.waiting') : null,
       v.signed_out ? t('hcp.signedOut') : null,
@@ -231,6 +234,7 @@ export function hcpPanel(root: HTMLElement, opts: { onGolfde?: () => void; back?
             v.fresh ? button(v.sending ? t('hcp.sending') : t('hcp.send'), () => void send({ type: 'hcp-send' }).then(apply), { class: 'primary', 'data-test': 'hcp-send' }) : null)
         : null,
       v.pairings.length ? h('p', { class: 'small' }, h('label', { for: 'hcp-auto' }, auto, ` ${t('hcp.auto')}`)) : null,
+      v.pairings.length ? h('p', { class: 'small' }, h('label', { for: 'hcp-auto-fetch' }, autoFetch, ` ${t('hcp.autoFetch')}`)) : null,
     );
   };
   const apply = (r: Reply) => {

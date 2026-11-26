@@ -8,7 +8,9 @@
  * *Fetch all* (spec/hcp.md, clicking for the player): the tab where the player tapped it asks the background for one
  * step at a time and takes it here - golf.de's own pager link, its Scoring Record button, a result list's address -
  * with the run's pause between pages; golf.de's page loads what it loads, and golfde-main.ts reads along as always.
- * Nothing here asks golf.de anything. *Stop* ends it; so do golf.de saying signed out and a page that isn't as known. Before the player said the
+ * Nothing here asks golf.de anything. *Stop* ends it; so do golf.de saying signed out and a page that isn't as known.
+ * A run by itself (spec 1.16.0) is driven the same way, from the background tab the extension opened for it: the
+ * background says which tab drives (`drive`), also when this page loaded before its run was saved. Before the player said the
  * account is theirs it shows no count, only that the connection waits for that, and *Confirm*, which brings the
  * extension's connect window to the front (the yes is given there). The line lives in a shadow
  * root, so golf.de's styles don't reach it (it holds nothing golf.de's page doesn't show itself), and it can be
@@ -206,10 +208,14 @@ window.addEventListener('message', (event: MessageEvent) => {
 // *Fetch all* this tab drives goes on here after a page of it loaded.
 const start = () =>
   void ask({ type: 'golfde-line' }).then((r) => {
-    if (r?.hcp?.fetch_all === 'running') void drive();
+    if (r?.drive || r?.hcp?.fetch_all === 'running') void drive();
   });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
 else start();
 setInterval(() => {
-  if (host && !hidden) void ask({ type: 'golfde-line' });
+  if (host && !hidden) {
+    void ask({ type: 'golfde-line' }).then((r) => {
+      if (r?.drive) void drive();
+    });
+  }
 }, 5000);

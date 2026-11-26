@@ -29,7 +29,9 @@ function step(s: RunState, now: number): [RunState, Step] {
 describe('the spec’s numbers', () => {
   it('are the ones in spec/hcp/clicks.json, and a person’s pace', () => {
     expect(CLICKS).toBe(HCP_CLICKS);
-    expect(CLICKS.max_lists).toBe(50);
+    expect(CLICKS.max_lists).toBe(100); // 50 before spec 1.16.0
+    expect(CLICKS.runs_per_day).toBe(3);
+    expect(CLICKS.auto_look_minutes).toBeGreaterThanOrEqual(30);
     expect(CLICKS.list_years).toBe(2);
     expect(CLICKS.pause_ms[0]).toBeGreaterThanOrEqual(3000);
     expect(Object.isFrozen(CLICKS)).toBe(true);
@@ -105,12 +107,12 @@ describe('a whole run', () => {
     expect(s.opened).toHaveLength(19);
   });
 
-  it('at most 50 lists, and only of the last two years', () => {
-    const nodes = Array.from({ length: 60 }, (_, i) => entry({ scorecardTournamentNumber: 9000 + i, tournamentDate: '2026-05-01T10:00:00+02:00' }));
-    const s = seeRun({ ...start(), awaiting: { what: 'history', since: T0 } }, { ...(historyPage(nodes.slice(0, 50), 60, 1, 1) as object), kind: 'history' } as Seen, T0, mid);
-    expect(listsOf(s)).toHaveLength(Object.keys(s.links).length); // 50 links, all of them
-    const more = seeRun({ ...s, awaiting: { what: 'history', since: T0 } }, historyPage(nodes.slice(50), 60, 2, 2), T0, mid);
-    expect(listsOf(more)).toHaveLength(50);
+  it('at most 100 lists, and only of the last two years', () => {
+    const nodes = Array.from({ length: 120 }, (_, i) => entry({ scorecardTournamentNumber: 9000 + i, tournamentDate: '2026-05-01T10:00:00+02:00' }));
+    const s = seeRun({ ...start(), awaiting: { what: 'history', since: T0 } }, { ...(historyPage(nodes.slice(0, 100), 120, 1, 1) as object), kind: 'history' } as Seen, T0, mid);
+    expect(listsOf(s)).toHaveLength(Object.keys(s.links).length); // 100 links, all of them
+    const more = seeRun({ ...s, awaiting: { what: 'history', since: T0 } }, historyPage(nodes.slice(100), 120, 2, 2), T0, mid);
+    expect(listsOf(more)).toHaveLength(100);
     expect(yearsBefore('2026-11-25', 2)).toBe('2024-11-25');
     expect(yearsBefore('2028-02-29', 2)).toBe('2026-02-28');
     const old = entry({ scorecardTournamentNumber: 1, tournamentDate: '2024-11-24T10:00:00+02:00' });

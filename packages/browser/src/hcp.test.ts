@@ -460,3 +460,172 @@ describe('Fetch all: its page goes away', () => {
     expect(w.target.results.size).toBe(1);
   });
 });
+
+describe('Fetch all by itself, when the record is due (spec 1.16.0)', () => {
+  const page = (nodes: Record<string, unknown>[], total: number, n: number, of: number) =>
+    reduce({ kind: 'graphql', op: 'GetHandicapHistorySheet' }, 200, historyAnswer(nodes, total, n, of)) as Seen;
+  const PAUSE = 6001;
+  const LOOK = 30 * 60_000;
+  const own = entry(); // one result, the same on every page
+
+  async function ready() {
+    const w = await paired();
+    await w.client.see('p1', member());
+    await w.client.confirm(true);
+    await w.client.see('p1', history([own]));
+    await w.client.send(); // the target has what was seen: nothing new for it
+    w.target.plans.length = 0;
+    return w;
+  }
+
+  /** A run by itself from its first step to its end, the page showing one History Sheet page and the Scoring Record. */
+  async function wholeRun(w: Awaited<ReturnType<typeof ready>>, owner = 'tab:9') {
+    expect((await w.client.startFetchAll(owner, { auto: true })).run).toMatchObject({ phase: 'history', auto: true });
+    expect(await w.client.drives(owner)).toBe(true);
+    expect(await w.client.drives('tab:1')).toBe(false);
+    await w.client.runStep(owner);
+    await w.client.see('p9', member());
+    await w.client.see('p9', page([own], 1, 1, 1));
+    w.clock.advance(PAUSE);
+    await w.client.runStep(owner);
+    await w.client.see('p9', scoring([]));
+    for (let i = 0; i < 5; i++) {
+      w.clock.advance(PAUSE);
+      const turn = await w.client.runStep(owner);
+      if (turn.step.do === 'end') return turn.view;
+      const t = turn.step.do === 'open' ? /#\/(\d+)\/ergebnisse$/.exec(turn.step.url)?.[1] : undefined;
+      if (t) await w.client.see('p9', reduce({ kind: 'results', tournament: t }, 200, resultsAnswer('none-of-ours')) as Seen);
+    }
+    throw new Error('the run didn’t end');
+  }
+
+  it('asks only the target’s plan, with timer, and only when it says due', async () => {
+    const w = await ready();
+    expect(await w.client.autoDue()).toBe(false);
+    expect(w.target.plans).toEqual([{ reason: 'timer', client: 'extension' }]);
+    // Not asked again before the next look.
+    w.target.due = true;
+    w.clock.advance(LOOK - 120_000);
+    expect(await w.client.autoDue()).toBe(false);
+    expect(w.target.plans).toHaveLength(1);
+    w.clock.advance(120_000);
+    expect(await w.client.autoDue()).toBe(true);
+    expect(w.target.plans.map((p) => p.reason)).toEqual(['timer', 'timer']);
+    expect(w.target.imports).toHaveLength(1); // nothing sent by looking
+  });
+
+  it('never while golf.de last said signed out, before the yes, without an app, or switched off - and then asks no target', async () => {
+    const w = await paired();
+    w.target.due = true;
+    expect(await w.client.autoDue()).toBe(false); // no account named yet
+    await w.client.see('p1', member());
+    expect(await w.client.autoDue()).toBe(false); // not confirmed
+    await w.client.confirm(true);
+    await w.client.see('p1', { kind: 'signed_out' });
+    expect(await w.client.autoDue()).toBe(false);
+    await w.client.see('p1', member());
+    let v = await w.client.setAutoFetch(false);
+    expect(v.auto_fetch).toBe(false);
+    expect(await w.client.autoDue()).toBe(false);
+    expect((await w.client.startFetchAll('tab:9', { auto: true })).fetch_all).toBe('ready');
+    expect(w.target.plans).toHaveLength(0);
+    // The player's own tap still runs.
+    expect((await w.client.startFetchAll('tab:1')).fetch_all).toBe('running');
+    await w.client.cancelFetchAll();
+    v = await w.client.setAutoFetch(true);
+    expect(v.auto_fetch).toBe(true);
+    w.target.due = true; // the tapped run's send (the index, new to it) moved the target's plan on
+    expect(await w.client.autoDue()).toBe(true);
+    const none = world();
+    none.target.due = true;
+    await none.client.see('p1', member());
+    expect(await none.client.autoDue()).toBe(false); // no app
+  });
+
+  it('counts with the player’s runs: three a day together', async () => {
+    const w = await ready();
+    w.target.due = true;
+    for (let i = 0; i < 3; i++) {
+      await w.client.startFetchAll('tab:1');
+      await w.client.cancelFetchAll();
+    }
+    expect(await w.client.autoDue()).toBe(false);
+    expect(w.target.plans).toHaveLength(0);
+  });
+
+  it('a run by itself that finished tells the target even with nothing new, so its plan moves on', async () => {
+    const w = await ready();
+    w.target.due = true;
+    expect(await w.client.autoDue()).toBe(true);
+    const v = await wholeRun(w);
+    expect(v.run).toMatchObject({ phase: 'done', auto: true });
+    expect(w.target.imports).toHaveLength(2);
+    const last = w.target.imports[1];
+    expect(last?.results).toEqual([]);
+    expect(check(last), JSON.stringify(check.errors)).toBe(true);
+    expect(w.target.plans.at(-1)).toEqual({ reason: 'manual', client: 'extension' });
+    expect(w.target.due).toBe(false);
+    w.clock.advance(LOOK);
+    expect(await w.client.autoDue()).toBe(false); // the target says not due now
+  });
+
+  it('a tapped run with nothing new still sends nothing', async () => {
+    const w = await ready();
+    await w.client.startFetchAll('tab:1');
+    await w.client.cancelFetchAll();
+    expect(w.target.imports).toHaveLength(1);
+  });
+
+  it('one that stopped early holds the next until golf.de showed the player signed in outside a run', async () => {
+    const w = await ready();
+    w.target.due = true;
+    expect(await w.client.autoDue()).toBe(true);
+    await w.client.startFetchAll('tab:9', { auto: true });
+    await w.client.runStep('tab:9');
+    // golf.de's page in the background tab says nobody is signed in: it stops, reads nothing, never signs in.
+    const v = await w.client.see('p9', { kind: 'signed_out' });
+    expect(v.run).toMatchObject({ phase: 'stopped', why: 'signed_out', auto: true });
+    expect(w.target.notice).toEqual({ code: 'signed_out' });
+    w.target.plans.length = 0;
+    w.clock.advance(LOOK);
+    expect(await w.client.autoDue()).toBe(false);
+    expect(w.target.plans).toHaveLength(0);
+    // The player opens golf.de themselves, signed in: it may come again.
+    await w.client.see('p1', member());
+    expect(await w.client.autoDue()).toBe(true);
+  });
+
+  it('a background tab closed (or left) is a run that stopped early too; the switch on again lifts the hold', async () => {
+    const w = await ready();
+    w.target.due = true;
+    await w.client.startFetchAll('tab:9', { auto: true });
+    await w.client.runStep('tab:9');
+    await w.client.see('p9', member()); // seen in the run by itself: no lifting of a hold by it
+    await w.client.leaveFetchAll('tab:9');
+    w.clock.advance(LOOK);
+    expect(await w.client.autoDue()).toBe(false);
+    await w.client.setAutoFetch(true);
+    expect(await w.client.autoDue()).toBe(true);
+  });
+
+  it('a target that can’t answer, or ended the connection, starts nothing', async () => {
+    const down = await ready();
+    down.target.due = true;
+    (down.target.opts as { fail?: Record<string, { status: number }> }).fail = { '/plan': { status: 503 } };
+    expect(await down.client.autoDue()).toBe(false);
+    const ended = await ready();
+    ended.target.due = true;
+    ended.target.disconnected = true;
+    expect(await ended.client.autoDue()).toBe(false);
+    expect((await ended.client.view()).pairings).toHaveLength(0);
+  });
+
+  it('a run under way starts no other', async () => {
+    const w = await ready();
+    w.target.due = true;
+    await w.client.startFetchAll('tab:1');
+    await w.client.runStep('tab:1');
+    expect(await w.client.autoDue()).toBe(false);
+    expect((await w.client.startFetchAll('tab:9', { auto: true })).run).not.toHaveProperty('auto');
+  });
+});

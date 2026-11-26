@@ -74,6 +74,10 @@ describe('who sent a message', () => {
     expect(accept({ type: 'hcp-unpair', id: 'abc' }, 'golfde')).toBeNull();
     expect(accept({ type: 'hcp-unpair', id: 'abc' }, 'extension')).toEqual({ type: 'hcp-unpair', id: 'abc' });
     expect(accept({ type: 'hcp-auto', auto: 'yes' }, 'extension')).toBeNull();
+    // The switch for Fetch all by itself only from the extension's own pages: golf.de's scripts can't turn it on.
+    expect(accept({ type: 'hcp-auto-fetch', on: false }, 'extension')).toEqual({ type: 'hcp-auto-fetch', on: false });
+    expect(accept({ type: 'hcp-auto-fetch', on: true }, 'golfde')).toBeNull();
+    expect(accept({ type: 'hcp-auto-fetch', on: 'yes' }, 'extension')).toBeNull();
     // The yes to golf.de's account only from the extension's own pages: golf.de's scripts reach the line on its page.
     expect(accept({ type: 'hcp-confirm', yes: true }, 'extension')).toEqual({ type: 'hcp-confirm', yes: true });
     expect(accept({ type: 'hcp-confirm', yes: true }, 'golfde')).toBeNull();

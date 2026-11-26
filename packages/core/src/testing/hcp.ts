@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
  * For tests: a made-up handicap target (spec/api/hcp-api.yaml) in memory. It plans like the reference (`manual`
- * always due), keeps one account per connection, and merges a result that comes again into the one it has - by its
+ * always due; `open` and `timer` while `due` is set, which an import clears unless it says signed out), keeps one account per connection, and merges a result that comes again into the one it has - by its
  * day, holes, rating and score, as a target finds it without trusting a client's ids - so a test can see that pages
  * sent one by one end as one result each. Nothing here reaches a network.
  */
@@ -40,6 +40,8 @@ export class FakeHcpTarget {
   notice: HcpBatch['notice'] | null = null;
   accountRef: string | null = null;
   disconnected = false;
+  /** The record is due for a look by itself (`timer`, `open`): a day since the last read, as the test says. */
+  due = false;
   salt = 'fake-hcp-salt-000001';
   private seq = 0;
 
@@ -72,7 +74,8 @@ export class FakeHcpTarget {
     if (path === '/plan' && method === 'GET') {
       this.plans.push({ reason: u.searchParams.get('reason'), client: u.searchParams.get('client') });
       if (this.disconnected) return response(200, { due: false, disconnected: true });
-      return response(200, { due: u.searchParams.get('reason') === 'manual', plan_id: `hp_${++this.seq}`, cards_have: [], max_cards: 20, ...(this.accountRef ? { account_ref: this.accountRef } : {}) });
+      const reason = u.searchParams.get('reason');
+      return response(200, { due: reason === 'manual' || ((reason === 'timer' || reason === 'open') && this.due), plan_id: `hp_${++this.seq}`, cards_have: [], max_cards: 20, ...(this.accountRef ? { account_ref: this.accountRef } : {}) });
     }
     if (path === '/import' && method === 'POST') {
       if (this.disconnected) return response(409, { error: { code: 'disconnected', message: 'ended' } });
@@ -96,6 +99,8 @@ export class FakeHcpTarget {
       }
       if (b.index) this.index = b.index;
       this.notice = b.notice ?? null;
+      // A read moves the plan on (one that couldn't read, signed out, doesn't).
+      if (b.notice?.code !== 'signed_out') this.due = false;
       return response(200, { read: b.results.length, new: fresh, changed, same, skipped: 0, failed: 0 });
     }
     if (path === '/status' && method === 'GET') return response(200, { target: { name: this.name }, connected: !this.disconnected, ...(this.accountRef ? { account_ref: this.accountRef } : {}) });

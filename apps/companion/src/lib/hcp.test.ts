@@ -100,6 +100,7 @@ const view = (over: Partial<HcpView> = {}): HcpView => ({
   index: null,
   fetch_all: 'no',
   run: null,
+  auto_fetch: true,
   ...over,
 });
 

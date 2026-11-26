@@ -100,8 +100,14 @@ What it does, and doesn't:
   at the answers golf.de's page receives for three GraphQL operations, a result list and the session - nothing else -
   and posts dgvhcp/1 results made in the page: no names, no card or member numbers ever leave it. `golfde-relay.ts`
   hands them to the background and draws the line (in a shadow root; only once an app is connected for it).
-- **Nothing by itself.** No timer reads golf.de; what you don't open isn't read. The app reminds you instead when the
-  record is due.
+- **Fetch all**: signed in, with the account confirmed, *Fetch all* on the line opens every page of the History Sheet,
+  the Scoring Record and the result lists of your tournaments of the last two years (at most 100) for you, with a
+  pause between pages, and reads along; what it read goes once, at the end.
+- **By itself when due** (spec 1.16.0, extension 0.20.0): every half hour the extension asks the app's plan (`timer`, once a day at
+  most). When it says due and golf.de last said you are signed in, it opens *Mein Bereich* in a tab that doesn't take
+  the focus, does the same run there, and closes the tab at the end (one you switched to stays). Signed out, it reads
+  nothing and never signs in; a run that stops early waits until you have been on golf.de yourself. The popup has
+  *Fetch by itself when due* to switch it off. Nothing else is read in the background.
 - **The plan before sending**: every batch after the app's plan (`manual`), only what that app doesn't have from here
   yet; the pages of a visit go together, so the app keeps one import, not one per page.
 - **Whose record**: the account *Mein Bereich* names (its stable number, sent only as `account_ref`); another account's

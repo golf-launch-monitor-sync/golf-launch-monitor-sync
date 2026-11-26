@@ -1,12 +1,13 @@
 {
-  "$comment": "How a client that clicks for the player operates golf.de's own page (spec/hcp.md, *A client that observes and clicks for the player*). Normative for the clicking: no option, plan field or setting loosens it; the numbers move down after a measurement, never up without one.",
-  "version": 1,
+  "$comment": "How a client that clicks for the player operates golf.de's own page (spec/hcp.md, *A client that observes and clicks for the player*). Normative for the clicking: no option, plan field or setting loosens it; the numbers move down after a measurement, never up without one. `auto_look_minutes`: how often a client may look whether to start a run by itself (since 1.16.0: it asks only the target's plan, and only while the player is signed in).",
+  "version": 2,
   "pause_ms": [3000, 6000],
   "answer_wait_ms": 30000,
   "max_history_pages": 60,
-  "max_lists": 50,
+  "max_lists": 100,
   "list_years": 2,
   "list_again_days": 7,
   "max_missing_lists": 3,
-  "runs_per_day": 3
+  "runs_per_day": 3,
+  "auto_look_minutes": 30
 }

@@ -97,6 +97,7 @@ const FROM: Record<Message['type'], Source> = {
   'hcp-status': 'extension',
   'hcp-send': 'extension',
   'hcp-auto': 'extension',
+  'hcp-auto-fetch': 'extension',
   'hcp-unpair': 'extension',
   'hcp-clear-ended': 'extension',
   'hcp-confirm': 'extension',
@@ -163,6 +164,8 @@ export function accept(raw: unknown, source: Source): Message | null {
       return typeof m.id === 'string' && m.id.length <= 64 ? { type, id: m.id } : null;
     case 'hcp-auto':
       return typeof m.auto === 'boolean' ? { type, auto: m.auto } : null;
+    case 'hcp-auto-fetch':
+      return typeof m.on === 'boolean' ? { type, on: m.on } : null;
     case 'hcp-confirm':
       return typeof m.yes === 'boolean' ? { type, yes: m.yes } : null;
     case 'pair-confirm':
