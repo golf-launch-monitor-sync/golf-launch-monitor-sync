@@ -7,6 +7,13 @@ import { join } from 'node:path';
 import { ROOT, World } from '../../../tools/e2e/world.ts';
 
 const EXTENSION = join(ROOT, 'apps', 'extension', 'dist-e2e', 'chrome');
+/**
+ * No name resolves outside the test: a tab the extension opens loads its first address before the test's routes reach
+ * it (Playwright attaches late), and on a runner with internet that went to the real site (golf.de, which then led
+ * elsewhere, so the tab wasn't found). Now it fails as it does offline - a chrome-error page the spec loads again
+ * through the routes - and nothing ever reaches a real provider. Routed requests resolve nothing, so they still work.
+ */
+export const OFFLINE = '--host-resolver-rules=MAP * ~NOTFOUND';
 
 export const test = base.extend<{ world: World; context: BrowserContext; background: Worker; extensionId: string }>({
   world: async ({}, use) => {
@@ -18,7 +25,7 @@ export const test = base.extend<{ world: World; context: BrowserContext; backgro
       ...(process.env.GLMSYNC_CHROMIUM ? { executablePath: process.env.GLMSYNC_CHROMIUM } : { channel: 'chromium' }),
       headless: true,
       ...(locale ? { locale } : {}),
-      args: [`--disable-extensions-except=${EXTENSION}`, `--load-extension=${EXTENSION}`, ...(locale ? [`--lang=${locale}`] : [])],
+      args: [`--disable-extensions-except=${EXTENSION}`, `--load-extension=${EXTENSION}`, OFFLINE, ...(locale ? [`--lang=${locale}`] : [])],
     });
     await world.route(context);
     await use(context);

@@ -21,6 +21,10 @@ export default defineConfig({
   use: {
     locale: 'en-US',
     testIdAttribute: 'data-test',
-    ...(process.env.GLMSYNC_CHROMIUM ? { launchOptions: { executablePath: process.env.GLMSYNC_CHROMIUM } } : {}),
+    // No name resolves outside the test (apps/extension/e2e/fixture.ts, OFFLINE): every answer comes from a route.
+    launchOptions: {
+      args: ['--host-resolver-rules=MAP * ~NOTFOUND'],
+      ...(process.env.GLMSYNC_CHROMIUM ? { executablePath: process.env.GLMSYNC_CHROMIUM } : {}),
+    },
   },
 });
