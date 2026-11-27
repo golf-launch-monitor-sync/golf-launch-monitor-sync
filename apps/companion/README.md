@@ -54,10 +54,11 @@ portal in a sign-in window - so that window lives here, in a small app that does
 - **Syncs only when a target's plan says so**: on opening the app (`open`), after pairing or signing
   in (`connect`), on "fetch now" and on a sync link (`manual`), when a target app binds on Android
   (`open` or `manual`, as it says), and in the background (`timer`,
-  `expo-background-task`: Android's WorkManager about every 30 minutes, iOS as often as it wakes the
-  app). Each asks the plan first; the provider is asked only when it is due, and never past the
+  `expo-background-task`: Android's WorkManager about every 30 minutes, iOS as often as it starts the
+  app for it). Each asks the plan first; the provider is asked only when it is due, and never past the
   [load guard](../../spec/guard.md), whose counts outlive restarts. The older history comes a chunk at
-  a time while the app is open (and one chunk per background wake), spaced as the target says.
+  a time while the app is open, spaced as the target says; in the background one chunk per run on Android and per
+  wake, and on the iPhone chunk after chunk while iOS lets the app work ([below](#the-older-history-at-night)).
 - **One sync at a time, and a tap joins it** (`src/lib/runner.ts`): "fetch now" or a sync link while a sync is
   queued or under way waits for it and takes what it brought (*Waiting for the fetch under way …*); only if it
   fetched nothing (not due, another device holds the lease) does the tap ask a plan of its own. A plan that is busy
@@ -72,6 +73,11 @@ portal in a sign-in window - so that window lives here, in a small app that does
   `enableBackgroundRemoteNotifications`). It shows no notification and asks no permission for one; Android
   registers no address (its timer and the sync service do the job). Switched off with iOS's *Background App
   Refresh* for the app, or by unpairing.
+- **Loads the older history at night on the iPhone** (companion 0.17.0, `src/lib/longRun.ts`; [below](#the-older-history-at-night)):
+  while iOS lets the background task work, the history goes on chunk after chunk, each after the target's plan and pause,
+  until it is through, ten minutes are up, iOS ends the task or the player opens the app. iOS ending it in the middle of
+  a chunk stops it there; that chunk hands nothing over and comes again with the next plan, so nothing reaches a target
+  twice. The exported log shows the last runs (`background_runs`).
 - **Says what keeps iOS from waking it** (companion 0.16.0, `src/lib/wakeHints.ts`, `src/ui/WakeHints.tsx`): on the
   iPhone with a pairing, one sentence when *Background App Refresh* is off (with *Open settings*, the app's own page
   there) or restricted (Screen Time, a managed phone), or Low Power Mode is on (that one first: it turns background
@@ -101,7 +107,8 @@ portal in a sign-in window - so that window lives here, in a small app that does
   the same queue as the screen's runs, the plan first. Only a paired target, one at a time per target
   and not again within ten seconds (`src/lib/nudge.ts`); nothing comes back over the binding.
 - **Shows the counts** ("requests today 14 of 300"), and **exports the guard's log** of the last 14 days
-  (times, kinds, statuses, durations - never content) through the share sheet.
+  (times, kinds, statuses, durations - never content) through the share sheet, with the last background runs beside
+  it (`background_runs`, companion 0.17.0).
 - **Test mode** (spec 1.8.0, [test-mode.md](../../spec/test-mode.md)): for testing a connected app by hand, the
   app's test code instead of the sign-in - *Enter a test code*, small under Trackman's sign-in (the sign-in window's
   bar, step 3 on the home page, a connection's card while it isn't signed in), or brought by its link
@@ -262,9 +269,9 @@ Found out for TE-10b-6 (spec 1.17.0, *By itself, when the record is due*): a run
 seconds' pause after each page, up to 60 pages of the History Sheet and 100 result lists), and it needs golf.de's page in
 a web view. Neither phone gives an app that in the back:
 
-- **iOS** suspends an app within seconds of going to the back. A background task (`BGAppRefreshTask`, which
-  `expo-background-task` uses) and a silent push (the wake `lm_plan`, [spec/wake.md](../../spec/wake.md)) give it about
-  half a minute, when iOS chooses; a `WKWebView`'s page stops with the app, and WebKit even suspends the page of a web
+- **iOS** suspends an app within seconds of going to the back. A silent push (the wake `lm_plan`,
+  [spec/wake.md](../../spec/wake.md)) gives it about half a minute, the background task (a `BGProcessingTask`, below)
+  minutes, but when iOS chooses - mostly at night on the charger -, not when the record is due; a `WKWebView`'s page stops with the app, and WebKit even suspends the page of a web
   view that isn't at least partly on screen (in the view hierarchy, with a size). So no run in the back, and the wake
   doesn't start one: it couldn't finish, and an app woken in the back has no screen to keep a window in.
 - **Android** runs the background task (WorkManager, about every 30 minutes, at most ten minutes) and the sync service's
@@ -282,6 +289,38 @@ interrupt it instead (`interruptFetchAll`: what was read goes out, no hold - not
 window goes. Not seen on a real phone yet: whether golf.de keeps the sign-in of the player's window in this one (they
 share the web view's cookies), and whether iOS lets a web view behind the screen load as one in front.
 
+## The older history at night
+
+Found out for SY-16: a new player's history (years of sessions, a chunk of ten every minute or two)
+took days of opening the app on the iPhone, since a wake gives half a minute, one chunk.
+
+- **`expo-background-task` is already the right kind of task.** On iOS it submits a `BGProcessingTaskRequest`
+  (`processing` in `UIBackgroundModes`, the network required, external power not), at the earliest `minimumInterval`
+  (30 minutes) after the last run, and completes it only when the JavaScript task has ended. iOS runs such tasks mostly
+  while the phone charges and nobody uses it, and gives them minutes. So no task of our own: the same task does more.
+- **What it does there** (`backgroundWork` in `src/lib/longRun.ts`, run by `src/background.ts`): the regular look
+  (`timer`) first, then `Runner.backfill` chunk after chunk - each asks the target's plan (`backfill`), so its size, its
+  pause (`wait_s`) and its limits are the target's and the guard's, unchanged - with the pause between them (at least
+  5 s). It ends when no chunk is due within half an hour (the history done, or the guard holding), after **10 minutes**
+  (`LONG_BUDGET_MS`: no chunk starts that wouldn't end by then, counted with the longest chunk so far, at first 90 s;
+  no pause is slept after which none would fit), when iOS ends the task, or when the app comes to the front (its own
+  loop goes on from there).
+- **When iOS ends the time**: its expiration handler is the only word, and `expo-background-task`'s module drops it on
+  the way to JavaScript (SDK 58: it looks for a `url` the handler never sends), so its `addExpirationListener` never
+  fires. `modules/glmsync-power` listens to the same notification (`onTasksExpired`) and sends `onTaskExpired`
+  (`onTaskExpired` in `src/power.ts`); either stops the run: the runner's chunk ends as `cancelled`, handing nothing over,
+  and the next plan of this client takes its own lease over and asks for those sessions again (spec/planning.md, *The
+  lease*). A request cut off halfway is covered by the guard's in-flight mark. `src/lib/native.test.ts` reads the
+  installed package and fails if an upgrade changes any of this.
+- **Android** keeps one chunk per run: WorkManager gives up to ten minutes but says nothing before it stops, and its
+  timer comes every half hour anyway.
+- **Not measured yet**: how long iOS lets the task work, and how often a night. The exported log's `background_runs`
+  (the last 20: when, how long, how many chunks, how each ended: `done`, `budget`, `expired`, `front`, `failed`) shows
+  it; if runs keep ending `expired`, the ten minutes go down, if always `budget` with history left, they may go up.
+
+A build older than 0.17.0 has no `onTaskExpired`: there the ten minutes still bound the run, and iOS ending it sooner
+freezes it in the middle of a chunk, which the next plan repairs the same way.
+
 ## What it keeps, and where
 
 | What | Where |
@@ -289,6 +328,7 @@ share the web view's cookies), and whether iOS lets a web view behind the screen
 | The provider sign-in (and the account it was of, for the quiet renewal) | the secure store (Keychain / Keystore), readable after the first unlock, this device only; cut into pieces where long (`ChunkedSecrets`) |
 | Each pairing's import token | the secure store |
 | The rest of a pairing (address, name, limits, return prefixes), the guard's counts and log, the last run per pairing | app storage (AsyncStorage) |
+| The last 20 background runs: when, how long, how many history chunks, how each ended (nothing of the player) | app storage; in the exported log |
 | A pairing its app ended: which app and provider, when (no token, no address; the last ten) | app storage, until that app pairs again or the player removes the row |
 | A test scenario (made up, up to 64 MiB; test mode) | a file in the app's document folder, until the test ends; what the page shows of it (name, account, end) in app storage |
 | Each handicap pairing with its import token | the secure store (one entry, `glmsync.hcp.pairings`, in pieces where long) |
@@ -320,7 +360,7 @@ src/lib/            everything without a screen, tested with vitest: secrets, si
                     links, the runner (pair, sync, history, file, "Is this you?"), test mode (tests),
                     the Android sync service's rules (nudge), whether a new build is out (newBuild),
                     golf.de's Fetch all (fetchAll) and when it runs by itself (autoFetch), what keeps iOS
-                    from waking the app (wakeHints), the wording
+                    from waking the app (wakeHints), the background task's work (longRun), the wording
 src/ui/             the screens: App (links, opening, quiet renewal), Home, PairView, SignInView,
                     FirstSyncView, SyncView, TestView, Licenses, TrackmanLoginView, PairHcpView, GolfdeView,
                     UnseenGolfde (the window behind the screen), HcpCard, PairProView, RankingsView, ToursView,
@@ -328,11 +368,12 @@ src/ui/             the screens: App (links, opening, quiet renewal), Home, Pair
 src/platform.ts     the phone's parts: secure store, storage, files, share sheet
 src/background.ts   the background task
 src/nudge.ts        the headless task behind the Android sync service
-src/power.ts        Background App Refresh and Low Power Mode, from modules/glmsync-power (iOS)
+src/power.ts        Background App Refresh, Low Power Mode and the end of the background task's time, from
+                    modules/glmsync-power (iOS)
 modules/glmsync-sync  the Android sync service (Kotlin, a local Expo module; its manifest adds the
                     service to the app)
-modules/glmsync-power  Background App Refresh and Low Power Mode on the iPhone (Swift, a local Expo module;
-                    since 0.16.0, in builds made after it)
+modules/glmsync-power  Background App Refresh and Low Power Mode on the iPhone, and iOS ending the background
+                    task (Swift, a local Expo module; since 0.16.0 and 0.17.0, in builds made after them)
 scripts/            licenses.mjs (the licences page), release.sh (builds and updates at Expo),
                     golfde-page.mjs, rankings-page.mjs and tours-page.mjs (bundle the golf.de, world ranking and
                     tour windows' page scripts into src/lib/*PageScript.ts, with page-script.mjs)

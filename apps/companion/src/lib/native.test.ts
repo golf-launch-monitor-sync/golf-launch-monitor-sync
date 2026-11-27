@@ -5,7 +5,8 @@
  * and with src/lib/nudge.ts is checked in its files: the action, the extra, the task's name and time,
  * and a manifest a target can find it by (spec/deep-links.md, "Android").
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { SYNC_ACTION, SYNC_REASON_EXTRA } from '@glmsync/spec';
 import { describe, expect, it } from 'vitest';
 import { NUDGE_TASK, NUDGE_TIMEOUT_MS } from './nudge.ts';
@@ -61,5 +62,43 @@ describe('the power module (modules/glmsync-power)', () => {
     expect(swift).toMatch(/\.runOnQueue\(\.main\)/);
     for (const value of ['"available"', '"denied"', '"restricted"', '"refresh"', '"lowPower"']) expect(swift).toContain(value);
     expect(readPower('ios/GlmsyncPower.podspec')).toContain("s.dependency 'ExpoModulesCore'");
+  });
+
+  it('passes on iOS ending the background task: the notification expo-background-task posts, the event src/power.ts hears', () => {
+    const swift = readPower('ios/GlmsyncPowerModule.swift');
+    const js = readFileSync(new URL('../power.ts', import.meta.url), 'utf8');
+    expect(swift).toContain('Events("onTaskExpired")');
+    expect(swift).toContain('Notification.Name("onTasksExpired")');
+    expect(swift).toContain('self?.sendEvent("onTaskExpired"');
+    expect(swift).toMatch(/OnStopObserving\("onTaskExpired"\)[\s\S]*removeObserver/);
+    expect(js).toContain("native.addListener('onTaskExpired', listener)");
+  });
+});
+
+describe('expo-background-task on iOS (what src/lib/longRun.ts counts on)', () => {
+  // Read from the installed package: an upgrade that changes any of it fails here, not on a phone at night.
+  const pkg = new URL(`file://${realpathSync(fileURLToPath(new URL('../../node_modules/expo-background-task/', import.meta.url)))}/`);
+  const readExpo = (path: string) => readFileSync(new URL(path, pkg), 'utf8');
+
+  it('is a BGProcessingTask with the network, not only on power', () => {
+    const scheduler = readExpo('ios/BackgroundTaskScheduler.swift');
+    expect(scheduler).toContain('BGProcessingTaskRequest(identifier: BackgroundTaskConstants.BackgroundWorkerIdentifier)');
+    expect(scheduler).toContain('request.requiresNetworkConnectivity = true');
+    expect(readExpo('plugin/build/withBackgroundTask.js')).toContain("UIBackgroundModes.push('processing')");
+  });
+
+  it('completes the task only when the JavaScript task has ended (so a long run may take its minutes)', () => {
+    const delegate = readExpo('ios/BackgroundTaskAppDelegate.swift');
+    expect(delegate).toMatch(/runTasks\(with: EXTaskLaunchReasonBackgroundTask[\s\S]*?completionHandler:[\s\S]*?setTaskCompleted\(success: true\)/);
+  });
+
+  it('posts onTasksExpired when iOS ends it - which its own module drops, hence modules/glmsync-power', () => {
+    const delegate = readExpo('ios/BackgroundTaskAppDelegate.swift');
+    const module = readExpo('ios/BackgroundTaskModule.swift');
+    expect(delegate).toMatch(/expirationHandler[\s\S]*?NotificationCenter\.default\.post\(name: onTasksExpiredNotification, object: self, userInfo: \[:\]\)/);
+    expect(module).toContain('private let onTasksExpired = "onTasksExpired"');
+    expect(module).toContain('public let onTasksExpiredNotification = Notification.Name(onTasksExpired)');
+    // The drop: once Expo fixes it, its own listener hears too - harmless, both stop the run the same way.
+    expect(module).toContain('guard let url = notification.userInfo?["url"] as? URL else');
   });
 });

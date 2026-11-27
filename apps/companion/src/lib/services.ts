@@ -21,6 +21,7 @@ import { AutoFetch } from './autoFetch.ts';
 import { HcpSender, makeHcp } from './hcp.ts';
 import { Pairings } from './pairings.ts';
 import { LastPage, makePro } from './pro.ts';
+import { BackgroundRuns } from './longRun.ts';
 import { Runner, type AppProvider } from './runner.ts';
 import { ChunkedSecrets, type Secrets } from './secrets.ts';
 import { SignIns } from './signins.ts';
@@ -64,6 +65,8 @@ export interface Services {
   tests: Tests;
   guard: Guard;
   runner: Runner;
+  /** The last background runs, for the exported log (src/lib/longRun.ts). */
+  background: BackgroundRuns;
   /** This phone's push address at each target (the wake, spec/wake.md; iOS only). */
   wakes: Wakes;
   /** The handicap record read along in the golf.de window, and its pairings (spec/hcp.md). */
@@ -117,7 +120,9 @@ export function makeServices(platform: Platform): Services {
     ...(platform.now ? { now: platform.now } : {}),
     ...(platform.sleep ? { sleep: platform.sleep } : {}),
   });
+  const background = new BackgroundRuns(platform.storage);
   const runner = new Runner({
+    background,
     pairings,
     signIns,
     guard,
@@ -159,6 +164,7 @@ export function makeServices(platform: Platform): Services {
     tests,
     guard,
     runner,
+    background,
     wakes,
     hcp,
     hcpSender: new HcpSender(hcp),

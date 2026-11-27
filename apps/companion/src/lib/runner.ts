@@ -44,6 +44,7 @@ import {
 } from '@glmsync/core';
 import { FORMAT, type Batch, type NoticeCode, type Reason, type TestScenario } from '@glmsync/spec';
 import { replay } from '@glmsync/provider-trackman';
+import type { BackgroundRun } from './longRun.ts';
 import type { KeyedPairing, Pairings } from './pairings.ts';
 import type { SignIns } from './signins.ts';
 import { TestModeError, type TestMode, type Tests } from './tests.ts';
@@ -104,6 +105,8 @@ export interface RunnerOptions {
   /** The share sheet (`toFile`). */
   writeFile?: (file: FileOut) => Promise<void>;
   version?: string;
+  /** The last background runs (src/lib/longRun.ts), which go into the exported log. */
+  background?: { list(): Promise<BackgroundRun[]> };
 }
 
 const RUNS = 'glmsync/companion/runs';
@@ -645,11 +648,15 @@ export class Runner {
     }
   }
 
-  /** The guard's log of the last days as a file: times, kinds, statuses, durations - never content. */
+  /**
+   * The guard's log of the last days as a file: times, kinds, statuses, durations - never content. Beside it the last
+   * background runs (when, how long, how many history chunks, how each ended), to see what iOS allowed at night.
+   */
   async logFile(): Promise<FileOut> {
     const log = await this.opts.guard.exportLog();
+    const background = (await this.opts.background?.list().catch(() => [])) ?? [];
     const day = new Date(this.now()).toISOString().slice(0, 10);
-    return { name: `glmsync-requests-${day}.json`, text: `${JSON.stringify(log, null, 2)}\n` };
+    return { name: `glmsync-requests-${day}.json`, text: `${JSON.stringify({ ...log, background_runs: background }, null, 2)}\n` };
   }
 }
 

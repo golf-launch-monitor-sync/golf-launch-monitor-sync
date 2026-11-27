@@ -2,40 +2,63 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
  * The sync in the background: Android's WorkManager about every 30 minutes, iOS's BGTaskScheduler as
- * often as iOS wakes the app (nothing is guaranteed there). Each wake only asks: the targets' plans
+ * often as iOS starts the app (nothing is guaranteed there). Each run only asks: the targets' plans
  * first, the provider only where one says "due", through the same guard as everything else - so a
- * wake every few minutes would cost Trackman nothing more than the plans allow.
+ * run every few minutes would cost Trackman nothing more than the plans allow.
+ *
+ * On the iPhone the task is a `BGProcessingTask` (`expo-background-task`), which iOS gives minutes, mostly while the
+ * phone charges at night: there the older history goes on chunk after chunk until it is through, the time is up or iOS
+ * ends it (src/lib/longRun.ts has the rules). On Android one chunk per run.
  *
  * Defined at the top of index.ts: the system may start the app only to run it.
  */
 
 import * as BackgroundTask from 'expo-background-task';
 import * as TaskManager from 'expo-task-manager';
+import { AppState, Platform } from 'react-native';
+import { backgroundWork, pauseFor } from './lib/longRun';
 import { services } from './platform';
+import { onTaskExpired } from './power';
 
 export const TASK = 'glmsync-sync';
 /** Minutes; Android won't go below 15, iOS decides itself. */
 const EVERY_MIN = 30;
 
 TaskManager.defineTask(TASK, async () => {
-  let stop: { remove(): void } | null = null;
+  const ended = new AbortController();
+  const end = () => ended.abort();
+  const listeners: { remove(): void }[] = [];
   try {
-    const s = await services();
-    // iOS ends the task when it likes: what runs is stopped cleanly (the guard's in-flight mark
-    // covers a request cut off halfway).
+    // iOS ends the task when it likes. `expo-background-task`'s own listener doesn't hear it in this SDK (its module drops
+    // the notification), modules/glmsync-power does; both stop the run the same way, whichever speaks.
     try {
-      stop = BackgroundTask.addExpirationListener(() => s.runner.stop());
+      listeners.push(BackgroundTask.addExpirationListener(end));
     } catch {
-      stop = null; // Android has no such listener
+      // Android has no such listener
     }
-    await s.runner.syncAll('timer');
-    // One chunk of the older history per wake at most: the target spaces them anyway.
-    await s.runner.backfill();
-    return BackgroundTask.BackgroundTaskResult.Success;
+    const own = onTaskExpired(end);
+    if (own) listeners.push(own);
+    const s = await services();
+    const run = await backgroundWork({
+      os: Platform.OS === 'ios' ? 'ios' : 'android',
+      runner: s.runner,
+      now: Date.now,
+      sleep: pauseFor,
+      signal: ended.signal,
+      inFront: () => AppState.currentState === 'active',
+    });
+    await s.background.add(run);
+    return run.ended === 'failed' ? BackgroundTask.BackgroundTaskResult.Failed : BackgroundTask.BackgroundTaskResult.Success;
   } catch {
     return BackgroundTask.BackgroundTaskResult.Failed;
   } finally {
-    stop?.remove();
+    for (const l of listeners) {
+      try {
+        l.remove();
+      } catch {
+        // gone already
+      }
+    }
   }
 });
 
