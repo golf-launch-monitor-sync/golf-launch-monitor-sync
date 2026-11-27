@@ -72,6 +72,14 @@ portal in a sign-in window - so that window lives here, in a small app that does
   `enableBackgroundRemoteNotifications`). It shows no notification and asks no permission for one; Android
   registers no address (its timer and the sync service do the job). Switched off with iOS's *Background App
   Refresh* for the app, or by unpairing.
+- **Says what keeps iOS from waking it** (companion 0.16.0, `src/lib/wakeHints.ts`, `src/ui/WakeHints.tsx`): on the
+  iPhone with a pairing, one sentence when *Background App Refresh* is off (with *Open settings*, the app's own page
+  there) or restricted (Screen Time, a managed phone), or Low Power Mode is on (that one first: it turns background
+  refresh off for every app). It closes with ×, stays away a day and comes back while the cause stays; another cause
+  is said at once. `expo-background-task`'s status can't tell (on a phone it answers *available* whatever the switch
+  says), so the state comes from the app's own module `modules/glmsync-power` (`backgroundRefreshStatus`,
+  `isLowPowerModeEnabled`); a build without it says nothing. And once, after the first pairing, not to swipe the app
+  away in the app switcher: iOS then wakes it no more until it is opened. Nothing of this goes to a target.
 - **Tells the target where its sign-in stands** with every plan (spec 1.5.0, `signin`): `ready` with a
   sign-in it can fetch with, `expired` when it ran out here, `none` when there never was one on this
   phone - and `other` (by a status, no lease) when the target has another account connected.

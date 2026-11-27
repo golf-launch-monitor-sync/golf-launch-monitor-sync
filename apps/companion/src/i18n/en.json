@@ -188,5 +188,11 @@
   "tours.findEt": "Open your own player page (search for your name among the players); then “Send” and “Fetch all” appear up here. “Fetch all” opens your pages of both tours and picks each season of the last two years on “Wins & Results” and each tour on “Stats” for you. Or pick them yourself: each season and tour you pick is read and goes with “Send”.",
   "tours.findOcs": "Open your own profile (search for your name among the players); then “Send” and “Fetch all” appear up here. “Fetch all” picks each season of the last two years on your profile for you, then opens each season’s Order of Merit for your rank (only your own line is read). Or pick each season yourself and tap “Send”.",
   "tours.findAlps": "Open your own profile (search for your name in the Order of Merit); then “Send” and “Fetch all” appear up here. Your profile shows one report at a time under “Select Report”: “This Season record” has your rounds, “Results” the par, “Order of Merit” your rank. “Fetch all” picks all three for you; or pick them yourself - they go together with “Send”.",
-  "tours.findSeason": "Open your own player page (search for your name among the players), then its “Results”; then “Send” and “Fetch all” appear up here. “Fetch all” picks each season of the last two years (on pgatour.com each tour too) on “Results” and “Stats” for you. Or pick a season yourself and tap “Send” - your standing goes along."
+  "tours.findSeason": "Open your own player page (search for your name among the players), then its “Results”; then “Send” and “Fetch all” appear up here. “Fetch all” picks each season of the last two years (on pgatour.com each tour too) on “Results” and “Stats” for you. Or pick a season yourself and tap “Send” - your standing goes along.",
+  "wakeHint.refreshOff": "iOS won't wake the app while Background App Refresh is off: Settings › {app} › Background App Refresh (and General › Background App Refresh).",
+  "wakeHint.refreshRestricted": "iOS won't wake the app because Background App Refresh is restricted on this iPhone: Settings › Screen Time › Content & Privacy Restrictions, or else whoever manages the phone decides.",
+  "wakeHint.lowPower": "In Low Power Mode iOS won't wake the app: Settings › Battery › Low Power Mode.",
+  "wakeHint.settings": "Open settings",
+  "wakeHint.swipe": "Don't swipe the app away in the app switcher: iOS then won't wake it until you open it again.",
+  "wakeHint.close": "Close"
 }

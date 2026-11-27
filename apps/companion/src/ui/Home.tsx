@@ -34,6 +34,7 @@ import { HcpCard, useHcpView } from './HcpCard';
 import { ProCard, useProView } from './ProCard';
 import { translator } from '@glmsync/browser/i18n';
 import { Body, Button, Card, colors, s, Small, Title } from './parts';
+import { WakeHints } from './WakeHints';
 import { WizardFrame } from './WizardFrame';
 
 const REPO = 'https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync';
@@ -206,6 +207,8 @@ export function Home({
           </View>
         </Card>
       )}
+
+      {(!focus || linked) && <WakeHints paired={pairings.length > 0} />}
 
       {!focus && <Connections list={list} add={() => go({ name: 'new' })} open={(id) => go({ name: 'home', focus: id })} />}
       {focus && !linked && <BackToList onPress={toList} />}
