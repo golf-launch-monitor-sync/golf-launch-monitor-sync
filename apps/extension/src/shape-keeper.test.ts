@@ -208,6 +208,25 @@ describe('who may tell the recorder what', () => {
     expect(accept({ type: 'shape-seen', seen: { ...seen, response: { headers: [], body: { json: { n: 1, number: { n: 1, integer: false, hidden: 'place', min: 53.55, max: 53.55 } } } } }, personal: [], ids: [] }, 'shape-portal')).toBeNull();
   });
 
+  it('records on Trackman’s portal too, where the sign-in is read: its page stays the sign-in’s, and gives shapes while recording', async () => {
+    const TM = 'https://portal.trackmangolf.com/activities';
+    // The page where the extension reads the sign-in (portal-key) is still that page, nothing less.
+    expect(from(TM)).toBe('portal');
+    expect(accept({ type: 'portal-key', token: 'a.b.c' }, 'portal')).toEqual({ type: 'portal-key', token: 'a.b.c' });
+    // Its shapes are taken from there as from any portal of the list, read again as strictly.
+    const seen = exchange(SESSIONS_ANSWER);
+    expect(accept({ type: 'shape-seen', seen, personal: [], ids: [] }, 'portal')).toMatchObject({ type: 'shape-seen' });
+    expect(accept({ type: 'shape-seen', seen: { ...seen, status: 'x' }, personal: [], ids: [] }, 'portal')).toBeNull();
+    expect(accept({ type: 'shape-start', portal: 'trackman' }, 'portal')).toBeNull();
+    // A recording of Trackman's portal keeps what its pages saw, never another portal's page.
+    const w = world();
+    expect(await w.keeper.start('trackman')).toMatchObject({ ok: true });
+    expect(w.tabs).toEqual(['https://portal.trackmangolf.com/']);
+    expect(await w.keeper.seen(seen, [], [], PORTAL_PAGE)).toBe(false);
+    expect(await w.keeper.seen(seen, [], [], TM)).toBe(true);
+    expect(await w.keeper.seen(seen, [], [], 'https://api.trackmangolf.com/graphql')).toBe(false);
+  });
+
   it('starts, stops and throws away only from the extension’s own pages, a portal only of the list', () => {
     expect(accept({ type: 'shape-start', portal: 'fsx-live' }, 'extension')).toEqual({ type: 'shape-start', portal: 'fsx-live' });
     expect(accept({ type: 'shape-start', portal: 'evil' }, 'extension')).toBeNull();

@@ -301,9 +301,11 @@ the sign-in and the person's data and belongs in no chat and no repository. The 
 part of syncing (since 0.25.0); it works the same when the extension is loaded unpacked.
 
 1. Pick a portal of the fixed list (`PORTALS` of [`@glmsync/shape`](../../packages/shape/README.md): Foresight FSX Live,
-   myflightscope.com; a new one is an entry there) and tap **Start recording**. On that tap the browser asks once for
-   that portal's address (an optional host permission, like a target's - never up front). Refused, nothing starts, and
-   the page says so.
+   myflightscope.com, Trackman's portal; a new one is an entry there) and tap **Start recording**. On that tap the
+   browser asks once for that portal's address (an optional host permission, like a target's - never up front; Trackman's
+   portal the extension may reach already, for the sign-in). Refused, nothing starts, and the page says so. On
+   Trackman's portal the recording shows what the portal asks of Trackman for the kinds the provider doesn't read in full
+   yet - open a combine, a test, a Performance Center session and the list of rounds.
 2. The portal opens in a tab of its own; two scripts are on its pages while the recording runs (registered at run time,
    never across a restart of the browser): `shape-main.ts` in the page, before its scripts, reads along with its
    `fetch` and `XMLHttpRequest` calls and its storage and posts only their **shapes**; `shape-relay.ts` hands them on.

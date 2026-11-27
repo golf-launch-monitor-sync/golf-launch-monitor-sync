@@ -2,7 +2,9 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
  * The portals the shape recorder may be pointed at: a fixed list, each asked for at run time and only while recording
- * (`optional_host_permissions`). A new one is a new entry here, nothing else.
+ * (`optional_host_permissions`). A new one is a new entry here, nothing else - unless the extension already has a script
+ * of its own on that portal (Trackman's, where it reads the sign-in): then its sender also takes the recorder's shapes
+ * (apps/extension `senders.ts`).
  */
 
 export interface Portal {
@@ -26,6 +28,14 @@ export const PORTALS: readonly Portal[] = [
     name: 'FlightScope (myflightscope.com)',
     start: 'https://myflightscope.com/',
     matches: ['https://myflightscope.com/*', 'https://www.myflightscope.com/*'],
+  },
+  {
+    // To see what the portal itself asks of Trackman for kinds the provider doesn't read in full yet (a combine's score,
+    // Performance Center): the provider can only ask fields it knows by name.
+    id: 'trackman',
+    name: 'Trackman (portal.trackmangolf.com)',
+    start: 'https://portal.trackmangolf.com/',
+    matches: ['https://portal.trackmangolf.com/*'],
   },
 ];
 

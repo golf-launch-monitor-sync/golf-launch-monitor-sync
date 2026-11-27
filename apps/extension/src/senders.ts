@@ -148,7 +148,9 @@ const FROM: Record<Message['type'], Source | readonly Source[]> = {
   'pro-unpair': 'extension',
   'pro-clear-ended': 'extension',
   'open-ranking': 'extension',
-  'shape-seen': 'shape-portal',
+  // Trackman's portal is the sign-in's page (`portal`) and a portal of the recorder's list at once; the keeper takes a shape
+  // only while a recording of that very portal runs and the page is one of it.
+  'shape-seen': ['shape-portal', 'portal'],
   'shape-state': 'extension',
   'shape-start': 'extension',
   'shape-stop': 'extension',
