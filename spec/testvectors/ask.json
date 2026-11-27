@@ -1,6 +1,6 @@
 {
   "$comment": "The question and the answer (spec 1.22.0; target-api.md *Asking and answering*, deep-links.md *The answer over the binding*, planning.md *Who asks when*). read_cause, read_version: the list of a query parameter's values -> the value or null. read_env: the same -> the known pairs ({} for none). read_answer: the strings of the Bundle the companion app sent over the binding -> {state, until?, by?, since?, signin?, why?} or null. own_ask_at: {own_at, next_at, received_at} -> when the client's own timer may next ask (RFC 3339, UTC to the millisecond) or null. may_ask: {reason, cause, now, next_at, received_at} -> whether the client asks for a plan now.",
-  "spec_version": "1.23.0",
+  "spec_version": "1.24.0",
   "generated_by": "spec/reference/generate.py",
   "ask": {
     "causes": [

@@ -125,10 +125,19 @@ vectors in [`testvectors/clubs.json`](testvectors/clubs.json).
 | `external_id` | required | The provider's id. |
 | `kind` | | `simulator` or `course`. |
 | `played_at`, `course.name`, `tee.name` | | |
-| `holes_played`, `par`, `gross_score`, `to_par` | | Whole numbers. |
+| `holes_played`, `par`, `gross_score`, `to_par` | | Whole numbers, of the holes played (since 1.24.0: where `holes` lists them, worked out from them). |
 | `stats` | | `putts`, `greens_in_regulation`, `fairways_hit`, `fairways_left`, `fairways_right`, `drive_average_m`. |
-| `holes` | | `[{number, par, score, putts, gir}]`. |
+| `holes` | | `[{number, par, score, putts, gir}]`: the holes played, each with a `score` of at least 1 (since 1.24.0). |
 | `shots` | | Each shot of the round (below). **Absent**: not fetched (yet). **Empty**: the provider has none. |
+
+**Only what was played** (1.24.0): a provider may list every hole of a round, those nobody played with a score of 0
+(Trackman does, and counts them in its totals: five holes played at +1 came as nine holes at -11). A hole without a
+stroke is left out of `holes`, and the totals are those of the holes played: `par` the sum of their pars where each
+says its own, else the provider's as long as no hole was left out (else none, and no `to_par`). A scorecard without
+a stroke on any hole - a game on the simulator such as Trackman's *Hit It!* - is no round and isn't sent. The rule:
+`played_totals` in [`reference/trackman.py`](reference/trackman.py), vectors in `testvectors/trackman-olmd.json`
+(`scorecard_played`). A target reads `holes` as the holes played all the same: a tool before 1.24.0 sends Trackman's
+counting.
 
 A round may come again with only its `external_id` and `shots`, when the shots are fetched after
 the scorecard was sent: a reader adds them to the round it has.

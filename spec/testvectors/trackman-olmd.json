@@ -1,6 +1,6 @@
 {
   "$comment": "Trackman's answers (synthetic) -> olmd/1 batches. input.fetched: {sessions: [{activity, node}], scorecards, round_shots: [{id, holes}], shots_none}. Compare as JSON values; numbers exactly, except in rounds[].shots[] where a number may differ by compare.round_shot_tolerance (rounding to centimetres differs between languages at exact halves).",
-  "spec_version": "1.23.0",
+  "spec_version": "1.24.0",
   "generated_by": "spec/reference/generate.py",
   "compare": {
     "round_shot_tolerance": 0.011
@@ -1233,7 +1233,7 @@
     },
     {
       "name": "scorecard",
-      "why": "A simulator round's scorecard.",
+      "why": "A simulator round's scorecard; its totals are those of the holes it lists.",
       "input": {
         "fetched": {
           "scorecards": [
@@ -1296,10 +1296,10 @@
             "tee": {
               "name": "Yellow"
             },
-            "holes_played": 18,
-            "par": 72,
-            "gross_score": 94,
-            "to_par": 22,
+            "holes_played": 2,
+            "par": 7,
+            "gross_score": 8,
+            "to_par": 1,
             "stats": {
               "putts": 36,
               "greens_in_regulation": 4,
@@ -1322,6 +1322,266 @@
                 "score": 3,
                 "putts": 1,
                 "gir": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "scorecard_played",
+      "why": "Only the holes played count: a hole listed with 0 strokes is left out and the totals are those of the holes played; a scorecard without a stroke on any hole (a game such as Hit It!) is no round. A hole without its par leaves the par to Trackman only while no hole was left out.",
+      "input": {
+        "fetched": {
+          "scorecards": [
+            {
+              "id": "SC-1101",
+              "createdAt": "2026-10-18T17:00:00Z",
+              "startedAt": "2026-10-18T15:00:00Z",
+              "course": {
+                "displayName": "Example Dunes"
+              },
+              "teeName": "Black",
+              "par": 39,
+              "numberOfHolesPlayed": 9,
+              "grossScore": 28,
+              "toPar": -11,
+              "holes": [
+                {
+                  "holeNumber": 5,
+                  "par": 4,
+                  "grossScore": 5,
+                  "putts": 2
+                },
+                {
+                  "holeNumber": 6,
+                  "par": 4,
+                  "grossScore": 4,
+                  "putts": 2
+                },
+                {
+                  "holeNumber": 7,
+                  "par": 5,
+                  "grossScore": 5,
+                  "putts": 2
+                },
+                {
+                  "holeNumber": 8,
+                  "par": 4,
+                  "grossScore": 4,
+                  "putts": 2
+                },
+                {
+                  "holeNumber": 9,
+                  "par": 4,
+                  "grossScore": 4,
+                  "putts": 2
+                },
+                {
+                  "holeNumber": 10,
+                  "par": 5,
+                  "grossScore": 0,
+                  "putts": 0
+                },
+                {
+                  "holeNumber": 11,
+                  "par": 4,
+                  "grossScore": 0,
+                  "putts": 0
+                },
+                {
+                  "holeNumber": 12,
+                  "par": 4,
+                  "grossScore": 0,
+                  "putts": 0
+                },
+                {
+                  "holeNumber": 13,
+                  "par": 5,
+                  "grossScore": 0,
+                  "putts": 0
+                }
+              ]
+            },
+            {
+              "id": "SC-1102",
+              "createdAt": "2026-11-22T16:30:00Z",
+              "startedAt": "2026-11-22T16:30:00Z",
+              "course": {
+                "displayName": "Example Range Game"
+              },
+              "par": 3,
+              "numberOfHolesPlayed": 1,
+              "grossScore": 0,
+              "toPar": -3,
+              "holes": [
+                {
+                  "holeNumber": 1,
+                  "par": 3,
+                  "grossScore": 0,
+                  "putts": 0
+                }
+              ]
+            },
+            {
+              "id": "SC-1103",
+              "createdAt": "2026-10-18T17:00:00Z",
+              "startedAt": "2026-10-18T15:00:00Z",
+              "course": {
+                "displayName": "Example Dunes"
+              },
+              "teeName": "Black",
+              "par": 7,
+              "numberOfHolesPlayed": 2,
+              "grossScore": 8,
+              "toPar": 1,
+              "holes": [
+                {
+                  "holeNumber": 1,
+                  "par": 4,
+                  "grossScore": 5
+                },
+                {
+                  "holeNumber": 2,
+                  "grossScore": 3
+                }
+              ]
+            },
+            {
+              "id": "SC-1104",
+              "createdAt": "2026-10-18T17:00:00Z",
+              "startedAt": "2026-10-18T15:00:00Z",
+              "course": {
+                "displayName": "Example Dunes"
+              },
+              "teeName": "Black",
+              "par": 11,
+              "numberOfHolesPlayed": 3,
+              "grossScore": 8,
+              "toPar": -3,
+              "holes": [
+                {
+                  "holeNumber": 1,
+                  "par": 4,
+                  "grossScore": 5
+                },
+                {
+                  "holeNumber": 2,
+                  "grossScore": 3
+                },
+                {
+                  "holeNumber": 3,
+                  "par": 4,
+                  "grossScore": 0
+                }
+              ]
+            }
+          ]
+        },
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z"
+      },
+      "expected": {
+        "format": "olmd/1",
+        "provider": "trackman",
+        "account_ref": "Xq3c0mB1v4Lr2kq9WzT8yA5nE6pH7sJ0dF1gK2lM3oN",
+        "generated_at": "2026-11-16T12:00:00Z",
+        "sessions": [],
+        "rounds": [
+          {
+            "external_id": "SC-1101",
+            "kind": "simulator",
+            "played_at": "2026-10-18T15:00:00Z",
+            "course": {
+              "name": "Example Dunes"
+            },
+            "tee": {
+              "name": "Black"
+            },
+            "holes_played": 5,
+            "par": 21,
+            "gross_score": 22,
+            "to_par": 1,
+            "holes": [
+              {
+                "number": 5,
+                "par": 4,
+                "score": 5,
+                "putts": 2
+              },
+              {
+                "number": 6,
+                "par": 4,
+                "score": 4,
+                "putts": 2
+              },
+              {
+                "number": 7,
+                "par": 5,
+                "score": 5,
+                "putts": 2
+              },
+              {
+                "number": 8,
+                "par": 4,
+                "score": 4,
+                "putts": 2
+              },
+              {
+                "number": 9,
+                "par": 4,
+                "score": 4,
+                "putts": 2
+              }
+            ]
+          },
+          {
+            "external_id": "SC-1103",
+            "kind": "simulator",
+            "played_at": "2026-10-18T15:00:00Z",
+            "course": {
+              "name": "Example Dunes"
+            },
+            "tee": {
+              "name": "Black"
+            },
+            "holes_played": 2,
+            "par": 7,
+            "gross_score": 8,
+            "to_par": 1,
+            "holes": [
+              {
+                "number": 1,
+                "par": 4,
+                "score": 5
+              },
+              {
+                "number": 2,
+                "score": 3
+              }
+            ]
+          },
+          {
+            "external_id": "SC-1104",
+            "kind": "simulator",
+            "played_at": "2026-10-18T15:00:00Z",
+            "course": {
+              "name": "Example Dunes"
+            },
+            "tee": {
+              "name": "Black"
+            },
+            "holes_played": 2,
+            "gross_score": 8,
+            "holes": [
+              {
+                "number": 1,
+                "par": 4,
+                "score": 5
+              },
+              {
+                "number": 2,
+                "score": 3
               }
             ]
           }
@@ -1389,8 +1649,10 @@
             "external_id": "4711",
             "kind": "simulator",
             "played_at": "2026-10-20T11:00:00Z",
-            "holes_played": 9,
+            "holes_played": 1,
             "par": 72,
+            "gross_score": 6,
+            "to_par": -66,
             "holes": [
               {
                 "number": 3,
@@ -1584,10 +1846,10 @@
             "tee": {
               "name": "Yellow"
             },
-            "holes_played": 18,
-            "par": 72,
-            "gross_score": 94,
-            "to_par": 22,
+            "holes_played": 2,
+            "par": 7,
+            "gross_score": 8,
+            "to_par": 1,
             "stats": {
               "putts": 36,
               "greens_in_regulation": 4,
@@ -2731,10 +2993,10 @@
             "tee": {
               "name": "Yellow"
             },
-            "holes_played": 18,
-            "par": 72,
-            "gross_score": 94,
-            "to_par": 22,
+            "holes_played": 2,
+            "par": 7,
+            "gross_score": 8,
+            "to_par": 1,
             "stats": {
               "putts": 36,
               "greens_in_regulation": 4,
@@ -2821,10 +3083,10 @@
             "tee": {
               "name": "Yellow"
             },
-            "holes_played": 18,
-            "par": 72,
-            "gross_score": 94,
-            "to_par": 22,
+            "holes_played": 2,
+            "par": 7,
+            "gross_score": 8,
+            "to_par": 1,
             "stats": {
               "putts": 36,
               "greens_in_regulation": 4,

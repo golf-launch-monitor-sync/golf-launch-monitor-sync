@@ -145,10 +145,31 @@ def scorecard(sc: Any) -> dict[str, Any] | None:
     put(out, "played_at", when(sc.get("startedAt")) or when(sc.get("createdAt")))
     put(out, "course", {"name": n} if (n := text(course.get("displayName"), 200)) else None)
     put(out, "tee", {"name": n} if (n := text(sc.get("teeName"), 100)) else None)
-    put(out, "holes_played", integer(sc.get("numberOfHolesPlayed")))
-    put(out, "par", integer(sc.get("par")))
-    put(out, "gross_score", integer(sc.get("grossScore")))
-    put(out, "to_par", integer(sc.get("toPar")))
+    listed = 0
+    holes = []
+    for h in sc.get("holes") if isinstance(sc.get("holes"), list) else []:
+        if not isinstance(h, dict):
+            continue
+        no = integer(h.get("holeNumber"))
+        if no is None or not 1 <= no <= 36:
+            continue
+        listed += 1
+        score = integer(h.get("grossScore"))
+        if score is None or score < 1:
+            continue  # listed, not played: Trackman lists every hole of the round, a hole nobody played with 0
+        hole: dict[str, Any] = {"number": no}
+        put(hole, "par", integer(h.get("par")))
+        put(hole, "score", score)
+        put(hole, "putts", integer(h.get("putts")))
+        put(hole, "gir", h.get("greenInRegulation") if isinstance(h.get("greenInRegulation"), bool) else None)
+        holes.append(hole)
+    totals = {"holes_played": integer(sc.get("numberOfHolesPlayed")), "par": integer(sc.get("par")),
+              "gross_score": integer(sc.get("grossScore")), "to_par": integer(sc.get("toPar"))}
+    played = played_totals(holes, listed, totals)
+    if played is None:
+        return None
+    for k, v in played.items():
+        put(out, k, v)
     stats: dict[str, Any] = {}
     put(stats, "putts", integer(stat.get("numberOfPutts")))
     put(stats, "greens_in_regulation", integer(stat.get("greenInRegulation")))
@@ -157,21 +178,23 @@ def scorecard(sc: Any) -> dict[str, Any] | None:
     put(stats, "fairways_right", integer(stat.get("fairwayHitRight")))
     put(stats, "drive_average_m", num(stat.get("driveAverage")))
     put(out, "stats", stats)
-    holes = []
-    for h in sc.get("holes") if isinstance(sc.get("holes"), list) else []:
-        if not isinstance(h, dict):
-            continue
-        no = integer(h.get("holeNumber"))
-        if no is None or not 1 <= no <= 36:
-            continue
-        hole: dict[str, Any] = {"number": no}
-        put(hole, "par", integer(h.get("par")))
-        put(hole, "score", integer(h.get("grossScore")))
-        put(hole, "putts", integer(h.get("putts")))
-        put(hole, "gir", h.get("greenInRegulation") if isinstance(h.get("greenInRegulation"), bool) else None)
-        holes.append(hole)
     put(out, "holes", holes or None)
     return out
+
+
+def played_totals(holes: list[dict[str, Any]], listed: int, given: dict[str, Any]) -> dict[str, Any] | None:
+    """A round's totals of the holes played (olmd.md, *A round*): Trackman counts the holes it lists with 0 as played
+    (five holes played at +1 came as nine holes at -11), so the holes count where it lists them. The par where every
+    hole played says its own, else Trackman's as long as no hole was left out; None for a card without a stroke on any
+    hole (a game such as Hit It!, which is no round), and Trackman's totals for a card that lists no holes."""
+    if not holes:
+        return None if listed or given["gross_score"] == 0 else given
+    whole = len(holes) == listed
+    pars = [h.get("par") for h in holes]
+    par = sum(pars) if all(isinstance(p, int) and p >= 1 for p in pars) else given["par"] if whole else None
+    gross = sum(h["score"] for h in holes)
+    to_par = gross - par if par is not None else given["to_par"] if whole else None
+    return {"holes_played": len(holes), "par": par, "gross_score": gross, "to_par": to_par}
 
 
 # Strokes Trackman adds to a shot that aren't penalties: the putts the simulator plays for the

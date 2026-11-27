@@ -1,6 +1,6 @@
 {
   "$comment": "Club names -> canonical codes. camel: a provider's CamelCase names (Trackman); normalize: names as other monitors and people write them.",
-  "spec_version": "1.23.0",
+  "spec_version": "1.24.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {

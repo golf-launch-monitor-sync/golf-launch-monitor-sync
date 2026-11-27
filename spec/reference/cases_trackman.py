@@ -101,6 +101,23 @@ BROKEN_SCORECARD = {
                                                                       "grossScore": 6, "greenInRegulation": "no"}],
 }
 
+# Five holes played of nine listed: Trackman lists every hole of the round, those nobody played with 0, and counts
+# them in its totals (9 holes, par 39, -11 for five holes at +1).
+PARTLY_PLAYED = {
+    "id": "SC-1101", "createdAt": "2026-10-18T17:00:00Z", "startedAt": "2026-10-18T15:00:00Z",
+    "course": {"displayName": "Example Dunes"}, "teeName": "Black", "par": 39, "numberOfHolesPlayed": 9,
+    "grossScore": 28, "toPar": -11,
+    "holes": [{"holeNumber": n, "par": p, "grossScore": x, "putts": 0 if x == 0 else 2}
+              for n, p, x in ((5, 4, 5), (6, 4, 4), (7, 5, 5), (8, 4, 4), (9, 4, 4), (10, 5, 0), (11, 4, 0),
+                              (12, 4, 0), (13, 5, 0))],
+}
+# A game on the simulator (Hit It!, beside Longest Drive) comes as a scorecard of one hole without a stroke.
+GAME_CARD = {
+    "id": "SC-1102", "createdAt": "2026-11-22T16:30:00Z", "startedAt": "2026-11-22T16:30:00Z",
+    "course": {"displayName": "Example Range Game"}, "par": 3, "numberOfHolesPlayed": 1, "grossScore": 0, "toPar": -3,
+    "holes": [{"holeNumber": 1, "par": 3, "grossScore": 0, "putts": 0}],
+}
+
 CHAIN_HOLES = [{"holeNumber": 1, "shots": [
     _shot(2, "Iron8", "Fairway", "Green", end=6.4, target=150.0, carry=139.5),  # out of order: sorted
     _shot(1, "Driver", "Tee", "Fairway", end=142.0, target=230.0, carry=221.0),  # aimed short of the flag
@@ -183,7 +200,19 @@ def cases() -> list[dict[str, Any]]:
              sessions=[{"activity": _act("ACT-20", "SIMULATOR"), "node": {"strokes": JUNK_STROKES}}]),
         case("club_names", "Trackman's club names and their canonical codes.",
              sessions=[{"activity": _act("ACT-30", "MAP_MY_BAG"), "node": {"strokes": _club_strokes()}}]),
-        case("scorecard", "A simulator round's scorecard.", scorecards=[SCORECARD]),
+        case("scorecard", "A simulator round's scorecard; its totals are those of the holes it lists.",
+             scorecards=[SCORECARD]),
+        case("scorecard_played", "Only the holes played count: a hole listed with 0 strokes is left out and the totals "
+             "are those of the holes played; a scorecard without a stroke on any hole (a game such as Hit It!) is no "
+             "round. A hole without its par leaves the par to Trackman only while no hole was left out.",
+             scorecards=[PARTLY_PLAYED, GAME_CARD,
+                         {**PARTLY_PLAYED, "id": "SC-1103", "holes": [{"holeNumber": 1, "par": 4, "grossScore": 5},
+                                                                      {"holeNumber": 2, "grossScore": 3}],
+                          "par": 7, "numberOfHolesPlayed": 2, "grossScore": 8, "toPar": 1},
+                         {**PARTLY_PLAYED, "id": "SC-1104", "holes": [{"holeNumber": 1, "par": 4, "grossScore": 5},
+                                                                      {"holeNumber": 2, "grossScore": 3},
+                                                                      {"holeNumber": 3, "par": 4, "grossScore": 0}],
+                          "par": 11, "numberOfHolesPlayed": 3, "grossScore": 8, "toPar": -3}]),
         case("broken_scorecard", "Text where numbers belong, a course that is no object, holes that are no holes.",
              scorecards=[BROKEN_SCORECARD, None, {"id": ""}, {"id": True}, {"id": "SC-1001"}]),
         case("round_shots_chain", "Without positions each shot starts where the one before stopped; after a "

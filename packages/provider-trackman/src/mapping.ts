@@ -135,10 +135,32 @@ export function scorecard(sc: unknown): Round | null {
   put(out, 'course', courseName ? { name: courseName } : null);
   const tee = text(c.teeName, 100);
   put(out, 'tee', tee ? { name: tee } : null);
-  put(out, 'holes_played', integer(c.numberOfHolesPlayed));
-  put(out, 'par', integer(c.par));
-  put(out, 'gross_score', integer(c.grossScore));
-  put(out, 'to_par', integer(c.toPar));
+  let listed = 0;
+  const holes: Obj[] = [];
+  for (const h0 of list(c.holes)) {
+    const h = obj(h0);
+    if (!h) continue;
+    const no = integer(h.holeNumber);
+    if (no === null || no < 1 || no > 36) continue;
+    listed++;
+    const score = integer(h.grossScore);
+    // Listed, not played: Trackman lists every hole of the round, a hole nobody played with 0.
+    if (score === null || score < 1) continue;
+    const hole: Obj = { number: no };
+    put(hole, 'par', integer(h.par));
+    put(hole, 'score', score);
+    put(hole, 'putts', integer(h.putts));
+    put(hole, 'gir', typeof h.greenInRegulation === 'boolean' ? h.greenInRegulation : null);
+    holes.push(hole);
+  }
+  const played = playedTotals(holes, listed, {
+    holes_played: integer(c.numberOfHolesPlayed),
+    par: integer(c.par),
+    gross_score: integer(c.grossScore),
+    to_par: integer(c.toPar),
+  });
+  if (!played) return null;
+  for (const [k, v] of Object.entries(played)) put(out, k, v);
   const stats: Obj = {};
   put(stats, 'putts', integer(stat.numberOfPutts));
   put(stats, 'greens_in_regulation', integer(stat.greenInRegulation));
@@ -147,21 +169,28 @@ export function scorecard(sc: unknown): Round | null {
   put(stats, 'fairways_right', integer(stat.fairwayHitRight));
   put(stats, 'drive_average_m', num(stat.driveAverage));
   put(out, 'stats', stats);
-  const holes: Obj[] = [];
-  for (const h0 of list(c.holes)) {
-    const h = obj(h0);
-    if (!h) continue;
-    const no = integer(h.holeNumber);
-    if (no === null || no < 1 || no > 36) continue;
-    const hole: Obj = { number: no };
-    put(hole, 'par', integer(h.par));
-    put(hole, 'score', integer(h.grossScore));
-    put(hole, 'putts', integer(h.putts));
-    put(hole, 'gir', typeof h.greenInRegulation === 'boolean' ? h.greenInRegulation : null);
-    holes.push(hole);
-  }
   put(out, 'holes', holes.length ? holes : null);
   return out as unknown as Round;
+}
+
+type Totals = { holes_played: number | null; par: number | null; gross_score: number | null; to_par: number | null };
+
+/**
+ * A round's totals of the holes played (olmd.md, *A round*; the reference's `played_totals`): Trackman counts the holes
+ * it lists with 0 as played (five holes played at +1 came as nine holes at -11), so the holes count where it lists
+ * them. The par where every hole played says its own, else Trackman's as long as no hole was left out; null for a
+ * card without a stroke on any hole (a game such as Hit It!, which is no round), and Trackman's totals for a card that
+ * lists no holes.
+ */
+export function playedTotals(holes: Obj[], listed: number, given: Totals): Totals | null {
+  if (!holes.length) return listed || given.gross_score === 0 ? null : given;
+  const whole = holes.length === listed;
+  const pars = holes.map((h) => h.par);
+  const known = pars.every((p) => typeof p === 'number' && p >= 1);
+  const par = known ? (pars as number[]).reduce((a, b) => a + b, 0) : whole ? given.par : null;
+  const gross = holes.reduce((a, h) => a + (h.score as number), 0);
+  const toPar = par !== null ? gross - par : whole ? given.to_par : null;
+  return { holes_played: holes.length, par, gross_score: gross, to_par: toPar };
 }
 
 // Strokes Trackman adds to a shot that aren't penalties: the putts the simulator plays for the

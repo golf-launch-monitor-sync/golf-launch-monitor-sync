@@ -1,6 +1,6 @@
 {
   "$comment": "dgvhcp/1 batches that must (valid: true) or must not validate against spec/hcp/dgvhcp-1.schema.json.",
-  "spec_version": "1.23.0",
+  "spec_version": "1.24.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {
