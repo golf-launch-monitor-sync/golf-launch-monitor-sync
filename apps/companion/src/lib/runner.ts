@@ -260,7 +260,8 @@ export class Runner {
 
   /** The target ended the pairing (disconnected, or the token revoked there). */
   private async dropped(p: KeyedPairing) {
-    await this.opts.pairings.remove(p.key);
+    // Kept as ended, so the list says it and where to pair again (Reginald's test of 27 Nov).
+    await this.opts.pairings.end(p.key, this.now());
     await this.opts.tests?.end(p.key);
     // The last target using this sign-in is gone: so is the sign-in (spec: "disconnected").
     if (!this.opts.pairings.usesProvider(p.provider)) {

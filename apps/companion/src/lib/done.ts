@@ -40,3 +40,24 @@ export function lmFocus(pairings: readonly { provider: string }[]): string | nul
   const providers = [...new Set(pairings.map((p) => p.provider))];
   return providers.length === 1 ? `lm:${providers[0]}` : null;
 }
+
+/**
+ * A sync link without a way back (`glmsync://sync?target=…`, as a target app opens it to fetch now) whose sign-in ran
+ * out: the provider to sign in to at once, rather than a page of results saying so (Reginald's test of 27 Nov). With a
+ * way back the app jumps back as before, and the target app says what to do. Null: show the results.
+ */
+export function signInAfterLink<P extends string>(
+  link: { return?: string },
+  runs: readonly { key: string; run: { status: string } }[],
+  pairings: readonly { key: string; provider: string }[],
+  known: readonly P[],
+): P | null {
+  if (link.return) return null;
+  for (const r of runs) {
+    if (r.run.status !== 'signed_out') continue;
+    const provider = pairings.find((p) => p.key === r.key)?.provider;
+    const found = known.find((k) => k === provider);
+    if (found) return found;
+  }
+  return null;
+}

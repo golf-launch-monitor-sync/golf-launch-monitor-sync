@@ -20,6 +20,7 @@ function facts(over: Partial<AppFacts> & { signedIn?: Record<string, { valid: bo
     signIn: (p) => signedIn[p] ?? { valid: false, had: false, player: null },
     lastRun: (k) => runs[k] ?? null,
     hcp: null,
+    ended: [],
     ...rest,
   };
 }
@@ -90,5 +91,18 @@ describe('the phone’s connections', () => {
     expect(one([entry({ status: 'sent' })], { site: 'owgr', siteName: 'OWGR', name: 'Matt Example', targets: ['Example App'], at: '' })[0]?.state).toBe('setup');
     // Not read yet: no row rather than a wrong one.
     expect(connectionsOfApp(facts({ pro: { view: null, service: 'World ranking' } }))).toEqual([]);
+  });
+  it('a pairing the app ended stays as a row of its own: no longer connected, pair again there (Reginald’s test of 27 Nov: the list was empty)', () => {
+    const ended = [{ key: 'k1', provider: 'trackman', target: { name: 'Example App' }, at: 0 }];
+    // The sign-in went with the last pairing: before, nothing was left to list but *Connect new*.
+    expect(connectionsOfApp(facts({ ended }))).toEqual([{ id: 'ended:k1', kind: 'lm', service: 'Trackman', account: null, targets: ['Example App'], state: 'ended' }]);
+    // Another app still paired: its row as before, the ended one beside it, first (it needs the player).
+    const list = connectionsOfApp(facts({ ended, pairings: [pairing('k2', 'Other App')], signedIn: { trackman: SIGNED }, runs: { k2: run() } }));
+    expect(list.map((c) => [c.id, c.state])).toEqual([
+      ['ended:k1', 'ended'],
+      ['lm:trackman', 'running'],
+    ]);
+    // Paired again: the pairing's own row, no ended one for it.
+    expect(connectionsOfApp(facts({ ended, pairings: [pairing('k1')], signedIn: { trackman: SIGNED } })).map((c) => c.id)).toEqual(['lm:trackman']);
   });
 });

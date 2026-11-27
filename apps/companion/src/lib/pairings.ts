@@ -7,6 +7,11 @@
  *
  * One pairing per target and provider: pairing again replaces the old one (whose token the caller
  * revokes at the target).
+ *
+ * A pairing the target ended (its token refused, or disconnected there) is remembered without its token as *ended*, so
+ * the list keeps a row that says so and where to pair again - only the target app can start a pairing (Reginald's test
+ * of 27 Nov: the list showed nothing but *Connect new*, which waits for that app's pair link). It goes when that target
+ * pairs again or the player takes it off the list.
  */
 
 import { base64url, readJson, sha256, utf8, type Pairing, type Storage } from '@glmsync/core';
@@ -14,10 +19,19 @@ import type { Secrets } from './secrets.ts';
 
 export type StoredPairing = Omit<Pairing, 'token'> & { key: string };
 export type KeyedPairing = Pairing & { key: string };
+/** A pairing its target ended: which target and provider, when - nothing else of it (no token, no address). */
+export interface EndedPairing {
+  key: string;
+  provider: string;
+  target: { name: string };
+  at: number;
+}
 
 const INDEX = 'glmsync/companion/pairings';
 const tokenSlot = (key: string) => `glmsync.pairing.${key}`;
 const MAX_PAIRINGS = 20;
+const ENDED = 'glmsync/companion/ended';
+const MAX_ENDED = 10;
 
 /** A short, stable name for a target and provider, usable as a secure-store key. */
 export function pairingKey(base: string, provider: string): string {
@@ -41,8 +55,23 @@ function readIndex(v: unknown): StoredPairing[] {
   );
 }
 
+function readEnded(v: unknown): EndedPairing[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter(
+    (e): e is EndedPairing =>
+      !!e &&
+      typeof e === 'object' &&
+      typeof (e as EndedPairing).key === 'string' &&
+      typeof (e as EndedPairing).provider === 'string' &&
+      !!(e as EndedPairing).target &&
+      typeof (e as EndedPairing).target.name === 'string' &&
+      typeof (e as EndedPairing).at === 'number',
+  );
+}
+
 export class Pairings {
   private items: KeyedPairing[] = [];
+  private gone: EndedPairing[] = [];
   private readonly listeners = new Set<() => void>();
 
   constructor(
@@ -65,6 +94,12 @@ export class Pairings {
     }
     this.items = out;
     if (out.length !== index.length) await this.writeIndex();
+    // A broken list of ended pairings only costs its rows, never the start of the app.
+    try {
+      this.gone = readEnded(await readJson(this.storage, ENDED)).filter((e) => !this.get(e.key));
+    } catch {
+      this.gone = [];
+    }
     this.tell();
   }
 
@@ -99,6 +134,15 @@ export class Pairings {
     return this.items.filter((p) => p.base.replace(/\/+$/, '') === b);
   }
 
+  /** The pairings their targets ended, newest last. */
+  ended(): readonly EndedPairing[] {
+    return this.gone;
+  }
+
+  private async writeEnded() {
+    await this.storage.set(ENDED, JSON.stringify(this.gone));
+  }
+
   usesProvider(provider: string): boolean {
     return this.items.some((p) => p.provider === provider);
   }
@@ -120,6 +164,11 @@ export class Pairings {
     const added: KeyedPairing = { ...pairing, key };
     this.items = [...this.items.filter((p) => p.key !== key), added];
     await this.writeIndex();
+    // Paired again: the row saying it ended goes (its storage tried; a stale entry is dropped at the next start).
+    if (this.gone.some((e) => e.key === key)) {
+      this.gone = this.gone.filter((e) => e.key !== key);
+      await this.writeEnded().catch(() => undefined);
+    }
     this.tell();
     return { added, replaced };
   }
@@ -131,6 +180,25 @@ export class Pairings {
     this.items = this.items.map((x) => (x.key === key ? { ...x, account_ref: accountRef } : x));
     await this.writeIndex();
     this.tell();
+  }
+
+  /**
+   * The target ended the pairing: it goes as with `remove`, and is remembered as ended. Remembering is a help, not part
+   * of ending: should storage fail, the pairing is gone all the same and the row shows until the app starts again.
+   */
+  async end(key: string, at: number): Promise<void> {
+    const p = this.get(key);
+    if (p) this.gone = [...this.gone.filter((e) => e.key !== key), { key, provider: p.provider, target: { name: p.target.name }, at }].slice(-MAX_ENDED);
+    await this.remove(key);
+    if (p) await this.writeEnded().catch(() => undefined);
+  }
+
+  /** The player takes an ended pairing off the list. */
+  async forgetEnded(key: string): Promise<void> {
+    if (!this.gone.some((e) => e.key === key)) return;
+    this.gone = this.gone.filter((e) => e.key !== key);
+    this.tell();
+    await this.writeEnded();
   }
 
   async remove(key: string): Promise<void> {

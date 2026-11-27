@@ -5,7 +5,7 @@
  * test mode, and golf.de's record), each with where it stands. A row opens its details (`focus`): the provider's
  * sign-in (with how much was asked of the provider today), the apps it goes to and how their last sync went, fetching
  * now, the request log to export - or the handicap record read along on golf.de (HcpCard), a pro's world ranking
- * pages (ProCard), or a test's card. Under
+ * pages (ProCard), a test's card, or a pairing its app ended (pair again there, or take it off the list). Under
  * Trackman's sign-in, small, *Enter a test code* instead; a connection in test mode never asks for the sign-in.
  *
  * `linked` (spec 1.18.0, lib/done.ts): a link brought the player here for this one connection and there was no way back
@@ -159,11 +159,13 @@ export function Home({
     tests: tests.map((m) => ({ key: m.key, player: m.player })),
     signIn: (id) => ({ valid: svc.signIns.valid(id), had: !!svc.signIns.had(id), player: svc.signIns.get(id)?.player ?? null }),
     lastRun: (key) => svc.runner.lastRun(key),
+    ended: svc.pairings.ended(),
     hcp: hcp.view,
     pro: { view: pro.view, service: translator(lang)('pro.service') },
   });
   const lmFocus = focus?.startsWith('lm:') ? focus.slice(3) : null;
   const testFocus = focus?.startsWith('test:') ? focus.slice(5) : null;
+  const endedFocus = focus?.startsWith('ended:') ? svc.pairings.ended().find((e) => e.key === focus.slice(6)) ?? null : null;
   const toList = () => go({ name: 'home' });
   // The details' apps: the provider's pairings (its test pairings too), or the one in test mode.
   const focused = pairings.filter((p) => (lmFocus ? p.provider === lmFocus : p.key === testFocus));
@@ -214,6 +216,26 @@ export function Home({
           <Button label={t('provider.signIn')} onPress={() => go({ name: 'signin', provider: 'trackman' })} />
           {testable.length > 0 && <TestLink onPress={() => go({ name: 'test', keys: testable })} />}
         </WizardFrame>
+      )}
+
+      {endedFocus && (
+        <Card>
+          <Title>{svc.providers[endedFocus.provider as ProviderId]?.name ?? endedFocus.provider}</Title>
+          <Body warn>{translator(lang)('connections.state.ended', { target: endedFocus.target.name })}</Body>
+          <View style={s.row}>
+            <Button
+              label={t('ended.remove')}
+              kind="secondary"
+              busy={busy === `ended-${endedFocus.key}`}
+              onPress={() =>
+                void act(`ended-${endedFocus.key}`, async () => {
+                  await svc.pairings.forgetEnded(endedFocus.key);
+                  toList();
+                })
+              }
+            />
+          </View>
+        </Card>
       )}
 
       {focus === 'hcp' && hcpShown && hcp.view && <HcpCard svc={svc} view={hcp.view} setView={hcp.setView} open={() => go({ name: 'golfde' })} />}

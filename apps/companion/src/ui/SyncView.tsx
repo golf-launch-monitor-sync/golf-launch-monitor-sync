@@ -5,17 +5,18 @@
  * a visible switch). The plans are asked like for any manual sync - nothing is fetched that the plan
  * doesn't want - and then the app jumps back, but only to an address the paired target named as its
  * own; otherwise it stays here and says what it did, and *OK* shows the card of the launch monitor it synced for (the
- * link's focus, spec 1.18.0), not the list.
+ * link's focus, spec 1.18.0), not the list. A link without a way back whose sign-in ran out goes straight to the sign-in
+ * instead (Reginald's test of 27 Nov: the results only said so, and the way to sign in was a tap further).
  */
 
 import * as Linking from 'expo-linking';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { lang, t } from '../i18n';
-import { afterDone, lmFocus } from '../lib/done';
+import { afterDone, lmFocus, signInAfterLink } from '../lib/done';
 import { backTo } from '../lib/links';
 import type { LastRun } from '../lib/runner';
-import type { Services } from '../lib/services';
+import { PROVIDERS, type Services } from '../lib/services';
 import { runText } from '../lib/text';
 import type { Screen } from './App';
 import { Body, Button, Card, s, Title } from './parts';
@@ -51,6 +52,13 @@ export function SyncView({
     void (async () => {
       await renew(RENEW_FOR_LINK_MS);
       const out = await svc.runner.syncAll('manual', link.target ? { target: link.target } : {}).catch(() => []);
+      // The target heard why nothing came (the runner's empty batch with auth_expired); the player signs in now.
+      const signIn = signInAfterLink(link, out, svc.pairings.list(), PROVIDERS);
+      if (signIn) {
+        const focus = lmFocus(of);
+        go({ name: 'signin', provider: signIn, ...(focus ? { focus } : {}) });
+        return;
+      }
       setRuns(out.map((o) => ({ name: names.get(o.key) ?? '?', run: o.run })));
       if (back) {
         try {

@@ -51,7 +51,7 @@ background, while your browser is open — reads your handicap record along on g
    in test mode never asks for the Trackman sign-in: not in the list, its details or on the icon. With a Trackman
    account signed in here already, *Forget the sign-in here* first.
 
-The popup opens on *Connect new* and the **list of connections** (Trackman's account, golf.de's record, a connection
+The popup opens on *Connect new* (German *Neue Verbindung* since 0.24.0, which doesn't read as *reconnect*) and the **list of connections** (Trackman's account, golf.de's record, a connection
 in test mode), each with where it stands - *running*, *loading the history*, *run out – sign in again*, *test mode*,
 *not set up yet – continue*. A row opens its details: the sign-in, the connected apps with what they last got, *Fetch
 now*, *Disconnect*, and the requests to Trackman ("last hour 3 of 60 · last 24 hours 14 of 300") with the log to

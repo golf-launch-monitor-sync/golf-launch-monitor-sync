@@ -304,11 +304,11 @@ test.describe('in German', () => {
 
   test('the popup speaks the browser’s language', async ({ context, extensionId }) => {
     const pop = await popup(context, extensionId);
-    await expect(pop.getByTestId('connect-new')).toHaveText('Neu verbinden');
+    await expect(pop.getByTestId('connect-new')).toHaveText('Neue Verbindung');
     await expect(pop.getByTestId('connections-none')).toHaveText('Noch nichts verbunden.');
   });
 
-  test('*Neu verbinden* in German: the steps and their words', async ({ context, extensionId }) => {
+  test('*Neue Verbindung* in German: the steps and their words', async ({ context, extensionId }) => {
     const pop = await popup(context, extensionId);
     const opens = connectWindow(context, extensionId);
     await pop.getByTestId('connect-new').click();

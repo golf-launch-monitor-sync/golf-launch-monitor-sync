@@ -31,10 +31,12 @@ portal in a sign-in window - so that window lives here, in a small app that does
   held the player's key before, and only a key of that same account (`SignIns.renewalFits`). When that
   fails, the app says so and the target hears it (`auth_expired`).
 - **Opens on the list of connections** (`src/lib/connections.ts`, `src/ui/Connections.tsx`, as in the extension):
-  *Connect new* and one row per provider account, per connection in test mode, golf.de's record and a pro's world
-  ranking pages, each with where
+  *Connect new* (German *Neue Verbindung*, which doesn't read as *reconnect*; 0.14.0) and one row per provider account,
+  per connection in test mode, golf.de's record and a pro's world ranking pages, each with where
   it stands; a row opens its details (`Home`'s `focus`). *Connect new* without a pair link says to start in the app
-  (and offers the demo).
+  (and offers the demo). A pairing its app ended (the token refused, or disconnected there) stays as a row of its own,
+  *No longer connected with <app> – pair again there* (0.14.0, `Pairings.end`): only that app can start a pairing, so
+  the list says where. The row goes when that app pairs again, or with *Remove from the list* in its details.
 - **Connects as steps** (`@glmsync/browser`'s wizard, the same as the extension's; `src/lib/wizard.ts`,
   `src/ui/WizardFrame.tsx`), one button each: *Connect with <host>* (the pair link) with what to connect, sign in, *Is
   this your account?* (its name and newest activity - no count), the first
@@ -82,7 +84,9 @@ portal in a sign-in window - so that window lives here, in a small app that does
   `src/lib/done.ts`): a link shows only the kind it came for, from its first step to *Done* - a launch monitor link
   only the launch monitors it names (one button each where it names several), golf.de's only golf.de. Where *Done* can't
   jump back (no `return`, an address the target didn't name, the app gone), it shows that one connection's card with
-  *Done*, not the list; the list comes when the player opens the app themselves (also once it went to the back).
+  *Done*, not the list; the list comes when the player opens the app themselves (also once it went to the back). A sync
+  link without `return` whose sign-in has run out goes straight to the sign-in rather than a page of results saying so
+  (0.14.0, `signInAfterLink`; the target heard `auth_expired` first, as always), then the first sync and that card.
 - **Fetches without a switch on Android**: a target app in front binds to the sync service
   (`glmsync.intent.action.SYNC`, [spec](../../spec/deep-links.md#android)); every bind runs a sync of
   that target's pairings as a headless JavaScript task (`modules/glmsync-sync`, `src/nudge.ts`), in
@@ -277,6 +281,7 @@ share the web view's cookies), and whether iOS lets a web view behind the screen
 | The provider sign-in (and the account it was of, for the quiet renewal) | the secure store (Keychain / Keystore), readable after the first unlock, this device only; cut into pieces where long (`ChunkedSecrets`) |
 | Each pairing's import token | the secure store |
 | The rest of a pairing (address, name, limits, return prefixes), the guard's counts and log, the last run per pairing | app storage (AsyncStorage) |
+| A pairing its app ended: which app and provider, when (no token, no address; the last ten) | app storage, until that app pairs again or the player removes the row |
 | A test scenario (made up, up to 64 MiB; test mode) | a file in the app's document folder, until the test ends; what the page shows of it (name, account, end) in app storage |
 | Each handicap pairing with its import token | the secure store (one entry, `glmsync.hcp.pairings`, in pieces where long) |
 | What golf.de's pages showed (results, the index; no names, no numbers), what each handicap target has from here, what it last answered | app storage |
@@ -295,8 +300,8 @@ share the web view's cookies), and whether iOS lets a web view behind the screen
 
 Android backups leave the secure store out (`allowBackup: false`). A sign-in goes to the provider
 only; a target gets batches and nothing else (`src/lib/runner.test.ts` checks both directions). A
-target that disconnects, or revokes the token, ends the pairing here; with the last pairing of a
-provider the sign-in goes too.
+target that disconnects, or revokes the token, ends the pairing here (its row says so until it pairs again); with the
+last pairing of a provider the sign-in goes too.
 
 ## Layout
 

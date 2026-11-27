@@ -45,6 +45,7 @@
   "unpair.text": "{target} gets nothing more from this phone. What arrived there stays there; you can delete it in that app.",
   "unpair.yes": "Disconnect",
   "unpair.button": "Disconnect",
+  "ended.remove": "Remove from the list",
   "file.save": "Save as file",
   "targets.title": "Connected apps",
   "targets.none": "Not connected with any app yet. In the app that should get your data, choose “connect Launch Monitor Sync”; it opens this app.",

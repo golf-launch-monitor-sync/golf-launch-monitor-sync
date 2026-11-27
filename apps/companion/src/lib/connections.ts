@@ -3,7 +3,8 @@
 /**
  * The phone's list of connections (the main view, as in the extension and the web app: `@glmsync/browser`'s
  * connections): one per provider account - its pairings, its sign-in, how its last runs went -, one per pairing in test
- * mode, golf.de's record and a pro's world ranking pages. Pure, so it is tested without a phone.
+ * mode, one per pairing its app ended (pair again there), golf.de's record and a pro's world ranking pages. Pure, so it
+ * is tested without a phone.
  */
 
 import { connectionOfHcp, connectionOfPro, connectionState, sortConnections, type Connection } from '@glmsync/browser/connections';
@@ -18,6 +19,8 @@ export interface AppFacts {
   tests: readonly { key: string; player: string | null }[];
   signIn(provider: string): { valid: boolean; had: boolean; player: string | null };
   lastRun(key: string): LastRun | null;
+  /** Pairings their apps ended (lib/pairings.ts). */
+  ended: readonly { key: string; provider: string; target: { name: string } }[];
   hcp: Pick<HcpView, 'pairings' | 'account' | 'sending' | 'signed_out'> | null;
   /** A pro's world ranking pages, with the service's name as the player reads it ("World ranking"). */
   pro?: { view: Pick<ProView, 'pairings' | 'question'> | null; service: string };
@@ -52,6 +55,12 @@ export function connectionsOfApp(f: AppFacts): Connection[] {
     const p = f.pairings.find((x) => x.key === m.key);
     if (!p) continue;
     out.push({ id: `test:${m.key}`, kind: 'lm', service: f.providers.find((x) => x.id === p.provider)?.name ?? p.provider, account: m.player, targets: [p.target.name], state: 'test' });
+  }
+  // Ended by the app: a row of its own, with no account (the sign-in went with the last pairing) - only that app can
+  // pair again, so the row says to start there. Paired again meanwhile: the pairing's own row is enough.
+  for (const e of f.ended) {
+    if (f.pairings.some((x) => x.key === e.key)) continue;
+    out.push({ id: `ended:${e.key}`, kind: 'lm', service: f.providers.find((x) => x.id === e.provider)?.name ?? e.provider, account: null, targets: [e.target.name], state: 'ended' });
   }
   const hcp = f.hcp ? connectionOfHcp(f.hcp) : null;
   if (hcp) out.push(hcp);

@@ -45,6 +45,7 @@
   "unpair.text": "{target} bekommt von diesem Handy nichts mehr. Was dort schon ist, bleibt dort; löschen kannst du es in dieser App.",
   "unpair.yes": "Trennen",
   "unpair.button": "Trennen",
+  "ended.remove": "Aus der Liste nehmen",
   "file.save": "Als Datei sichern",
   "targets.title": "Verbundene Apps",
   "targets.none": "Noch mit keiner App verbunden. Wähle in der App, die deine Daten bekommen soll, „Launch Monitor Sync verbinden“; sie öffnet diese App.",

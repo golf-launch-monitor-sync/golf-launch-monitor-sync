@@ -195,6 +195,41 @@ describe('a sync', () => {
     expect(s.services.pairings.list()).toHaveLength(0);
   });
 
+  it('the target ended the pairing (token_invalid): it stays listed as ended until paired again (Reginald’s test of 27 Nov)', async () => {
+    const s = setup();
+    await paired(s);
+    await s.services.signIns.set('trackman', s.token);
+    const key = s.services.pairings.list()[0]!.key;
+    s.target.tokens.clear();
+    const [report] = await s.services.runner.syncAll('timer');
+    expect(report?.run.status).toBe('disconnected');
+    expect(s.services.pairings.list()).toHaveLength(0);
+    expect(s.services.pairings.ended()).toEqual([{ key, provider: 'trackman', target: { name: s.target.name }, at: s.clock.t }]);
+    // Kept across a start of the app.
+    const again = makeServices({ secrets: s.secrets, storage: s.storage, now: s.clock.now, version: '0.1.0-test' });
+    await again.load();
+    expect(again.pairings.ended().map((e) => e.key)).toEqual([key]);
+    // Paired again from the app: the ended row goes.
+    s.target.codes.add('NEWCODE77');
+    await s.services.runner.pair({ target: s.target.base, code: 'NEWCODE77' });
+    expect(s.services.pairings.ended()).toEqual([]);
+  });
+
+  it('ended by the player here, or taken off the list: no ended row', async () => {
+    const s = setup();
+    await paired(s);
+    await s.services.runner.unpair(s.services.pairings.list()[0]!.key);
+    expect(s.services.pairings.ended()).toEqual([]);
+    s.target.codes.add('NEWCODE77');
+    await s.services.runner.pair({ target: s.target.base, code: 'NEWCODE77' });
+    s.target.disconnected = true;
+    await s.services.runner.syncAll('timer');
+    const [e] = s.services.pairings.ended();
+    expect(e).toBeDefined();
+    await s.services.pairings.forgetEnded(e!.key);
+    expect(s.services.pairings.ended()).toEqual([]);
+  });
+
   it('only the pairings of the target a link names', async () => {
     const s = setup();
     await paired(s);

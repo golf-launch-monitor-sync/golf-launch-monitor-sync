@@ -97,6 +97,16 @@ describe('the row’s words', () => {
     expect(connectionLine({ ...c, state: 'setup' }, de).state).toBe('Noch nicht fertig – weiter');
   });
 
+  it('a pairing the app ended: no longer connected with it, pair again there (Reginald’s test of 27 Nov)', () => {
+    const c = { id: 'ended:k1', kind: 'lm' as const, service: 'Trackman', account: null, targets: ['Example App'], state: 'ended' as const };
+    expect(connectionLine(c, de)).toEqual({ title: 'Trackman', targets: '', state: 'Nicht mehr mit Example App verbunden – dort neu koppeln', tone: 'warn' });
+    expect(connectionLine(c, en).state).toBe('No longer connected with Example App – pair again there');
+  });
+
+  it('the main button reads as a new connection, not as “reconnect” (Reginald’s test of 27 Nov)', () => {
+    expect(de('connections.new')).toBe('Neue Verbindung');
+  });
+
   it('what needs the player first, tests last', () => {
     const c = (id: string, state: 'running' | 'test' | 'setup') => ({ id, kind: 'lm' as const, service: 'S', account: null, targets: [], state });
     expect(sortConnections([c('a', 'test'), c('b', 'running'), c('c', 'setup')]).map((x) => x.id)).toEqual(['c', 'b', 'a']);

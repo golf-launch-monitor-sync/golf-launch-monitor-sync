@@ -16,7 +16,8 @@ import type { ProView } from './pro.ts';
 import type { T } from './i18n.ts';
 import { factsOfAccount, factsOfHcp, wizardOf, type ServiceKind } from './wizard.ts';
 
-export type ConnectionState = 'setup' | 'running' | 'history' | 'expired' | 'other' | 'failed' | 'test';
+/** `ended`: the app ended the pairing (its token refused, or disconnected there); only that app can pair again. */
+export type ConnectionState = 'setup' | 'running' | 'history' | 'expired' | 'other' | 'failed' | 'test' | 'ended';
 
 export interface ConnectionFacts {
   /** Its steps aren't through yet (the wizard stands before "done"). */
@@ -145,13 +146,14 @@ export interface ConnectionLine {
   tone: ConnectionTone;
 }
 
-const TONE: Record<ConnectionState, ConnectionTone> = { setup: 'warn', running: 'ok', history: 'busy', expired: 'warn', other: 'warn', failed: 'warn', test: 'test' };
+const TONE: Record<ConnectionState, ConnectionTone> = { setup: 'warn', running: 'ok', history: 'busy', expired: 'warn', other: 'warn', failed: 'warn', test: 'test', ended: 'warn' };
 
 export function connectionLine(c: Connection, t: T): ConnectionLine {
   return {
     title: c.account ? t('connections.titleAccount', { service: c.service, account: c.account }) : c.service,
-    targets: c.targets.length ? t('connections.targets', { targets: c.targets.join(', ') }) : t('connections.noApp'),
-    state: t(`connections.state.${c.state}`),
+    // An ended pairing names its app in the state ("no longer connected with …"): not a second time as where data goes.
+    targets: c.state === 'ended' ? '' : c.targets.length ? t('connections.targets', { targets: c.targets.join(', ') }) : t('connections.noApp'),
+    state: t(`connections.state.${c.state}`, { target: c.targets.join(', ') }),
     tone: TONE[c.state],
   };
 }
