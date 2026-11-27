@@ -78,7 +78,7 @@ portal in a sign-in window - so that window lives here, in a small app that does
   refresh off for every app). It closes with ×, stays away a day and comes back while the cause stays; another cause
   is said at once. `expo-background-task`'s status can't tell (on a phone it answers *available* whatever the switch
   says), so the state comes from the app's own module `modules/glmsync-power` (`backgroundRefreshStatus`,
-  `isLowPowerModeEnabled`); a build without it says nothing. And once, after the first pairing, not to swipe the app
+  `isLowPowerModeEnabled`, a native part: only builds made after it have it); a build without it says nothing. And once, after the first pairing, not to swipe the app
   away in the app switcher: iOS then wakes it no more until it is opened. Nothing of this goes to a target.
 - **Tells the target where its sign-in stands** with every plan (spec 1.5.0, `signin`): `ready` with a
   sign-in it can fetch with, `expired` when it ran out here, `none` when there never was one on this
@@ -319,16 +319,20 @@ app.config.ts       ids (from the environment for forks), scheme glmsync, EAS pr
 src/lib/            everything without a screen, tested with vitest: secrets, sign-ins, pairings,
                     links, the runner (pair, sync, history, file, "Is this you?"), test mode (tests),
                     the Android sync service's rules (nudge), whether a new build is out (newBuild),
-                    golf.de's Fetch all (fetchAll) and when it runs by itself (autoFetch), the wording
+                    golf.de's Fetch all (fetchAll) and when it runs by itself (autoFetch), what keeps iOS
+                    from waking the app (wakeHints), the wording
 src/ui/             the screens: App (links, opening, quiet renewal), Home, PairView, SignInView,
                     FirstSyncView, SyncView, TestView, Licenses, TrackmanLoginView, PairHcpView, GolfdeView,
                     UnseenGolfde (the window behind the screen), HcpCard, PairProView, RankingsView, ToursView,
-                    ProCard
+                    ProCard, WakeHints
 src/platform.ts     the phone's parts: secure store, storage, files, share sheet
 src/background.ts   the background task
 src/nudge.ts        the headless task behind the Android sync service
+src/power.ts        Background App Refresh and Low Power Mode, from modules/glmsync-power (iOS)
 modules/glmsync-sync  the Android sync service (Kotlin, a local Expo module; its manifest adds the
                     service to the app)
+modules/glmsync-power  Background App Refresh and Low Power Mode on the iPhone (Swift, a local Expo module;
+                    since 0.16.0, in builds made after it)
 scripts/            licenses.mjs (the licences page), release.sh (builds and updates at Expo),
                     golfde-page.mjs, rankings-page.mjs and tours-page.mjs (bundle the golf.de, world ranking and
                     tour windows' page scripts into src/lib/*PageScript.ts, with page-script.mjs)

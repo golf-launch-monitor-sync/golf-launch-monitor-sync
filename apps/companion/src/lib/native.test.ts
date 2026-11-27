@@ -43,3 +43,23 @@ describe('the sync service', () => {
     expect(service).toContain('private val binder = Binder()');
   });
 });
+
+describe('the power module (modules/glmsync-power)', () => {
+  const POWER = new URL('../../modules/glmsync-power/', import.meta.url);
+  const readPower = (path: string) => readFileSync(new URL(path, POWER), 'utf8');
+
+  it('is the iOS module src/power.ts asks for, answering what readPowerState takes', () => {
+    const config = JSON.parse(readPower('expo-module.config.json')) as { platforms: string[]; apple?: { modules?: string[] } };
+    expect(config.platforms).toEqual(['apple']);
+    expect(config.apple?.modules).toEqual(['GlmsyncPowerModule']);
+    const swift = readPower('ios/GlmsyncPowerModule.swift');
+    const js = readFileSync(new URL('../power.ts', import.meta.url), 'utf8');
+    expect(js).toContain("requireOptionalNativeModule<PowerModule>('GlmsyncPower')");
+    expect(swift).toContain('Name("GlmsyncPower")');
+    expect(swift).toContain('AsyncFunction("getStateAsync")');
+    // UIApplication is read on the main thread only.
+    expect(swift).toMatch(/\.runOnQueue\(\.main\)/);
+    for (const value of ['"available"', '"denied"', '"restricted"', '"refresh"', '"lowPower"']) expect(swift).toContain(value);
+    expect(readPower('ios/GlmsyncPower.podspec')).toContain("s.dependency 'ExpoModulesCore'");
+  });
+});
