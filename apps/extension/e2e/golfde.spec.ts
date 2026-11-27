@@ -111,6 +111,31 @@ test('signed out on golf.de: the line says so, and nothing goes to the app witho
   expect(world.hcp.imports).toHaveLength(0); // nothing seen, and no account to tell it for yet
 });
 
+test('golf.de’s reports as since dgv-reports-js 1.23 (urql, each request aborted once read): signed in again, the account is asked', async ({ context, world, extensionId }) => {
+  world.golfde.urql = true;
+  const pairPage = await context.newPage();
+  const windowOpens = connectWindow(context, extensionId);
+  await pairPage.goto(`${pairUrl(HCP_TARGET, HCP_CODE)}&kind=hcp`);
+  const connect = await windowOpens;
+  await chooseService(connect, 'golfde');
+
+  // Signed out earlier the same evening: the line says so.
+  world.golfde.signedIn = false;
+  const page = await context.newPage();
+  await page.goto(GOLFDE_HISTORY);
+  await expect(page.getByTestId('golfde-line')).toContainText('not signed in on golf.de');
+
+  // Signed in again: the page's own answers are read along although the page aborts each request once it read it.
+  world.golfde.signedIn = true;
+  await page.reload();
+  await expect(connect.getByTestId('hcp-confirm')).toContainText('Handicap index 8.1');
+  await expect(page.getByTestId('golfde-line')).not.toContainText('not signed in');
+  await connect.getByTestId('hcp-confirm-yes').click();
+  await expect(connect.getByTestId('wizard-brought')).toHaveText('3 results sent to Example App', { timeout: 30_000 });
+  expect(world.golfde.apiSaw.slice(-3).map((r) => r.op)).toEqual(['GetMemberDetails', 'GetHandicapHistorySheet', 'GetScoringRecords']);
+  expect(world.golfde.apiSaw.every((r) => r.page)).toBe(true);
+});
+
 test('not my account: nothing of it is kept or sent, and the line says so', async ({ context, world, extensionId }) => {
   const pairPage = await context.newPage();
   const windowOpens = connectWindow(context, extensionId);

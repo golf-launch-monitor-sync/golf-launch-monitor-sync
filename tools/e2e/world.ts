@@ -423,12 +423,18 @@ export class GolfDe {
    * client goes by the address. `title` other than golf.de's: a page golf.de changed. Off: the result list's page.
    */
   tournament: { title?: string } | null = null;
+  /**
+   * The page's GraphQL client as golf.de's reports have it since dgv-reports-js 1.23 (urql): a GET with the operation in
+   * the address, an AbortSignal, the answer read with `text()` and the request aborted right after; the answers come as
+   * `application/graphql-response+json`. Off: a POST with the operation in its body, never aborted.
+   */
+  urql = false;
   readonly apiSaw: { url: string; op: string | null; page: boolean }[] = [];
 
   /** golf.de's API, as the page's own requests reach it. */
   answer(url: string, body: string | null): unknown {
     const ask = body ? (JSON.parse(body) as { operationName?: string; variables?: { after?: string | null } }) : null;
-    const op = ask?.operationName ?? null;
+    const op = ask?.operationName ?? GolfDe.opInAddress(url);
     if (!this.signedIn && op) return { data: null, errors: [{ message: 'no', extensions: { code: 'AUTH_FAILED' } }] };
     if (op === 'GetMemberDetails') return memberAnswer();
     if (op === 'GetHandicapHistorySheet') {
@@ -444,6 +450,15 @@ export class GolfDe {
     return { errors: [{ message: 'unknown' }] };
   }
 
+  /** The operation a GET names in its address (as urql sends a query). */
+  static opInAddress(url: string): string | null {
+    try {
+      return new URL(url).searchParams.get('operationName');
+    } catch {
+      return null;
+    }
+  }
+
   /** A made-up page of *Mein Bereich* or the result list: it asks golf.de's API itself, as golf.de's page does. */
   page(path: string): string {
     if (this.tournament && path.startsWith('/sport/turnierkalender/')) {
@@ -452,7 +467,11 @@ export class GolfDe {
     }
     const header = JSON.stringify({ 'content-type': 'application/json', 'x-client-id': 'made-up-page-client-id', [GOLFDE_PAGE_HEADER]: '1' });
     if (this.built) return this.builtPage(path, header);
-    const gql = (op: string) => `fetch('https://api-v2.golf.de/graphql', { method: 'POST', credentials: 'include', headers: ${header}, body: JSON.stringify({ operationName: '${op}', query: 'query ${op} { me { id } }', variables: {} }) })`;
+    const urqlHeader = JSON.stringify({ accept: 'application/graphql-response+json, application/graphql+json, application/json, text/event-stream, multipart/mixed', 'x-client-id': 'made-up-page-client-id', [GOLFDE_PAGE_HEADER]: '1' });
+    const gql = (op: string) =>
+      this.urql
+        ? `(() => { const c = new AbortController(); return fetch('https://api-v2.golf.de/graphql?query=' + encodeURIComponent('query ${op} { me { id } }') + '&operationName=${op}&variables=%7B%7D', { method: 'GET', credentials: 'include', headers: ${urqlHeader}, signal: c.signal }).then((r) => r.text()).then((t) => { c.abort(); return JSON.parse(t); }); })()`
+        : `fetch('https://api-v2.golf.de/graphql', { method: 'POST', credentials: 'include', headers: ${header}, body: JSON.stringify({ operationName: '${op}', query: 'query ${op} { me { id } }', variables: {} }) })`;
     const calls = path.startsWith('/sport/')
       ? `fetch('https://api-v2.golf.de/v1.0/tournaments/5001/results', { headers: ${header} })`
       : `${gql('GetMemberDetails')}.then(() => ${gql('GetHandicapHistorySheet')}).then(() => ${gql('GetScoringRecords')})`;
@@ -648,12 +667,13 @@ export class World {
     await context.route('https://www.golf.de/**', (route) => route.fulfill({ status: 200, body: this.golfde.page(new URL(route.request().url()).pathname), headers: { 'content-type': 'text/html' } }));
     await context.route('https://api-v2.golf.de/**', async (route) => {
       const req = route.request();
-      const cors = { 'access-control-allow-origin': 'https://www.golf.de', 'access-control-allow-credentials': 'true', 'access-control-allow-headers': `content-type, x-client-id, ${GOLFDE_PAGE_HEADER}`, 'access-control-allow-methods': 'GET, POST, OPTIONS' };
+      const cors = { 'access-control-allow-origin': 'https://www.golf.de', 'access-control-allow-credentials': 'true', 'access-control-allow-headers': `accept, content-type, x-client-id, ${GOLFDE_PAGE_HEADER}`, 'access-control-allow-methods': 'GET, POST, OPTIONS' };
       if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
       const body = req.postData();
       const headers = await req.allHeaders();
-      this.golfde.apiSaw.push({ url: req.url(), op: body ? ((JSON.parse(body) as { operationName?: string }).operationName ?? null) : null, page: headers[GOLFDE_PAGE_HEADER] === '1' });
-      return route.fulfill({ status: 200, body: JSON.stringify(this.golfde.answer(req.url(), body)), headers: { 'content-type': 'application/json', ...cors } });
+      this.golfde.apiSaw.push({ url: req.url(), op: body ? ((JSON.parse(body) as { operationName?: string }).operationName ?? null) : GolfDe.opInAddress(req.url()), page: headers[GOLFDE_PAGE_HEADER] === '1' });
+      const type = this.golfde.urql ? 'application/graphql-response+json; charset=utf-8' : 'application/json';
+      return route.fulfill({ status: 200, body: JSON.stringify(this.golfde.answer(req.url(), body)), headers: { 'content-type': type, ...cors } });
     });
   }
 

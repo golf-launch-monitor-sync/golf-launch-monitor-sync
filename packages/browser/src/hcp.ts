@@ -522,6 +522,11 @@ export class HcpClient {
           s.signed_out = true;
           k.signed_out = true;
           break;
+        case 'signed_in':
+          // golf.de says signed in again: the line stops saying otherwise. Which account it is stays open until a page
+          // names it (`member`), so results meanwhile wait for it rather than go to the account named before.
+          delete k.signed_out;
+          break;
         case 'changed_page':
           k.changed_page = today(at);
           break;

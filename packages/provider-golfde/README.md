@@ -11,7 +11,9 @@ golf.de.
 golf.de's API answers only with the client id of golf.de's own web app. Sending it would pose as golf.de's app — *no
 disguise*, *no borrowed client id* ([CLAUDE.md](../../CLAUDE.md) §2) — so this module **sends golf.de nothing at all**.
 The page script (`@glmsync/provider-golfde/page`) runs inside golf.de's own page, before golf.de's scripts, and looks
-at the answers golf.de's page receives in the player's tab — a clone, read after the page got it:
+at the answers golf.de's page receives in the player's tab — the text the page itself reads of an answer (or a clone,
+whichever is read first; golf.de's reports abort each request once they have read it, and a clone not yet read then
+fails), never changing a request:
 
 | Answer (asked by golf.de's page) | What is kept |
 | --- | --- |
@@ -19,7 +21,7 @@ at the answers golf.de's page receives in the player's tab — a clone, read aft
 | `…/graphql`, `GetHandicapHistorySheet` | the page's entries of the History Sheet (ten a page) |
 | `…/graphql`, `GetScoringRecords` | the Scoring Record, with the Score Differential |
 | `api-v2.golf.de/v1.0/tournaments/<n>/results` | per line only the result's id, its place and its list's size |
-| `login.golf.de/api/sessions/me` | whether the player is signed in |
+| `login.golf.de/api/sessions/me` | whether the player is signed in (signed in again ends an earlier *signed out*; the account still waits for `GetMemberDetails`) |
 
 Everything else is never looked at. What the page script posts is already dgvhcp/1 results, made by a whitelist
 (`mapping.ts`): names (the player's, a marker's in a registered private round, everyone's in a result list), card and

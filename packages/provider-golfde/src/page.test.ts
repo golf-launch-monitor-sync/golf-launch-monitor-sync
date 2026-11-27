@@ -51,6 +51,43 @@ function page(answers: Record<string, unknown>) {
 const settle = () => new Promise((done) => setTimeout(done, 20));
 const gql = (op: string) => ({ method: 'POST', headers: { 'content-type': 'application/json', 'x-client-id': 'the-page-s-own' }, body: JSON.stringify({ operationName: op, query: '…', variables: { first: 10 } }) });
 
+/**
+ * golf.de's reports since dgv-reports-js 1.23 (urql): a GET with the operation in the address, an AbortSignal, the
+ * answer read with `text()` and the request aborted right after. Chrome then fails a clone not yet read with
+ * `AbortError` (seen on golf.de, 27 Nov 2026); the clone here is read a moment later, as there.
+ */
+function urqlPage(answers: Record<string, unknown>) {
+  const posted: Seen[] = [];
+  const win = {
+    location: { href: 'https://www.golf.de/mein-bereich/handicap-history-sheet.html', origin: 'https://www.golf.de' },
+    fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+      const op = new URL(String(input)).searchParams.get('operationName') ?? '';
+      const text = JSON.stringify(answers[op]);
+      const res = new Response(text, { status: 200, headers: { 'content-type': 'application/graphql-response+json; charset=utf-8' } });
+      const signal = init?.signal;
+      Object.defineProperty(res, 'clone', {
+        value: () => ({
+          text: () =>
+            new Promise((ok, fail) => setTimeout(() => (signal?.aborted ? fail(new DOMException('aborted', 'AbortError')) : ok(text)), 5)),
+        }),
+      });
+      return res;
+    },
+    XMLHttpRequest: fakeXhr({}) as unknown as typeof XMLHttpRequest,
+  } satisfies PageWindow;
+  watchPage(win, (s) => posted.push(s));
+  /** One query as urql makes it: what the page itself read comes back. */
+  const query = async (op: string, read: 'text' | 'json' = 'text') => {
+    const ctrl = new AbortController();
+    const url = `${GRAPHQL_URL}?query=query+${op}+%7B+me+%7D&operationName=${op}&variables=%7B%7D`;
+    const res = await win.fetch(url, { method: 'GET', signal: ctrl.signal, headers: { accept: 'application/graphql-response+json, application/json, multipart/mixed' } });
+    const got = read === 'text' ? JSON.parse(await res.text()) : await res.json();
+    ctrl.abort();
+    return got as unknown;
+  };
+  return { posted, query };
+}
+
 describe('the page script', () => {
   it('reads along: the page gets its answers untouched, and what was seen is posted', async () => {
     const answers = { GetMemberDetails: memberAnswer(), GetHandicapHistorySheet: historyAnswer([entry(), entry()], 12) };
@@ -83,6 +120,23 @@ describe('the page script', () => {
     for (const word of ['firstName', 'lastName', 'nameOnCard', 'playerName', 'memberNumber', 'scorecardParticipantNumberCVS', 'cvsId', 'dgvPlayerId', 'Otto']) {
       expect(text).not.toContain(word);
     }
+  });
+
+  it('reads along when the page aborts its request once it has read the answer (urql, dgv-reports-js 1.23)', async () => {
+    const answers = { GetMemberDetails: memberAnswer(), GetHandicapHistorySheet: historyAnswer([entry(), entry()], 2) };
+    const { posted, query } = urqlPage(answers);
+    expect(await query('GetMemberDetails')).toEqual(answers.GetMemberDetails); // the page gets its answer as always
+    expect(await query('GetHandicapHistorySheet', 'json')).toEqual(answers.GetHandicapHistorySheet);
+    await settle();
+    expect(posted.map((p) => p.kind)).toEqual(['member', 'history']);
+  });
+
+  it('tells an answer once, though both the page and the clone read it', async () => {
+    const { win, posted } = page({ GetMemberDetails: memberAnswer() });
+    const res = await win.fetch(GRAPHQL_URL, gql('GetMemberDetails'));
+    await res.text();
+    await settle();
+    expect(posted.map((p) => p.kind)).toEqual(['member']);
   });
 
   it('reads along on XMLHttpRequest too', async () => {

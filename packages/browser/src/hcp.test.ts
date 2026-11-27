@@ -195,6 +195,23 @@ describe('whose record it is', () => {
     expect(await w.client.view()).toMatchObject({ seen: 1, waiting: true, signed_out: true });
   });
 
+  it('golf.de saying signed in again ends signed_out; whose record it is still waits for a page that names it', async () => {
+    const w = await paired();
+    await w.client.see('p1', member());
+    await w.client.see('p2', reduce({ kind: 'session' }, 401, null) as Seen);
+    expect(await w.client.view()).toMatchObject({ signed_out: true });
+    // The player signs in again; golf.de's login page asks its session (sessions/me: authenticated).
+    const signedIn = reduce({ kind: 'session' }, 200, { authenticated: true });
+    expect(signedIn).not.toBeNull();
+    let v = await w.client.see('p3', signedIn as Seen);
+    expect(v.signed_out).toBe(false);
+    // A page that names nobody: its results don't go to the account named before the sign-out.
+    v = await w.client.see('p4', history([entry()]));
+    expect(v).toMatchObject({ seen: 0, waiting: true, signed_out: false });
+    v = await w.client.see('p4', member());
+    expect(v).toMatchObject({ seen: 1, waiting: false, signed_out: false });
+  });
+
   it('another account’s record drops what was kept of the one before, and goes to no target that has another', async () => {
     const w = await paired();
     await w.client.see('p1', member(1));

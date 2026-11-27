@@ -65,6 +65,11 @@ export type Seen =
   | { kind: 'scoring'; results: HcpResult[] }
   | { kind: 'places'; tournament: string; lines: PlaceLine[] }
   | { kind: 'signed_out' }
+  /**
+   * golf.de's session answer says the player is signed in. It names no account: it only ends an earlier `signed_out`
+   * (whose results go to which account still waits for a page that names it, `member`).
+   */
+  | { kind: 'signed_in' }
   | { kind: 'changed_page'; what: Watch['kind'] | Operation };
 
 const obj = (v: unknown): Raw | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Raw) : null);
@@ -192,7 +197,9 @@ function linksOf(nodes: unknown[]): ListLink[] {
 export function reduce(watch: Watch, status: number, body: unknown): Seen | null {
   if (watch.kind === 'session') {
     if (status === 401) return { kind: 'signed_out' };
-    return status === 200 && obj(body)?.authenticated === false ? { kind: 'signed_out' } : null;
+    if (status !== 200) return null;
+    const authenticated = obj(body)?.authenticated;
+    return authenticated === false ? { kind: 'signed_out' } : authenticated === true ? { kind: 'signed_in' } : null;
   }
   if (status === 401) return { kind: 'signed_out' };
   if (status !== 200) return null;
@@ -337,6 +344,8 @@ export function readSeen(raw: unknown): Seen | null {
     }
     case 'signed_out':
       return { kind: 'signed_out' };
+    case 'signed_in':
+      return { kind: 'signed_in' };
     case 'changed_page':
       return typeof s.what === 'string' && s.what.length <= 40 ? { kind: 'changed_page', what: s.what as Extract<Seen, { kind: 'changed_page' }>['what'] } : null;
     default:

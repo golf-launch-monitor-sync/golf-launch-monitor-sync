@@ -65,7 +65,14 @@ describe('what it makes of an answer', () => {
     expect(reduce(op('GetHandicapHistorySheet'), 200, AUTH_FAILED)).toEqual({ kind: 'signed_out' });
     expect(reduce(op('GetMemberDetails'), 401, null)).toEqual({ kind: 'signed_out' });
     expect(reduce({ kind: 'session' }, 200, { authenticated: false })).toEqual({ kind: 'signed_out' });
-    expect(reduce({ kind: 'session' }, 200, { authenticated: true, user: { name: PERSONAL.nameOnCard } })).toBeNull();
+  });
+
+  it('signed in again: golf.de’s session answer says so, and nothing of the person goes with it', () => {
+    const seen = reduce({ kind: 'session' }, 200, { authenticated: true, user: { name: PERSONAL.nameOnCard } });
+    expect(seen).toEqual({ kind: 'signed_in' });
+    expect(readSeen(JSON.parse(JSON.stringify(seen)))).toEqual({ kind: 'signed_in' });
+    expect(reduce({ kind: 'session' }, 200, {})).toBeNull(); // says neither
+    expect(reduce({ kind: 'session' }, 500, { authenticated: true })).toBeNull();
   });
 
   it('a shape it doesn’t know: changed_page, and nothing read of it', () => {

@@ -156,6 +156,8 @@ export function seeRun(s: RunState, seen: Seen, now: number, random: () => numbe
   switch (seen.kind) {
     case 'signed_out':
       return stop(s, 'signed_out', now);
+    case 'signed_in':
+      return s;
     case 'changed_page':
       return stop(s, 'changed_page', now);
     case 'member':
