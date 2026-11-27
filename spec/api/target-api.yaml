@@ -444,6 +444,9 @@ components:
           additionalProperties: false
           properties:
             done: { type: boolean }
+            older:
+              type: boolean
+              description: "Since 1.21.0: false while the history isn't done but nothing older than what the target has comes any more - it only fills gaps (planning.md, *Only gaps*). A client then says the connection runs, not that it loads the history. Absent: nothing is said."
             from: { $ref: "#/components/schemas/Time" }
         last_import_at: { $ref: "#/components/schemas/Time" }
     ImportResult:

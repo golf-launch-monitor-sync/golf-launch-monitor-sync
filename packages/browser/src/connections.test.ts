@@ -5,6 +5,7 @@ import type { ClientStatus } from './client.ts';
 import { connectionLine, connectionOfHcp, connectionsOfStatus, connectionState, sortConnections, type ConnectionFacts } from './connections.ts';
 import type { HcpView } from './hcp.ts';
 import { translator } from './i18n.ts';
+import { historyText } from './view.ts';
 
 const de = translator('de');
 const en = translator('en');
@@ -53,6 +54,8 @@ describe('a launch monitor client’s connections', () => {
   it('running, loading the history, run out, another account, a failed fetch', () => {
     expect(connectionsOfStatus(status(READY, [synced({ history: { done: true } })]))[0]).toMatchObject({ id: 'lm', service: 'Trackman', targets: ['Example App'], state: 'running' });
     expect(connectionsOfStatus(status(READY, [synced({ history: { done: false } })]))[0]?.state).toBe('history');
+    // The history only fills gaps (spec 1.21.0): nothing older comes, so it runs.
+    expect(connectionsOfStatus(status(READY, [synced({ history: { done: false, older: false } })]))[0]?.state).toBe('running');
     expect(connectionsOfStatus(status({ state: 'expired', until: 0 }, [synced()]))[0]?.state).toBe('expired');
     expect(connectionsOfStatus(status({ state: 'none' }, [synced()]))[0]?.state).toBe('expired');
     expect(connectionsOfStatus(status({ state: 'other', until: 0 }, [synced()]))[0]?.state).toBe('other');
@@ -110,5 +113,12 @@ describe('the row’s words', () => {
   it('what needs the player first, tests last', () => {
     const c = (id: string, state: 'running' | 'test' | 'setup') => ({ id, kind: 'lm' as const, service: 'S', account: null, targets: [], state });
     expect(sortConnections([c('a', 'test'), c('b', 'running'), c('c', 'setup')]).map((x) => x.id)).toEqual(['c', 'b', 'a']);
+  });
+});
+
+describe('the history in a pairing’s details', () => {
+  it('complete with gaps still being filled when the target says only gaps (spec 1.21.0), not "still coming"', () => {
+    expect(historyText(synced({ history: { done: false, older: false } }), de)).toBe('Ältere Historie: vollständig, Lücken werden noch ergänzt.');
+    expect(historyText(synced({ history: { done: false } }), de)).toBe('Ältere Historie: kommt noch, alle paar Minuten ein Stück.');
   });
 });

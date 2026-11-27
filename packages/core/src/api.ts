@@ -64,7 +64,11 @@ export interface Plan {
   sessions_wanted: SessionWanted[];
   /** Multiplies the pauses between provider requests; never below 0.5. */
   pace: number;
-  history?: { done?: boolean; from?: string };
+  /**
+   * `older` (since 1.21.0): false while the history isn't done but nothing older than what the target has comes any
+   * more - it only fills gaps (planning.md, *Only gaps*). A client then says it runs, not that it loads the history.
+   */
+  history?: { done?: boolean; older?: boolean; from?: string };
   last_import_at?: string;
 }
 
@@ -195,6 +199,7 @@ export function readPlan(data: unknown): Plan {
   if (h) {
     plan.history = {};
     if (typeof h.done === 'boolean') plan.history.done = h.done;
+    if (typeof h.older === 'boolean') plan.history.older = h.older;
     const from = when(h.from);
     if (from) plan.history.from = from;
   }

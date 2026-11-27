@@ -41,6 +41,9 @@ describe('the phone’s connections', () => {
     expect(one(run())).toMatchObject({ account: 'Alex Example', state: 'running' });
     expect(one(run({ more: true }))?.state).toBe('history');
     expect(one(run({ left: 40 }))?.state).toBe('history');
+    // The target said the history only fills gaps (spec 1.21.0): it runs, it doesn't load the history.
+    expect(one(run({ more: true, older: false }))?.state).toBe('running');
+    expect(one(run({ left: 40, older: false }))?.state).toBe('running');
     expect(one(run({ status: 'failed', error: 'unreachable' }))?.state).toBe('failed');
     expect(one(run({ status: 'other_account' }))?.state).toBe('other');
     expect(one(run(), { valid: false, had: true, player: 'Alex Example' })).toMatchObject({ account: null, state: 'expired' });

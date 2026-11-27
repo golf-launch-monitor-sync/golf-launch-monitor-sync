@@ -78,6 +78,7 @@ function busyText(holder: Holder | undefined, t: T, lang: Lang): string {
 
 export function historyText(e: Entry, t: T): string | null {
   if (e.history?.done === true && e.last_synced_at) return t('pairing.history.done');
+  if (e.history?.done === false && e.history.older === false) return t('pairing.history.gaps');
   if (e.history?.done === false) return t('pairing.history.more');
   return null;
 }

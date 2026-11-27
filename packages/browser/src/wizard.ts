@@ -326,7 +326,7 @@ function firstData(list: readonly Pairing[], running: readonly string[], busy: R
   return {
     first: done ? 'through' : now ? 'running' : failed ? 'failed' : 'waiting',
     brought: best.brought ? { sessions: best.brought.sessions, rounds: best.brought.rounds } : null,
-    more: best.history?.done === true ? false : best.history?.done === false ? (typeof best.left === 'number' ? best.left : true) : null,
+    more: best.history?.done === true || best.history?.older === false ? false : best.history?.done === false ? (typeof best.left === 'number' ? best.left : true) : null,
   };
 }
 

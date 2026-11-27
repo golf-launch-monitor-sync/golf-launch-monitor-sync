@@ -80,6 +80,19 @@ describe('a sync', () => {
     expect('left' in regular).toBe(false);
   });
 
+  it('passes on that the history only fills gaps (spec 1.21.0), so a client says it runs, not that it loads the history', async () => {
+    const plan = (history: Record<string, boolean>) => ({
+      plan: (_ask: unknown, t: { known(): string[] }) => ({ due: true, plan_id: 'h1', known_ids: t.known(), rounds: false, round_shots: true, max_sessions: 1, history }),
+    });
+    const gaps = await setup(plan({ done: false, older: false }));
+    expect(await sync({ target: gaps.target, provider: new Fake(), credential: SUB, reason: 'backfill', client: 'web', guard: gaps.guard })).toMatchObject({ status: 'synced', older: false });
+    // A target that says nothing of it (before 1.21.0): nothing is assumed.
+    const before = await setup(plan({ done: false }));
+    const out = await sync({ target: before.target, provider: new Fake(), credential: SUB, reason: 'backfill', client: 'web', guard: before.guard });
+    expect(out.status).toBe('synced');
+    expect('older' in out).toBe(false);
+  });
+
   it('asks the plan first, and the provider nothing when it is not due', async () => {
     const { fake, target, guard } = await setup({ plan: () => ({ due: false }) });
     const provider = new Fake();

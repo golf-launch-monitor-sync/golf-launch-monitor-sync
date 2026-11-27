@@ -47,7 +47,8 @@ export function connectionsOfApp(f: AppFacts): Connection[] {
         test: false,
         signIn: !s.valid ? 'expired' : runs.some((r) => r?.status === 'other_account') ? 'other' : 'ok',
         failed: runs.some((r) => r?.status === 'failed'),
-        history: runs.some((r) => !!r?.more || (typeof r?.left === 'number' && r.left > 0)),
+        // Only gaps (spec 1.21.0): nothing older comes, so it runs.
+        history: runs.some((r) => r?.older !== false && (!!r?.more || (typeof r?.left === 'number' && r.left > 0))),
       }),
     });
   }

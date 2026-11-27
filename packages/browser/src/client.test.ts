@@ -455,6 +455,28 @@ describe('the older history', () => {
     expect(p?.left).toBe(0);
   });
 
+  it('keeps that the history only fills gaps while the target says so (spec 1.21.0), from every plan', async () => {
+    let older: boolean | undefined = false;
+    const history = () => ({ done: false, ...(older === undefined ? {} : { older }) });
+    const w = world({
+      target: {
+        plan: (ask, t) =>
+          ask.reason === 'backfill'
+            ? { due: true, plan_id: 'h1', known_ids: t.known(), rounds: false, round_shots: true, max_sessions: 1, history: history() }
+            : { due: false, history: history() },
+      },
+    });
+    const id = await paired(w);
+    await w.client.setKey(w.token());
+    await w.client.confirm(true);
+    await w.client.run('backfill', id);
+    expect((await w.client.status()).pairings[0]?.history).toMatchObject({ older: false });
+    // A plan that says nothing of it any more: the history loads older data again.
+    older = undefined;
+    await w.client.run('timer');
+    expect((await w.client.status()).pairings[0]?.history?.older).toBeUndefined();
+  });
+
   it('is asked for chunk by chunk, when the target says it may', async () => {
     let historyDone = false;
     const w = world({

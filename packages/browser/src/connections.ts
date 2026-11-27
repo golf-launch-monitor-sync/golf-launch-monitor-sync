@@ -78,7 +78,8 @@ export function connectionsOfStatus(s: Pick<ClientStatus, 'key' | 'pairings' | '
         test: false,
         signIn: k === 'other' || real.some((p) => p.other_account) ? 'other' : k === 'ready' || k === 'confirm' ? 'ok' : 'expired',
         failed: real.some((p) => p.last?.status === 'failed'),
-        history: real.some((p) => p.history?.done === false),
+        // Only gaps (spec 1.21.0): nothing older comes, so it runs.
+        history: real.some((p) => p.history?.done === false && p.history.older !== false),
       }),
     });
   }

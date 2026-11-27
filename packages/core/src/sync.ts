@@ -61,6 +61,8 @@ export type SyncOutcome =
        * `progress.sessions_left`), when the provider could tell. A client shows it ("about 140 still to come").
        */
       left?: number;
+      /** The plan's `history.older` (since 1.21.0), when it said: false while the history only fills gaps. */
+      older?: boolean;
       parts: number;
       /** Values the schema refused, and items too large for the target, left out. */
       dropped: number;
@@ -169,6 +171,7 @@ export async function sync<C>(opts: SyncOptions<C>): Promise<SyncOutcome> {
     if (valid.notice) out.notice = valid.notice;
     const left = valid.progress?.sessions_left;
     if (reason === 'backfill' && typeof left === 'number' && Number.isFinite(left) && left >= 0) out.left = left;
+    if (typeof plan.history?.older === 'boolean') out.older = plan.history.older;
     return out;
   } catch (e) {
     if (e instanceof Cancelled) return { status: 'cancelled' };

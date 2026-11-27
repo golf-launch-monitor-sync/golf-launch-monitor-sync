@@ -49,6 +49,7 @@ export const en = {
   'pairing.disconnectAsk': 'Disconnect from {name}? Nothing more is sent there; what it has stays there.',
   'pairing.history.more': 'Older history: still coming, a part every few minutes.',
   'pairing.history.done': 'Older history: complete.',
+  'pairing.history.gaps': 'Older history: complete; gaps are still being filled.',
 
   'last.synced': '{what}',
   'last.not_due': 'Up to date – {name} plans the next look.',
@@ -451,6 +452,7 @@ export const de: Record<MessageKey, string> = {
   'pairing.disconnectAsk': 'Von {name} trennen? Dorthin geht dann nichts mehr; was dort ist, bleibt dort.',
   'pairing.history.more': 'Ältere Historie: kommt noch, alle paar Minuten ein Stück.',
   'pairing.history.done': 'Ältere Historie: vollständig.',
+  'pairing.history.gaps': 'Ältere Historie: vollständig, Lücken werden noch ergänzt.',
 
   'last.synced': '{what}',
   'last.not_due': 'Aktuell – {name} plant den nächsten Blick.',

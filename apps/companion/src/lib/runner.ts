@@ -79,6 +79,8 @@ export interface LastRun {
   total?: { sessions: number; rounds: number };
   /** Sessions of the older history still to come, as the last history chunk's provider could tell. */
   left?: number;
+  /** The target's plan said the history only fills gaps (spec 1.21.0): nothing older comes, so no count of it. */
+  older?: false;
   /** For a busy run: who holds the lease (spec 1.13.0). */
   holder?: Holder;
   /** A later run that fetched nothing (busy, not due), kept beside this one instead of over it. */
@@ -196,13 +198,20 @@ export class Runner {
       // Nothing fetched this time: what the last real run brought stays, this goes beside it.
       const aside: NonNullable<LastRun['aside']> = { at: given.at, status: given.status as 'busy' | 'not_due' };
       if (given.holder) aside.holder = given.holder;
-      return this.keep(key, { ...before, aside });
+      // Its plan still said where the history stands (spec 1.21.0).
+      const kept: LastRun = { ...before, aside };
+      if (given.older === false) {
+        kept.older = false;
+        delete kept.left;
+      } else delete kept.older;
+      return this.keep(key, kept);
     }
     const run: LastRun = { ...given };
+    if (run.older === false) delete run.left;
     const total = before?.total ?? { sessions: 0, rounds: 0 };
     if (run.status === 'synced' && run.result) run.total = { sessions: total.sessions + run.result.sessions, rounds: total.rounds + run.result.rounds };
     else if (before?.total) run.total = before.total;
-    if (run.left === undefined && before?.left !== undefined && !(run.reason === 'backfill' && run.status === 'synced' && !run.more)) run.left = before.left;
+    if (run.left === undefined && before?.left !== undefined && run.older !== false && !(run.reason === 'backfill' && run.status === 'synced' && !run.more)) run.left = before.left;
     await this.keep(key, run);
   }
 
@@ -381,11 +390,13 @@ export class Runner {
     });
     const run: LastRun = { at: this.now(), reason, status: outcome.status };
     if (outcome.status === 'busy' && outcome.plan.holder) run.holder = outcome.plan.holder;
+    if ((outcome.status === 'busy' || outcome.status === 'not_due') && outcome.plan.history?.older === false) run.older = false;
     // The target heard "ready" with the plan; its account is another one, which it hears too (no lease taken).
     if (outcome.status === 'other_account') await this.target(p).status('other').catch(() => undefined);
     if (outcome.status === 'synced') {
       run.result = outcome.result;
       run.more = outcome.more;
+      if (outcome.older === false) run.older = false;
       if (outcome.notice) {
         run.notice = outcome.notice.code;
         if (outcome.notice.until) run.until = outcome.notice.until;
@@ -491,7 +502,7 @@ export class Runner {
           continue;
         }
         if (outcome.status !== 'synced') continue;
-        await this.record(p.key, { at: this.now(), reason: 'backfill', status: 'synced', result: outcome.result, more: outcome.more, ...(outcome.left !== undefined ? { left: outcome.left } : {}), ...(outcome.notice ? { notice: outcome.notice.code, ...(outcome.notice.until ? { until: outcome.notice.until } : {}) } : {}) });
+        await this.record(p.key, { at: this.now(), reason: 'backfill', status: 'synced', result: outcome.result, more: outcome.more, ...(outcome.left !== undefined ? { left: outcome.left } : {}), ...(outcome.older === false ? { older: false as const } : {}), ...(outcome.notice ? { notice: outcome.notice.code, ...(outcome.notice.until ? { until: outcome.notice.until } : {}) } : {}) });
         if (outcome.notice?.code === 'auth_expired') {
           if (!test) await this.opts.signIns.expire(p.provider);
           continue;

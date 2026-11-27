@@ -92,8 +92,11 @@ export interface Entry {
   account_ref?: string;
   last?: Last;
   last_synced_at?: string;
-  /** The older history: done, or when its next chunk may be asked for (ms). */
-  history?: { done?: boolean; next_at?: number };
+  /**
+   * The older history: done, or when its next chunk may be asked for (ms). `older: false` while the target said it only
+   * fills gaps (spec 1.21.0): nothing older comes, so the connection runs rather than loads the history.
+   */
+  history?: { done?: boolean; older?: false; next_at?: number };
   other_account?: boolean;
   /** The `exp` (ms) of the key whose running out this target was told about. */
   told_expired?: number;
@@ -798,6 +801,7 @@ export class BrowserClient {
       case 'busy':
         if (outcome.plan.account_ref) accountRef = outcome.plan.account_ref;
         if (outcome.plan.history?.done !== undefined) history.done = outcome.plan.history.done;
+        gapsOnly(history, outcome.plan.history?.older);
         if (reason === 'backfill') {
           if (outcome.plan.history?.done) history.done = true;
           history.next_at = now + Math.max(BACKFILL_STEP_MS / 2, (outcome.plan.wait_s ?? BACKFILL_STEP_MS / 1000) * 1000);
@@ -821,6 +825,7 @@ export class BrowserClient {
       case 'synced': {
         last.result = outcome.result;
         last.more = outcome.more;
+        gapsOnly(history, outcome.older);
         if (outcome.notice) last.notice = outcome.notice;
         const subject = subjectOf(token);
         if (subject) accountRef = accountRefOf(p.account_salt, this.provider.id, subject);
@@ -1175,4 +1180,10 @@ function fingerprint(token: string): string {
 function expiredMark(token: string): string {
   const [head, body] = token.split('.');
   return `${head ?? ''}.${body ?? ''}.`;
+}
+
+/** Every plan says it anew (spec 1.21.0): only gaps while it says `older: false`, the history as ever when it doesn't. */
+function gapsOnly(history: NonNullable<Entry['history']>, older: boolean | undefined): void {
+  if (older === false) history.older = false;
+  else delete history.older;
 }

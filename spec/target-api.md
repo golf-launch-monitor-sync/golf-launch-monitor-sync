@@ -64,6 +64,11 @@ history*), and reads the parameter strictly: only the words of the spec, anythin
 ([`read_can`](reference/plan.py), vectors in [`testvectors/plan.json`](testvectors/plan.json)). A
 client before 1.20.0 sends none, and its plans stay as they were.
 
+Every plan says where the older history stands (`history`: `done`, `from`). Since 1.21.0 it also says
+`older: false` while the history isn't done but only fills gaps - nothing older than what the target
+has comes ([planning.md](planning.md), *Only gaps*): a client shows the connection as running then,
+not as loading the history.
+
 ## The client's sign-in
 
 Since 1.5.0 a client says where its provider sign-in stands, so the target app can show the player the

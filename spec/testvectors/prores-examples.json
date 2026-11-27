@@ -1,6 +1,6 @@
 {
   "$comment": "prores/1 batches that must (valid: true) or must not validate against spec/prores/prores-1.schema.json, and what a target keeps of each (expect: rows = rounds with a score, rankings, events = tournaments, stats = snapshots, values = statistics of the first; refused: invalid or too_large). rules: place_of (a page's finish -> {place, tied} or {result}, else null), tour_of (a world ranking's tour column -> a tour key or null), iso_week. names: whether a page's name is the player's (every part of the shorter among the other's, at least two).",
-  "spec_version": "1.20.0",
+  "spec_version": "1.21.0",
   "generated_by": "spec/reference/generate.py",
   "rules": [
     {

@@ -114,6 +114,13 @@ The history is done when its sessions, the older scorecards (for a client that c
 asked for again are through, and the older rounds' shots as before. A connection whose history was
 done before a client could do these parts opens it again the first time such a client asks.
 
+**Only gaps** (since 1.21.0). A history opened again that way, or one whose sessions are through
+while the older rounds' shots still come, brings nothing older than what the target has: it fills
+gaps. Every plan says so with `history.older: false` while `done` is still false; the target leaves
+`older` out otherwise. A client then shows the connection as running, not as loading the history,
+and no count of sessions still to come. A client before 1.21.0 reads past it, as it reads past any
+field it doesn't know.
+
 ## The lease
 
 Five minutes per kind (a regular sync, a history chunk) and player: another client asking for a plan

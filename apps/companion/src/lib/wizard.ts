@@ -50,7 +50,7 @@ export function firstLoad(runs: readonly (LastRun | null)[], phase: 'running' | 
     confirmed: true,
     first: failed ? 'failed' : phase,
     brought: best?.total ? { sessions: best.total.sessions, rounds: best.total.rounds } : null,
-    more: typeof best?.left === 'number' ? best.left : best?.more ? true : null,
+    more: best?.older === false ? false : typeof best?.left === 'number' ? best.left : best?.more ? true : null,
   };
 }
 

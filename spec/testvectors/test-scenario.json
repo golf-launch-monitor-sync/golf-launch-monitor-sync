@@ -1,6 +1,6 @@
 {
   "$comment": "The answer of GET /test-scenario as a client reads it (spec/test-mode.md; 1.8.0): input {answer, now} -> {ok: true, scenario: {name, provider, subject, profile, data, latency: {default?, queries}, valid_until}} or {ok: false, error}. All of it synthetic.",
-  "spec_version": "1.20.0",
+  "spec_version": "1.21.0",
   "generated_by": "spec/reference/generate.py",
   "limits": {
     "max_bytes": 67108864,

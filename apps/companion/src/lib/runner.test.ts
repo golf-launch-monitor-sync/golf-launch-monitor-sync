@@ -344,6 +344,27 @@ describe('the older history', () => {
     expect(s.services.runner.lastRun(p.key)).toMatchObject({ total: { sessions: 2, rounds: 0 }, left: 0 });
   });
 
+  it('keeps that the history only fills gaps while the target says so (spec 1.21.0), and no count of what is to come', async () => {
+    let older: boolean | undefined;
+    const history = () => ({ done: false, ...(older === undefined ? {} : { older }) });
+    const s = setup({
+      plan: (ask, t) => ({ due: true, plan_id: `p-${ask.reason}`, known_ids: t.known(), rounds: false, round_shots: true, max_sessions: 1, history: history() }),
+    });
+    const p = await paired(s);
+    await s.services.signIns.set('trackman', s.token);
+    s.tm.activities.push({ id: 'A3', time: new Date(s.clock.t - 3 * DAY).toISOString(), kind: 'RANGE_PRACTICE' });
+    s.tm.nodes.set('A3', { strokes: [{ club: 'Iron7', measurement: { carry: 140, ballSpeed: 50 } }] });
+    await s.services.runner.backfill();
+    expect(s.services.runner.lastRun(p.key)?.older).toBeUndefined();
+    expect(s.services.runner.lastRun(p.key)?.left).toBeGreaterThan(0);
+    older = false;
+    await s.services.runner.backfill();
+    expect(s.services.runner.lastRun(p.key)).toMatchObject({ reason: 'backfill', older: false });
+    expect(s.services.runner.lastRun(p.key)?.left).toBeUndefined();
+    await s.services.runner.syncAll('timer');
+    expect(s.services.runner.lastRun(p.key)?.older).toBe(false);
+  });
+
   it('waits as long as the target says between chunks', async () => {
     const s = setup({ plan: (ask) => (ask.reason === 'backfill' ? { due: false, wait_s: 75, history: { done: false } } : { due: false }) });
     await paired(s);

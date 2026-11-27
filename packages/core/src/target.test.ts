@@ -199,6 +199,11 @@ describe('a plan, read from an untrusted target', () => {
     expect(readPlan({ due: true, sessions_wanted: 'all' }).sessions_wanted).toEqual([]);
   });
 
+  it('reads whether anything older than what the target has still comes (spec 1.21.0), only as a boolean', () => {
+    expect(readPlan({ due: true, history: { done: false, older: false } }).history).toEqual({ done: false, older: false });
+    for (const junk of ['no', 0, null, {}]) expect(readPlan({ due: true, history: { done: false, older: junk } }).history).toEqual({ done: false });
+  });
+
   it("names who holds the lease when it is busy (spec 1.13.0), and nothing it can't read", () => {
     expect(readPlan({ due: false, busy: true, holder: { kind: 'extension', since: '2026-11-25T10:17:00Z' } }).holder).toEqual({
       kind: 'extension',
