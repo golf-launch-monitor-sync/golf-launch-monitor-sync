@@ -89,6 +89,10 @@ export function stroke(st: unknown): Shot | null {
   put(flight, 'carry_m', num(m.carry));
   put(flight, 'total_m', num(m.total));
   put(shot, 'flight', { ...flight, ...rest });
+  // Since 1.25.0: the distance a combine or a test set for the shot, where the stroke carries it.
+  const target: Obj = {};
+  put(target, 'distance_m', num(m.targetDistance));
+  put(shot, 'target', target);
   return shot as Shot;
 }
 

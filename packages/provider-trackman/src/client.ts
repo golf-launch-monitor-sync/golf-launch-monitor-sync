@@ -19,13 +19,28 @@ export const GRAPHQL_URL = 'https://api.trackmangolf.com/graphql';
 
 type GraphQLAnswer = { data?: Record<string, unknown> | null; errors?: unknown };
 
+/** Trackman answered with errors instead of data. `executed`: it had run the query (GraphQL's `data` came along), so
+ * the query is fine and the trouble lies with what it was asked about; otherwise it refused the query itself.
+ * `messages`: each of its errors' words (at most 50, 300 characters each) - the message is cut at 300, and a refusal
+ * naming many fields would lose some of them there. */
+export class TrackmanAnswerError extends ProviderError {
+  override name = 'TrackmanAnswerError';
+  constructor(
+    message: string,
+    readonly executed: boolean,
+    readonly messages: readonly string[] = [],
+  ) {
+    super(message);
+  }
+}
+
 /**
  * One call. `partialOk` false: an answer with errors counts as an error even if some data came with
  * it (a session is only kept complete; a page of the activity list must not pass for the end of it).
  *
  * Throws `ProviderAuthError` (401: sign in again), `ProviderUnavailableError` (anything else Trackman
  * refuses, or an answer that is no answer - it stops the whole fetch: one session failing that way
- * would fail for all of them), `ProviderError` (Trackman answered, but with errors instead of data:
+ * would fail for all of them), `TrackmanAnswerError` (Trackman answered, but with errors instead of data:
  * only this item waits), and whatever the context throws (no network, the guard).
  */
 export async function query<T = Record<string, unknown>>(
@@ -51,15 +66,18 @@ export async function query<T = Record<string, unknown>>(
     throw new ProviderUnavailableError('Trackman sent an unexpected answer.'); // e.g. a maintenance page
   }
   if (!body || typeof body !== 'object') throw new ProviderUnavailableError('Trackman sent an unexpected answer.');
-  const data = (body.data && typeof body.data === 'object' ? body.data : {}) as Record<string, unknown>;
+  // GraphQL answers `data` only once it ran the query: errors without it refused the query itself (a field or type it
+  // doesn't know), errors with it are trouble while running it - for this item, not for every one asked so.
+  const executed = !!body.data && typeof body.data === 'object';
+  const data = (executed ? body.data : {}) as Record<string, unknown>;
   const errors = Array.isArray(body.errors) ? body.errors : [];
   if (errors.length) {
-    const said = errors
-      .map((e) => (e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string' ? (e as { message: string }).message : '?'))
-      .join('; ')
-      .slice(0, 300);
+    const messages = errors
+      .slice(0, 50)
+      .map((e) => (e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string' ? (e as { message: string }).message : '?').slice(0, 300));
+    const said = messages.join('; ').slice(0, 300);
     // Partial data (one field failed) is still data; nothing at all is an error.
-    if (!partialOk || !Object.values(data).some((v) => v !== null && v !== undefined)) throw new ProviderError(`Trackman: ${said}`);
+    if (!partialOk || !Object.values(data).some((v) => v !== null && v !== undefined)) throw new TrackmanAnswerError(`Trackman: ${said}`, executed, messages);
   }
   return data as T;
 }

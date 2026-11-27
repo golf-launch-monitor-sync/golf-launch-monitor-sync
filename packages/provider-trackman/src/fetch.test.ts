@@ -531,6 +531,95 @@ describe('the whole history for a new player (spec 1.20.0)', () => {
   });
 });
 
+describe('a history chunk that is stopped on the way (spec 1.25.0)', () => {
+  // A teaching pro's account as the target's log showed it (27 Nov 2026, made-up data): twelve rounds in, about fifty
+  // older scorecards and many sessions still to come; each chunk ran into the guard among its sessions, and neither the
+  // older scorecards nor the sessions asked for again further down were ever asked of Trackman.
+  const SINCE = '2011-11-30T00:00:00Z';
+  const sims = (n: number) => Array.from({ length: n }, (_, i) => act(`S${i}`, new Date(Date.parse('2026-11-20T10:00:00Z') - i * 86_400_000).toISOString()));
+  const older = (n: number) => Array.from({ length: n }, (_, i) => card(`SC-${String(i).padStart(3, '0')}`, new Date(Date.parse('2026-11-26T18:00:00Z') - i * 7 * 86_400_000).toISOString()));
+
+  it('lists the older scorecards before its sessions, so the guard stopping among them still leaves those in', async () => {
+    tm.activities = sims(60);
+    tm.scorecards = older(30);
+    const known = tm.scorecards.slice(0, 12).map((c) => String(c.id));
+    const out = await run({ since: SINCE, max_sessions: 60, rounds: true, rounds_skip: 2, known_ids: known }, 'backfill');
+    expect(out.notice).toMatchObject({ code: 'guard_limit' });
+    expect(tm.requests[0]?.name).toBe('Rounds');
+    expect(out.rounds.map((r) => r.external_id)).toEqual(tm.scorecards.slice(12).map((c) => String(c.id)));
+    expect(out.progress?.rounds_end).toBe(true);
+    expect(out.sessions.length).toBeGreaterThan(30); // the rest of the run still went to the sessions
+  });
+
+  it('says which sessions asked for again Trackman answered for, so a target counts only real tries', async () => {
+    tm.activities = [
+      { __typename: 'TestActivity', ...act('T1', '2025-02-09T10:00:00Z', 'TEST') },
+      { __typename: 'TestActivity', ...act('T2', '2025-02-07T10:00:00Z', 'TEST') },
+      { __typename: 'TestActivity', ...act('T3', '2025-02-05T10:00:00Z', 'TEST') },
+    ];
+    tm.types.set('TestActivity', { own: true });
+    tm.nodes.set('T1', { __typename: 'TestActivity', strokes: [stroke(120)] });
+    tm.nodes.set('T2', { __typename: 'TestActivity', strokes: [stroke(121)] });
+    // Trackman itself in trouble at T3: the chunk stops, and T3 wasn't tried (its own fault or not, nobody can tell).
+    tm.override = (r) => (r.name === 'Session' && r.variables.id === 'T3' ? respond(503, 'busy') : null);
+    const wanted = ['T1', 'T2', 'T3', 'GONE'].map((external_id) => ({ external_id }));
+    const out = await run({ since: SINCE, max_sessions: 0, known_ids: ['T1', 'T2', 'T3'], sessions_wanted: wanted }, 'backfill');
+    expect(out.sessions.map((s) => s.external_id)).toEqual(['T1', 'T2']);
+    expect(out.progress?.sessions_asked).toEqual(['T1', 'T2']);
+    // A chunk that never got to them says so: none asked, none counted.
+    tm.requests.length = 0;
+    tm.override = (r) => (r.name === 'Activities' ? respond(503, 'busy') : null);
+    state = freshState();
+    const none = await run({ since: SINCE, max_sessions: 0, known_ids: ['T1', 'T2', 'T3'], sessions_wanted: wanted }, 'backfill');
+    expect(none.progress?.sessions_asked).toEqual([]);
+    // A regular sync, which asks none again, says nothing of it.
+    delete tm.override;
+    expect((await run({ known_ids: ['T1', 'T2', 'T3'] })).progress?.sessions_asked).toBeUndefined();
+  });
+
+  it('one session Trackman fails to execute waits for a later chunk; its type keeps going by its own name', async () => {
+    tm.activities = [
+      { __typename: 'TestActivity', ...act('T1', '2025-02-09T10:00:00Z', 'TEST') },
+      { __typename: 'TestActivity', ...act('T2', '2025-02-05T10:00:00Z', 'TEST') },
+    ];
+    tm.types.set('TestActivity', { own: true });
+    tm.nodes.set('T2', { __typename: 'TestActivity', strokes: [stroke(80), stroke(82)] });
+    // As a GraphQL server answers an error while executing (the query itself was fine): data, the node null, an error.
+    tm.override = (r) =>
+      r.name === 'Session' && r.variables.id === 'T1'
+        ? respond(200, { data: { node: null }, errors: [{ message: 'Unexpected Execution Error', path: ['node'] }] })
+        : null;
+    const out = await run({ since: SINCE, max_sessions: 0, known_ids: ['T1', 'T2'], sessions_wanted: [{ external_id: 'T1' }, { external_id: 'T2' }] }, 'backfill');
+    // Never handed over empty (the target would take it off its list for good): not at all, and counted as a try.
+    expect(out.sessions.map((s) => [s.external_id, s.shots.length])).toEqual([['T2', 2]]);
+    expect(out.progress?.sessions_asked).toEqual(['T1', 'T2']);
+    expect(state.untyped).toEqual([]);
+    expect(tm.requests.filter((r) => r.name === 'Session').map((r) => /\.\.\. on (\w+)/.exec(r.query)?.[1])).toEqual(['TestActivity', 'TestActivity']);
+    // A new session failing so goes as failed, for the target's retry, never as a session without shots.
+    tm.requests.length = 0;
+    const fresh = await run({ since: SINCE, max_sessions: 10, known_ids: ['T2'] }, 'backfill');
+    expect(fresh.sessions).toEqual([]);
+    expect(fresh.failed.map((f) => f.external_id)).toEqual(['T1']);
+  });
+});
+
+describe('a combine’s or a test’s target per shot (spec 1.25.0)', () => {
+  it('asks the target distance on their own type and hands it over with each shot; refused by name, the shots still come', async () => {
+    const at = (carry: number, targetDistance: number) => ({ ...stroke(carry), measurement: { carry, ballSpeed: 40, targetDistance } });
+    tm.activities = [
+      { __typename: 'CombineTestActivity', ...act('C1', '2026-11-11T09:00:00Z', 'COMBINE_TEST') },
+      { __typename: 'LongestDriveActivity', ...act('L1', '2026-11-10T09:00:00Z', 'LONGEST_DRIVE') },
+    ];
+    tm.types.set('CombineTestActivity', { own: true });
+    tm.types.set('LongestDriveActivity', { own: true, fields: ['ballSpeed', 'carry', 'total'] }); // no target there
+    tm.nodes.set('C1', { __typename: 'CombineTestActivity', strokes: [at(58, 55), at(101, 100)] });
+    tm.nodes.set('L1', { __typename: 'LongestDriveActivity', strokes: [stroke(230)] });
+    const out = await run({ since: '2011-11-30T00:00:00Z' });
+    expect(out.sessions.map((s) => s.shots.map((x) => x.target?.distance_m ?? null))).toEqual([[55, 100], [null]]);
+    expect(tm.requests.filter((r) => r.name === 'Session')[0]?.query).toContain('targetDistance');
+  });
+});
+
 describe('whose account a sign-in opens', () => {
   const ctx = () => providerContext({ guard, account: ACCOUNT, fetch: tm.fetch, now: clock.now });
 

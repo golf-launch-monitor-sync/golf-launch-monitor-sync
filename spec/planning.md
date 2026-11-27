@@ -124,7 +124,9 @@ with every chunk and never say where the list ended.
   `rounds_skip_slack` ([`rounds_skip`](reference/plan.py)): the regular syncs brought the newest,
   so no chunk pages through them again. The client lists at most `history_rounds_pages` pages of
   `history_rounds_page` from there, hands over the rounds the target lacks, and says in
-  `progress.rounds_end` when the provider's list ended (or reached `since`) within them. The target
+  `progress.rounds_end` when the provider's list ended (or reached `since`) within them - first in
+  the chunk, before its sessions (since 1.25.0), so the guard stopping a chunk among them never keeps
+  the older scorecards back chunk after chunk. The target
   plans the part until a chunk said so; the next chunk starts further down, since the target now
   has more. A plan with `rounds: true` and no `rounds_skip` (before 1.20.0, or a file target) means
   what it always meant: the client pages from the top, up to its usual number of new rounds.
@@ -133,9 +135,15 @@ with every chunk and never say where the list ended.
   activity types it didn't know by the shared interface only, and got none for some), at most
   `sessions_wanted_history` a chunk, each at most `sessions_again_tries` times, newest first
   ([`sessions_wanted`](reference/plan.py)). The plan names them in `sessions_wanted`; the client
-  fetches each it finds in its activity list, as it would a new one, and hands it over in the batch.
+  fetches each it finds in its activity list, as it would a new one, and hands it over in the batch;
+  one the provider failed to send for itself (an error while running the question for that one) is not
+  handed over at all, never as a session without shots, so it is asked again.
   The target adds the shots to the session it has, if it still has none, and never asks for a session
   that came back again - with shots or still without (some kinds have none: a video, a report).
+  A try is one the client says it made (`progress.sessions_asked`, since 1.25.0), not one the plan
+  handed out: a chunk the guard stops before a session, or that never comes, costs it none. A target
+  may still stop asking for one handed out many times without an answer (a client before 1.25.0 says
+  nothing; a session that ends the client every time).
   Like any session, each costs one request at a person's pace; the guard holds as always.
 
 The history is done when its sessions, the older scorecards (for a client that can) and the sessions

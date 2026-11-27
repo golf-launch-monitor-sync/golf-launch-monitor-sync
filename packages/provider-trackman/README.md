@@ -65,16 +65,25 @@ const who = await provider.who(providerContext({ guard, account }), token);
   unless the plan names known sessions to fetch again (`sessions_wanted`, below).
 - **The whole history** (spec 1.20.0; the provider says `can: older_rounds, sessions_again`, so a target
   plans it): a history chunk with `rounds_skip` lists the older scorecards from there, at most two pages
-  of 50, and says in `progress.rounds_end` whether the list ended (or reached `since`). A chunk with
+  of 50, and says in `progress.rounds_end` whether the list ended (or reached `since`) - first, before
+  its sessions (spec 1.25.0): each session costs a request, and a chunk the guard stopped among them never
+  got to the scorecards, chunk after chunk. A page answered wrongly costs that part only. A chunk with
   `sessions_wanted` fetches those known sessions once more as it finds them in its list, without moving
-  how far back the history is in.
+  how far back the history is in, and names in `progress.sessions_asked` those Trackman answered for
+  (spec 1.25.0), so the target counts only real tries.
 - **Activity types of their own**: the types of `SESSION_TYPES` go by their own fragment, as since
   16 Nov 2026. Any other type the list names (`__typename`, only a plain GraphQL name) is asked by its own
   name first, with a bay session's fields: Trackman's tests, combines and longest drives came without
   strokes through the shared interface `SessionActivity`. Fields of the measurement Trackman refuses by
   name are left out once more; a refusal naming none (the type has no strokes: a video, a report) sends
   the type by the interface from then on. Both are remembered in memory (`typeFields`, `untyped`), so a
-  type costs at most two extra requests in the provider's life.
+  type costs at most two extra requests in the provider's life. An error Trackman ran into while answering
+  one session (GraphQL's `data` came along: the question was fine; an old test, *Unexpected Execution
+  Error*) fails only that session - not handed over, never as one without shots, so it is asked again -
+  until `MAX_TYPE_FAILURES` (3) of the type fail so in a row; then the type goes by the interface too.
+  Since spec 1.25.0 such a type is asked the target distance too (`targetDistance`, `OWN_FIELDS`): a combine's or a
+  test's shots carry it as `target.distance_m`; a type that doesn't know the field refuses it by name, and it is left
+  out (Trackman's messages are read whole for that, not only the first 300 characters).
 
 ## Test mode: playing a scenario back
 

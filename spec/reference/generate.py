@@ -579,7 +579,8 @@ def olmd_examples() -> dict[str, Any]:
     full = {**copy.deepcopy(good), "generator": {"name": "golf-launch-monitor-sync", "version": "0.1.0"},
             "sync": {"plan_id": "pl_7d1c", "reason": "timer"},
             "progress": {"more_available": True, "oldest_seen": "2025-03-01T10:00:00Z", "skipped_known": 12,
-                         "sessions_left": 140, "oldest_listed": "2023-03-04T09:00:00Z"},
+                         "sessions_left": 140, "oldest_listed": "2023-03-04T09:00:00Z", "rounds_end": False,
+                         "sessions_asked": ["ACT-7", "ACT-8"]},
             "notice": {"code": "guard_limit", "message": "Enough asked of the provider today; tomorrow it goes on."},
             "failed": [{"external_id": "ACT-9", "started_at": "2026-11-09T10:00:00Z"}],
             "extra": {"anything": ["is", "kept", 1]}}
@@ -636,6 +637,10 @@ def olmd_examples() -> dict[str, Any]:
                  lambda b: b.update(progress={"more_available": True, "sessions_left": -1})),
              bad("oldest_listed_local", "1.7.0: oldest_listed is a time with its zone.",
                  lambda b: b.update(progress={"oldest_listed": "2023-03-04T09:00:00"})),
+             bad("sessions_asked_empty_id", "1.25.0: sessions_asked holds external ids, none empty.",
+                 lambda b: b.update(progress={"sessions_asked": [""]})),
+             bad("sessions_asked_text", "1.25.0: sessions_asked is a list.",
+                 lambda b: b.update(progress={"sessions_asked": "ACT-7"})),
              bad("test_false", "1.8.0: test is true or absent.", lambda b: b.update(test=False)),
              bad("test_as_text", "1.8.0: test is the JSON value true.", lambda b: b.update(test="true"))]
     return doc("olmd/1 batches that must (valid: true) or must not validate against spec/olmd/olmd-1.schema.json.",

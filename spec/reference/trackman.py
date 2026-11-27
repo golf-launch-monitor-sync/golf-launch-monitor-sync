@@ -95,6 +95,10 @@ def stroke(st: Any) -> dict[str, Any] | None:
     put(flight, "carry_m", num(m.get("carry")))
     put(flight, "total_m", num(m.get("total")))
     put(shot, "flight", flight | rest)
+    # Since 1.25.0: the distance a combine or a test set for the shot, where the stroke carries it.
+    target: dict[str, Any] = {}
+    put(target, "distance_m", num(m.get("targetDistance")))
+    put(shot, "target", target)
     return shot
 
 

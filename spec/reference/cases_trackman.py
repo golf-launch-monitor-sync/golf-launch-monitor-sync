@@ -198,6 +198,15 @@ def cases() -> list[dict[str, Any]]:
         case("junk_strokes", "Every field may be missing or of the wrong type: mapped or dropped, never fatal. "
              "Numbers written as text are dropped; times are RFC 3339 only.",
              sessions=[{"activity": _act("ACT-20", "SIMULATOR"), "node": {"strokes": JUNK_STROKES}}]),
+        case("combine_targets", "Since 1.25.0: the target distance a combine or a test sets for a shot goes with it; "
+             "one that is no number, or none, gives no target.",
+             sessions=[{"activity": _act("ACT-40", "COMBINE_TEST"),
+                        "node": {"strokes": [{"time": "2026-11-11T09:01:00Z", "club": "Wedge",
+                                              "measurement": {"carry": 57.6, "ballSpeed": 30.1, "targetDistance": 55}},
+                                             {"time": "2026-11-11T09:02:00Z", "club": None,
+                                              "measurement": {"carry": 88.0, "targetDistance": "90"}},
+                                             {"time": "2026-11-11T09:03:00Z", "club": "Iron7",
+                                              "measurement": {"carry": 146.0}}]}}]),
         case("club_names", "Trackman's club names and their canonical codes.",
              sessions=[{"activity": _act("ACT-30", "MAP_MY_BAG"), "node": {"strokes": _club_strokes()}}]),
         case("scorecard", "A simulator round's scorecard; its totals are those of the holes it lists.",

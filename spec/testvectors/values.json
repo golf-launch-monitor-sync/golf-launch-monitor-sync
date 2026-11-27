@@ -1,6 +1,6 @@
 {
   "$comment": "Reading untrusted values (spec/reference/values.py): when -> an RFC 3339 time with zone or null (no zone: UTC, 'Z' added); integer -> whole number or null; num -> finite JSON number or null (text is never a number).",
-  "spec_version": "1.24.0",
+  "spec_version": "1.25.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {

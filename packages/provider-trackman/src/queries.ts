@@ -65,6 +65,9 @@ export const BAY_FIELDS = [
   'launchAngle', 'spinRate', 'spinAxis', 'curve',
 ] as const;
 const BAY_MEASUREMENT = BAY_FIELDS.join(' ');
+/** What a type outside SESSION_TYPES is asked first (spec 1.20.0): a bay session's fields and, since 1.25.0, the target
+ * distance a combine or a test sets for each shot - one a type doesn't know is refused by name and left out. */
+export const OWN_FIELDS = [...BAY_FIELDS, 'targetDistance'] as const;
 const RANGE_MEASUREMENT = `
   ballSpeed carry total carrySide totalSide
   launchAngle ballSpin spinAxis curve
