@@ -3,7 +3,7 @@
 /**
  * The spec (spec/ at the repository's root) for TypeScript: the olmd/1 types and schema check,
  * the load guard's limits, the reference planning rules, the deep links, the client's sign-in, the
- * extension's bridge on a target's page, a target's test scenarios, the wake, (1.15.0) a professional's pages and (1.22.0) the question and the answer. The JSON files under
+ * extension's bridge on a target's page, a target's test scenarios, the wake, (1.15.0) a professional's pages and (1.22.0) the question and the answer, (1.23.0) a first sync's reach. The JSON files under
  * spec/ are the authority; this package only reads them.
  */
 
@@ -20,6 +20,7 @@ export * from './testMode.ts';
 export * from './wake.ts';
 export * from './ask.ts';
 export * from './prores.ts';
+export * from './plan.ts';
 
 /** The load guard's limits (spec/guard.md). Normative. */
 export const GUARD_LIMITS = limits;

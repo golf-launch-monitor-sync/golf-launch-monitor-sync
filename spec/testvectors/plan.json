@@ -1,10 +1,10 @@
 {
   "$comment": "The reference planning rules of a target (spec/planning.md; here_due_at and is_due's `here` since 1.12.0, a case without `here` has none; `holder`, and `leases` with clients and holders, since 1.13.0; read_can, rounds_skip and sessions_wanted since 1.20.0). Times compare as instants within compare.time_tolerance_s; dict results compare without regard to key order.",
-  "spec_version": "1.22.0",
+  "spec_version": "1.23.0",
   "generated_by": "spec/reference/generate.py",
   "rules": {
     "$comment": "The reference planning rules of a target (spec/planning.md). Informative: a target may plan more gently; the load guard (spec/guard/limits.json) holds regardless.",
-    "version": 2,
+    "version": 3,
     "regular_gap_min": {
       "min": 38,
       "max": 52
@@ -12,10 +12,13 @@
     "open_gap_s": 600,
     "connect_gap_s": 120,
     "recent_days": 90,
+    "first_season_month": 10,
+    "first_max_days": 400,
     "history_days": 5475,
     "max_window_days": 730,
     "window_slack_days": 3,
     "sync_max_sessions": 40,
+    "first_max_sessions": 25,
     "history_chunk_sessions": 10,
     "history_pause_s": {
       "min": 60,
@@ -2596,15 +2599,15 @@
         "skip": [],
         "now": "2026-11-16T12:00:00Z"
       },
-      "expected": 90
+      "expected": 400
     },
     {
       "rule": "since",
       "input": {
-        "days": 90,
+        "days": 400,
         "now": "2026-11-16T12:00:00Z"
       },
-      "expected": "2026-08-18T12:00:00.000Z"
+      "expected": "2025-10-12T12:00:00.000Z"
     },
     {
       "rule": "window_days",
@@ -2796,6 +2799,242 @@
         "now": "2026-11-16T12:00:00Z"
       },
       "expected": "2026-11-13T12:00:00.000Z"
+    },
+    {
+      "rule": "first_days",
+      "input": {
+        "now": "2026-10-31T12:00:00Z"
+      },
+      "expected": 398
+    },
+    {
+      "rule": "window_days",
+      "input": {
+        "last_sync_at": null,
+        "reason": "connect",
+        "retry": {},
+        "skip": [],
+        "now": "2026-10-31T12:00:00Z"
+      },
+      "expected": 398
+    },
+    {
+      "rule": "first_days",
+      "input": {
+        "now": "2026-10-01T00:00:00Z"
+      },
+      "expected": 368
+    },
+    {
+      "rule": "window_days",
+      "input": {
+        "last_sync_at": null,
+        "reason": "connect",
+        "retry": {},
+        "skip": [],
+        "now": "2026-10-01T00:00:00Z"
+      },
+      "expected": 368
+    },
+    {
+      "rule": "first_days",
+      "input": {
+        "now": "2027-01-05T08:00:00Z"
+      },
+      "expected": 99
+    },
+    {
+      "rule": "window_days",
+      "input": {
+        "last_sync_at": null,
+        "reason": "connect",
+        "retry": {},
+        "skip": [],
+        "now": "2027-01-05T08:00:00Z"
+      },
+      "expected": 99
+    },
+    {
+      "rule": "first_days",
+      "input": {
+        "now": "2027-02-27T18:30:00Z"
+      },
+      "expected": 152
+    },
+    {
+      "rule": "window_days",
+      "input": {
+        "last_sync_at": null,
+        "reason": "connect",
+        "retry": {},
+        "skip": [],
+        "now": "2027-02-27T18:30:00Z"
+      },
+      "expected": 152
+    },
+    {
+      "rule": "first_days",
+      "input": {
+        "now": "2027-09-30T23:59:59Z"
+      },
+      "expected": 367
+    },
+    {
+      "rule": "window_days",
+      "input": {
+        "last_sync_at": null,
+        "reason": "connect",
+        "retry": {},
+        "skip": [],
+        "now": "2027-09-30T23:59:59Z"
+      },
+      "expected": 367
+    },
+    {
+      "rule": "first_days",
+      "input": {
+        "now": "2026-11-05T09:00:00Z"
+      },
+      "expected": 400
+    },
+    {
+      "rule": "window_days",
+      "input": {
+        "last_sync_at": null,
+        "reason": "connect",
+        "retry": {},
+        "skip": [],
+        "now": "2026-11-05T09:00:00Z"
+      },
+      "expected": 400
+    },
+    {
+      "rule": "first_days",
+      "input": {
+        "now": "2026-12-31T22:00:00Z"
+      },
+      "expected": 400
+    },
+    {
+      "rule": "window_days",
+      "input": {
+        "last_sync_at": null,
+        "reason": "connect",
+        "retry": {},
+        "skip": [],
+        "now": "2026-12-31T22:00:00Z"
+      },
+      "expected": 400
+    },
+    {
+      "rule": "first_days",
+      "input": {
+        "now": "2028-02-29T12:00:00Z"
+      },
+      "expected": 154
+    },
+    {
+      "rule": "window_days",
+      "input": {
+        "last_sync_at": null,
+        "reason": "connect",
+        "retry": {},
+        "skip": [],
+        "now": "2028-02-29T12:00:00Z"
+      },
+      "expected": 154
+    },
+    {
+      "rule": "first_days",
+      "input": {
+        "now": "2026-04-15T10:00:00+02:00"
+      },
+      "expected": 199
+    },
+    {
+      "rule": "window_days",
+      "input": {
+        "last_sync_at": null,
+        "reason": "connect",
+        "retry": {},
+        "skip": [],
+        "now": "2026-04-15T10:00:00+02:00"
+      },
+      "expected": 199
+    },
+    {
+      "rule": "first_days",
+      "input": {
+        "now": "2027-01-01T00:30:00+02:00"
+      },
+      "expected": 400
+    },
+    {
+      "rule": "window_days",
+      "input": {
+        "last_sync_at": null,
+        "reason": "connect",
+        "retry": {},
+        "skip": [],
+        "now": "2027-01-01T00:30:00+02:00"
+      },
+      "expected": 400
+    },
+    {
+      "rule": "max_sessions",
+      "input": {
+        "last_sync_at": null,
+        "reason": "connect"
+      },
+      "expected": 25
+    },
+    {
+      "rule": "max_sessions",
+      "input": {
+        "last_sync_at": null,
+        "reason": "manual"
+      },
+      "expected": 25
+    },
+    {
+      "rule": "max_sessions",
+      "input": {
+        "last_sync_at": null,
+        "reason": "backfill"
+      },
+      "expected": 10
+    },
+    {
+      "rule": "max_sessions",
+      "input": {
+        "last_sync_at": "2026-11-16T11:00:00Z",
+        "reason": "connect"
+      },
+      "expected": 40
+    },
+    {
+      "rule": "max_sessions",
+      "input": {
+        "last_sync_at": "2026-11-16T11:00:00Z",
+        "reason": "timer"
+      },
+      "expected": 40
+    },
+    {
+      "rule": "max_sessions",
+      "input": {
+        "last_sync_at": "2026-11-16T11:00:00Z",
+        "reason": "backfill"
+      },
+      "expected": 10
+    },
+    {
+      "rule": "max_sessions",
+      "input": {
+        "last_sync_at": "soon",
+        "reason": "timer"
+      },
+      "expected": 25
     },
     {
       "rule": "next_retry",

@@ -126,20 +126,42 @@ def give_up(retry: dict[str, Any], reason: str) -> list[str]:
     return sorted(k for k, v in retry.items() if tries(v) >= RULES["max_tries"])
 
 
+def first_days(now: str) -> int:
+    """How far back a first sync asks (since 1.23.0): to 1 October of the previous year, the start of the last indoor
+    season in the north, with the usual slack; at least `recent_days`, at most `first_max_days`. Many players play only
+    from autumn to spring: at the end of October, 90 days hold this autumn's two or three rounds, while last winter's
+    fifteen or more would wait for the history loader. A sync's caps hold as always."""
+    t = parse(now)
+    assert t is not None
+    t = t.astimezone(UTC)  # the year of UTC's date, whatever offset `now` carries
+    start = datetime(t.year - 1, RULES["first_season_month"], 1, tzinfo=UTC)
+    days = (t - start).days + RULES["window_slack_days"]
+    return max(RULES["recent_days"], min(RULES["first_max_days"], days))
+
+
 def window_days(last_sync_at: str | None, reason: str, retry: dict[str, Any], skip: list[str], now: str) -> int:
-    """How far back to ask: since the last sync with a few days of slack (90 days for a first sync),
-    far enough for the sessions still waiting, or the whole history."""
+    """How far back to ask: since the last sync with a few days of slack (for a first sync back to the last season,
+    `first_days`), far enough for the sessions still waiting, or the whole history."""
     if reason == "backfill":
         return RULES["history_days"]
     t = parse(now)
     assert t is not None
     last = parse(last_sync_at)
-    days = RULES["recent_days"] if last is None else min(RULES["max_window_days"],
-                                                          (t - last).days + RULES["window_slack_days"])
+    days = first_days(now) if last is None else min(RULES["max_window_days"],
+                                                    (t - last).days + RULES["window_slack_days"])
     waiting = [w for k, v in retry.items() if k not in set(skip) and (w := parse((v or {}).get("t")))]
     if waiting:
         days = max(days, min(RULES["history_days"], (t - min(waiting)).days + RULES["window_slack_days"]))
     return days
+
+
+def max_sessions(last_sync_at: str | None, reason: str) -> int:
+    """New sessions a plan lets the client fetch (since 1.23.0): a history chunk its chunk, a first sync fewer than a
+    regular one - its window reaches back to the last season, and the run's 40 requests (the guard) must leave room for
+    the activity list, the scorecards and the newest rounds' shots after its sessions; the rest comes with the next."""
+    if reason == "backfill":
+        return RULES["history_chunk_sessions"]
+    return RULES["first_max_sessions"] if parse(last_sync_at) is None else RULES["sync_max_sessions"]
 
 
 def since(days: int, now: str) -> str:

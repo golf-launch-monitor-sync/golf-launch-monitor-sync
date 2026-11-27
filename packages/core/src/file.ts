@@ -9,7 +9,7 @@
  * `account_ref` is random and kept with the cursor (spec/olmd.md).
  */
 
-import { PLAN_RULES, type Batch, type Reason } from '@glmsync/spec';
+import { firstDays, maxSessions, PLAN_RULES, type Batch, type Reason } from '@glmsync/spec';
 import type { ClientKind, ImportLimits, ImportResult, Plan } from './api.ts';
 import { base64url } from './sha256.ts';
 import { readJson, type Storage } from './storage.ts';
@@ -183,7 +183,7 @@ export class FileTarget implements Target {
     const last = this.cursor.data.last_at;
     const days = last
       ? Math.min(PLAN_RULES.max_window_days, Math.ceil((now - ms(last)) / DAY) + PLAN_RULES.window_slack_days)
-      : PLAN_RULES.recent_days;
+      : firstDays(now); // a first file reaches back to the last season (spec 1.23.0)
     const since = new Date(now - days * DAY).toISOString();
     this.reason = reason;
     return {
@@ -191,7 +191,7 @@ export class FileTarget implements Target {
       due: true,
       plan_id: `file-${now}`,
       since,
-      max_sessions: PLAN_RULES.sync_max_sessions,
+      max_sessions: maxSessions(last, reason),
       known_ids: this.cursor.knownSince(since),
       rounds: true,
       round_shots: true,

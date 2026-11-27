@@ -209,6 +209,19 @@ def plan_vectors() -> dict[str, Any]:
         cases.append({"rule": "window_days", "input": {"last_sync_at": lst, "reason": reason, "retry": rt,
                                                       "skip": skip, "now": now}, "expected": days})
         cases.append({"rule": "since", "input": {"days": days, "now": now}, "expected": plan.since(days, now)})
+    # A first sync back to the last season (1.23.0): late October (last winter and this October), January and February
+    # (this season), the end of September, November and December (the cap), a leap day, an offset
+    # (UTC's date counts: half past midnight on New Year in Berlin is still the old year).
+    for n in ["2026-10-31T12:00:00Z", "2026-10-01T00:00:00Z", "2027-01-05T08:00:00Z", "2027-02-27T18:30:00Z",
+              "2027-09-30T23:59:59Z", "2026-11-05T09:00:00Z", "2026-12-31T22:00:00Z", "2028-02-29T12:00:00Z",
+              "2026-04-15T10:00:00+02:00", "2027-01-01T00:30:00+02:00"]:
+        cases.append({"rule": "first_days", "input": {"now": n}, "expected": plan.first_days(n)})
+        cases.append({"rule": "window_days", "input": {"last_sync_at": None, "reason": "connect", "retry": {}, "skip": [],
+                                                      "now": n}, "expected": plan.window_days(None, "connect", {}, [], n)})
+    for lst, reason in [(None, "connect"), (None, "manual"), (None, "backfill"), ("2026-11-16T11:00:00Z", "connect"),
+                        ("2026-11-16T11:00:00Z", "timer"), ("2026-11-16T11:00:00Z", "backfill"), ("soon", "timer")]:
+        cases.append({"rule": "max_sessions", "input": {"last_sync_at": lst, "reason": reason},
+                      "expected": plan.max_sessions(lst, reason)})
     old = {"A": {"t": "2026-11-01T00:00:00Z", "n": 1}, "B": {"t": "2026-10-01T00:00:00Z", "n": 2},
            "C": {"t": "2026-09-01T00:00:00Z", "n": 3}}
     for fetched, failed in [([], []), (["A"], []), ([], [{"id": "A", "time": None}]),

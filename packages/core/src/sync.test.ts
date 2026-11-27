@@ -390,11 +390,13 @@ describe('a sync into a file', () => {
     const written = JSON.parse(files[0]?.text ?? '');
     expect(validateBatch(written).ok).toBe(true);
     expect(written.sync).toBeUndefined();
-    expect(provider.plans[0]).toMatchObject({ max_sessions: 40, rounds: true, round_shots: true });
+    // The first file reaches back to the last season with fewer sessions (spec 1.23.0): 400 days on 16 Nov.
+    expect(provider.plans[0]).toMatchObject({ max_sessions: 25, since: '2025-10-12T08:00:00.000Z', rounds: true, round_shots: true });
     clock.advance(3600_000);
     provider.have.push('S3');
     const again = await open(); // after a restart: the cursor was kept
     await sync({ target: again, provider, credential: SUB, reason: 'manual', client: 'web', guard });
+    expect(provider.plans[1]).toMatchObject({ max_sessions: 40 });
     expect(JSON.parse(files[1]?.text ?? '').sessions.map((s: Session) => s.external_id)).toEqual(['S3']);
     expect(again.salt).toBe(target.salt);
   });

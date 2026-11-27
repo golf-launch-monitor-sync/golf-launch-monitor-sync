@@ -75,9 +75,18 @@ A target that asks its client itself when it wants data (a wake, a nudge, a sync
 `since` = now − `days`, with `days`:
 
 - `backfill`: the whole history (15 years);
-- no sync yet: 90 days;
+- no sync yet: back to **1 October of the previous year** (UTC's date) + 3 days, at least 90, at most 400 days
+  ([`first_days`](reference/plan.py), since 1.23.0; before, 90 days);
 - else: days since the last sync + 3, at most 730;
 - and at least far enough back for the sessions still waiting to be fetched again (+ 3 days).
+
+Why a first sync reaches back to the last season: many golfers play a launch monitor only from autumn to spring, a
+couple of rounds a month. At the end of October, 90 days held this autumn's two or three rounds, while last winter's
+fifteen or more waited for the history loader - and the target's first look at a new player saw a fraction of them.
+The wider window adds no load of its own: the activity list is a page or two longer at most, and a sync's caps hold as
+always (new sessions, the newest rounds' shots, the guard's 40 requests a run); what is older still comes as the
+history. 1 October is the start of the indoor season in the north; a target whose players' seasons start elsewhere may
+take its own start, within the 400 days.
 
 ## Sessions that failed
 
@@ -91,8 +100,10 @@ would push given-up ones out, and the history loader would ask for them chunk af
 
 In chunks of 10 sessions, 60–120 seconds apart, one activity list per load. Five chunks in a row
 that brought nothing but failures end the sessions' part; five chunks in a row that moved no
-round's shots on end the shots' part. A regular sync fetches at most 40 new sessions; the rest
-comes with the next.
+round's shots on end the shots' part. A regular sync fetches at most 40 new sessions, a first sync at most 25
+([`max_sessions`](reference/plan.py), since 1.23.0): its window reaches back to the last season, and after its sessions
+the run's 40 requests must still hold the activity list, the scorecards and the newest rounds' shots. The rest comes
+with the next.
 
 ## Each shot of a round
 
@@ -103,7 +114,7 @@ time, below the oldest round whose shots are in.
 ## The whole history (since 1.20.0)
 
 A player new to a target should end up with what their provider holds - every scorecard of the
-history, and every session with its shots - not only the 90 days of the first sync. Two parts of the
+history, and every session with its shots - not only what the first sync's window holds. Two parts of the
 history loader do it, planned only for a client that says it can (`can`, [`read_can`](reference/plan.py)
 in [target-api.md](target-api.md#get-plan)): an older client would page the whole list of scorecards
 with every chunk and never say where the list ended.
