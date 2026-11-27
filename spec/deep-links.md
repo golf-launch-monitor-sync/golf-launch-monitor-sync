@@ -17,7 +17,12 @@ glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
 glmsync://test?[target=<target base URL>&]code=<test code>
 glmsync://read?kind=hcp|pro
 https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>[,<id>…]][&kind=hcp|pro]
+https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/pair#<the keys of a pair link>
+https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#<the keys of a sync link>
 ```
+
+The last two (since 1.22.0) are the [universal links](#universal-links): the same pair and sync links as an `https`
+address, which opens the companion app where it is installed and a page with the way to install it where it isn't.
 
 - **pair** opens the companion app (on a phone) with what it needs to call `POST /pair`. On a
   computer the target opens the web app's pairing page instead; the code travels in the
@@ -101,6 +106,54 @@ The same holds for a pair link's `return`. Only to a URL that starts with one of
 (`POST /pair`). A prefix ends with `/` or `://`, so that `https://app.example` can't be stretched to
 `https://app.example.evil.test`. Otherwise the companion app stays where it is.
 
+## The result in the way back
+
+Since 1.22.0. A sync link's jump back tells the target what the sync came to, so the target app can say it at once,
+without waiting for its next look: the client adds **`result`** to the query of `return` (before a fragment; a
+`result` the address had already is dropped), by [`with_result`](reference/deeplinks.py):
+
+| `result` | The sync … |
+| --- | --- |
+| `new` | handed new data over |
+| `nothing` | ran and found nothing new |
+| `not_due` | wasn't due by the plan, or the guard or the provider's pause held it back |
+| `signin` | couldn't run: the provider sign-in isn't ready on this device |
+| `outdated` | couldn't run: the target needs a newer client (the plan's `outdated`) |
+| `failed` | failed (the target or the provider couldn't be reached, an error) |
+
+`exampleapp://synced` comes back as `exampleapp://synced?result=new`,
+`https://app.example.org/profile?tab=lm#card` as `https://app.example.org/profile?tab=lm&result=new#card`. Only where
+the jump goes anyway (`return` among the target's `return_prefixes`, checked before the result is added); when the
+result would make the address longer than a link may be, the client jumps back without it. A target reads it strictly
+([`read_result`](reference/deeplinks.py)): exactly one `result`, one of the six; anything else is none. It is a
+hint for the moment: what was stored, the target knows from its own import. A pair link's `return` takes no result.
+A client older than 1.22.0 jumps back without one.
+
+## Universal links
+
+Since 1.22.0. A `glmsync://` link nothing on the phone takes goes nowhere, and any app may claim the scheme. The same
+pair and sync links therefore also have an `https` form of this project:
+
+```
+https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/pair#target=…&code=…[&provider=…][&kind=…][&return=…]
+https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#[target=…&]return=…
+```
+
+- **Where the companion app is installed**, the phone opens it with the address (iOS Universal Links, Android App
+  Links): the host vouches for the app in `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json`
+  at its root, and no other app can take the address. The companion app reads it like the `glmsync://` link.
+- **Where it isn't**, the browser opens the host's page, which shows the way to install the companion app (and, for a
+  pair link on a computer, forwards to the pairing page). The keys are in the **fragment**, which no server sees -
+  the pairing code included; the page reads it in the browser only.
+- **Reading** ([`parse_universal`](reference/deeplinks.py)): exactly this host and path, `pair` or `sync`, an
+  optional `/`, no query (it would reach the host's server); the fragment is read as the `glmsync://` link's query,
+  with the same rules and the same answers. `test` and `read` have no universal form. A target makes one from the
+  `glmsync://` link ([`universal_link`](reference/deeplinks.py)): its query becomes the fragment.
+- A target may use either form; the universal one is the better one for a phone. A companion app older than its
+  first build with the host's address (and an Android phone that couldn't verify the host) opens the page instead,
+  whose button opens the `glmsync://` link.
+- A fork that publishes its own companion app has its own host and files; the format stays.
+
 ## What a link never carries
 
 No provider sign-in, no import token, nothing about the player. A pairing code is good for ten
@@ -154,16 +207,65 @@ or none, reads as `manual` - a target can't claim one of the client's own reason
 `backfill`).
 
 **Binding.** `bindService(intent, connection, BIND_AUTO_CREATE)` while the target app is in front. The
-target holds the binding **at most two minutes** and then lets go; it waits for no answer over the
-binder and sees the result in its own import. To ask again it lets go first and binds anew.
+target holds the binding **at most two minutes** and then lets go. Before 1.22.0 nothing came back over the
+binder, and the target saw the result only in its own import; since 1.22.0 a companion app that says so answers
+([below](#the-answer-over-the-binding)). To ask again the target lets go first and binds anew.
 
 **The companion app's side.**
 
-- It treats `onBind` and `onRebind` alike (`onUnbind` answers `true`), and answers with an empty
-  `Binder()`: nothing passes over it.
+- It treats `onBind` and `onRebind` alike (`onUnbind` answers `true`). Before 1.22.0 it answered with an empty
+  `Binder()`; since then, if it answers, with its `Messenger`'s binder ([below](#the-answer-over-the-binding)).
 - It syncs only targets it is paired with, only their pairings, and as always asks their plan first
   (`GET /plan` with the reason); the load guard holds. It joins the same queue as its other runs, so a
   binding never fetches beside a sync already running.
 - A binding can make it do no more than a sync link would; binding again and again costs a target a
   plan request now and then (the companion app takes one at a time per target, and not again within a
   few seconds), and the provider nothing the plan doesn't allow.
+
+### The answer over the binding
+
+Since 1.22.0. A binding the companion app can't take - Android may refuse to start its service, the provider sign-in
+ran out, the target says it isn't due - looked the same to the target as one that fetched: no import. Now the
+companion app **answers**, so the target app knows within seconds and can say the one step that helps.
+
+**Which companion app answers.** One that does says so in its manifest, on the service:
+
+```xml
+<meta-data android:name="glmsync.service.ANSWERS" android:value="1" />
+```
+
+The target finds it with `queryIntentServices(intent, PackageManager.GET_META_DATA)` (`serviceInfo.metaData`). Only
+then does it wait for an answer; a companion app without it is bound as before, and nothing in its silence means
+anything.
+
+**The ask.** The service's binder is a `Messenger`'s (`Messenger(handler).binder`). Right after `onServiceConnected`
+the target wraps the binder it got (`Messenger(binder)`) and sends one `Message` with `what = 1` (*ask*) and `replyTo`
+its own `Messenger`. Binding still starts the sync, as before; the message only asks for the answer.
+
+**The answer.** The companion app sends `Message`s with `what = 2` (*answer*) to `replyTo`, each with a `Bundle` of
+strings in `data`:
+
+| `state` | sent | other keys |
+| --- | --- | --- |
+| `accepted` | at once, when it took the ask (within a second) | – |
+| `started` | the plan said due: the sync runs; what it brings, the target sees in its import | – |
+| `not_due` | the plan said not due | `until`: the plan's `due_at`, when it gave one |
+| `busy` | another client holds the lease | `by`: its kind (`holder.kind`), `since` when known |
+| `signin` | its provider sign-in isn't ready | `signin`: `none`, `confirm`, `expired` or `other` |
+| `outdated` | the plan said `outdated` | – |
+| `blocked` | it can't fetch now although it would | `why`: `guard` (its load guard), `provider` (the provider's pause or refusal), `system` (data saver, restricted background); `until` when known |
+| `failed` | the ask came to nothing | `why`: `target` (the plan couldn't be asked), `unpaired` (no pairing with that target), `disconnected` (the player ended it), `error` |
+
+- Every answer carries `v` = `"1"`. First `accepted`, then **exactly one** of the others, once the plan has answered.
+  An ask that comes while the sync it started runs gets `accepted` and that sync's answer (again, if it was given).
+  An ask the companion app drops (the same target again within a few seconds) gets `accepted` and the answer of the
+  run that let it be dropped.
+- The answer says what came of the plan, not of the provider: what the sync brings, the target sees in its import.
+- **The target's side**: no `accepted` within **5 seconds** (`accept_s`) of the ask: the service didn't run - the
+  target may say so at once, or switch to the sync link. No final answer within **60 seconds** (`answer_s`): failed.
+  It reads every answer strictly ([`read_answer`](reference/ask.py), vectors in
+  [`testvectors/ask.json`](testvectors/ask.json)): an unknown `state`, a missing or wrong key, another `v` is no
+  answer. Unknown keys are ignored. Nothing in an answer is executed or opened.
+- The plan request the binding leads to carries `cause=nudge` ([target-api.md](target-api.md), *Asking and
+  answering*).
+- An answer carries nothing of the player: a state, a kind of client, times, a reason.

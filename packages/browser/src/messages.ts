@@ -185,6 +185,16 @@ export const en = {
 
   'pair.hcpNeedsExtension': 'Reading your handicap record along on golf.de needs the browser extension (Chrome, Edge or Firefox on a computer).',
 
+  'link.title': 'Golf Stats Sync',
+  'link.notInstalled': 'Golf Stats Sync didn’t open on this phone – it may not be installed yet.',
+  'link.open': 'Open Golf Stats Sync',
+  'link.installAndroid': 'Install Golf Stats Sync (Android)',
+  'link.installIos': 'Golf Stats Sync on the iPhone (in testing)',
+  'link.again': 'Once it is installed, go back to your app and tap the button there again.',
+  'link.computerSync': 'Fetching now happens in Golf Stats Sync on your phone, or in the browser extension on a computer: open this link on your phone, or start it in your app there.',
+  'link.forwarding': 'On to the pairing page …',
+  'link.invalid': 'This page was opened without a valid link. Start again in your app.',
+
   'pair.title': 'Connect Golf Stats Sync',
   'pair.looking': 'Looking for the browser extension …',
   'pair.extension': 'The extension takes over – confirm in its tab beside this one.',
@@ -587,6 +597,16 @@ export const de: Record<MessageKey, string> = {
   'line.hide': 'Ausblenden',
 
   'pair.hcpNeedsExtension': 'Das Stammblatt auf golf.de mitzulesen braucht die Browser-Erweiterung (Chrome, Edge oder Firefox am Computer).',
+
+  'link.title': 'Golf Stats Sync',
+  'link.notInstalled': 'Golf Stats Sync hat sich auf diesem Handy nicht geöffnet – vielleicht ist es noch nicht installiert.',
+  'link.open': 'Golf Stats Sync öffnen',
+  'link.installAndroid': 'Golf Stats Sync installieren (Android)',
+  'link.installIos': 'Golf Stats Sync auf dem iPhone (im Test)',
+  'link.again': 'Ist es installiert, geh zurück in deine App und tippe dort noch einmal auf den Knopf.',
+  'link.computerSync': 'Jetzt holen geht in Golf Stats Sync auf deinem Handy oder in der Browser-Erweiterung am Computer: öffne diesen Link auf dem Handy, oder starte es dort in deiner App.',
+  'link.forwarding': 'Weiter zur Seite zum Verbinden …',
+  'link.invalid': 'Diese Seite wurde ohne gültigen Link geöffnet. Fang in deiner App noch einmal an.',
 
   'pair.title': 'Golf Stats Sync verbinden',
   'pair.looking': 'Suche die Browser-Erweiterung …',

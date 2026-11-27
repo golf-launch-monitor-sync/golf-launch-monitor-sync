@@ -10,7 +10,7 @@ conventionally ending in `/lm/v1`; the paths are relative to it.
 | Endpoint | What for |
 | --- | --- |
 | `POST /pair` | Exchange a pairing code (ten minutes, once) for an import token. |
-| `GET /plan?provider=&reason=&can=` | **Whether to fetch now**, and what: due or not, since when, what the target has, the lease. |
+| `GET /plan?provider=&reason=&can=&cause=&version=&env=` | **Whether to fetch now**, and what: due or not, since when, what the target has, the lease. |
 | `POST /import` | An olmd/1 batch. |
 | `GET /known?provider=&since=` | The external ids the target has, so they aren't fetched twice. |
 | `GET /status` | "Connected with …", for the client to show. |
@@ -68,6 +68,50 @@ Every plan says where the older history stands (`history`: `done`, `from`). Sinc
 `older: false` while the history isn't done but only fills gaps - nothing older than what the target
 has comes ([planning.md](planning.md), *Only gaps*): a client shows the connection as running then,
 not as loading the history.
+
+## Asking and answering (since 1.22.0)
+
+Two apps that each decide on their own when to fetch are hard to understand for a player and for whoever helps
+them. Since 1.22.0 a target may **lead**: it asks its client when it wants data, and the client answers what came of
+it. The planning rules don't change - the client still asks the plan first, every time, and the guard holds.
+
+| The target asks by … | where | the answer comes |
+| --- | --- | --- |
+| a **nudge** over the Android binding | [deep-links.md](deep-links.md#android) | over the binding, at once ([*The answer over the binding*](deep-links.md#the-answer-over-the-binding)) |
+| a **sync link** (a visible switch, `return`) | [deep-links.md](deep-links.md#links) | with the jump back: `result` in `return` ([*The result in the way back*](deep-links.md#the-result-in-the-way-back)) |
+| a **wake** (a silent push) | [wake.md](wake.md) | in the plan request it leads to (`cause=wake`); iOS may not run it at all |
+| the extension's **bridge** on its page | [page-bridge.md](page-bridge.md) | the bridge's own replies |
+
+- **`cause`** on `GET /plan`: `wake`, `nudge`, `link` or `page` - the plan answers that ask of the target. The
+  `reason` stays what it always was (a wake asks `timer`, a nudge the reason its binding named, a link `manual`). A
+  target can now tell an ask that was answered from one that wasn't: a wake with no plan of `cause=wake` after it never
+  ran. Read strictly: exactly one value, one of the four ([`read_cause`](reference/ask.py)); anything else is none, and
+  a client asking on its own sends none.
+- **`version`** on `GET /plan`: the client's version, as in its pairing (`client.version`). A target that needs a
+  newer client of that kind answers **`outdated: true`** (and `due: false`); the client tells its player to update.
+- **`next_at`** and **`due_at`** in the plan: when the client's own look should ask again, and when the target would
+  next make a plan due ([planning.md](planning.md), *Who asks when*).
+- Informative, like `signin`: `cause`, `version` and `env` change no plan, and a target never fetches, waits or
+  refuses because of them - `outdated` aside, which a target decides from the version as it likes.
+
+## What a client tells of its system (since 1.22.0)
+
+Whether a phone runs a client in the background is the phone's decision, and the player rarely knows where it is set.
+A client says what it knows with every plan, so the target app can name the one setting that is in the way: the query
+parameter **`env`**, comma-separated `key:value` pairs.
+
+| Key | Values | What it says |
+| --- | --- | --- |
+| `os` | `android`, `ios`, `other` | where the client runs |
+| `background` | `available`, `restricted`, `denied` | whether the system runs the client's own background work: on iOS *Background App Refresh* for the app (`denied`: off for it, `restricted`: off for the phone or Low Power Mode); on Android `restricted` when the player restricted the app's background activity |
+| `battery` | `optimized`, `exempt` | Android: whether the battery optimisation holds the app back |
+| `push` | `on`, `off` | whether the client has a push address the target may wake it at ([wake.md](wake.md)) |
+
+- A client sends what it knows, nothing it would have to guess; a browser extension sends none.
+- Read strictly ([`read_env`](reference/ask.py), vectors in [`testvectors/ask.json`](testvectors/ask.json)): one value
+  of at most 200 characters; a pair of an unknown key or value is left out (a later version may add some), a known key
+  given twice is left out altogether.
+- It says nothing about the player. A target keeps the latest per import token, like `signin`.
 
 ## The client's sign-in
 

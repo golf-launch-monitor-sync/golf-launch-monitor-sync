@@ -23,7 +23,8 @@ matches the version it says.
 | `account-ref.json` | `account_ref` | exact |
 | `plan.json` | the reference planning rules ([planning.md](../planning.md)) | times as instants within `compare.time_tolerance_s`; objects regardless of key order |
 | `guard.json` | the load guard ([guard.md](../guard.md)): scenarios replayed step by step | exact (`until` in seconds) |
-| `deep-links.json` | parsing deep links and the pairing fragment, where a sync may return to, what the Android sync service reads from a binding | exact |
+| `deep-links.json` | parsing deep links and the pairing fragment, where a sync may return to, what the Android sync service reads from a binding; since 1.22.0 the result in the way back (`with_result`, `read_result`) and the universal links (`parse_universal`, `universal_link`) | exact |
+| `ask.json` | asking and answering (1.22.0; [target-api.md](../target-api.md), [deep-links.md](../deep-links.md#the-answer-over-the-binding), [planning.md](../planning.md)): `cause`, `version`, `env` as a target reads them, the answer over the Android binding, when a client's own look may ask (`own_ask_at`, `may_ask`) | exact; times as instants |
 | `signin.json` | the `signin` a target reads from a client ([target-api.md](../target-api.md), *The client's sign-in*) | exact |
 | `page-bridge.json` | the extension's bridge on a target's page: requests and replies ([page-bridge.md](../page-bridge.md)) | exact |
 | `test-scenario.json` | the answer of `GET /test-scenario` as a client reads it ([test-mode.md](../test-mode.md), [reference/testmode.py](../reference/testmode.py)) | exact; `limits` are the reader's |

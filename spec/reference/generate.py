@@ -21,6 +21,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import account  # noqa: E402
+import ask  # noqa: E402
 import bridge  # noqa: E402
 import cases_event  # noqa: E402
 import cases_trackman  # noqa: E402
@@ -458,6 +459,40 @@ def deep_link_vectors() -> dict[str, Any]:
         ("glmsync://read?kind=hcp", "open")]
     cases += [{"rule": "parse_sync_intent", "input": {"data": d, "reason": r},
                "expected": deeplinks.parse_sync_intent(d, r)} for d, r in intents]
+    # 1.22.0: the result in the way back, and the universal links
+    for u, r in [("exampleapp://synced", "new"), ("exampleapp://synced", "nothing"),
+                 ("https://app.example.org/profile?tab=lm", "not_due"),
+                 ("https://app.example.org/profile?tab=lm&result=new#card", "failed"),
+                 ("https://app.example.org/profile?result=new&result=nothing", "signin"),
+                 ("https://app.example.org/profile?", "outdated"), ("https://app.example.org/profile#x?y", "new"),
+                 ("exampleapp://synced", "done"), ("exampleapp://synced", "New"), ("exampleapp://synced", None),
+                 ("javascript:alert(1)", "new"), ("glmsync://sync", "new"), ("", "new"), (None, "new"),
+                 ("https://app.example.org/" + "x" * 2020, "nothing"), ("https://app.example.org/" + "x" * 2030, "new")]:
+        cases.append({"rule": "with_result", "input": {"url": u, "result": r}, "expected": deeplinks.with_result(u, r)})
+    for u in ["exampleapp://synced?result=new", "exampleapp://synced?a=1&result=nothing#result=new",
+              "https://app.example.org/profile?tab=lm&result=not_due", "exampleapp://synced?result=signin&result=new",
+              "exampleapp://synced?result=", "exampleapp://synced?result=NEW", "exampleapp://synced?results=new",
+              "exampleapp://synced#result=new", "exampleapp://synced", "exampleapp://synced?result=outdated",
+              "exampleapp://synced?result=failed&x", "exampleapp://synced?result=new%20", None, 5]:
+        cases.append({"rule": "read_result", "input": u, "expected": deeplinks.read_result(u)})
+    ub = deeplinks.UNIVERSAL_BASE
+    for u in [f"{ub}sync#target={t}&return=exampleapp%3A%2F%2Fsynced", f"{ub}sync", f"{ub}sync/", f"{ub}sync#",
+              f"{ub}pair#target={t}&code=K7M2-PQ9X&provider=trackman&return=exampleapp%3A%2F%2Fprofile",
+              f"{ub}pair#target={t}", f"{ub}pair/#target={t}&code=K7M2PQ9X&kind=hcp",
+              f"{ub}sync?target={t}", f"{ub}sync?x=1#target={t}", f"{ub}sync#target={t}#x",
+              f"{ub}test#code=T7K2M9QX", f"{ub}read#kind=hcp", f"{ub}Sync#target={t}",
+              f"https://golf-launch-monitor-sync.github.io/link/sync#target={t}",
+              f"https://evil.example/golf-launch-monitor-sync/link/sync#target={t}",
+              f"http://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#target={t}",
+              f"https://golf-launch-monitor-sync.github.io.evil.test/golf-launch-monitor-sync/link/sync#target={t}",
+              f"{ub}sync#return=javascript%3Aalert(1)", f"{ub}sync#target={t}&target={t}", f"{ub}sync#target={t}\n",
+              f"glmsync://sync?target={t}", None]:
+        cases.append({"rule": "parse_universal", "input": u, "expected": deeplinks.parse_universal(u)})
+    for u in [f"glmsync://sync?target={t}&return=exampleapp%3A%2F%2Fsynced", "glmsync://sync",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&kind=hcp", f"glmsync://pair/?target={t}&code=K7M2PQ9X",
+              "glmsync://test?code=T7K2M9QX", "glmsync://read?kind=hcp", f"glmsync://pair?target={t}",
+              "glmsync://sync?return=javascript%3Aalert(1)", f"https://app.example.org/sync?target={t}", None]:
+        cases.append({"rule": "universal_link", "input": u, "expected": deeplinks.universal_link(u)})
     return doc("Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> "
                "{ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, "
                "sync, (1.8.0) test or (1.11.0) read; kind (1.10.0) lm, hcp or (1.15.0) pro, only where the link names it "
@@ -465,7 +500,11 @@ def deep_link_vectors() -> dict[str, Any]:
                "(the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> "
                "{ok: true, target, reason} or {ok: false, error}. provider (1.18.0) may name several, separated by "
                "commas, and stays the string as given; providers_of (that string, or null: none named) -> the list of "
-               "ids ([]: any the client can connect), or null when it names none validly.", cases)
+               "ids ([]: any the client can connect), or null when it names none validly. Since 1.22.0: with_result "
+               "({url, result}) -> the return URL with the sync's result, or null; read_result (the address a target "
+               "was opened at) -> the result or null; parse_universal (https://…/link/pair|sync#…) -> as parse_link; "
+               "universal_link (a glmsync:// pair or sync link) -> its universal form, or null.", cases,
+               universal={"base": deeplinks.UNIVERSAL_BASE}, results=list(deeplinks.RESULTS))
 
 
 def signin_vectors() -> dict[str, Any]:
@@ -933,6 +972,71 @@ def wake_vectors() -> dict[str, Any]:
                      "address_max": wake.ADDRESS_MAX})
 
 
+def ask_vectors() -> dict[str, Any]:
+    cases: list[dict[str, Any]] = []
+    for v in [["wake"], ["nudge"], ["link"], ["page"], ["Wake"], ["timer"], ["wake", "wake"], [], [""], [1], "wake", None]:
+        cases.append({"rule": "read_cause", "input": v, "expected": ask.read_cause(v)})
+    for v in [["0.17.1"], ["1.0.0-beta.2+build.7"], ["x" * 50], ["x" * 51], ["0.17 1"], ["0.17.1\n"], [""],
+              ["0.17.1", "0.18.0"], [0.17], None]:
+        cases.append({"rule": "read_version", "input": v, "expected": ask.read_version(v)})
+    for v in [["os:android,background:available,battery:optimized,push:off"],
+              ["push:on,os:ios,background:denied"], ["background:restricted"], ["os:android,battery:exempt,later:yes"],
+              ["os:android,os:ios,push:on"], ["os:Android"], ["battery:"], ["os"], [":android"], [""],
+              ["os:android, push:on"], ["os:android,,push:on"], ["os:android:x"], ["os:" + "a" * 197],
+              ["os:android", "push:on"], [], "os:android", None, [7]]:
+        cases.append({"rule": "read_env", "input": v, "expected": ask.read_env(v)})
+    a = {"v": "1"}
+    answers: list[Any] = [
+        {**a, "state": "accepted"}, {**a, "state": "started"}, {**a, "state": "started", "extra": "x"},
+        {**a, "state": "not_due"}, {**a, "state": "not_due", "until": "2026-11-27T21:40:00Z"},
+        {**a, "state": "not_due", "until": "soon"}, {**a, "state": "started", "until": "2026-11-27T21:40:00Z"},
+        {**a, "state": "busy", "by": "extension"}, {**a, "state": "busy", "by": "extension", "since": "2026-11-27T21:17:00Z"},
+        {**a, "state": "busy"}, {**a, "state": "busy", "by": "phone"}, {**a, "state": "busy", "by": "web", "since": "11:17"},
+        {**a, "state": "signin", "signin": "expired"}, {**a, "state": "signin", "signin": "none"},
+        {**a, "state": "signin", "signin": "ready"}, {**a, "state": "signin"}, {**a, "state": "outdated"},
+        {**a, "state": "blocked", "why": "guard", "until": "2026-11-27T22:30:00.250+01:00"},
+        {**a, "state": "blocked", "why": "system"}, {**a, "state": "blocked", "why": "provider"},
+        {**a, "state": "blocked"}, {**a, "state": "blocked", "why": "battery"},
+        {**a, "state": "failed", "why": "target"}, {**a, "state": "failed", "why": "unpaired"},
+        {**a, "state": "failed", "why": "disconnected"}, {**a, "state": "failed", "why": "error"},
+        {**a, "state": "failed"}, {**a, "state": "failed", "why": "guard"}, {**a, "state": "done"},
+        {**a, "state": "Started"}, {"state": "started"}, {"v": 1, "state": "started"}, {"v": "2", "state": "started"},
+        {**a, "state": ["started"]}, {**a}, None, [], "started"]
+    cases += [{"rule": "read_answer", "input": x, "expected": ask.read_answer(x)} for x in answers]
+    got = "2026-11-27T21:00:00Z"
+    for own, nxt in [("2026-11-27T21:30:00Z", None), ("2026-11-27T21:30:00Z", "2026-11-27T22:00:00Z"),
+                     ("2026-11-27T22:30:00Z", "2026-11-27T22:00:00Z"), ("2026-11-27T21:30:00Z", "2026-11-28T09:00:00Z"),
+                     ("2026-11-27T21:30:00Z", "2026-11-27T20:00:00Z"), ("2026-11-27T21:30:00Z", "tomorrow"),
+                     ("2026-11-27T21:30:00Z", "2026-11-27T23:00:00+01:00"), ("2026-11-27T21:30:00.500Z", None),
+                     ("half past nine", "2026-11-27T22:00:00Z")]:
+        cases.append({"rule": "own_ask_at", "input": {"own_at": own, "next_at": nxt, "received_at": got},
+                      "expected": ask.own_ask_at(own, nxt, got)})
+    cases.append({"rule": "own_ask_at", "input": {"own_at": "2026-11-27T21:30:00Z", "next_at": "2026-11-27T22:00:00Z",
+                                                  "received_at": None},
+                  "expected": ask.own_ask_at("2026-11-27T21:30:00Z", "2026-11-27T22:00:00Z", None)})  # type: ignore[arg-type]
+    m = {"reason": "timer", "cause": None, "now": "2026-11-27T21:30:00Z", "next_at": "2026-11-27T22:00:00Z",
+         "received_at": got}
+    for i in [m, {**m, "now": "2026-11-27T22:00:00Z"}, {**m, "now": "2026-11-27T22:00:01Z"},
+              {**m, "cause": "wake"}, {**m, "cause": "nudge"}, {**m, "cause": "link"}, {**m, "cause": "page"},
+              {**m, "cause": "Wake"}, {**m, "reason": "manual"}, {**m, "reason": "open"}, {**m, "reason": "connect"},
+              {**m, "reason": "backfill"}, {**m, "next_at": None}, {**m, "next_at": "later"},
+              {**m, "next_at": "2026-11-28T21:00:00Z", "now": "2026-11-28T02:59:59Z"},
+              {**m, "next_at": "2026-11-28T21:00:00Z", "now": "2026-11-28T03:00:00Z"},
+              {**m, "received_at": None}, {**m, "now": "now"}]:
+        cases.append({"rule": "may_ask", "input": i, "expected": ask.may_ask(**i)})
+    return doc("The question and the answer (spec 1.22.0; target-api.md *Asking and answering*, deep-links.md *The answer "
+               "over the binding*, planning.md *Who asks when*). read_cause, read_version: the list of a query "
+               "parameter's values -> the value or null. read_env: the same -> the known pairs ({} for none). read_answer: "
+               "the strings of the Bundle the companion app sent over the binding -> {state, until?, by?, since?, signin?, "
+               "why?} or null. own_ask_at: {own_at, next_at, received_at} -> when the client's own timer may next ask "
+               "(RFC 3339, UTC to the millisecond) or null. may_ask: {reason, cause, now, next_at, received_at} -> "
+               "whether the client asks for a plan now.", cases,
+               ask={"causes": list(ask.CAUSES), "env": {k: list(v) for k, v in ask.ENV.items()}, "env_max": ask.ENV_MAX,
+                    "answer_v": ask.ANSWER_V, "states": list(ask.STATES), "blocked": list(ask.BLOCKED),
+                    "failed": list(ask.FAILED), "accept_s": ask.ACCEPT_S, "answer_s": ask.ANSWER_S,
+                    "own_max_s": ask.OWN_MAX_S})
+
+
 # One tournament from golf.de's page (spec/hcp.md, *Taking one tournament*, 1.19.0)
 def dgvevent_page_vectors() -> dict[str, Any]:
     cases = [{**c, "expected": event.read_page(copy.deepcopy(c["input"]))} for c in cases_event.pages()]
@@ -967,6 +1071,7 @@ FILES = {
     "dgvevent-examples.json": dgvevent_examples,
     "prores-examples.json": prores_examples,
     "wake.json": wake_vectors,
+    "ask.json": ask_vectors,
 }
 
 

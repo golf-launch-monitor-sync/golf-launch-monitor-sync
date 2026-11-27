@@ -53,6 +53,23 @@ matter (per device, as a rule: the player may leave a computer's tab open and co
 Over an hour in which the player opens the target app once after a session, this costs at most a
 handful of syncs more than the regular rhythm; the guard holds as always.
 
+## Who asks when (since 1.22.0)
+
+A target that asks its client itself when it wants data (a wake, a nudge, a sync link, its page:
+[target-api.md](target-api.md), *Asking and answering*) may tell the client's own regular look to stay quiet meanwhile:
+
+- **`next_at`** in a plan: the client's own look (reason `timer`, no `cause`) asks no plan before it. Everything
+  else goes at any time: the target's asks (any `cause`), the player's (`manual`, `open`, `connect`) and the older
+  history (`backfill`, paced by `wait_s`). The client waits at most **six hours** (`own_max_s`) from the plan that said
+  it, so a target that stops asking doesn't leave a connection without syncs; a `next_at` in the past, or none, is the
+  client's own rhythm as before ([`own_ask_at`, `may_ask`](reference/ask.py), vectors in
+  [`testvectors/ask.json`](testvectors/ask.json)).
+- A target sets `next_at` only where it can ask that client: a phone it can wake or nudge, a page the extension's
+  bridge is on. It gives every plan its own (a client goes by the newest it received).
+- **`due_at`** in a plan that isn't due: when a plan of that kind becomes due by these rules, as far as the target can
+  tell now - for the client to say ("next fetch at 21:40"), and for an answer `not_due` with `until`. A client asks no
+  sooner because of it, and no later: it is no promise.
+
 ## How far back
 
 `since` = now − `days`, with `days`:

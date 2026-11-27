@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 import { describe, expect, it } from 'vitest';
-import { pairLink, parseLink, parsePairFragment, parseSyncIntent, providersOf, readLink, returnAllowed, testLink } from './deepLinks.ts';
+import { pairLink, parseLink, parsePairFragment, parseSyncIntent, parseUniversal, providersOf, readLink, readResult, returnAllowed, SYNC_RESULTS, testLink, UNIVERSAL_BASE, universalLink, withResult } from './deepLinks.ts';
 import { readVectors } from './vectors.ts';
 
 type Case = { rule: string; input: unknown; expected: unknown };
-const cases = readVectors<Case>('deep-links.json').cases;
+const file = readVectors<Case>('deep-links.json');
+const cases = file.cases;
 
 describe('deep links answer the vectors', () => {
   it.each(cases.map((c, i) => [`${i} ${c.rule} ${JSON.stringify(c.input)}`, c] as const))('%s', (_, c) => {
@@ -18,11 +19,37 @@ describe('deep links answer the vectors', () => {
       const { data, reason } = c.input as { data: unknown; reason: unknown };
       expect(parseSyncIntent(data, reason)).toEqual(c.expected);
     } else if (c.rule === 'providers_of') expect(providersOf(c.input as string | null)).toEqual(c.expected);
+    else if (c.rule === 'with_result') {
+      const { url, result } = c.input as { url: unknown; result: unknown };
+      expect(withResult(url, result)).toEqual(c.expected);
+    } else if (c.rule === 'read_result') expect(readResult(c.input)).toEqual(c.expected);
+    else if (c.rule === 'parse_universal') expect(parseUniversal(c.input)).toEqual(c.expected);
+    else if (c.rule === 'universal_link') expect(universalLink(c.input)).toEqual(c.expected);
     else throw new Error(`unknown rule ${c.rule}`);
   });
 
   it('covers every rule', () => {
-    expect(new Set(cases.map((c) => c.rule))).toEqual(new Set(['parse_link', 'parse_pair_fragment', 'return_allowed', 'parse_sync_intent', 'providers_of']));
+    expect(new Set(cases.map((c) => c.rule))).toEqual(new Set(['parse_link', 'parse_pair_fragment', 'return_allowed', 'parse_sync_intent', 'providers_of', 'with_result', 'read_result', 'parse_universal', 'universal_link']));
+  });
+});
+
+describe('the way back and the universal links (1.22.0)', () => {
+  it('has the spec’s results and address', () => {
+    expect(file.results).toEqual([...SYNC_RESULTS]);
+    expect(file.universal).toEqual({ base: UNIVERSAL_BASE });
+  });
+
+  it('turns a pairing link into its universal form and back', () => {
+    const link = pairLink('https://app.example.org/lm/v1', 'K7M2-PQ9X', 'trackman', 'exampleapp://profile');
+    const universal = universalLink(link);
+    expect(universal?.startsWith(`${UNIVERSAL_BASE}pair#`)).toBe(true);
+    expect(parseUniversal(universal)).toEqual(parseLink(link));
+  });
+
+  it('hands the result back once, whatever the way back held', () => {
+    const back = withResult('exampleapp://synced?result=new', 'nothing');
+    expect(back).toBe('exampleapp://synced?result=nothing');
+    expect(readResult(back)).toBe('nothing');
   });
 });
 

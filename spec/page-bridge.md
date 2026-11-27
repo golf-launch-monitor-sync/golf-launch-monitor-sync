@@ -38,7 +38,8 @@ ignored (unknown keys are allowed, a later version may add some).
 - `reason` (with `fetch`, optional, since 1.12.0): `manual` (the player asked; the default) or `open`
   (the player came back to the target app: the plan is asked with `reason=open`, so the target decides
   whether anything is due - [planning.md](planning.md), *When the player is there*). Anything else is
-  `manual`, as before 1.12.0.
+  `manual`, as before 1.12.0. Since 1.22.0 that plan carries `cause=page` ([target-api.md](target-api.md), *Asking
+  and answering*).
 
 **Reply** (extension → page): `{ "glmsync": "reply", "v": 1, "id": <the request's>, "answer": …, … }`
 

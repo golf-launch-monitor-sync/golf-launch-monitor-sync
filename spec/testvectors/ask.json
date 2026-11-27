@@ -1,0 +1,1012 @@
+{
+  "$comment": "The question and the answer (spec 1.22.0; target-api.md *Asking and answering*, deep-links.md *The answer over the binding*, planning.md *Who asks when*). read_cause, read_version: the list of a query parameter's values -> the value or null. read_env: the same -> the known pairs ({} for none). read_answer: the strings of the Bundle the companion app sent over the binding -> {state, until?, by?, since?, signin?, why?} or null. own_ask_at: {own_at, next_at, received_at} -> when the client's own timer may next ask (RFC 3339, UTC to the millisecond) or null. may_ask: {reason, cause, now, next_at, received_at} -> whether the client asks for a plan now.",
+  "spec_version": "1.22.0",
+  "generated_by": "spec/reference/generate.py",
+  "ask": {
+    "causes": [
+      "wake",
+      "nudge",
+      "link",
+      "page"
+    ],
+    "env": {
+      "os": [
+        "android",
+        "ios",
+        "other"
+      ],
+      "background": [
+        "available",
+        "restricted",
+        "denied"
+      ],
+      "battery": [
+        "optimized",
+        "exempt"
+      ],
+      "push": [
+        "on",
+        "off"
+      ]
+    },
+    "env_max": 200,
+    "answer_v": "1",
+    "states": [
+      "accepted",
+      "started",
+      "not_due",
+      "busy",
+      "signin",
+      "outdated",
+      "blocked",
+      "failed"
+    ],
+    "blocked": [
+      "guard",
+      "provider",
+      "system"
+    ],
+    "failed": [
+      "target",
+      "unpaired",
+      "disconnected",
+      "error"
+    ],
+    "accept_s": 5,
+    "answer_s": 60,
+    "own_max_s": 21600
+  },
+  "cases": [
+    {
+      "rule": "read_cause",
+      "input": [
+        "wake"
+      ],
+      "expected": "wake"
+    },
+    {
+      "rule": "read_cause",
+      "input": [
+        "nudge"
+      ],
+      "expected": "nudge"
+    },
+    {
+      "rule": "read_cause",
+      "input": [
+        "link"
+      ],
+      "expected": "link"
+    },
+    {
+      "rule": "read_cause",
+      "input": [
+        "page"
+      ],
+      "expected": "page"
+    },
+    {
+      "rule": "read_cause",
+      "input": [
+        "Wake"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_cause",
+      "input": [
+        "timer"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_cause",
+      "input": [
+        "wake",
+        "wake"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_cause",
+      "input": [],
+      "expected": null
+    },
+    {
+      "rule": "read_cause",
+      "input": [
+        ""
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_cause",
+      "input": [
+        1
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_cause",
+      "input": "wake",
+      "expected": null
+    },
+    {
+      "rule": "read_cause",
+      "input": null,
+      "expected": null
+    },
+    {
+      "rule": "read_version",
+      "input": [
+        "0.17.1"
+      ],
+      "expected": "0.17.1"
+    },
+    {
+      "rule": "read_version",
+      "input": [
+        "1.0.0-beta.2+build.7"
+      ],
+      "expected": "1.0.0-beta.2+build.7"
+    },
+    {
+      "rule": "read_version",
+      "input": [
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ],
+      "expected": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "rule": "read_version",
+      "input": [
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_version",
+      "input": [
+        "0.17 1"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_version",
+      "input": [
+        "0.17.1\n"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_version",
+      "input": [
+        ""
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_version",
+      "input": [
+        "0.17.1",
+        "0.18.0"
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_version",
+      "input": [
+        0.17
+      ],
+      "expected": null
+    },
+    {
+      "rule": "read_version",
+      "input": null,
+      "expected": null
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        "os:android,background:available,battery:optimized,push:off"
+      ],
+      "expected": {
+        "os": "android",
+        "background": "available",
+        "battery": "optimized",
+        "push": "off"
+      }
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        "push:on,os:ios,background:denied"
+      ],
+      "expected": {
+        "os": "ios",
+        "background": "denied",
+        "push": "on"
+      }
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        "background:restricted"
+      ],
+      "expected": {
+        "background": "restricted"
+      }
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        "os:android,battery:exempt,later:yes"
+      ],
+      "expected": {
+        "os": "android",
+        "battery": "exempt"
+      }
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        "os:android,os:ios,push:on"
+      ],
+      "expected": {
+        "push": "on"
+      }
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        "os:Android"
+      ],
+      "expected": {}
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        "battery:"
+      ],
+      "expected": {}
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        "os"
+      ],
+      "expected": {}
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        ":android"
+      ],
+      "expected": {}
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        ""
+      ],
+      "expected": {}
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        "os:android, push:on"
+      ],
+      "expected": {
+        "os": "android"
+      }
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        "os:android,,push:on"
+      ],
+      "expected": {
+        "os": "android",
+        "push": "on"
+      }
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        "os:android:x"
+      ],
+      "expected": {}
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        "os:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "expected": {}
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        "os:android",
+        "push:on"
+      ],
+      "expected": {}
+    },
+    {
+      "rule": "read_env",
+      "input": [],
+      "expected": {}
+    },
+    {
+      "rule": "read_env",
+      "input": "os:android",
+      "expected": {}
+    },
+    {
+      "rule": "read_env",
+      "input": null,
+      "expected": {}
+    },
+    {
+      "rule": "read_env",
+      "input": [
+        7
+      ],
+      "expected": {}
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "accepted"
+      },
+      "expected": {
+        "state": "accepted"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "started"
+      },
+      "expected": {
+        "state": "started"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "started",
+        "extra": "x"
+      },
+      "expected": {
+        "state": "started"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "not_due"
+      },
+      "expected": {
+        "state": "not_due"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "not_due",
+        "until": "2026-11-27T21:40:00Z"
+      },
+      "expected": {
+        "state": "not_due",
+        "until": "2026-11-27T21:40:00Z"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "not_due",
+        "until": "soon"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "started",
+        "until": "2026-11-27T21:40:00Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "busy",
+        "by": "extension"
+      },
+      "expected": {
+        "state": "busy",
+        "by": "extension"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "busy",
+        "by": "extension",
+        "since": "2026-11-27T21:17:00Z"
+      },
+      "expected": {
+        "state": "busy",
+        "by": "extension",
+        "since": "2026-11-27T21:17:00Z"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "busy"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "busy",
+        "by": "phone"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "busy",
+        "by": "web",
+        "since": "11:17"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "signin",
+        "signin": "expired"
+      },
+      "expected": {
+        "state": "signin",
+        "signin": "expired"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "signin",
+        "signin": "none"
+      },
+      "expected": {
+        "state": "signin",
+        "signin": "none"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "signin",
+        "signin": "ready"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "signin"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "outdated"
+      },
+      "expected": {
+        "state": "outdated"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "blocked",
+        "why": "guard",
+        "until": "2026-11-27T22:30:00.250+01:00"
+      },
+      "expected": {
+        "state": "blocked",
+        "until": "2026-11-27T22:30:00.250+01:00",
+        "why": "guard"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "blocked",
+        "why": "system"
+      },
+      "expected": {
+        "state": "blocked",
+        "why": "system"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "blocked",
+        "why": "provider"
+      },
+      "expected": {
+        "state": "blocked",
+        "why": "provider"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "blocked"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "blocked",
+        "why": "battery"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "failed",
+        "why": "target"
+      },
+      "expected": {
+        "state": "failed",
+        "why": "target"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "failed",
+        "why": "unpaired"
+      },
+      "expected": {
+        "state": "failed",
+        "why": "unpaired"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "failed",
+        "why": "disconnected"
+      },
+      "expected": {
+        "state": "failed",
+        "why": "disconnected"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "failed",
+        "why": "error"
+      },
+      "expected": {
+        "state": "failed",
+        "why": "error"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "failed"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "failed",
+        "why": "guard"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "done"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": "Started"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "state": "started"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": 1,
+        "state": "started"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "2",
+        "state": "started"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1",
+        "state": [
+          "started"
+        ]
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": {
+        "v": "1"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": null,
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": [],
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "started",
+      "expected": null
+    },
+    {
+      "rule": "own_ask_at",
+      "input": {
+        "own_at": "2026-11-27T21:30:00Z",
+        "next_at": null,
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": "2026-11-27T21:30:00.000Z"
+    },
+    {
+      "rule": "own_ask_at",
+      "input": {
+        "own_at": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": "2026-11-27T22:00:00.000Z"
+    },
+    {
+      "rule": "own_ask_at",
+      "input": {
+        "own_at": "2026-11-27T22:30:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": "2026-11-27T22:30:00.000Z"
+    },
+    {
+      "rule": "own_ask_at",
+      "input": {
+        "own_at": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-28T09:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": "2026-11-28T03:00:00.000Z"
+    },
+    {
+      "rule": "own_ask_at",
+      "input": {
+        "own_at": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T20:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": "2026-11-27T21:30:00.000Z"
+    },
+    {
+      "rule": "own_ask_at",
+      "input": {
+        "own_at": "2026-11-27T21:30:00Z",
+        "next_at": "tomorrow",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": "2026-11-27T21:30:00.000Z"
+    },
+    {
+      "rule": "own_ask_at",
+      "input": {
+        "own_at": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T23:00:00+01:00",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": "2026-11-27T22:00:00.000Z"
+    },
+    {
+      "rule": "own_ask_at",
+      "input": {
+        "own_at": "2026-11-27T21:30:00.500Z",
+        "next_at": null,
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": "2026-11-27T21:30:00.500Z"
+    },
+    {
+      "rule": "own_ask_at",
+      "input": {
+        "own_at": "half past nine",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": null
+    },
+    {
+      "rule": "own_ask_at",
+      "input": {
+        "own_at": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": null
+      },
+      "expected": null
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "timer",
+        "cause": null,
+        "now": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "timer",
+        "cause": null,
+        "now": "2026-11-27T22:00:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "timer",
+        "cause": null,
+        "now": "2026-11-27T22:00:01Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "timer",
+        "cause": "wake",
+        "now": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "timer",
+        "cause": "nudge",
+        "now": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "timer",
+        "cause": "link",
+        "now": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "timer",
+        "cause": "page",
+        "now": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "timer",
+        "cause": "Wake",
+        "now": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "manual",
+        "cause": null,
+        "now": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "open",
+        "cause": null,
+        "now": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "connect",
+        "cause": null,
+        "now": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "backfill",
+        "cause": null,
+        "now": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "timer",
+        "cause": null,
+        "now": "2026-11-27T21:30:00Z",
+        "next_at": null,
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "timer",
+        "cause": null,
+        "now": "2026-11-27T21:30:00Z",
+        "next_at": "later",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "timer",
+        "cause": null,
+        "now": "2026-11-28T02:59:59Z",
+        "next_at": "2026-11-28T21:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "timer",
+        "cause": null,
+        "now": "2026-11-28T03:00:00Z",
+        "next_at": "2026-11-28T21:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": true
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "timer",
+        "cause": null,
+        "now": "2026-11-27T21:30:00Z",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": null
+      },
+      "expected": true
+    },
+    {
+      "rule": "may_ask",
+      "input": {
+        "reason": "timer",
+        "cause": null,
+        "now": "now",
+        "next_at": "2026-11-27T22:00:00Z",
+        "received_at": "2026-11-27T21:00:00Z"
+      },
+      "expected": true
+    }
+  ]
+}

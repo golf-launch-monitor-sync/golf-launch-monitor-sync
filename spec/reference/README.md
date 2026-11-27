@@ -15,7 +15,8 @@ must match its vectors field for field.
 | `plan.py` | The reference planning rules of a target. |
 | `guard.py` | The load guard. |
 | `wake.py` | The wake: what a client registers, when a target wakes it, what a wake is (since 1.9.0). |
-| `deeplinks.py` | Deep links, the pairing fragment and the Android sync service's intent. |
+| `deeplinks.py` | Deep links, the pairing fragment and the Android sync service's intent; the result in the way back and the universal links (since 1.22.0). |
+| `ask.py` | Asking and answering (since 1.22.0): `cause`, `version`, `env` as a target reads them, the answer over the Android binding, when a client's own look may ask (`next_at`). |
 | `prores.py` | A professional's pages (since 1.15.0): a finish, a world ranking's tour code, an ISO week, whose name. |
 | `event.py` | One tournament from golf.de's page the player has open (since 1.19.0): its lines, by their label, as dgvevent/1. |
 | `testmode.py` | A target's test scenario as a client reads it (1.8.0). |

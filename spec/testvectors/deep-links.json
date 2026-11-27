@@ -1,7 +1,18 @@
 {
-  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, sync, (1.8.0) test or (1.11.0) read; kind (1.10.0) lm, hcp or (1.15.0) pro, only where the link names it (read: always, and only hcp or pro). parse_sync_intent (the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> {ok: true, target, reason} or {ok: false, error}. provider (1.18.0) may name several, separated by commas, and stays the string as given; providers_of (that string, or null: none named) -> the list of ids ([]: any the client can connect), or null when it names none validly.",
-  "spec_version": "1.21.0",
+  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, sync, (1.8.0) test or (1.11.0) read; kind (1.10.0) lm, hcp or (1.15.0) pro, only where the link names it (read: always, and only hcp or pro). parse_sync_intent (the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> {ok: true, target, reason} or {ok: false, error}. provider (1.18.0) may name several, separated by commas, and stays the string as given; providers_of (that string, or null: none named) -> the list of ids ([]: any the client can connect), or null when it names none validly. Since 1.22.0: with_result ({url, result}) -> the return URL with the sync's result, or null; read_result (the address a target was opened at) -> the result or null; parse_universal (https://…/link/pair|sync#…) -> as parse_link; universal_link (a glmsync:// pair or sync link) -> its universal form, or null.",
+  "spec_version": "1.22.0",
   "generated_by": "spec/reference/generate.py",
+  "universal": {
+    "base": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/"
+  },
+  "results": [
+    "new",
+    "nothing",
+    "not_due",
+    "signin",
+    "outdated",
+    "failed"
+  ],
   "cases": [
     {
       "rule": "parse_link",
@@ -1308,6 +1319,439 @@
         "ok": false,
         "error": "invalid:action"
       }
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "exampleapp://synced",
+        "result": "new"
+      },
+      "expected": "exampleapp://synced?result=new"
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "exampleapp://synced",
+        "result": "nothing"
+      },
+      "expected": "exampleapp://synced?result=nothing"
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "https://app.example.org/profile?tab=lm",
+        "result": "not_due"
+      },
+      "expected": "https://app.example.org/profile?tab=lm&result=not_due"
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "https://app.example.org/profile?tab=lm&result=new#card",
+        "result": "failed"
+      },
+      "expected": "https://app.example.org/profile?tab=lm&result=failed#card"
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "https://app.example.org/profile?result=new&result=nothing",
+        "result": "signin"
+      },
+      "expected": "https://app.example.org/profile?result=signin"
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "https://app.example.org/profile?",
+        "result": "outdated"
+      },
+      "expected": "https://app.example.org/profile?result=outdated"
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "https://app.example.org/profile#x?y",
+        "result": "new"
+      },
+      "expected": "https://app.example.org/profile?result=new#x?y"
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "exampleapp://synced",
+        "result": "done"
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "exampleapp://synced",
+        "result": "New"
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "exampleapp://synced",
+        "result": null
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "javascript:alert(1)",
+        "result": "new"
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "glmsync://sync",
+        "result": "new"
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "",
+        "result": "new"
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": null,
+        "result": "new"
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "https://app.example.org/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "result": "nothing"
+      },
+      "expected": "https://app.example.org/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "rule": "with_result",
+      "input": {
+        "url": "https://app.example.org/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "result": "new"
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_result",
+      "input": "exampleapp://synced?result=new",
+      "expected": "new"
+    },
+    {
+      "rule": "read_result",
+      "input": "exampleapp://synced?a=1&result=nothing#result=new",
+      "expected": "nothing"
+    },
+    {
+      "rule": "read_result",
+      "input": "https://app.example.org/profile?tab=lm&result=not_due",
+      "expected": "not_due"
+    },
+    {
+      "rule": "read_result",
+      "input": "exampleapp://synced?result=signin&result=new",
+      "expected": null
+    },
+    {
+      "rule": "read_result",
+      "input": "exampleapp://synced?result=",
+      "expected": null
+    },
+    {
+      "rule": "read_result",
+      "input": "exampleapp://synced?result=NEW",
+      "expected": null
+    },
+    {
+      "rule": "read_result",
+      "input": "exampleapp://synced?results=new",
+      "expected": null
+    },
+    {
+      "rule": "read_result",
+      "input": "exampleapp://synced#result=new",
+      "expected": null
+    },
+    {
+      "rule": "read_result",
+      "input": "exampleapp://synced",
+      "expected": null
+    },
+    {
+      "rule": "read_result",
+      "input": "exampleapp://synced?result=outdated",
+      "expected": "outdated"
+    },
+    {
+      "rule": "read_result",
+      "input": "exampleapp://synced?result=failed&x",
+      "expected": "failed"
+    },
+    {
+      "rule": "read_result",
+      "input": "exampleapp://synced?result=new%20",
+      "expected": null
+    },
+    {
+      "rule": "read_result",
+      "input": null,
+      "expected": null
+    },
+    {
+      "rule": "read_result",
+      "input": 5,
+      "expected": null
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&return=exampleapp%3A%2F%2Fsynced",
+      "expected": {
+        "ok": true,
+        "action": "sync",
+        "target": "https://app.example.org/lm/v1",
+        "return": "exampleapp://synced"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync",
+      "expected": {
+        "ok": true,
+        "action": "sync"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync/",
+      "expected": {
+        "ok": true,
+        "action": "sync"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#",
+      "expected": {
+        "ok": true,
+        "action": "sync"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/pair#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2-PQ9X&provider=trackman&return=exampleapp%3A%2F%2Fprofile",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2-PQ9X",
+        "provider": "trackman",
+        "return": "exampleapp://profile"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/pair#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": {
+        "ok": false,
+        "error": "missing:code"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/pair/#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=hcp",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "kind": "hcp"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync?x=1#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1#x",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/test#code=T7K2M9QX",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/read#kind=hcp",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/Sync#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/link/sync#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://evil.example/golf-launch-monitor-sync/link/sync#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "http://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io.evil.test/golf-launch-monitor-sync/link/sync#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#return=javascript%3Aalert(1)",
+      "expected": {
+        "ok": false,
+        "error": "invalid:return"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": {
+        "ok": false,
+        "error": "duplicate:target"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1\n",
+      "expected": {
+        "ok": false,
+        "error": "invalid:target"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": null,
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "universal_link",
+      "input": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&return=exampleapp%3A%2F%2Fsynced",
+      "expected": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&return=exampleapp%3A%2F%2Fsynced"
+    },
+    {
+      "rule": "universal_link",
+      "input": "glmsync://sync",
+      "expected": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync"
+    },
+    {
+      "rule": "universal_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=hcp",
+      "expected": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/pair#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&kind=hcp"
+    },
+    {
+      "rule": "universal_link",
+      "input": "glmsync://pair/?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X",
+      "expected": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/pair#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X"
+    },
+    {
+      "rule": "universal_link",
+      "input": "glmsync://test?code=T7K2M9QX",
+      "expected": null
+    },
+    {
+      "rule": "universal_link",
+      "input": "glmsync://read?kind=hcp",
+      "expected": null
+    },
+    {
+      "rule": "universal_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": null
+    },
+    {
+      "rule": "universal_link",
+      "input": "glmsync://sync?return=javascript%3Aalert(1)",
+      "expected": null
+    },
+    {
+      "rule": "universal_link",
+      "input": "https://app.example.org/sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1",
+      "expected": null
+    },
+    {
+      "rule": "universal_link",
+      "input": null,
+      "expected": null
     }
   ]
 }

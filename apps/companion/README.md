@@ -321,6 +321,28 @@ took days of opening the app on the iPhone, since a wake gives half a minute, on
 A build older than 0.17.0 has no `onTaskExpired`: there the ten minutes still bound the run, and iOS ending it sooner
 freezes it in the middle of a chunk, which the next plan repairs the same way.
 
+## Universal links
+
+Since spec 1.22.0 the pair and sync links also have an `https` form,
+`https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/pair#…` and `…/link/sync#…`
+([spec/deep-links.md](../../spec/deep-links.md#universal-links)): a phone opens this app for them where it is installed,
+and the web app's page where it isn't ([apps/web](../web/README.md)). Three parts, of which the spec and the page are
+built:
+
+1. **The host vouches for the app**: `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` at
+   the root of `golf-launch-monitor-sync.github.io` - the organisation's own site (the repository
+   `golf-launch-monitor-sync/golf-launch-monitor-sync.github.io`, public, Pages from its `main`), since the web app lives
+   below the root. `node tools/link-files.mjs <that repository>` writes both and `.nojekyll`; `assetlinks.json` needs
+   the SHA-256 fingerprint of the Android signing certificate (`GLMSYNC_ANDROID_CERT_SHA256`, expo.dev › the project ›
+   Credentials › Android). Apple's CDN reads the file some hours after it changes.
+2. **The app names the host** (a new native build, not an update over the air): `ios.associatedDomains`
+   (`applinks:golf-launch-monitor-sync.github.io`) and an Android intent filter with `autoVerify` for `https`, that host
+   and the path prefix `/golf-launch-monitor-sync/link/`, in `app.config.ts`; the App ID gets *Associated Domains*.
+3. **The app reads them**: `parseUniversal` of `@glmsync/spec`, which answers what `parseLink` answers for the
+   `glmsync://` form.
+
+Until all three stand, the page's *Open Golf Stats Sync* opens the app by its scheme.
+
 ## What it keeps, and where
 
 | What | Where |

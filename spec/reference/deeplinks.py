@@ -201,3 +201,75 @@ def parse_sync_intent(data: Any, reason: Any = None) -> dict[str, Any]:
         return {"ok": False, "error": "unexpected:return"}
     return {"ok": True, "target": link["target"],
             "reason": reason if isinstance(reason, str) and reason in SYNC_INTENT_REASONS else "manual"}
+
+
+# The result in the way back (since 1.22.0)
+# ---------------------------------------------------------------------------
+
+#: What a sync came to, handed to the target with the jump back (`result` added to `return`): new data handed over, a
+#: sync that brought nothing new, a plan that wasn't due (the guard or the provider's pause included), a sign-in that
+#: isn't ready, a client too old for the target, or anything that failed.
+RESULTS = ("new", "nothing", "not_due", "signin", "outdated", "failed")
+
+
+def with_result(url: str, result: str) -> str | None:
+    """`return` with `result=<result>` in its query (before a fragment); a `result` it had already is dropped, so a
+    target never reads two. The URL as it was when the result would make it longer than a link may be (the target then
+    reads none); None for a URL that is no valid return or a result that isn't one."""
+    if not isinstance(url, str) or not valid_return(url) or result not in RESULTS:
+        return None
+    head, hash_, frag = url.partition("#")
+    path, q, query = head.partition("?")
+    kept = [p for p in query.split("&") if p and p.partition("=")[0] != "result"] if q else []
+    out = f"{path}?{'&'.join([*kept, f'result={result}'])}" + (hash_ + frag if hash_ else "")
+    return out if len(out) <= MAX_LEN else url
+
+
+def read_result(url: Any) -> str | None:
+    """The result a target finds in the address it was opened at: exactly one `result` in the query, one of RESULTS.
+    None for none, two, another value or an address that isn't one."""
+    if not isinstance(url, str) or len(url) > MAX_LEN:
+        return None
+    head = url.partition("#")[0]
+    if "?" not in head:
+        return None
+    found: list[str] = []
+    for part in head.partition("?")[2].split("&"):
+        key, _, value = part.partition("=")
+        if key == "result":
+            found.append(value)
+    return found[0] if len(found) == 1 and found[0] in RESULTS else None
+
+
+# Universal links (since 1.22.0)
+# ---------------------------------------------------------------------------
+
+#: The project's own https address for the pair and sync links, beside glmsync://. The phone opens the companion app
+#: when it is installed (iOS Universal Links, Android App Links, vouched for by the host's .well-known files); else the
+#: host's page, which shows the way to install it. A fork that publishes its own companion app has its own host.
+UNIVERSAL_BASE = "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/"
+UNIVERSAL = re.compile(r"^https://golf-launch-monitor-sync\.github\.io/golf-launch-monitor-sync/link/(pair|sync)/?"
+                       r"(?:#([^#]*))?$")
+
+
+def parse_universal(url: Any) -> dict[str, Any]:
+    """`https://…/link/pair#…` or `https://…/link/sync#…`: the keys of the glmsync:// link in the fragment (which no
+    server sees), read by the same rules - the same answer as parse_link of `glmsync://<action>?<fragment>`. A query
+    (it would reach the host's server) or another host or path: invalid."""
+    if not isinstance(url, str) or len(url) > MAX_LEN:
+        return {"ok": False, "error": "invalid:link"}
+    m = UNIVERSAL.fullmatch(url)
+    if not m:
+        return {"ok": False, "error": "invalid:link"}
+    return parse_link(f"glmsync://{m.group(1)}?{m.group(2) or ''}")
+
+
+def universal_link(link: str) -> str | None:
+    """The universal form of a valid glmsync:// pair or sync link (its query into the fragment); None for any other."""
+    if not parse_link(link)["ok"]:
+        return None
+    m = LINK.fullmatch(link)
+    if not m or m.group(1) not in ("pair", "sync"):
+        return None
+    out = UNIVERSAL_BASE + m.group(1) + (f"#{m.group(2)}" if m.group(2) else "")
+    return out if len(out) <= MAX_LEN else None

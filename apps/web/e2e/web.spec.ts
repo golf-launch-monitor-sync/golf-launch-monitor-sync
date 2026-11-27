@@ -247,3 +247,32 @@ test.describe('in German', () => {
     await expect(page.getByTestId('service-trackman')).toHaveText('Diese Seite mit app.example.org verbinden');
   });
 });
+
+// The page behind the universal links (spec 1.22.0): only where the phone didn't open the companion app.
+const LINK_TARGET = encodeURIComponent('https://app.example.org/lm/v1');
+const ANDROID_UA = 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 Chrome/131.0 Mobile Safari/537.36';
+
+test('a universal sync link on a phone without the app offers to open it and to install it', async ({ browser }) => {
+  const context = await browser.newContext({ userAgent: ANDROID_UA });
+  try {
+    await new World().route(context);
+    const page = await context.newPage();
+    await page.goto(`${WEB}/link/sync#target=${LINK_TARGET}&return=exampleapp%3A%2F%2Fsynced`);
+    await expect(page.getByTestId('link-status')).toHaveText('Golf Stats Sync didn’t open on this phone – it may not be installed yet.');
+    await expect(page.getByTestId('link-open')).toHaveAttribute('href', `glmsync://sync?target=${LINK_TARGET}&return=exampleapp%3A%2F%2Fsynced`);
+    await expect(page.getByTestId('link-install')).toHaveAttribute('href', /companion-android\/golf-launch-monitor-sync-companion\.apk$/);
+    await expect(page.locator('main')).not.toContainText('null');
+  } finally {
+    await context.close();
+  }
+});
+
+test('a universal pair link on a computer goes on to the pairing page, without the way back', async ({ page }) => {
+  await page.goto(`${WEB}/link/pair/#target=${LINK_TARGET}&code=${CODE}&return=exampleapp%3A%2F%2Fprofile`);
+  await expect(page).toHaveURL(`${WEB}/pair#target=${LINK_TARGET}&code=${CODE}`);
+});
+
+test('the universal link page says so for an address that is no link', async ({ page }) => {
+  await page.goto(`${WEB}/link/sync#target=ftp%3A%2F%2Fx`);
+  await expect(page.getByTestId('link-status')).toHaveText('This page was opened without a valid link. Start again in your app.');
+});

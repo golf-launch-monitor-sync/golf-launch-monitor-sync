@@ -86,6 +86,21 @@ paths:
           required: false
           description: "Since 1.20.0: what the client can do beyond earlier versions, comma-separated (`older_rounds`, `sessions_again`; target-api.md, *What a client can*). Unknown words are left out."
           schema: { type: string, maxLength: 200 }
+        - name: cause
+          in: query
+          required: false
+          description: "Since 1.22.0: the plan answers the target's own ask - `wake` (spec/wake.md), `nudge` (the Android binding), `link` (a sync link), `page` (the extension's bridge). The reason stays what it was (a wake asks `timer`). Absent: the client asks on its own. Informative: it changes no plan (target-api.md, *Asking and answering*)."
+          schema: { $ref: "#/components/schemas/Cause" }
+        - name: version
+          in: query
+          required: false
+          description: "Since 1.22.0: the client's version, as in its pairing (`client.version`), so a target can tell a client too old for it (`outdated`)."
+          schema: { type: string, pattern: "^[0-9A-Za-z.+-]{1,50}$" }
+        - name: env
+          in: query
+          required: false
+          description: "Since 1.22.0: what the system allows the client, comma-separated `key:value` (`os`, `background`, `battery`, `push`; target-api.md, *What a client tells of its system*). Unknown pairs are left out, a key given twice altogether. Informative: it changes no plan."
+          schema: { type: string, maxLength: 200 }
       responses:
         "200":
           description: The plan.
@@ -302,6 +317,10 @@ components:
     ClientKind:
       type: string
       enum: [extension, web, companion, cli, other]
+    Cause:
+      type: string
+      enum: [wake, nudge, link, page]
+      description: "Since 1.22.0: which ask of the target a plan answers (target-api.md, *Asking and answering*)."
     SignIn:
       type: string
       enum: [none, confirm, ready, expired, other]
@@ -449,6 +468,15 @@ components:
               description: "Since 1.21.0: false while the history isn't done but nothing older than what the target has comes any more - it only fills gaps (planning.md, *Only gaps*). A client then says the connection runs, not that it loads the history. Absent: nothing is said."
             from: { $ref: "#/components/schemas/Time" }
         last_import_at: { $ref: "#/components/schemas/Time" }
+        due_at:
+          allOf: [{ $ref: "#/components/schemas/Time" }]
+          description: "Since 1.22.0, with `due: false`: when a plan of this kind becomes due by the target's rules, as far as it can tell now. Informative (\"next fetch at …\"); a client asks no sooner because of it."
+        next_at:
+          allOf: [{ $ref: "#/components/schemas/Time" }]
+          description: "Since 1.22.0: the earliest time this client's own regular look (reason `timer`, no `cause`) asks for a plan again - for a target that asks its client itself when it wants data. The client waits for it at most six hours from this plan; the target's asks, the player's and the history go at any time (planning.md, *Who asks when*)."
+        outdated:
+          type: boolean
+          description: "Since 1.22.0: the target needs a newer version of this kind of client; `due` is false. The client tells its player to update and answers an ask with `outdated`."
     ImportResult:
       type: object
       additionalProperties: false

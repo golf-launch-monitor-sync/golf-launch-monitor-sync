@@ -76,7 +76,9 @@ it.
 ## What a client does with one
 
 - As its timer: a plan with reason `timer` for each pairing, then at most one chunk of the older history.
-  A wake is no reason of its own: to the target it is the client's regular look, arriving on time.
+  A wake is no reason of its own: to the target it is the client's regular look, arriving on time. Since 1.22.0 the
+  plan says it answers a wake (`cause=wake`, [target-api.md](target-api.md), *Asking and answering*), so a target can
+  tell a wake that ran from one the platform never delivered.
 - At most one run per wake, and not within five minutes of the last one it ran for a wake (pushes can
   come twice); while a run is going, a wake waits for it, in the same queue.
 - Nothing in the push is executed or followed: it carries no address, no plan, no command.

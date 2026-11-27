@@ -10,7 +10,7 @@ import eventSchema from '../../../spec/hcp/dgvevent-1.schema.json' with { type: 
 import proSchema from '../../../spec/prores/prores-1.schema.json' with { type: 'json' };
 import proTours from '../../../spec/prores/tours.json' with { type: 'json' };
 import { makeAjv } from './check.ts';
-import { GUARD_LIMITS, isoWeek, placeOf, PLAN_RULES, PRORES_MAX, REASONS, SIGN_IN_STATES, TOUR_CODES, tourOf, validateBatch, weekOf } from './index.ts';
+import { ASK_CAUSES, ENV_MAX, GUARD_LIMITS, isoWeek, placeOf, PLAN_RULES, PRORES_MAX, REASONS, SIGN_IN_STATES, TOUR_CODES, tourOf, validateBatch, weekOf } from './index.ts';
 import { SPEC_DIR, readVectors, specVersion } from './vectors.ts';
 
 describe('the vectors', () => {
@@ -111,6 +111,23 @@ describe('the target API', () => {
     const takes = (op: { parameters?: { $ref?: string }[] }) => (op.parameters ?? []).some((p) => p.$ref === '#/components/parameters/SignIn');
     expect(takes(api.paths['/plan'].get)).toBe(true);
     expect(takes(api.paths['/status'].get)).toBe(true);
+  });
+
+  it('asks and answers as the vectors read it (1.22.0)', () => {
+    type Param = { name?: string; schema?: { $ref?: string; maxLength?: number; pattern?: string } };
+    const params = (api.paths['/plan'].get.parameters as Param[]).filter((p) => p.name);
+    const byName = Object.fromEntries(params.map((p) => [p.name, p]));
+    expect(byName.cause?.schema).toEqual({ $ref: '#/components/schemas/Cause' });
+    expect(api.components.schemas.Cause.enum).toEqual([...ASK_CAUSES]);
+    expect(byName.env?.schema?.maxLength).toBe(ENV_MAX);
+    const version = new RegExp(byName.version?.schema?.pattern ?? '^$');
+    for (const c of readVectors<{ rule: string; input: unknown; expected: unknown }>('ask.json').cases.filter((x) => x.rule === 'read_version')) {
+      const v = Array.isArray(c.input) && c.input.length === 1 ? c.input[0] : null;
+      expect([c.input, typeof v === 'string' && version.test(v)]).toEqual([c.input, c.expected !== null]);
+    }
+    const plan = api.components.schemas.Plan.properties;
+    for (const key of ['next_at', 'due_at']) expect([key, plan[key]?.allOf]).toEqual([key, [{ $ref: '#/components/schemas/Time' }]]);
+    expect(plan.outdated).toMatchObject({ type: 'boolean' });
   });
 
   it('asks for the import token everywhere but at pairing', () => {

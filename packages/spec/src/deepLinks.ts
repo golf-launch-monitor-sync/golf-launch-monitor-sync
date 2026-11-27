@@ -245,3 +245,65 @@ export function parseSyncIntent(data: unknown, reason?: unknown): SyncIntentResu
   if (link.return !== undefined) return { ok: false, error: 'unexpected:return' };
   return { ok: true, target: link.target, reason: reason === 'open' ? 'open' : 'manual' };
 }
+
+/**
+ * What a sync came to, handed to the target with the jump back (spec 1.22.0, `result` added to `return`): new data
+ * handed over, nothing new, not due (the guard or the provider's pause included), a sign-in that isn't ready, a client
+ * too old for the target, or anything that failed.
+ */
+export const SYNC_RESULTS = ['new', 'nothing', 'not_due', 'signin', 'outdated', 'failed'] as const;
+export type SyncResult = (typeof SYNC_RESULTS)[number];
+
+/**
+ * `return` with `result=<result>` in its query (before a fragment), dropping a `result` it had; the URL as it was when
+ * that would make it longer than a link may be; null for a URL that is no valid return, or a result that isn't one.
+ */
+export function withResult(url: unknown, result: unknown): string | null {
+  if (typeof url !== 'string' || !validReturn(url) || !(SYNC_RESULTS as readonly unknown[]).includes(result)) return null;
+  const hashAt = url.indexOf('#');
+  const head = hashAt < 0 ? url : url.slice(0, hashAt);
+  const tail = hashAt < 0 ? '' : url.slice(hashAt);
+  const qAt = head.indexOf('?');
+  const path = qAt < 0 ? head : head.slice(0, qAt);
+  const kept = qAt < 0 ? [] : head.slice(qAt + 1).split('&').filter((p) => p && p.split('=')[0] !== 'result');
+  const out = `${path}?${[...kept, `result=${result as string}`].join('&')}${tail}`;
+  return out.length <= MAX_LEN ? out : url;
+}
+
+/** The result a target finds in the address it was opened at: exactly one `result` in the query, a known one. */
+export function readResult(url: unknown): SyncResult | null {
+  if (typeof url !== 'string' || url.length > MAX_LEN) return null;
+  const head = url.split('#')[0] as string;
+  const qAt = head.indexOf('?');
+  if (qAt < 0) return null;
+  const found = head
+    .slice(qAt + 1)
+    .split('&')
+    .filter((p) => p.split('=')[0] === 'result')
+    .map((p) => (p.includes('=') ? p.slice(p.indexOf('=') + 1) : ''));
+  return found.length === 1 && (SYNC_RESULTS as readonly string[]).includes(found[0] as string) ? (found[0] as SyncResult) : null;
+}
+
+/**
+ * The project's own https address for the pair and sync links (spec 1.22.0): the phone opens the companion app when it
+ * is installed, else the page there shows how to install it. The link's keys go in the fragment, which no server sees.
+ */
+export const UNIVERSAL_BASE = 'https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/';
+const UNIVERSAL = /^https:\/\/golf-launch-monitor-sync\.github\.io\/golf-launch-monitor-sync\/link\/(pair|sync)\/?(?:#([^#]*))?$/;
+
+/** `https://…/link/pair#…` or `…/link/sync#…`: the same answer as `parseLink` of `glmsync://<action>?<fragment>`. */
+export function parseUniversal(url: unknown): LinkResult {
+  if (typeof url !== 'string' || url.length > MAX_LEN) return { ok: false, error: 'invalid:link' };
+  const m = UNIVERSAL.exec(url);
+  if (!m) return { ok: false, error: 'invalid:link' };
+  return parseLink(`glmsync://${m[1] as string}?${m[2] ?? ''}`);
+}
+
+/** The universal form of a valid glmsync:// pair or sync link (its query into the fragment); null for any other. */
+export function universalLink(link: unknown): string | null {
+  if (!parseLink(link).ok) return null;
+  const m = LINK.exec(link as string);
+  if (!m || (m[1] !== 'pair' && m[1] !== 'sync')) return null;
+  const out = `${UNIVERSAL_BASE}${m[1]}${m[2] ? `#${m[2]}` : ''}`;
+  return out.length <= MAX_LEN ? out : null;
+}
