@@ -20,10 +20,13 @@ const HERE = fileURLToPath(new URL('.', import.meta.url));
 const { version } = JSON.parse(readFileSync(join(HERE, 'package.json'), 'utf8'));
 const zip = process.argv.includes('--zip');
 const DIST = join(HERE, 'dist');
-/** The click checks' fake target, granted at install in their build only (dist-e2e/). */
-export const E2E_HOSTS = ['https://app.example.org/*'];
+/**
+ * The click checks' fake target and the shape recorder's portal (answered by the made-up world), granted at install in
+ * their build only (dist-e2e/): there no one answers the browser's prompt.
+ */
+export const E2E_HOSTS = ['https://app.example.org/*', 'https://performance.foresightsports.com/*'];
 
-const ENTRIES = ['background', 'portal-main', 'portal-relay', 'pair-content', 'bridge-content', 'golfde-main', 'golfde-relay', 'golfde-event', 'rankings-content', 'tours-content', 'europeantour-content', 'season-content', 'ocs-content', 'alps-content', 'popup', 'connect'];
+const ENTRIES = ['background', 'portal-main', 'portal-relay', 'pair-content', 'bridge-content', 'golfde-main', 'golfde-relay', 'golfde-event', 'rankings-content', 'tours-content', 'europeantour-content', 'season-content', 'ocs-content', 'alps-content', 'popup', 'connect', 'shape-main', 'shape-relay', 'shape-page'];
 
 export async function buildFor(browser, { e2e = false } = {}) {
   const out = join(e2e ? join(HERE, 'dist-e2e') : DIST, browser);

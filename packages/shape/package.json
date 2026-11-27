@@ -1,0 +1,16 @@
+{
+  "name": "@glmsync/shape",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "The shape recorder: the shape of a portal's traffic (addresses with placeholders, names of fields and headers, types, ranges) without its values - for looking at a new provider without passing recordings around.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./page": "./src/page.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

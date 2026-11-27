@@ -73,6 +73,13 @@ describe('the manifest', () => {
       expect(JSON.stringify(m.host_permissions)).not.toMatch(/alpstourgolf/);
     });
 
+    it(`${browser}: has the shape recorder as its options page, asking for a portal only at run time`, () => {
+      expect(m.options_ui).toEqual({ page: 'shape.html', open_in_tab: true });
+      // No portal of the recorder's list up front: they come in under the optional pattern, on the page's Start.
+      expect(JSON.stringify([m.host_permissions, m.content_scripts])).not.toMatch(/foresightsports|flightscope/);
+      expect(m.optional_host_permissions).toContain('https://*/*');
+    });
+
     it(`${browser}: has its version and names from the locales`, () => {
       expect(m.version).toBe(VERSION);
       expect(m.name).toBe('__MSG_name__');

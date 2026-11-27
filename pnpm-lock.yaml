@@ -129,6 +129,9 @@ importers:
       '@glmsync/provider-trackman':
         specifier: workspace:*
         version: link:../../packages/provider-trackman
+      '@glmsync/shape':
+        specifier: workspace:*
+        version: link:../../packages/shape
       '@glmsync/spec':
         specifier: workspace:*
         version: link:../../packages/spec
@@ -217,6 +220,8 @@ importers:
       '@glmsync/spec':
         specifier: workspace:*
         version: link:../spec
+
+  packages/shape: {}
 
   packages/spec:
     dependencies:

@@ -19,9 +19,10 @@ import { PAGE_ORIGIN as GOLFDE_ORIGIN } from '@glmsync/provider-golfde';
 import { playerPageOf } from '@glmsync/provider-rankings';
 import { alps, europeantour, ocs, onSeasonSite, progolftour } from '@glmsync/provider-tours';
 import { readBridgeRequest } from '@glmsync/spec';
+import { onPortal, PORTALS, portalOf, readHashes, readSeen } from '@glmsync/shape';
 import type { Message } from './messages.ts';
 
-export type Source = 'portal' | 'pair-page' | 'golfde' | 'ranking' | 'tour' | 'europeantour' | 'season' | 'ocs' | 'alps' | 'target-page' | 'extension' | 'other';
+export type Source = 'portal' | 'shape-portal' | 'pair-page' | 'golfde' | 'ranking' | 'tour' | 'europeantour' | 'season' | 'ocs' | 'alps' | 'target-page' | 'extension' | 'other';
 
 export interface SenderLike {
   id?: string | undefined;
@@ -60,6 +61,9 @@ export function sourceOf(sender: SenderLike, extensionId: string, extensionOrigi
   if (ocs.siteAt(u.href) && sender.tab && sender.frameId === 0) return 'ocs';
   // The Alps Tour's site (alps-content.ts): only its top frame.
   if (alps.onSite(u.href) && sender.tab && sender.frameId === 0) return 'alps';
+  // A portal of the shape recorder's list (shape-relay.ts, only while a recording runs there): only its top frame. Before
+  // the bridge's catch-all, so a portal's page is never taken for a target's.
+  if (PORTALS.some((p) => onPortal(p, u.href)) && sender.tab && sender.frameId === 0) return 'shape-portal';
   // The bridge's content script, on some site's page: only its top frame, never the project's own site.
   if ((u.protocol === 'https:' || u.protocol === 'http:') && sender.tab && sender.frameId === 0 && u.origin !== WEB_APP_ORIGIN) return 'target-page';
   return 'other';
@@ -144,6 +148,11 @@ const FROM: Record<Message['type'], Source | readonly Source[]> = {
   'pro-unpair': 'extension',
   'pro-clear-ended': 'extension',
   'open-ranking': 'extension',
+  'shape-seen': 'shape-portal',
+  'shape-state': 'extension',
+  'shape-start': 'extension',
+  'shape-stop': 'extension',
+  'shape-discard': 'extension',
 };
 
 /** A message of a known kind, with fields of the right type, from where that kind may come; else null. */
@@ -245,6 +254,16 @@ export function accept(raw: unknown, source: Source): Message | null {
     case 'golfde-seen':
       // The seen itself is read again strictly by the background (readSeen); here only its frame.
       return typeof m.page === 'string' && /^[0-9a-f]{8,64}$/.test(m.page) && m.seen && typeof m.seen === 'object' ? { type, page: m.page, seen: m.seen } : null;
+    case 'shape-start':
+      return portalOf(m.portal) ? { type, portal: m.portal as string } : null;
+    case 'shape-seen': {
+      // Read again strictly: the portal's own scripts can post on its window too.
+      if (JSON.stringify(m).length > 4_000_000) return null;
+      const seen = readSeen(m.seen);
+      const personal = readHashes(m.personal);
+      const ids = readHashes(m.ids);
+      return seen && personal && ids ? { type, seen, personal, ids } : null;
+    }
     case 'bridge': {
       // Read again here, as strictly as on the page: the content script runs where the page can reach.
       const request = readBridgeRequest(m.request);

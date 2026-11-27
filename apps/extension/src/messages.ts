@@ -20,6 +20,8 @@ type TourStep = progolftourRun.Step;
 import type { GuardLogExport } from '@glmsync/core';
 import type { Step } from '@glmsync/provider-golfde';
 import type { BridgeReply, BridgeRequest } from '@glmsync/spec';
+import type { Seen as ShapeSeen } from '@glmsync/shape';
+import type { ShapeState } from './shape-keeper.ts';
 
 export type FromPortal = { type: 'portal-key'; token: string };
 /** From the bridge on a paired target's page (spec/page-bridge.md); the request as read from the page. */
@@ -117,6 +119,12 @@ export type FromTourRun =
   | { type: 'trun-seen'; url: string; key?: string; player?: string; outcome: run.PickOutcome }
   | { type: 'trun-stop' }
   | { type: 'season-seen'; page: object };
+/**
+ * From shape-relay.ts on a portal's page while the shape recorder runs (the developer page): the shape of what the page
+ * sent and received, and hashes of the words it must mask (@glmsync/shape) - read again strictly by `accept`, kept only
+ * while a recording of that portal runs.
+ */
+export type FromShapePortal = { type: 'shape-seen'; seen: ShapeSeen; personal: string[]; ids: string[] };
 export type FromPage =
   | { type: 'status' }
   | { type: 'run'; id?: string }
@@ -154,9 +162,14 @@ export type FromPage =
   | { type: 'pro-unpair'; id: string }
   | { type: 'pro-clear-ended' }
   /** Where the player finds their page: the site's own ranking (it has a search). */
-  | { type: 'open-ranking'; site: 'owgr' | 'rolex' };
+  | { type: 'open-ranking'; site: 'owgr' | 'rolex' }
+  /** The shape recorder (shape.html): where it stands, start on a portal of the list, stop, throw away. */
+  | { type: 'shape-state' }
+  | { type: 'shape-start'; portal: string }
+  | { type: 'shape-stop' }
+  | { type: 'shape-discard' };
 
-export type Message = FromPortal | FromPairPage | FromTargetPage | FromGolfde | FromRanking | FromTour | FromEuropeanTour | FromOcs | FromAlps | FromTourRun | FromPage;
+export type Message = FromPortal | FromPairPage | FromTargetPage | FromGolfde | FromRanking | FromTour | FromEuropeanTour | FromOcs | FromAlps | FromTourRun | FromShapePortal | FromPage;
 
 /** A pairing offered by the web app's page, waiting for the player's yes in the connect window. */
 export interface Pending {
@@ -174,8 +187,9 @@ export interface Pending {
 }
 
 export type Reply =
-  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; runStep?: run.RunStep; drive?: boolean; pro?: ProView; tour?: TourView; et?: EtView; ocs?: OcsView; alps?: AlpsView; fetch?: 'started' | 'limit' | 'nothing'; run?: RunView; runHere?: boolean; start?: StartOutcome; sent?: TourSite[]; targets?: { id: string; name: string }[]; take?: TakeOutcome }
-  | { ok: false; error: string };
+  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; runStep?: run.RunStep; drive?: boolean; pro?: ProView; tour?: TourView; et?: EtView; ocs?: OcsView; alps?: AlpsView; fetch?: 'started' | 'limit' | 'nothing'; run?: RunView; runHere?: boolean; start?: StartOutcome; sent?: TourSite[]; targets?: { id: string; name: string }[]; take?: TakeOutcome; shape?: ShapeState; recording?: boolean }
+  /** `shape`: where the shape recorder stands after a refused step (`error` a `ShapeError`). */
+  | { ok: false; error: string; shape?: ShapeState };
 
 /** What the pairing page's content script hands on to the page (no code, nothing secret). */
 export interface PairPageState {

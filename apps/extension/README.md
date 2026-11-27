@@ -292,6 +292,42 @@ app's plan then decides), the plan first and the guard as always, not again with
 `finished` - or `signin`, `guard` (until when), `busy`, `unpaired`. The page never gets your sign-in, the import
 token, a name or an account. `bridge.ts` holds the logic (tested without a browser).
 
+## The shape recorder (developer page)
+
+For adding another launch monitor (a provider) without passing recordings of anyone's traffic around: a HAR file holds
+the sign-in and the person's data and belongs in no chat and no repository. The shape recorder writes down only the
+**shape** of a portal's traffic, which may be shared. It is the extension's **options page** (`shape.html`; in Chrome
+*Extensions → Golf Stats Sync → Details → Extension options*, in Firefox *Add-ons → Golf Stats Sync → Options*), not
+part of syncing (since 0.25.0); it works the same when the extension is loaded unpacked.
+
+1. Pick a portal of the fixed list (`PORTALS` of [`@glmsync/shape`](../../packages/shape/README.md): Foresight FSX Live,
+   myflightscope.com; a new one is an entry there) and tap **Start recording**. On that tap the browser asks once for
+   that portal's address (an optional host permission, like a target's - never up front). Refused, nothing starts, and
+   the page says so.
+2. The portal opens in a tab of its own; two scripts are on its pages while the recording runs (registered at run time,
+   never across a restart of the browser): `shape-main.ts` in the page, before its scripts, reads along with its
+   `fetch` and `XMLHttpRequest` calls and its storage and posts only their **shapes**; `shape-relay.ts` hands them on.
+   The page's calls go out as it made them and it gets its answers as they came. Tabs open before the start are
+   recorded once reloaded. Click through the portal: the sessions, one session, paging, an older one.
+3. **Stop recording**. The page shows the whole file before anything is saved, with a sentence of what is in it and
+   what isn't, and the short repeating values it found (club names, units) to tick field by field. **Save the file**
+   only after ticking *I have read the file* (a tick of a value asks for that again); it is saved as
+   `shape-<portal>-<date>.json` in your downloads. Nothing goes anywhere by itself. *Throw the recording away* ends it.
+
+In the file (`glmsync-shape/1`): each address once (method, host, the path with `{id}` for numbers, UUIDs and long hex
+values, `{value}` for anything that may be data or turned out to be a person's word), the names of its query
+parameters and headers, the scheme of the sign-in only (`Bearer`, never the token), statuses, media types, and the
+bodies' shapes - types, field names, which are optional, lengths, and numbers as ranges rounded outward to two digits
+(an id, a time, a place or a number of the person gets no range). A token in JWT form tells its algorithm, its claims'
+names and how long it holds. GraphQL: the operation's name and the shape of its variables, never the query's text.
+What the portal keeps in storage: keys and shapes, every text there treated as a credential (no length); cookies the page
+can read: their names. Not in it: any value - no sign-in, token, cookie value, name, e-mail address, id or number of the
+person - except the short values ticked.
+
+Recorded only while it runs; the recording lies in the browser's session memory (gone when the browser closes - the page
+then says the recording was cut off). Every failure says what to do: no permission, the scripts refused, nothing
+recorded (the portal wasn't open), the recording full, the file not saved.
+
 ## Permissions
 
 | Permission | Why |
@@ -302,7 +338,8 @@ token, a name or an account. `bridge.ts` holds the logic (tested without a brows
 | a target's address (asked when you connect it) | To send it your data. Never all sites at once. |
 | `storage` | The sign-in, the connections, the guard's counts and log. |
 | `alarms` | To ask the plan every few minutes. |
-| `scripting` | To reach a pairing page that was already open when the extension was installed, and to put the bridge on the pages of the apps you connected (their addresses only, which you allowed). |
+| `scripting` | To reach a pairing page that was already open when the extension was installed, to put the bridge on the pages of the apps you connected (their addresses only, which you allowed), and the shape recorder's two scripts on the portal you picked while it records. |
+| a portal of the shape recorder's list (asked on its *Start*) | To read along there while you record its shape (developer page). Never up front. |
 
 Firefox lists one kind of data leaving the browser (`websiteContent`): your launch monitor data, to
 the app you connect. Nothing goes to this project or anyone else.
@@ -398,11 +435,11 @@ same GitHub release (edit the release, attach the file, *Update release*; the we
 | --- | --- |
 | `storage` | Keeps the user's Trackman sign-in (until it expires), the connected apps with their import tokens, and the load guard's counts and log - on the device only. |
 | `alarms` | Asks each connected app every few minutes whether data is due; only then does it fetch. |
-| `scripting` | To reach the web app's pairing page when it was already open before the extension was installed, to pick up the pairing code; and to let the page of an app the user connected (only that app's address, which the user allowed when connecting) ask the extension to fetch now, as the popup's *Fetch now* does. |
+| `scripting` | To reach the web app's pairing page when it was already open before the extension was installed, to pick up the pairing code; to let the page of an app the user connected (only that app's address, which the user allowed when connecting) ask the extension to fetch now, as the popup's *Fetch now* does; and, on the developer page (the options), to record the shape of a launch monitor portal the user picks, only while the user records. |
 | Host `portal.trackmangolf.com` | Reads the user's own sign-in where Trackman's web portal keeps it, so the user doesn't type a password into the extension. |
 | Host `api.trackmangolf.com` | Fetches the user's own sessions, shots and rounds with that sign-in. |
 | Host `golf-launch-monitor-sync.github.io` (pairing page) | Picks up the pairing code the user's app put into the page's address. |
-| Optional hosts (`https://*/*`) | The address of an app the user connects, asked for at that moment and only for that one address, to send it the data - and for that app's own page to ask the extension to fetch now. Never all sites. |
+| Optional hosts (`https://*/*`) | The address of an app the user connects, asked for at that moment and only for that one address, to send it the data - and for that app's own page to ask the extension to fetch now. On the developer page (the extension's options), the address of a launch monitor maker's portal from a fixed list, asked for when the user starts recording the shape of its traffic (names of fields and units, never values; saved only by the user, sent nowhere), to help add that maker. Never all sites. |
 
 **Remote code**: *No, I am not using remote code.* All code is in the package; the data check is compiled ahead of
 time, nothing is evaluated.

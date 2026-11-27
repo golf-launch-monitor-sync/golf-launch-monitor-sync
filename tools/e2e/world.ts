@@ -15,6 +15,7 @@ import { FakeHcpTarget, FakeProTarget, FakeTarget, type PlanAsked } from '../../
 import { entry, historyAnswer, memberAnswer, resultsAnswer, scoringAnswer, tournamentHtml } from '../../packages/provider-golfde/src/testing.ts';
 import { GRAPHQL_URL } from '../../packages/provider-trackman/src/client.ts';
 import { FakeTrackman, fakeToken } from '../../packages/provider-trackman/src/testing.ts';
+import { ACCESS as SHAPE_ACCESS, PERSON as SHAPE_PERSON, PROFILE_ANSWER, SESSIONS_ANSWER } from '../../packages/shape/src/testing.ts';
 
 export const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 export const WEB_DIST = join(ROOT, 'apps', 'web', 'dist');
@@ -532,6 +533,31 @@ export class World {
     return `<!doctype html><html><head><title>Portal</title></head><body><h1>Made-up portal</h1><script>${script}</script></body></html>`;
   }
 
+  /** What the made-up FSX Live saw (the shape recorder's portal): every request, by method, path and resource type. */
+  readonly shapeSaw: { method: string; path: string; type: string }[] = [];
+
+  /**
+   * The made-up FSX Live: a page whose own script keeps a made-up sign-in in storage, fetches the list of sessions and
+   * then, with XMLHttpRequest, the profile, and shows what it got (so a check can see the page still works with the
+   * recorder reading along). Everything in it is invented (@glmsync/shape's testing).
+   */
+  private shapePortalPage(): string {
+    const script = `
+      localStorage.setItem('auth', JSON.stringify({ accessToken: ${JSON.stringify(SHAPE_ACCESS)}, user: { email: ${JSON.stringify(SHAPE_PERSON.email)} } }));
+      document.cookie = 'theme=dark; path=/';
+      fetch('/api/v1/players/${SHAPE_PERSON.slug}/sessions?page=1', { headers: { Authorization: 'Bearer ${SHAPE_ACCESS}' } })
+        .then((r) => r.json())
+        .then((d) => {
+          document.getElementById('count').textContent = d.items.length + ' sessions';
+          const x = new XMLHttpRequest();
+          x.open('GET', '/api/v1/profile');
+          x.setRequestHeader('Authorization', 'Bearer ${SHAPE_ACCESS}');
+          x.onload = () => { document.getElementById('who').textContent = JSON.parse(x.responseText).displayName; };
+          x.send();
+        });`;
+    return `<!doctype html><html><head><title>FSX Live (made up)</title></head><body><h1>Made-up FSX Live</h1><p id="count"></p><p id="who"></p><script>${script}</script></body></html>`;
+  }
+
   async route(context: BrowserContext): Promise<void> {
     // Anything not answered below never reaches a network (Playwright tries the routes added last first).
     await context.route((url) => url.protocol === 'http:' || url.protocol === 'https:', (route) => route.abort('blockedbyclient'));
@@ -556,6 +582,16 @@ export class World {
       if (path.startsWith('/hcp/v1')) return answer(route, this.hcp.fetch);
       if (path.startsWith('/pro/v1')) return answer(route, this.pro.fetch);
       return route.fulfill({ status: 200, body: '<!doctype html><html><head><title>Example App</title></head><body><h1>Example App</h1></body></html>', headers: { 'content-type': 'text/html' } });
+    });
+    // The made-up FSX Live (the shape recorder's portal): its page and its API on the same site.
+    await context.route('https://performance.foresightsports.com/**', (route) => {
+      const req = route.request();
+      const path = new URL(req.url()).pathname;
+      this.shapeSaw.push({ method: req.method(), path, type: req.resourceType() });
+      const json = (v: unknown) => route.fulfill({ status: 200, body: JSON.stringify(v), headers: { 'content-type': 'application/json' } });
+      if (path.endsWith('/sessions')) return json(SESSIONS_ANSWER);
+      if (path === '/api/v1/profile') return json(PROFILE_ANSWER);
+      return route.fulfill({ status: 200, body: this.shapePortalPage(), headers: { 'content-type': 'text/html' } });
     });
     // The made-up OWGR: a player's page, and its ranking (where the player searches for their page).
     await context.route('https://www.owgr.com/**', (route) => {

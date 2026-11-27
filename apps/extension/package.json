@@ -1,6 +1,6 @@
 {
   "name": "@glmsync/extension",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "private": true,
   "license": "MIT",
   "description": "Golf Stats Sync as a browser extension (Manifest V3; Chrome, Edge, Firefox): syncs launch monitor data in the background when a target's plan says so, reads the handicap record along on golf.de, and sends a pro's own world ranking page on the player's tap.",
@@ -15,9 +15,10 @@
     "@glmsync/core": "workspace:*",
     "@glmsync/provider-golfde": "workspace:*",
     "@glmsync/provider-rankings": "workspace:*",
+    "@glmsync/provider-tours": "workspace:*",
     "@glmsync/provider-trackman": "workspace:*",
-    "@glmsync/spec": "workspace:*",
-    "@glmsync/provider-tours": "workspace:*"
+    "@glmsync/shape": "workspace:*",
+    "@glmsync/spec": "workspace:*"
   },
   "devDependencies": {
     "@types/chrome": "^0.3.7"

@@ -44,6 +44,7 @@ import type { Message, Pending, Reply } from './messages.ts';
 import { accept, sourceOf } from './senders.ts';
 import { ExtensionStorage } from './storage.ts';
 import { nearOf, openTab, showTab, type Near, type TabsApi } from './tabs.ts';
+import { ShapeKeeper } from './shape-keeper.ts';
 
 declare const __VERSION__: string;
 declare const __BROWSER__: 'chrome' | 'firefox';
@@ -543,6 +544,28 @@ const CONNECT_TAB_KEY = 'glmsync/connect-tab';
 const tabsApi = chrome as unknown as TabsApi;
 
 /**
+ * The shape recorder of the developer page (shape.html, `@glmsync/shape`): only on a portal of its list, only with the
+ * host permission the player gave there, its scripts on the portal's pages only while it records.
+ */
+const area = (a: chrome.storage.StorageArea) => ({
+  get: (key: string) => a.get(key) as Promise<Record<string, unknown>>,
+  set: (items: Record<string, unknown>) => a.set(items),
+  remove: (key: string) => a.remove(key),
+});
+const shapes = new ShapeKeeper({
+  session: area(chrome.storage.session),
+  local: area(chrome.storage.local),
+  hasPermission: (origins) => chrome.permissions.contains({ origins }),
+  registered: async (ids) => (await chrome.scripting.getRegisteredContentScripts({ ids })).map((c) => c.id),
+  register: (scripts) => chrome.scripting.registerContentScripts(scripts),
+  unregister: (ids) => chrome.scripting.unregisterContentScripts({ ids }),
+  openTab: async (url) => {
+    await chrome.tabs.create({ url, active: true });
+  },
+  now: Date.now,
+});
+
+/**
  * The connect window: brought to the front if it is open, else opened as a tab beside the page that asked (the
  * pairing page, the portal) - never a popup window of its own (tabs.ts says why).
  */
@@ -890,6 +913,16 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
     case 'open-ranking':
       await openTab(tabsApi, SITES[m.site].start, near);
       return { ok: true };
+    case 'shape-seen':
+      return { ok: true, recording: await shapes.seen(m.seen, m.personal, m.ids, from.url) };
+    case 'shape-state':
+      return { ok: true, shape: await shapes.state() };
+    case 'shape-start':
+      return shapes.start(m.portal);
+    case 'shape-stop':
+      return shapes.stop();
+    case 'shape-discard':
+      return shapes.discard();
     case 'switch-account':
       // Someone else's account is signed in to the portal here: Trackman's own sign-out, as a page the player
       // sees; then the portal, to sign in with their own (the extension picks the new key up from there).

@@ -24,8 +24,11 @@
  *   the player taps *Send*. No request to the sites.
  * - **A target**: asked for when the player connects one (`optional_host_permissions`), one address
  *   at a time - never every site up front.
- * - No `tabs`, no `webRequest`, no `<all_urls>`. `scripting` only to reach a pairing page that was
- *   already open when the extension was installed.
+ * - **The shape recorder** (the options page, `shape.html`, for adding another launch monitor): a portal of its fixed
+ *   list (`@glmsync/shape`), asked for on the page's *Start* the same way (the targets' optional pattern covers it),
+ *   its two scripts on that portal's pages only while it records (`registerContentScripts`, never across a restart).
+ * - No `tabs`, no `webRequest`, no `<all_urls>`. `scripting` to reach a pairing page that was already open when the
+ *   extension was installed, and for the scripts registered at run time (the bridge, the shape recorder).
  */
 
 import { EVENT_PAGE_MATCHES, PAGE_MATCHES as GOLFDE_MATCHES } from '@glmsync/provider-golfde';
@@ -74,6 +77,8 @@ export function manifest(browser: Browser, version: string, testHosts: string[] 
       default_popup: 'popup.html',
       default_icon: { '16': 'icons/16.png', '32': 'icons/32.png' },
     },
+    // The developer page (the shape recorder): not in the popup, the player's own way to it is the extension's options.
+    options_ui: { page: 'shape.html', open_in_tab: true },
     permissions: ['storage', 'alarms', 'scripting'],
     host_permissions: [PORTAL_MATCH, API_MATCH, ...PAIR_MATCHES, ...testHosts],
     optional_host_permissions: TARGET_MATCHES,
