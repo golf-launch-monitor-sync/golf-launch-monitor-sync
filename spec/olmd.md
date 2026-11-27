@@ -42,7 +42,7 @@ Examples that must and must not validate: [`testvectors/olmd-examples.json`](tes
 | `generator` | | `{name, version}` of the producing tool. |
 | `sync` | | The plan this batch answers: `{plan_id, reason}` ([target API](target-api.md)). Absent in a file export. |
 | `failed` | | Sessions the provider couldn't send this time: `[{external_id, started_at}]`; a later sync asks again. |
-| `progress` | | How far through the provider's history: `{more_available, oldest_seen, skipped_known, sessions_left, oldest_listed}` (below). |
+| `progress` | | How far through the provider's history: `{more_available, oldest_seen, skipped_known, sessions_left, oldest_listed, rounds_end}` (below). |
 | `test` | | Since 1.8.0: `true` when the batch was made from a target's test scenario, not fetched from the provider ([test-mode.md](test-mode.md)). A target takes it only for a test account; absent otherwise. |
 | `notice` | | Something the player should know: `{code, message, until}`, codes `auth_expired` (sign in to the provider again), `guard_limit` (the [load guard](guard.md) stopped for now), `provider_unavailable`, `provider_blocked`, `partial`. |
 | `extra` | | See above. |
@@ -58,6 +58,9 @@ Examples that must and must not validate: [`testvectors/olmd-examples.json`](tes
   the whole history) that is how many sessions are still to come; for a regular sync only those of its window.
 - `oldest_listed` (since 1.7.0): the oldest activity, session or round, the provider listed for that window. For a
   history chunk, the oldest activity in the account: how far back the history will reach.
+- `rounds_end` (since 1.20.0): in a history chunk whose plan had `rounds_skip`, whether the provider's list of
+  scorecards ended (or reached `since`) within the pages the chunk listed: the target's older scorecards are through
+  ([planning.md](planning.md), *The whole history*). `false`: more pages follow with a later chunk.
 
 A producer leaves out what it can't tell; a target shows it as it likes ("about 140 sessions still to come, back to
 March 2023") and reads a batch without these fields as before.

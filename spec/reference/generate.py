@@ -252,8 +252,24 @@ def plan_vectors() -> dict[str, Any]:
                                     ({"until": "soon"}, "timer", 200.0, "E")]:
         cases.append({"rule": "holder", "input": {"lease": ls, "reason": reason, "now_s": now, "client": client},
                       "expected": plan.holder(ls, reason, now, client)})
+    # The whole history (1.20.0): which client may be planned its parts, where the scorecards start, which sessions
+    # come again. A teaching pro on the simulator: tests and a combine without their shots, a video that has none.
+    for values in [["older_rounds,sessions_again"], ["sessions_again", "older_rounds"], ["older_rounds, later_thing"],
+                   ["later_thing"], [], None, "older_rounds", [7, "sessions_again"], ["x" * 201]]:
+        cases.append({"rule": "read_can", "input": {"values": values}, "expected": plan.read_can(values)})
+    for known in [0, 5, 10, 11, 12, 405, -3, "x"]:
+        cases.append({"rule": "rounds_skip", "input": {"known_rounds": known}, "expected": plan.rounds_skip(known)})
+    pro = [{"external_id": f"T{i:02d}", "started_at": f"2026-02-{i:02d}T10:00:00Z", "shots": 0} for i in range(1, 15)]
+    pro += [{"external_id": "C1", "started_at": "2026-11-11T09:00:00Z", "shots": 0},
+            {"external_id": "S1", "started_at": "2026-11-22T09:00:00Z", "shots": 23},
+            {"external_id": "V1", "started_at": None, "shots": 0}, {"external_id": "", "shots": 0},
+            {"started_at": "2026-11-01T00:00:00Z", "shots": 0}]
+    for asked in [{}, {"C1": 1, "T14": 3, "T13": 9}, {"C1": "x"}, {"T12": -1}]:
+        cases.append({"rule": "sessions_wanted", "input": {"sessions": pro, "asked": asked},
+                      "expected": plan.sessions_wanted(pro, asked)})
     return doc("The reference planning rules of a target (spec/planning.md; here_due_at and is_due's `here` since "
-               "1.12.0, a case without `here` has none; `holder`, and `leases` with clients and holders, since 1.13.0). Times compare as instants within "
+               "1.12.0, a case without `here` has none; `holder`, and `leases` with clients and holders, since 1.13.0; "
+               "read_can, rounds_skip and sessions_wanted since 1.20.0). Times compare as instants within "
                "compare.time_tolerance_s; dict results compare without regard to key order.", cases,
                rules=plan.RULES, compare={"time_tolerance_s": 0.001})
 

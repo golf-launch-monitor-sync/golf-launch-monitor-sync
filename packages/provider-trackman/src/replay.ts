@@ -69,6 +69,7 @@ export function replay(scenario: TestScenario, opts: ReplayOptions = {}): Replay
     name: 'Trackman',
     notice: TEST_NOTICE,
     test: true,
+    can: ['older_rounds', 'sessions_again'],
     credential,
     scenario,
     fake,

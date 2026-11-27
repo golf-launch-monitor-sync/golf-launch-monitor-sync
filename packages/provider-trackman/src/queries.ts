@@ -59,11 +59,12 @@ query Activities($skip: Int, $take: Int, $timeFrom: DateTime) {
 
 // Bay/simulator kinds carry the club data too (club path, face angle ...); range kinds only ball
 // data, with spin named `ballSpin`.
-const BAY_MEASUREMENT = `
-  clubSpeed clubPath faceAngle
-  ballSpeed smashFactor carry total carrySide totalSide
-  launchAngle spinRate spinAxis curve
-`;
+export const BAY_FIELDS = [
+  'clubSpeed', 'clubPath', 'faceAngle',
+  'ballSpeed', 'smashFactor', 'carry', 'total', 'carrySide', 'totalSide',
+  'launchAngle', 'spinRate', 'spinAxis', 'curve',
+] as const;
+const BAY_MEASUREMENT = BAY_FIELDS.join(' ');
 const RANGE_MEASUREMENT = `
   ballSpeed carry total carrySide totalSide
   launchAngle ballSpin spinAxis curve
@@ -83,10 +84,20 @@ export const SESSION_TYPES: ReadonlySet<string> = new Set([
   'VirtualRangeSessionActivity',
 ]);
 
-/** The query for one session of the given type; a type the list didn't name goes by the interface. */
-export function sessionQuery(type?: unknown): string {
-  const on = typeof type === 'string' && SESSION_TYPES.has(type) ? type : 'SessionActivity';
-  const measurement = RANGE_TYPES.has(on) ? RANGE_MEASUREMENT : BAY_MEASUREMENT;
+/** A GraphQL type name as the activity list sends it in `__typename` - nothing else goes into a query. */
+export function isTypeName(type: unknown): type is string {
+  return typeof type === 'string' && /^[A-Z][A-Za-z0-9_]{0,79}$/.test(type);
+}
+
+/**
+ * The query for one session of the given type. A type of SESSION_TYPES goes by its own fragment; any other by the
+ * shared interface - unless `own` (since spec 1.20.0: tests, combines, longest drive ... carry their strokes only on
+ * their own type, and the interface answered them without), then by the activity's own `__typename` with the bay
+ * fields, or `fields` where Trackman refused some of them for that type.
+ */
+export function sessionQuery(type?: unknown, opts: { own?: boolean; fields?: readonly string[] } = {}): string {
+  const on = typeof type === 'string' && SESSION_TYPES.has(type) ? type : opts.own && isTypeName(type) ? type : 'SessionActivity';
+  const measurement = opts.fields ? opts.fields.join(' ') : RANGE_TYPES.has(on) ? RANGE_MEASUREMENT : BAY_MEASUREMENT;
   return `
 query Session($id: ID!) {
   node(id: $id) {

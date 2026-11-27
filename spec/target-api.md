@@ -10,7 +10,7 @@ conventionally ending in `/lm/v1`; the paths are relative to it.
 | Endpoint | What for |
 | --- | --- |
 | `POST /pair` | Exchange a pairing code (ten minutes, once) for an import token. |
-| `GET /plan?provider=&reason=` | **Whether to fetch now**, and what: due or not, since when, what the target has, the lease. |
+| `GET /plan?provider=&reason=&can=` | **Whether to fetch now**, and what: due or not, since when, what the target has, the lease. |
 | `POST /import` | An olmd/1 batch. |
 | `GET /known?provider=&since=` | The external ids the target has, so they aren't fetched twice. |
 | `GET /status` | "Connected with …", for the client to show. |
@@ -52,6 +52,17 @@ lease*). A client never asks for a plan while a sync of its own of that kind run
 
 Independently of any plan, the client's **load guard** ([guard.md](guard.md)) caps what it asks of a
 provider: a faulty or hostile target can't make it hammer anyone.
+
+## What a client can (since 1.20.0)
+
+With every plan a client names, in the query parameter `can`, the parts of a plan it can do beyond
+earlier versions, comma-separated: `older_rounds` (a history chunk lists the older scorecards from
+`rounds_skip`, a few pages, and says in `progress.rounds_end` where the list ended) and
+`sessions_again` (it fetches the known sessions a plan names in `sessions_wanted` once more). A
+target plans those parts only for a client that names them ([planning.md](planning.md), *The whole
+history*), and reads the parameter strictly: only the words of the spec, anything else left out
+([`read_can`](reference/plan.py), vectors in [`testvectors/plan.json`](testvectors/plan.json)). A
+client before 1.20.0 sends none, and its plans stay as they were.
 
 ## The client's sign-in
 
@@ -101,6 +112,8 @@ now, without a switch to another page or app: [page-bridge.md](page-bridge.md).
   test accounts and answers `403 test_data` for any other ([test-mode.md](test-mode.md)).
 - `notice` and `progress` are for the target to show ("sign in to the provider again", "history back
   to March 2025", and since 1.7.0 "about 140 sessions still to come, back to March 2023": [olmd.md](olmd.md#progress)).
+- A session the plan named in `sessions_wanted` (1.20.0) comes as any session of the batch; the target adds
+  its shots to the session it has if that one has none, and counts it neither as new nor as a duplicate.
 
 ## Errors and limits
 

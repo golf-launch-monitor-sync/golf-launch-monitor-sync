@@ -61,7 +61,20 @@ const who = await provider.who(providerContext({ guard, account }), token);
   (the fields) and `round_shots_refused` (Trackman's words, at most 300 characters), so a target can
   see why values are missing.
 - A history chunk reuses the activity list of the chunk before for 12 hours; once the older sessions
-  are in (`max_sessions: 0`) it lists nothing and asks only for the shots of the rounds it is named.
+  are in (`max_sessions: 0`) it lists nothing and asks only for the shots of the rounds it is named -
+  unless the plan names known sessions to fetch again (`sessions_wanted`, below).
+- **The whole history** (spec 1.20.0; the provider says `can: older_rounds, sessions_again`, so a target
+  plans it): a history chunk with `rounds_skip` lists the older scorecards from there, at most two pages
+  of 50, and says in `progress.rounds_end` whether the list ended (or reached `since`). A chunk with
+  `sessions_wanted` fetches those known sessions once more as it finds them in its list, without moving
+  how far back the history is in.
+- **Activity types of their own**: the types of `SESSION_TYPES` go by their own fragment, as since
+  16 Nov 2026. Any other type the list names (`__typename`, only a plain GraphQL name) is asked by its own
+  name first, with a bay session's fields: Trackman's tests, combines and longest drives came without
+  strokes through the shared interface `SessionActivity`. Fields of the measurement Trackman refuses by
+  name are left out once more; a refusal naming none (the type has no strokes: a video, a report) sends
+  the type by the interface from then on. Both are remembered in memory (`typeFields`, `untyped`), so a
+  type costs at most two extra requests in the provider's life.
 
 ## Test mode: playing a scenario back
 

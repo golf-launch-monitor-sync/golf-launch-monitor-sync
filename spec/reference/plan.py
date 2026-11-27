@@ -254,3 +254,70 @@ def leases(events: list[dict[str, Any]]) -> list[dict[str, Any] | None]:
             else:
                 out.append({"busy": True, "holder": who})
     return out
+
+
+# ---------------------------------------------------------------------------
+# The whole history (since 1.20.0): the older scorecards, and sessions asked for again
+# ---------------------------------------------------------------------------
+
+#: What a client can do beyond what earlier versions could, told with every plan (`can`). A target
+#: plans the parts below only for a client that names them: an older one would page the whole list
+#: of scorecards with every history chunk, and never say where it ended.
+CAN = ("older_rounds", "sessions_again")
+
+
+def read_can(values: Any) -> list[str]:
+    """The query parameter `can`, given as the list of its values (each may hold several words,
+    comma-separated): the words this spec knows, once each, in the order of CAN; anything else is
+    left out (a newer client's word means nothing to an older target)."""
+    if not isinstance(values, list):
+        return []
+    words: set[str] = set()
+    for v in values[:10]:
+        if isinstance(v, str) and len(v) <= 200:
+            words.update(w.strip() for w in v.split(","))
+    return [w for w in CAN if w in words]
+
+
+def rounds_skip(known_rounds: int) -> int:
+    """Where a history chunk starts listing the scorecards (`rounds_skip`): the provider lists them
+    newest first, and the target's rounds are as a rule the newest ones - the regular syncs brought
+    them. So it skips about as many as the target has, less a margin for rounds the provider lists a
+    little out of order, and no chunk pages again through what is there."""
+    try:
+        n = int(known_rounds)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, n - RULES["rounds_skip_slack"])
+
+
+def sessions_wanted(sessions: list[dict[str, Any]], asked: dict[str, Any]) -> list[dict[str, Any]]:
+    """The known sessions a history chunk asks for again (`sessions_wanted`): those the target holds
+    without a single shot, of a kind a client may now fetch with its shots (the target's choice:
+    e.g. kinds an earlier client asked for without their own type), newest first, each asked at most
+    `sessions_again_tries` times, at most `sessions_wanted_history` a chunk. `sessions`: `{external_id,
+    started_at, shots}` (shots: how many the target has); `asked`: how often each was asked so far.
+    Out: `{external_id, started_at}` as the plan carries them."""
+    def tries(ext: str) -> int:
+        try:
+            return max(0, int(asked.get(ext) or 0))
+        except (TypeError, ValueError):
+            return RULES["sessions_again_tries"]
+
+    def started(s: dict[str, Any]) -> datetime:
+        return parse(s.get("started_at")) or datetime.min.replace(tzinfo=UTC)
+
+    out: list[dict[str, Any]] = []
+    for s in sorted(sessions, key=started, reverse=True):
+        ext = s.get("external_id")
+        if not isinstance(ext, str) or not ext or s.get("shots"):
+            continue
+        if tries(ext) >= RULES["sessions_again_tries"]:
+            continue
+        item: dict[str, Any] = {"external_id": ext}
+        if (t := parse(s.get("started_at"))) is not None:
+            item["started_at"] = iso(t)
+        out.append(item)
+        if len(out) >= RULES["sessions_wanted_history"]:
+            break
+    return out

@@ -74,6 +74,14 @@ describe('the target API with an import token', () => {
     expect(Object.keys(req?.headers ?? {})).not.toContain('User-Agent');
   });
 
+  it('names what the client can beyond earlier versions (spec 1.20.0), only the spec’s words, in its order', async () => {
+    const { fake, target } = await paired();
+    await target.plan('demo', 'backfill', 'companion', 'ready', ['sessions_again', 'older_rounds']);
+    expect(fake.received.at(-1)?.url).toBe(`${fake.base}/plan?provider=demo&reason=backfill&client=companion&signin=ready&can=older_rounds%2Csessions_again`);
+    await target.plan('demo', 'timer', 'companion', undefined, []);
+    expect(fake.received.at(-1)?.url).toBe(`${fake.base}/plan?provider=demo&reason=timer&client=companion`);
+  });
+
   it('imports, lists what it has, says its status and disconnects itself', async () => {
     const { fake, target } = await paired();
     expect(await target.import(BATCH)).toEqual({ sessions: 1, shots: 1, rounds: 0, round_shots: 0, duplicates: 0 });
@@ -174,10 +182,21 @@ describe('a plan, read from an untrusted target', () => {
     });
     expect(p).toEqual({
       due: false, busy: true, known_ids: ['A', 'x'.repeat(400)], give_up: [], rounds: false, round_shots: false,
-      rounds_wanted: [{ external_id: 'R1', newer: 3 }], pace: 0.5,
+      rounds_wanted: [{ external_id: 'R1', newer: 3 }], sessions_wanted: [], pace: 0.5,
     });
     expect(readPlan({ due: true, disconnected: true }).due).toBe(false);
     expect(readPlan({ due: true, pace: Number.POSITIVE_INFINITY }).pace).toBe(1);
+  });
+
+  it('reads where the older scorecards start and the sessions wanted again (spec 1.20.0), nothing it can’t read', () => {
+    const p = readPlan({
+      due: true, rounds: true, rounds_skip: 2,
+      sessions_wanted: [{ external_id: 'T1', started_at: '2026-02-05T10:00:00Z' }, { external_id: 'C1', started_at: 'soon' }, { external_id: 7 }, 'T2', null],
+    });
+    expect(p.rounds_skip).toBe(2);
+    expect(p.sessions_wanted).toEqual([{ external_id: 'T1', started_at: '2026-02-05T10:00:00Z' }, { external_id: 'C1' }]);
+    for (const junk of [-1, 1.5, '2', null]) expect(readPlan({ due: true, rounds_skip: junk }).rounds_skip).toBeUndefined();
+    expect(readPlan({ due: true, sessions_wanted: 'all' }).sessions_wanted).toEqual([]);
   });
 
   it("names who holds the lease when it is busy (spec 1.13.0), and nothing it can't read", () => {

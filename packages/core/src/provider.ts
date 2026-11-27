@@ -6,7 +6,7 @@
  */
 
 import type { Batch, Reason, Round, Session } from '@glmsync/spec';
-import type { Plan } from './api.ts';
+import type { Can, Plan } from './api.ts';
 import { Cancelled, ProviderBlockedError, ProviderUnavailableError, type Notice } from './errors.ts';
 import type { Guard, Sent } from './guard.ts';
 import { defaultFetch, exchange, TransportError, type FetchLike } from './http.ts';
@@ -34,6 +34,8 @@ export interface Provider<Credential> {
    * makes with it carries `test: true`, so a target keeps the made-up data away from real accounts.
    */
   readonly test?: boolean;
+  /** What its fetch can do beyond earlier versions (spec 1.20.0, `can`): named with every plan, so a target plans it. */
+  readonly can?: readonly Can[];
   /** The provider's stable id of the account a sign-in opens, read without asking anyone; null if none. */
   subject(credential: Credential): string | null;
   /**

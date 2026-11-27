@@ -33,7 +33,7 @@ import {
 import { PLAN_RULES } from '@glmsync/spec';
 import { query } from './client.ts';
 import { GAME_KINDS, toOlmd, type Raw } from './mapping.ts';
-import { ACTIVITIES_QUERY, MEASURED_FIELDS, PROFILE_QUERY, ROUND_SHOTS_QUERY, ROUNDS_QUERY, roundShotsMeasuredQuery, sessionQuery, WHO_QUERY } from './queries.ts';
+import { ACTIVITIES_QUERY, BAY_FIELDS, isTypeName, MEASURED_FIELDS, PROFILE_QUERY, ROUND_SHOTS_QUERY, ROUNDS_QUERY, roundShotsMeasuredQuery, SESSION_TYPES, sessionQuery, WHO_QUERY } from './queries.ts';
 
 const DAY = 86_400_000;
 const PAGE = 100;
@@ -63,6 +63,11 @@ export const MAX_REFUSALS = 4;
 /** How long a history chunk may reuse the activity list of the chunk before: the older history
  * doesn't change, and paging a long list again for every chunk would spend the guard's day on it. */
 const LIST_REUSE_MS = 12 * 3600_000;
+/** Of an activity type asked by its own name (spec 1.20.0): at most this many asks with fewer fields after Trackman
+ * named fields it refused, before the type goes by the interface again. */
+const MAX_TYPE_REFUSALS = 1;
+/** Types remembered as going by the interface (no strokes of their own, or refused): more is a list gone wrong. */
+const MAX_UNTYPED = 50;
 
 export type Activity = { __typename?: unknown; id: unknown; time?: unknown; kind?: unknown; location?: { name?: unknown } | null };
 type Obj = Record<string, unknown>;
@@ -78,10 +83,17 @@ export interface TrackmanState {
   /** What Trackman said when it last refused the question (its own words, at most 300 characters). */
   refusedSaid: string | null;
   list: { since: string; items: Activity[]; at: number } | null;
+  /**
+   * Activity types outside SESSION_TYPES asked by their own name (spec 1.20.0): the measurement's fields each takes,
+   * once known, and those that go by the interface (no strokes of their own, or a refusal that named nothing) - so a
+   * type costs at most two extra requests in the provider's life, never one per session.
+   */
+  typeFields: Record<string, string[]>;
+  untyped: string[];
 }
 
 export function freshState(): TrackmanState {
-  return { shotsOffUntil: 0, measuredOffUntil: 0, refused: [], refusedSaid: null, list: null };
+  return { shotsOffUntil: 0, measuredOffUntil: 0, refused: [], refusedSaid: null, list: null, typeFields: {}, untyped: [] };
 }
 
 /** The earlier of two times, as RFC 3339 (unreadable ones don't count). */
@@ -125,9 +137,11 @@ export async function listActivities(ctx: ProviderContext, token: string, since:
  * and the target asks again later). Trouble with the connection, the sign-in or the guard ends the
  * fetch instead: each session would fail the same way, and each would burn one of its tries.
  */
-async function fetchSession(ctx: ProviderContext, token: string, item: Activity): Promise<{ activity: Activity; node: Obj } | null> {
+async function fetchSession(ctx: ProviderContext, token: string, item: Activity, state: TrackmanState): Promise<{ activity: Activity; node: Obj } | null> {
   type Answer = { node?: unknown };
   let node: unknown;
+  const own = await ownType(ctx, token, item, state);
+  if (own) return own;
   const gql = sessionQuery(item.__typename);
   try {
     try {
@@ -148,6 +162,39 @@ async function fetchSession(ctx: ProviderContext, token: string, item: Activity)
   // (A stroke Trackman couldn't send comes as null in an otherwise good answer.)
   const strokes = n.strokes.filter((s) => !!obj(s)).slice(0, MAX_STROKES_PER_SESSION);
   return { activity: item, node: { strokes } };
+}
+
+/**
+ * A session of a type outside SESSION_TYPES, asked by its own `__typename` (spec 1.20.0): Trackman's tests, combines
+ * and longest drives listed no strokes through the shared interface. Where Trackman refuses fields of the measurement
+ * by name, once more without them; where it refuses the question otherwise (the type has no strokes: a video, a
+ * report), the type goes by the interface from then on, as before. Null: not asked this way (or given up on); the
+ * caller asks by the interface. Trouble with Trackman itself ends the fetch as always.
+ */
+async function ownType(ctx: ProviderContext, token: string, item: Activity, state: TrackmanState): Promise<{ activity: Activity; node: Obj } | null> {
+  const type = item.__typename;
+  if (!isTypeName(type) || SESSION_TYPES.has(type) || type === 'SessionActivity' || state.untyped.includes(type)) return null;
+  let fields: string[] = state.typeFields[type] ?? [...BAY_FIELDS];
+  for (let refusals = 0; ; refusals += 1) {
+    try {
+      const data = await query<{ node?: unknown }>(ctx, 'session', token, sessionQuery(type, { own: true, fields }), { id: item.id }, { partialOk: false });
+      const n = obj(data.node);
+      if (!n || !Array.isArray(n.strokes)) return null; // not its own answer after all: the interface's way decides
+      state.typeFields[type] = fields;
+      return { activity: item, node: { strokes: n.strokes.filter((s) => !!obj(s)).slice(0, MAX_STROKES_PER_SESSION) } };
+    } catch (e) {
+      if (stopsTheFetch(e)) throw e;
+      const said = e instanceof Error ? e.message : String(e);
+      const named = fields.filter((f) => new RegExp(`\\b${f}\\b`).test(said));
+      if (named.length && refusals < MAX_TYPE_REFUSALS && named.length < fields.length) {
+        fields = fields.filter((f) => !named.includes(f));
+        continue;
+      }
+      if (state.untyped.length < MAX_UNTYPED) state.untyped.push(type);
+      delete state.typeFields[type];
+      return null;
+    }
+  }
 }
 
 async function fetchRounds(ctx: ProviderContext, token: string, since: string, known: Set<string>, page: number) {
@@ -181,6 +228,38 @@ async function fetchRounds(ctx: ProviderContext, token: string, since: string, k
     if (list.length < page || reachedStart || more) break;
   }
   return { rounds, more, oldest };
+}
+
+/**
+ * The older scorecards for a history chunk (spec 1.20.0): from `skip` (the target's count of rounds, less a margin -
+ * the regular syncs brought the newest), at most `history_rounds_pages` pages of `history_rounds_page`, the ones the
+ * target lacks. `ended`: the list ended, or reached `since`, within them - the target's older scorecards are through.
+ */
+async function fetchOlderRounds(ctx: ProviderContext, token: string, since: string, known: Set<string>, skip: number) {
+  const rounds: Obj[] = [];
+  let oldest: string | null = null;
+  let ended = false;
+  const from = ms(since);
+  const page = PLAN_RULES.history_rounds_page;
+  for (let i = 0; i < PLAN_RULES.history_rounds_pages && !ended; i += 1) {
+    const data = await query<{ me?: { scorecards?: unknown } }>(ctx, 'rounds', token, ROUNDS_QUERY, { skip: skip + i * page, take: page });
+    const cards = obj(data.me)?.scorecards;
+    if (!Array.isArray(cards)) throw new ProviderError('Trackman sent no scorecards.');
+    for (const c of cards) {
+      const sc = obj(c);
+      const id = sc ? externalId(sc.id) : null;
+      if (!sc || id === null) continue;
+      const played = when(sc.startedAt) ?? when(sc.createdAt);
+      if (played && ms(played) < from) {
+        ended = true;
+        continue;
+      }
+      if (!known.has(id) && rounds.length < MAX_ROUNDS) rounds.push(sc);
+      oldest = earlier(oldest, played);
+    }
+    if (cards.length < page) ended = true;
+  }
+  return { rounds, ended, oldest };
 }
 
 /** A round whose shots are wanted: when it was played, and about where it stands in the list. */
@@ -315,7 +394,13 @@ export async function fetchForPlan(plan: Plan, token: string, ctx: ProviderConte
   const skipIds = new Set(plan.give_up);
   const maxSessions = Math.min(plan.max_sessions ?? PLAN_RULES.sync_max_sessions, 1000);
   const backfill = ctx.reason === 'backfill';
-  const shotsOnly = backfill && maxSessions === 0;
+  // Known sessions the target holds without shots, to fetch once more (spec 1.20.0); only a history chunk asks.
+  const again = new Set(backfill ? plan.sessions_wanted.map((w) => w.external_id) : []);
+  const shotsOnly = backfill && maxSessions === 0 && again.size === 0;
+  // The older scorecards, a few pages from where the target's rounds end (spec 1.20.0). A history chunk's `rounds`
+  // without `rounds_skip` (a target before it, a file) lists from the top as before.
+  const olderRounds = backfill && plan.rounds && plan.rounds_skip !== undefined;
+  let roundsEnd: boolean | null = null;
 
   const raw: Required<Raw> = { sessions: [], scorecards: [], round_shots: [], shots_none: [] };
   const failed: Fetched['failed'] = [];
@@ -349,11 +434,22 @@ export async function fetchForPlan(plan: Plan, token: string, ctx: ProviderConte
     }
 
     let asked = 0;
+    let againLeft = again.size;
     for (const item of activities) {
       const id = externalId(item.id) as string;
       if (typeof item.kind === 'string' && GAME_KINDS.has(item.kind)) {
         oldest = earlier(oldest, item.time);
         continue; // rounds come in as scorecards
+      }
+      if (again.has(id)) {
+        // Known, but without its shots: once more, like a new one. How far back the history is in stays as it was
+        // (this one may lie far below it), and one Trackman can't send now is simply not handed over - the target
+        // counts its tries.
+        again.delete(id);
+        againLeft -= 1;
+        const got = await fetchSession(ctx, token, item, state);
+        if (got) raw.sessions.push(got);
+        continue;
       }
       if (known.has(id)) {
         skippedKnown += 1;
@@ -366,10 +462,11 @@ export async function fetchForPlan(plan: Plan, token: string, ctx: ProviderConte
       }
       if (asked >= maxSessions) {
         more = true; // the rest next time (`oldest`: as far back as this one got)
+        if (againLeft > 0) continue; // sessions asked for again further down still come
         break;
       }
       asked += 1;
-      const got = await fetchSession(ctx, token, item);
+      const got = await fetchSession(ctx, token, item, state);
       oldest = earlier(oldest, item.time);
       if (got) {
         raw.sessions.push(got);
@@ -382,7 +479,11 @@ export async function fetchForPlan(plan: Plan, token: string, ctx: ProviderConte
       }
     }
 
-    if (plan.rounds && !shotsOnly) {
+    if (olderRounds) {
+      const got = await fetchOlderRounds(ctx, token, since, known, plan.rounds_skip ?? 0);
+      raw.scorecards = got.rounds;
+      roundsEnd = got.ended;
+    } else if (plan.rounds && !shotsOnly) {
       const got = await fetchRounds(ctx, token, since, known, days <= 30 ? ROUNDS_PAGE_ROUTINE : ROUNDS_PAGE);
       raw.scorecards = got.rounds;
       more = more || got.more;
@@ -430,6 +531,7 @@ export async function fetchForPlan(plan: Plan, token: string, ctx: ProviderConte
   // A session in `failed` still counts: a later sync asks for it again.
   if (candidates !== null) progress.sessions_left = Math.max(0, candidates - raw.sessions.length);
   if (oldestListed) progress.oldest_listed = oldestListed;
+  if (roundsEnd !== null) progress.rounds_end = roundsEnd;
   return { sessions, rounds, failed, progress, ...(notice ? { notice } : {}) };
 }
 

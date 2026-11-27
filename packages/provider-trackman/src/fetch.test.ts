@@ -424,6 +424,113 @@ describe('the history, a chunk at a time', () => {
   });
 });
 
+describe('the whole history for a new player (spec 1.20.0)', () => {
+  // A teaching pro on the simulator: rounds since Oct 2024, the newest twelve brought by the first syncs (Christian's
+  // account, 27 Nov 2026 - his numbers, made-up data). Trackman lists scorecards newest first.
+  const SINCE = '2011-11-30T00:00:00Z';
+  const cards = (n: number) =>
+    Array.from({ length: n }, (_, i) => card(`SC-${String(n - i).padStart(3, '0')}`, new Date(Date.parse('2026-11-26T18:00:00Z') - i * 4 * 86_400_000).toISOString()));
+
+  it('a history chunk brings the older scorecards from where the target’s end, two pages at most, and says when the list is through', async () => {
+    tm.scorecards = cards(130);
+    const known = tm.scorecards.slice(0, 12).map((c) => String(c.id));
+    const first = await run({ since: SINCE, max_sessions: 0, rounds: true, rounds_skip: 2, known_ids: known }, 'backfill');
+    expect(tm.requests.map((r) => [r.name, r.variables.skip, r.variables.take])).toEqual([['Rounds', 2, 50], ['Rounds', 52, 50]]);
+    expect(first.rounds).toHaveLength(90); // places 2-101, less the ten known among them
+    expect(first.progress?.rounds_end).toBe(false);
+    // The next chunk starts further down: the target has more now.
+    tm.requests.length = 0;
+    const all = [...known, ...first.rounds.map((r) => r.external_id)];
+    const second = await run({ since: SINCE, max_sessions: 0, rounds: true, rounds_skip: all.length - 10, known_ids: all }, 'backfill');
+    expect(tm.requests.map((r) => [r.name, r.variables.skip])).toEqual([['Rounds', 92]]);
+    expect(second.rounds.map((r) => r.external_id)).toEqual(tm.scorecards.slice(102).map((c) => String(c.id)));
+    expect(second.progress?.rounds_end).toBe(true);
+    expect(second.rounds.at(-1)?.played_at).toBe(tm.scorecards.at(-1)?.startedAt);
+  });
+
+  it('stops at `since` as at the end of the list, and passes over the rounds it has', async () => {
+    tm.scorecards = cards(30);
+    const out = await run({ since: '2026-08-01T00:00:00Z', max_sessions: 0, rounds: true, rounds_skip: 0, known_ids: ['SC-030'] }, 'backfill');
+    expect(out.progress?.rounds_end).toBe(true);
+    expect(out.rounds.every((r) => (r.played_at ?? '') >= '2026-08-01')).toBe(true);
+    expect(out.rounds.map((r) => r.external_id)).not.toContain('SC-030');
+    expect(tm.count('Rounds')).toBe(1);
+  });
+
+  it('without `rounds_skip` a history chunk lists the scorecards from the top, as it did (a target before 1.20.0, a file)', async () => {
+    tm.scorecards = cards(60);
+    const out = await run({ since: SINCE, max_sessions: 10, rounds: true }, 'backfill');
+    expect(out.rounds).toHaveLength(60);
+    expect(out.progress?.rounds_end).toBeUndefined();
+    expect(tm.requests.filter((r) => r.name === 'Rounds').map((r) => r.variables.skip)).toEqual([0, 50]);
+  });
+
+  it('a page Trackman refuses ends the chunk without saying the list is through', async () => {
+    tm.scorecards = cards(130);
+    tm.override = (req) => (req.name === 'Rounds' && req.variables.skip === 52 ? respond(503, 'busy') : null);
+    const out = await run({ since: SINCE, max_sessions: 0, rounds: true, rounds_skip: 2 }, 'backfill');
+    expect(out.progress?.rounds_end).toBeUndefined();
+    expect(out.notice).toBeDefined();
+  });
+
+  it('tests and combines come with their shots, asked by their own type; a video’s type goes by the interface after one refusal', async () => {
+    tm.activities = [
+      { __typename: 'TestActivity', ...act('T1', '2026-02-09T10:00:00Z', 'TEST') },
+      { __typename: 'TestActivity', ...act('T2', '2026-02-05T10:00:00Z', 'TEST') },
+      { __typename: 'CombineTestActivity', ...act('C1', '2026-11-11T09:00:00Z', 'COMBINE_TEST') },
+      { __typename: 'VideoActivity', ...act('V1', '2025-02-28T10:00:00Z', 'VIDEO') },
+      { __typename: 'VideoActivity', ...act('V2', '2025-02-27T10:00:00Z', 'VIDEO') },
+    ];
+    tm.types.set('TestActivity', { own: true });
+    // A combine's strokes know no club delivery: Trackman refuses those fields by name, the rest still come.
+    tm.types.set('CombineTestActivity', { own: true, fields: ['ballSpeed', 'carry', 'total', 'carrySide', 'totalSide', 'launchAngle', 'spinRate', 'spinAxis', 'curve'] });
+    tm.types.set('VideoActivity', { noStrokes: true });
+    tm.nodes.set('T1', { __typename: 'TestActivity', strokes: [stroke(120), stroke(121), stroke(119)] });
+    tm.nodes.set('T2', { __typename: 'TestActivity', strokes: [stroke(80), stroke(82)] });
+    tm.nodes.set('C1', { __typename: 'CombineTestActivity', strokes: [stroke(60), stroke(100), stroke(140), stroke(180)] });
+    tm.nodes.set('V1', { __typename: 'VideoActivity' });
+    tm.nodes.set('V2', { __typename: 'VideoActivity' });
+    const out = await run({ since: SINCE });
+    expect(out.sessions.map((s) => [s.external_id, s.kind_raw, s.shots.length])).toEqual([
+      ['T1', 'TEST', 3], ['T2', 'TEST', 2], ['C1', 'COMBINE_TEST', 4], ['V1', 'VIDEO', 0], ['V2', 'VIDEO', 0],
+    ]);
+    expect(out.failed).toEqual([]);
+    // T1, T2 one each; C1 refused once, then without the club's fields; V1 refused, then the interface; V2 the interface.
+    const on = tm.requests.filter((r) => r.name === 'Session').map((r) => /\.\.\. on (\w+)/.exec(r.query)?.[1]);
+    expect(on).toEqual(['TestActivity', 'TestActivity', 'CombineTestActivity', 'CombineTestActivity', 'VideoActivity', 'SessionActivity', 'SessionActivity']);
+    expect(state.untyped).toEqual(['VideoActivity']);
+    expect(state.typeFields.CombineTestActivity).not.toContain('clubPath');
+    // The next sync asks a combine with the fields it takes straight away.
+    tm.requests.length = 0;
+    tm.activities = [{ __typename: 'CombineTestActivity', ...act('C2', '2026-11-20T09:00:00Z', 'COMBINE_TEST') }];
+    tm.nodes.set('C2', { __typename: 'CombineTestActivity', strokes: [stroke(90)] });
+    expect((await run({ since: SINCE })).sessions.map((s) => s.shots.length)).toEqual([1]);
+    expect(tm.count('Session')).toBe(1);
+  });
+
+  it('a type name that is no GraphQL name never goes into a query', async () => {
+    tm.activities = [{ __typename: 'Test } } query X { me', ...act('T1', '2026-02-09T10:00:00Z', 'TEST') }];
+    await run({ since: SINCE });
+    expect(tm.requests.filter((r) => r.name === 'Session').map((r) => /\.\.\. on (\w+)/.exec(r.query)?.[1])).toEqual(['SessionActivity']);
+  });
+
+  it('known sessions without shots come again when a history chunk names them; the rest stays as it was', async () => {
+    tm.activities = [act('N1', '2026-11-20T10:00:00Z'), act('S1', '2026-11-10T10:00:00Z'),
+      { __typename: 'TestActivity', ...act('T1', '2026-02-09T10:00:00Z', 'TEST') }, act('N2', '2025-01-10T10:00:00Z')];
+    tm.types.set('TestActivity', { own: true });
+    tm.nodes.set('T1', { __typename: 'TestActivity', strokes: [stroke(120), stroke(121)] });
+    const plan = { since: SINCE, max_sessions: 0, known_ids: ['S1', 'T1'], sessions_wanted: [{ external_id: 'T1' }, { external_id: 'GONE' }] };
+    const out = await run(plan, 'backfill');
+    expect(out.sessions.map((s) => [s.external_id, s.shots.length])).toEqual([['T1', 2]]);
+    expect(tm.count('Session')).toBe(1); // neither N1 nor N2: the plan allows no new session
+    expect(out.progress?.oldest_seen).not.toBe('2026-02-09T10:00:00.000Z');
+    // A regular sync never asks for them.
+    tm.requests.length = 0;
+    expect((await run({ known_ids: ['S1', 'T1', 'N1', 'N2'], sessions_wanted: [{ external_id: 'T1' }] })).sessions).toEqual([]);
+    expect(tm.count('Session')).toBe(0);
+  });
+});
+
 describe('whose account a sign-in opens', () => {
   const ctx = () => providerContext({ guard, account: ACCOUNT, fetch: tm.fetch, now: clock.now });
 

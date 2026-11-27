@@ -58,7 +58,8 @@
         "oldest_seen": { "$ref": "#/$defs/time" },
         "skipped_known": { "type": "integer", "minimum": 0 },
         "sessions_left": { "type": "integer", "minimum": 0, "description": "Since 1.7.0: sessions the provider listed for this fetch's window that the target neither has nor gave up, and that this batch didn't carry (one in failed counts)." },
-        "oldest_listed": { "$ref": "#/$defs/time", "description": "Since 1.7.0: the oldest activity (session or round) the provider listed for this fetch's window." }
+        "oldest_listed": { "$ref": "#/$defs/time", "description": "Since 1.7.0: the oldest activity (session or round) the provider listed for this fetch's window." },
+        "rounds_end": { "type": "boolean", "description": "Since 1.20.0: in a history chunk that listed the older scorecards (the plan's rounds_skip), whether the provider's list of scorecards ended (or reached since) within the pages it listed." }
       }
     },
     "notice": { "$ref": "#/$defs/notice" },

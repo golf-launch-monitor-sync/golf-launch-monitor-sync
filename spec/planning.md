@@ -83,6 +83,37 @@ A regular sync asks for the shots of new rounds, and of at most 5 known rounds o
 still without theirs (`rounds_wanted`); the history loader works down the older rounds 25 at a
 time, below the oldest round whose shots are in.
 
+## The whole history (since 1.20.0)
+
+A player new to a target should end up with what their provider holds - every scorecard of the
+history, and every session with its shots - not only the 90 days of the first sync. Two parts of the
+history loader do it, planned only for a client that says it can (`can`, [`read_can`](reference/plan.py)
+in [target-api.md](target-api.md#get-plan)): an older client would page the whole list of scorecards
+with every chunk and never say where the list ended.
+
+- **The older scorecards** (`older_rounds`): a history chunk's plan carries `rounds: true` and
+  `rounds_skip`, how many of the newest scorecards to pass over - the target's count of rounds less
+  `rounds_skip_slack` ([`rounds_skip`](reference/plan.py)): the regular syncs brought the newest,
+  so no chunk pages through them again. The client lists at most `history_rounds_pages` pages of
+  `history_rounds_page` from there, hands over the rounds the target lacks, and says in
+  `progress.rounds_end` when the provider's list ended (or reached `since`) within them. The target
+  plans the part until a chunk said so; the next chunk starts further down, since the target now
+  has more. A plan with `rounds: true` and no `rounds_skip` (before 1.20.0, or a file target) means
+  what it always meant: the client pages from the top, up to its usual number of new rounds.
+- **Sessions asked for again** (`sessions_again`): known sessions the target holds without a single
+  shot, of kinds a client may now fetch with their shots (a client before this version asked
+  activity types it didn't know by the shared interface only, and got none for some), at most
+  `sessions_wanted_history` a chunk, each at most `sessions_again_tries` times, newest first
+  ([`sessions_wanted`](reference/plan.py)). The plan names them in `sessions_wanted`; the client
+  fetches each it finds in its activity list, as it would a new one, and hands it over in the batch.
+  The target adds the shots to the session it has, if it still has none, and never asks for a session
+  that came back again - with shots or still without (some kinds have none: a video, a report).
+  Like any session, each costs one request at a person's pace; the guard holds as always.
+
+The history is done when its sessions, the older scorecards (for a client that can) and the sessions
+asked for again are through, and the older rounds' shots as before. A connection whose history was
+done before a client could do these parts opens it again the first time such a client asks.
+
 ## The lease
 
 Five minutes per kind (a regular sync, a history chunk) and player: another client asking for a plan

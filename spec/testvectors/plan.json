@@ -1,10 +1,10 @@
 {
-  "$comment": "The reference planning rules of a target (spec/planning.md; here_due_at and is_due's `here` since 1.12.0, a case without `here` has none; `holder`, and `leases` with clients and holders, since 1.13.0). Times compare as instants within compare.time_tolerance_s; dict results compare without regard to key order.",
-  "spec_version": "1.19.0",
+  "$comment": "The reference planning rules of a target (spec/planning.md; here_due_at and is_due's `here` since 1.12.0, a case without `here` has none; `holder`, and `leases` with clients and holders, since 1.13.0; read_can, rounds_skip and sessions_wanted since 1.20.0). Times compare as instants within compare.time_tolerance_s; dict results compare without regard to key order.",
+  "spec_version": "1.20.0",
   "generated_by": "spec/reference/generate.py",
   "rules": {
     "$comment": "The reference planning rules of a target (spec/planning.md). Informative: a target may plan more gently; the load guard (spec/guard/limits.json) holds regardless.",
-    "version": 1,
+    "version": 2,
     "regular_gap_min": {
       "min": 38,
       "max": 52
@@ -29,6 +29,11 @@
     "rounds_wanted_regular": 5,
     "rounds_wanted_days": 30,
     "rounds_wanted_history": 25,
+    "history_rounds_page": 50,
+    "history_rounds_pages": 2,
+    "rounds_skip_slack": 10,
+    "sessions_wanted_history": 10,
+    "sessions_again_tries": 3,
     "pace_floor": 0.5,
     "away_s": 600,
     "back_gap_s": 120,
@@ -5093,6 +5098,729 @@
         "client": "E"
       },
       "expected": null
+    },
+    {
+      "rule": "read_can",
+      "input": {
+        "values": [
+          "older_rounds,sessions_again"
+        ]
+      },
+      "expected": [
+        "older_rounds",
+        "sessions_again"
+      ]
+    },
+    {
+      "rule": "read_can",
+      "input": {
+        "values": [
+          "sessions_again",
+          "older_rounds"
+        ]
+      },
+      "expected": [
+        "older_rounds",
+        "sessions_again"
+      ]
+    },
+    {
+      "rule": "read_can",
+      "input": {
+        "values": [
+          "older_rounds, later_thing"
+        ]
+      },
+      "expected": [
+        "older_rounds"
+      ]
+    },
+    {
+      "rule": "read_can",
+      "input": {
+        "values": [
+          "later_thing"
+        ]
+      },
+      "expected": []
+    },
+    {
+      "rule": "read_can",
+      "input": {
+        "values": []
+      },
+      "expected": []
+    },
+    {
+      "rule": "read_can",
+      "input": {
+        "values": null
+      },
+      "expected": []
+    },
+    {
+      "rule": "read_can",
+      "input": {
+        "values": "older_rounds"
+      },
+      "expected": []
+    },
+    {
+      "rule": "read_can",
+      "input": {
+        "values": [
+          7,
+          "sessions_again"
+        ]
+      },
+      "expected": [
+        "sessions_again"
+      ]
+    },
+    {
+      "rule": "read_can",
+      "input": {
+        "values": [
+          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        ]
+      },
+      "expected": []
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": 0
+      },
+      "expected": 0
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": 5
+      },
+      "expected": 0
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": 10
+      },
+      "expected": 0
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": 11
+      },
+      "expected": 1
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": 12
+      },
+      "expected": 2
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": 405
+      },
+      "expected": 395
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": -3
+      },
+      "expected": 0
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": "x"
+      },
+      "expected": 0
+    },
+    {
+      "rule": "sessions_wanted",
+      "input": {
+        "sessions": [
+          {
+            "external_id": "T01",
+            "started_at": "2026-02-01T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T02",
+            "started_at": "2026-02-02T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T03",
+            "started_at": "2026-02-03T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T04",
+            "started_at": "2026-02-04T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T05",
+            "started_at": "2026-02-05T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T06",
+            "started_at": "2026-02-06T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T07",
+            "started_at": "2026-02-07T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T08",
+            "started_at": "2026-02-08T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T09",
+            "started_at": "2026-02-09T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T10",
+            "started_at": "2026-02-10T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T11",
+            "started_at": "2026-02-11T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T12",
+            "started_at": "2026-02-12T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T13",
+            "started_at": "2026-02-13T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T14",
+            "started_at": "2026-02-14T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "C1",
+            "started_at": "2026-11-11T09:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "S1",
+            "started_at": "2026-11-22T09:00:00Z",
+            "shots": 23
+          },
+          {
+            "external_id": "V1",
+            "started_at": null,
+            "shots": 0
+          },
+          {
+            "external_id": "",
+            "shots": 0
+          },
+          {
+            "started_at": "2026-11-01T00:00:00Z",
+            "shots": 0
+          }
+        ],
+        "asked": {}
+      },
+      "expected": [
+        {
+          "external_id": "C1",
+          "started_at": "2026-11-11T09:00:00.000Z"
+        },
+        {
+          "external_id": "T14",
+          "started_at": "2026-02-14T10:00:00.000Z"
+        },
+        {
+          "external_id": "T13",
+          "started_at": "2026-02-13T10:00:00.000Z"
+        },
+        {
+          "external_id": "T12",
+          "started_at": "2026-02-12T10:00:00.000Z"
+        },
+        {
+          "external_id": "T11",
+          "started_at": "2026-02-11T10:00:00.000Z"
+        },
+        {
+          "external_id": "T10",
+          "started_at": "2026-02-10T10:00:00.000Z"
+        },
+        {
+          "external_id": "T09",
+          "started_at": "2026-02-09T10:00:00.000Z"
+        },
+        {
+          "external_id": "T08",
+          "started_at": "2026-02-08T10:00:00.000Z"
+        },
+        {
+          "external_id": "T07",
+          "started_at": "2026-02-07T10:00:00.000Z"
+        },
+        {
+          "external_id": "T06",
+          "started_at": "2026-02-06T10:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "rule": "sessions_wanted",
+      "input": {
+        "sessions": [
+          {
+            "external_id": "T01",
+            "started_at": "2026-02-01T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T02",
+            "started_at": "2026-02-02T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T03",
+            "started_at": "2026-02-03T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T04",
+            "started_at": "2026-02-04T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T05",
+            "started_at": "2026-02-05T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T06",
+            "started_at": "2026-02-06T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T07",
+            "started_at": "2026-02-07T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T08",
+            "started_at": "2026-02-08T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T09",
+            "started_at": "2026-02-09T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T10",
+            "started_at": "2026-02-10T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T11",
+            "started_at": "2026-02-11T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T12",
+            "started_at": "2026-02-12T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T13",
+            "started_at": "2026-02-13T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T14",
+            "started_at": "2026-02-14T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "C1",
+            "started_at": "2026-11-11T09:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "S1",
+            "started_at": "2026-11-22T09:00:00Z",
+            "shots": 23
+          },
+          {
+            "external_id": "V1",
+            "started_at": null,
+            "shots": 0
+          },
+          {
+            "external_id": "",
+            "shots": 0
+          },
+          {
+            "started_at": "2026-11-01T00:00:00Z",
+            "shots": 0
+          }
+        ],
+        "asked": {
+          "C1": 1,
+          "T14": 3,
+          "T13": 9
+        }
+      },
+      "expected": [
+        {
+          "external_id": "C1",
+          "started_at": "2026-11-11T09:00:00.000Z"
+        },
+        {
+          "external_id": "T12",
+          "started_at": "2026-02-12T10:00:00.000Z"
+        },
+        {
+          "external_id": "T11",
+          "started_at": "2026-02-11T10:00:00.000Z"
+        },
+        {
+          "external_id": "T10",
+          "started_at": "2026-02-10T10:00:00.000Z"
+        },
+        {
+          "external_id": "T09",
+          "started_at": "2026-02-09T10:00:00.000Z"
+        },
+        {
+          "external_id": "T08",
+          "started_at": "2026-02-08T10:00:00.000Z"
+        },
+        {
+          "external_id": "T07",
+          "started_at": "2026-02-07T10:00:00.000Z"
+        },
+        {
+          "external_id": "T06",
+          "started_at": "2026-02-06T10:00:00.000Z"
+        },
+        {
+          "external_id": "T05",
+          "started_at": "2026-02-05T10:00:00.000Z"
+        },
+        {
+          "external_id": "T04",
+          "started_at": "2026-02-04T10:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "rule": "sessions_wanted",
+      "input": {
+        "sessions": [
+          {
+            "external_id": "T01",
+            "started_at": "2026-02-01T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T02",
+            "started_at": "2026-02-02T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T03",
+            "started_at": "2026-02-03T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T04",
+            "started_at": "2026-02-04T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T05",
+            "started_at": "2026-02-05T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T06",
+            "started_at": "2026-02-06T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T07",
+            "started_at": "2026-02-07T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T08",
+            "started_at": "2026-02-08T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T09",
+            "started_at": "2026-02-09T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T10",
+            "started_at": "2026-02-10T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T11",
+            "started_at": "2026-02-11T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T12",
+            "started_at": "2026-02-12T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T13",
+            "started_at": "2026-02-13T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T14",
+            "started_at": "2026-02-14T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "C1",
+            "started_at": "2026-11-11T09:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "S1",
+            "started_at": "2026-11-22T09:00:00Z",
+            "shots": 23
+          },
+          {
+            "external_id": "V1",
+            "started_at": null,
+            "shots": 0
+          },
+          {
+            "external_id": "",
+            "shots": 0
+          },
+          {
+            "started_at": "2026-11-01T00:00:00Z",
+            "shots": 0
+          }
+        ],
+        "asked": {
+          "C1": "x"
+        }
+      },
+      "expected": [
+        {
+          "external_id": "T14",
+          "started_at": "2026-02-14T10:00:00.000Z"
+        },
+        {
+          "external_id": "T13",
+          "started_at": "2026-02-13T10:00:00.000Z"
+        },
+        {
+          "external_id": "T12",
+          "started_at": "2026-02-12T10:00:00.000Z"
+        },
+        {
+          "external_id": "T11",
+          "started_at": "2026-02-11T10:00:00.000Z"
+        },
+        {
+          "external_id": "T10",
+          "started_at": "2026-02-10T10:00:00.000Z"
+        },
+        {
+          "external_id": "T09",
+          "started_at": "2026-02-09T10:00:00.000Z"
+        },
+        {
+          "external_id": "T08",
+          "started_at": "2026-02-08T10:00:00.000Z"
+        },
+        {
+          "external_id": "T07",
+          "started_at": "2026-02-07T10:00:00.000Z"
+        },
+        {
+          "external_id": "T06",
+          "started_at": "2026-02-06T10:00:00.000Z"
+        },
+        {
+          "external_id": "T05",
+          "started_at": "2026-02-05T10:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "rule": "sessions_wanted",
+      "input": {
+        "sessions": [
+          {
+            "external_id": "T01",
+            "started_at": "2026-02-01T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T02",
+            "started_at": "2026-02-02T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T03",
+            "started_at": "2026-02-03T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T04",
+            "started_at": "2026-02-04T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T05",
+            "started_at": "2026-02-05T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T06",
+            "started_at": "2026-02-06T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T07",
+            "started_at": "2026-02-07T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T08",
+            "started_at": "2026-02-08T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T09",
+            "started_at": "2026-02-09T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T10",
+            "started_at": "2026-02-10T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T11",
+            "started_at": "2026-02-11T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T12",
+            "started_at": "2026-02-12T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T13",
+            "started_at": "2026-02-13T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "T14",
+            "started_at": "2026-02-14T10:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "C1",
+            "started_at": "2026-11-11T09:00:00Z",
+            "shots": 0
+          },
+          {
+            "external_id": "S1",
+            "started_at": "2026-11-22T09:00:00Z",
+            "shots": 23
+          },
+          {
+            "external_id": "V1",
+            "started_at": null,
+            "shots": 0
+          },
+          {
+            "external_id": "",
+            "shots": 0
+          },
+          {
+            "started_at": "2026-11-01T00:00:00Z",
+            "shots": 0
+          }
+        ],
+        "asked": {
+          "T12": -1
+        }
+      },
+      "expected": [
+        {
+          "external_id": "C1",
+          "started_at": "2026-11-11T09:00:00.000Z"
+        },
+        {
+          "external_id": "T14",
+          "started_at": "2026-02-14T10:00:00.000Z"
+        },
+        {
+          "external_id": "T13",
+          "started_at": "2026-02-13T10:00:00.000Z"
+        },
+        {
+          "external_id": "T12",
+          "started_at": "2026-02-12T10:00:00.000Z"
+        },
+        {
+          "external_id": "T11",
+          "started_at": "2026-02-11T10:00:00.000Z"
+        },
+        {
+          "external_id": "T10",
+          "started_at": "2026-02-10T10:00:00.000Z"
+        },
+        {
+          "external_id": "T09",
+          "started_at": "2026-02-09T10:00:00.000Z"
+        },
+        {
+          "external_id": "T08",
+          "started_at": "2026-02-08T10:00:00.000Z"
+        },
+        {
+          "external_id": "T07",
+          "started_at": "2026-02-07T10:00:00.000Z"
+        },
+        {
+          "external_id": "T06",
+          "started_at": "2026-02-06T10:00:00.000Z"
+        }
+      ]
     }
   ]
 }

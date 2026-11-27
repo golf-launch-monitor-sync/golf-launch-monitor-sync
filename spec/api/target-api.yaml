@@ -81,6 +81,11 @@ paths:
           description: Which kind of client asks.
           schema: { $ref: "#/components/schemas/ClientKind" }
         - $ref: "#/components/parameters/SignIn"
+        - name: can
+          in: query
+          required: false
+          description: "Since 1.20.0: what the client can do beyond earlier versions, comma-separated (`older_rounds`, `sessions_again`; target-api.md, *What a client can*). Unknown words are left out."
+          schema: { type: string, maxLength: 200 }
       responses:
         "200":
           description: The plan.
@@ -374,6 +379,13 @@ components:
           type: integer
           minimum: 0
           description: About where it stands in the provider's list (newest first) — the number of known rounds played after it — so the client starts paging there.
+    SessionWanted:
+      type: object
+      additionalProperties: false
+      required: [external_id]
+      properties:
+        external_id: { type: string, minLength: 1, maxLength: 400 }
+        started_at: { $ref: "#/components/schemas/Time" }
     Plan:
       type: object
       additionalProperties: false
@@ -414,6 +426,15 @@ components:
           type: array
           description: Known rounds whose shots the target still lacks.
           items: { $ref: "#/components/schemas/RoundWanted" }
+        rounds_skip:
+          type: integer
+          minimum: 0
+          description: "Since 1.20.0, with `rounds` in a history chunk (to a client that can `older_rounds`): how many of the newest scorecards to pass over; the client lists a few pages from there and says in `progress.rounds_end` whether the list ended (planning.md, *The whole history*)."
+        sessions_wanted:
+          type: array
+          maxItems: 200
+          description: "Since 1.20.0, in a history chunk (to a client that can `sessions_again`): known sessions the target holds without shots, to fetch once more."
+          items: { $ref: "#/components/schemas/SessionWanted" }
         pace:
           type: number
           minimum: 0.5

@@ -87,7 +87,7 @@ export async function sync<C>(opts: SyncOptions<C>): Promise<SyncOutcome> {
   const { target, provider, reason } = opts;
   try {
     // 1. The plan, always first: a request to the target, not to the provider.
-    const plan = await target.plan(provider.id, reason, opts.client, opts.signin);
+    const plan = await target.plan(provider.id, reason, opts.client, opts.signin, provider.can);
     if (plan.disconnected) return { status: 'disconnected' };
     if (plan.busy) return { status: 'busy', plan };
     if (!plan.due) return { status: 'not_due', plan };

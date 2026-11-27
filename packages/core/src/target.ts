@@ -23,12 +23,14 @@ import {
   type WakeRegistration,
 } from '@glmsync/spec';
 import {
+  CAN,
   CLIENT_KINDS,
   PROVIDER_ID,
   readImportResult,
   readPairing,
   readPlan,
   readStatus,
+  type Can,
   type ClientKind,
   type ImportLimits,
   type ImportResult,
@@ -58,9 +60,11 @@ export interface Target {
   readonly takesEarlyParts?: boolean;
   /**
    * Whether to fetch now, and what. Asked before anything is asked of a provider. `signin` (1.5.0): where
-   * the client's provider sign-in stands, for the target app to show; it changes no plan.
+   * the client's provider sign-in stands, for the target app to show; it changes no plan. `can` (1.20.0): the parts of
+   * a plan this client's provider can do beyond earlier versions, so a target plans them (target-api.md, *What a
+   * client can*).
    */
-  plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn): Promise<Plan>;
+  plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn, can?: readonly Can[]): Promise<Plan>;
   /** One batch, within `limits`. */
   import(batch: Batch): Promise<ImportResult>;
 }
@@ -192,9 +196,11 @@ export class HttpTarget implements Target {
     });
   }
 
-  async plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn): Promise<Plan> {
+  async plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn, can?: readonly Can[]): Promise<Plan> {
     const q = new URLSearchParams({ provider, reason, client });
     if (signin) q.set('signin', signin);
+    const words = CAN.filter((w) => can?.includes(w));
+    if (words.length) q.set('can', words.join(','));
     const x = await this.send('GET', `/plan?${q.toString()}`);
     if (x.status !== 200) throw errorOf(x);
     const body = parseJson(x.body);

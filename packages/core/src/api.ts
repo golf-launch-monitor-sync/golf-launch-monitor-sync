@@ -55,11 +55,30 @@ export interface Plan {
   rounds: boolean;
   round_shots: boolean;
   rounds_wanted: RoundWanted[];
+  /**
+   * Since 1.20.0, with `rounds` in a history chunk: how many of the newest scorecards to pass over (planning.md, *The
+   * whole history*). Absent: the scorecards are listed from the top, as before.
+   */
+  rounds_skip?: number;
+  /** Since 1.20.0, in a history chunk: known sessions the target holds without shots, to fetch once more. */
+  sessions_wanted: SessionWanted[];
   /** Multiplies the pauses between provider requests; never below 0.5. */
   pace: number;
   history?: { done?: boolean; from?: string };
   last_import_at?: string;
 }
+
+export interface SessionWanted {
+  external_id: string;
+  started_at?: string;
+}
+
+/**
+ * What a client can do beyond earlier versions, named with every plan (`can`, since 1.20.0; target-api.md, *What a
+ * client can*): a target plans these parts only for a client that says so.
+ */
+export const CAN = ['older_rounds', 'sessions_again'] as const;
+export type Can = (typeof CAN)[number];
 
 export interface ImportResult {
   sessions: number;
@@ -115,7 +134,7 @@ function ids(v: unknown): string[] {
 /** A target's plan, read field by field. Anything unreadable is "not due". */
 export function readPlan(data: unknown): Plan {
   const p = obj(data);
-  const plan: Plan = { due: p?.due === true, known_ids: [], give_up: [], rounds: false, round_shots: false, rounds_wanted: [], pace: 1 };
+  const plan: Plan = { due: p?.due === true, known_ids: [], give_up: [], rounds: false, round_shots: false, rounds_wanted: [], sessions_wanted: [], pace: 1 };
   if (!p) return plan;
   if (p.busy === true) {
     plan.busy = true;
@@ -156,6 +175,19 @@ export function readPlan(data: unknown): Plan {
       const newer = posInt(o.newer, 0);
       if (newer !== null) want.newer = newer;
       plan.rounds_wanted.push(want);
+    }
+  }
+  const skip = posInt(p.rounds_skip, 0);
+  if (skip !== null) plan.rounds_skip = skip;
+  if (Array.isArray(p.sessions_wanted)) {
+    for (const w of p.sessions_wanted.slice(0, MAX_WANTED)) {
+      const o = obj(w);
+      const id = o && typeof o.external_id === 'string' ? externalId(o.external_id) : null;
+      if (!o || !id) continue;
+      const want: SessionWanted = { external_id: id };
+      const started = when(o.started_at);
+      if (started) want.started_at = started;
+      plan.sessions_wanted.push(want);
     }
   }
   if (typeof p.pace === 'number' && Number.isFinite(p.pace)) plan.pace = Math.max(0.5, p.pace);

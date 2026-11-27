@@ -71,6 +71,14 @@ export class FakeTrackman {
   refuseMeasured = false;
   /** Fields of a round shot's measurement this fake doesn't know: a query asking any of them is refused, naming each. */
   refuseFields: string[] = [];
+  /**
+   * How an activity type answers a session's query, by `__typename` (spec 1.20.0): `own` - its strokes come only by
+   * its own fragment, the shared interface `SessionActivity` answers it without them (Trackman's tests and combines,
+   * as far as a client can tell); `noStrokes` - it has none, and a fragment of its own asking for them is refused (a
+   * video); `fields` - the fields its strokes' measurement has, a query asking another is refused naming each.
+   * Unlisted: the interface answers it whole, as every type before.
+   */
+  types = new Map<string, { own?: boolean; noStrokes?: boolean; fields?: string[] }>();
   /** Answer a query with something else (a status, a broken body), once per call. */
   override?: (req: TrackmanRequest) => ResponseLike | Error | null;
   /** How long each answer takes (ms), by the request; none: at once. */
@@ -132,7 +140,24 @@ export class FakeTrackman {
           });
         }
         const node = this.nodes.has(String(v.id)) ? this.nodes.get(String(v.id)) : { __typename: 'SimulatorSessionActivity', strokes: [] };
-        return respond(200, { data: { node } });
+        // As GraphQL does: a fragment gives its fields only to its own type, or to the interface's for a type that
+        // implements it; another type's fragment gives nothing but `__typename`.
+        const on = /\.\.\. on (\w+)/.exec(body.query ?? '')?.[1] ?? '';
+        const type = isObj(node) && typeof node.__typename === 'string' ? node.__typename : on;
+        const t = this.types.get(type) ?? {};
+        if (on === type) {
+          if (t.noStrokes && /\bstrokes\b/.test(body.query ?? '')) {
+            return respond(200, { errors: [{ message: `The field \`strokes\` does not exist on the type \`${type}\`.` }] });
+          }
+          if (t.fields) {
+            const asked = (/measurement \{([^}]*)\}/.exec(body.query ?? '')?.[1] ?? '').split(/\s+/).filter(Boolean);
+            const unknown = asked.filter((f) => !t.fields?.includes(f));
+            if (unknown.length) return respond(200, { errors: unknown.map((f) => ({ message: `The field \`${f}\` does not exist on the type \`StrokeMeasurement\`.` })) });
+          }
+          return respond(200, { data: { node } });
+        }
+        if (on === 'SessionActivity' && !t.own && !t.noStrokes) return respond(200, { data: { node } });
+        return respond(200, { data: { node: { __typename: type } } });
       }
       case 'Rounds':
         return respond(200, { data: { me: { scorecards: this.scorecards.slice(skip, skip + take) } } });

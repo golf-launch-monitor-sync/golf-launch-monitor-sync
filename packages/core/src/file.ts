@@ -160,7 +160,7 @@ export class FileTarget implements Target {
 
   async plan(_provider: string, reason: Reason, _client: ClientKind): Promise<Plan> {
     const now = this.now();
-    const plan: Plan = { due: false, known_ids: [], give_up: [], rounds: false, round_shots: false, rounds_wanted: [], pace: 1 };
+    const plan: Plan = { due: false, known_ids: [], give_up: [], rounds: false, round_shots: false, rounds_wanted: [], sessions_wanted: [], pace: 1 };
     const h = this.cursor.data.history;
     if (reason === 'backfill') {
       if (h.done) return { ...plan, history: { done: true } };

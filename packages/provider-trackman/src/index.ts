@@ -49,6 +49,8 @@ export function trackman(): TrackmanProvider {
     id: 'trackman',
     name: 'Trackman',
     notice: UNOFFICIAL,
+    // The whole history (spec 1.20.0): the older scorecards a few pages at a time, and known sessions once more.
+    can: ['older_rounds', 'sessions_again'],
     subject: (token) => subjectOf(token),
     fetch: (plan, token, ctx) => fetchForPlan(plan, token, ctx, state),
     who,
