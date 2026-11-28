@@ -1,6 +1,6 @@
 {
   "$comment": "The answer of GET /test-scenario as a client reads it (spec/test-mode.md; 1.8.0): input {answer, now} -> {ok: true, scenario: {name, provider, subject, profile, data, latency: {default?, queries}, valid_until, signin_valid_s? (1.28.0)}} or {ok: false, error}. signin_until (1.28.0): input {scenario, now_ms} -> when a test sign-in handed over then runs out (RFC 3339 in UTC with milliseconds, as JavaScript's toISOString writes it), or null. All of it synthetic.",
-  "spec_version": "1.29.0",
+  "spec_version": "1.29.1",
   "generated_by": "spec/reference/generate.py",
   "signin_until": [
     {

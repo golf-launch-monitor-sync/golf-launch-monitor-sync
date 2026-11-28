@@ -19,6 +19,7 @@ import { SPEC_DIR, readVectors, type VectorFile } from './vectors.ts';
 
 type Case = { name: string; input: { answer: unknown; now: string }; expected: unknown };
 const file = readVectors<Case>('test-scenario.json') as VectorFile<Case> & {
+  limits: { min_signin_s: number; max_signin_s: number };
   signin_until: { name: string; input: { scenario: { valid_until: string; signin_valid_s?: number }; now_ms: number }; expected: string | null }[];
 };
 
@@ -94,6 +95,25 @@ describe('the endpoint in the target API', () => {
     expect(s.properties.subject.pattern).toBe('^[\\x21-\\x7e]{1,200}$');
     expect(s.properties.latency.properties.queries.maxProperties).toBe(TEST_SCENARIO_MAX_QUERIES);
     expect(api.components.schemas.Latency.properties.median_s.maximum).toBe(TEST_SCENARIO_MAX_LATENCY_S);
+  });
+
+  // 1.29.1: `signin_valid_s` came with 1.28.0 to test-mode.md and the reference but not here. The vectors are what the
+  // reference reads, so every field a scenario it took can have is one the schema names, and no other.
+  it('names every field the reference reads, and no other', () => {
+    const read = new Set<string>();
+    for (const c of file.cases) {
+      const r = c.expected as { ok: boolean; scenario?: Record<string, unknown> };
+      if (r.ok) for (const k of Object.keys(r.scenario ?? {})) read.add(k);
+    }
+    expect(read).toContain('signin_valid_s');
+    expect(Object.keys(api.components.schemas.TestScenario.properties).sort()).toEqual([...read].sort());
+  });
+
+  it('bounds signin_valid_s as the reference does', () => {
+    const p = api.components.schemas.TestScenario.properties.signin_valid_s;
+    expect(p).toMatchObject({ type: 'integer', minimum: file.limits.min_signin_s, maximum: file.limits.max_signin_s });
+    expect([file.limits.min_signin_s, file.limits.max_signin_s]).toEqual([TEST_SIGNIN_MIN_S, TEST_SIGNIN_MAX_S]);
+    expect(api.components.schemas.TestScenario.required).not.toContain('signin_valid_s');
   });
 
   it('refuses a test batch for a real account at the import', () => {

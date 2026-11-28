@@ -574,6 +574,15 @@ components:
         valid_until:
           allOf: [{ $ref: "#/components/schemas/Time" }]
           description: When the test is over; the client drops the scenario then (and at its sign-out).
+        signin_valid_s:
+          type: integer
+          minimum: 60
+          maximum: 31622400
+          description: |
+            Since 1.28.0 (in this file since 1.29.1): how long a test sign-in handed to a target app lasts
+            (spec/test-mode.md, *Only signing in for a target*), whole seconds 60–31,622,400 (366 days). Anything
+            else is dropped: the sign-in then lasts to `valid_until`. The one handed over runs out this long after
+            it is handed over, never past `valid_until` (spec/reference/testmode.py, `signin_until`).
     WakeRegistration:
       type: object
       required: [service, address]

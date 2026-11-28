@@ -1,6 +1,6 @@
 {
   "$comment": "A golf.de tournament page as a client sees it -> dgvevent/1's event (spec/reference/event.py). input: {address, heading, lines: [[label, value], ...]} (the lines under Turnierinformationen in the page's order); expected: {event} or {refused: not_a_tournament | changed_page}. Compare as JSON values.",
-  "spec_version": "1.29.0",
+  "spec_version": "1.29.1",
   "generated_by": "spec/reference/generate.py",
   "labels": {
     "turnierdatum": "date",

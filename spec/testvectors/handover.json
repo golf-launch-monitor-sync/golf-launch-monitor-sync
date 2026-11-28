@@ -1,6 +1,6 @@
 {
   "$comment": "Signing in for a target: the sealed handover (spec/deep-links.md, *Signing in for a target*; 1.27.0; reference/handover.py). Keys, nonces, `from` and `box` are base64url without padding (keys 32 bytes, nonces 24). public_key (a secret key) -> its public key or null. seal ({message, key, nonce, secret}: the client's secret key for this answer) -> {from, box} (NaCl box of the message as compact JSON with the keys v, provider, token, account_ref, expires_at?, user_agent, test? (1.28.0, only when true) in this order) or null; compare exactly. open ({box, from, nonce, secret}: the target's secret key) -> the message read strictly {provider, token, account_ref, expires_at?, user_agent, test?} or null. with_answer ({url, answer}) -> the way back with the answer in its fragment, or null. read_answer (the address the target was opened at) -> {signin, from?, box?} or null.",
-  "spec_version": "1.29.0",
+  "spec_version": "1.29.1",
   "generated_by": "spec/reference/generate.py",
   "keys": {
     "target_secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY",
