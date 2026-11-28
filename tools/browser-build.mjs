@@ -39,10 +39,10 @@ export function standaloneCheck() {
 export const TARGETS = ['chrome120', 'edge120', 'firefox140', 'safari16'];
 
 /**
- * One bundle per entry point. `entries`: { outName: absolute source path }.
+ * One bundle per entry point. `entries`: { outName: absolute source path }; `plugins`: esbuild's, after the check's.
  * Returns the written files' paths.
  */
-export async function bundle({ entries, outdir, define = {}, format = 'iife' }) {
+export async function bundle({ entries, outdir, define = {}, format = 'iife', plugins = [] }) {
   const result = await build({
     entryPoints: entries,
     outdir,
@@ -56,7 +56,7 @@ export async function bundle({ entries, outdir, define = {}, format = 'iife' }) 
     banner: { js: '// SPDX-License-Identifier: MIT\n// Copyright (c) 2026 Reginald Stadlbauer\n// Golf Stats Sync (Golf Launch Monitor Sync) - built from https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync' },
     charset: 'utf8',
     define,
-    plugins: [standaloneCheck()],
+    plugins: [standaloneCheck(), ...plugins],
     metafile: true,
     logLevel: 'warning',
     absWorkingDir: ROOT,

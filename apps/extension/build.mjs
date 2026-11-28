@@ -8,7 +8,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bundle, EVAL, ROOT } from '../../tools/browser-build.mjs';
@@ -26,6 +26,24 @@ const DIST = join(HERE, 'dist');
  */
 export const E2E_HOSTS = ['https://app.example.org/*', 'https://performance.foresightsports.com/*'];
 
+/**
+ * Modules with a version of their own for one browser: `./x.ts` imported from src/ becomes `./x.firefox.ts` in Firefox's
+ * build where that file exists. For an API Firefox lacks: Mozilla's linter (release.yml, warnings as errors) refuses its
+ * very name in a bundle, a check at run time is not enough.
+ */
+export function perBrowser(browser) {
+  return {
+    name: 'glmsync-per-browser',
+    setup(b) {
+      b.onResolve({ filter: /^\.\/[\w-]+\.ts$/ }, (args) => {
+        if (browser === 'chrome' || args.resolveDir !== join(HERE, 'src')) return undefined;
+        const own = join(args.resolveDir, args.path.replace(/\.ts$/, `.${browser}.ts`));
+        return existsSync(own) ? { path: own } : undefined;
+      });
+    },
+  };
+}
+
 const ENTRIES = ['background', 'portal-main', 'portal-relay', 'pair-content', 'bridge-content', 'golfde-main', 'golfde-relay', 'golfde-event', 'rankings-content', 'tours-content', 'europeantour-content', 'season-content', 'ocs-content', 'alps-content', 'popup', 'connect', 'shape-main', 'shape-relay', 'shape-page'];
 
 export async function buildFor(browser, { e2e = false } = {}) {
@@ -36,6 +54,7 @@ export async function buildFor(browser, { e2e = false } = {}) {
     entries: Object.fromEntries(ENTRIES.map((e) => [e, join(HERE, 'src', `${e}.ts`)])),
     outdir: out,
     define: { __VERSION__: JSON.stringify(version), __BROWSER__: JSON.stringify(browser) },
+    plugins: [perBrowser(browser)],
   });
   for (const f of files) {
     if (EVAL.test(readFileSync(f, 'utf8'))) throw new Error(`${f} evaluates code: a store refuses that, and Manifest V3 forbids it`);

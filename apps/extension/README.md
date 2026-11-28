@@ -376,8 +376,9 @@ Nobody has to tell a player there is a new version:
 - **Loaded by hand**: nothing updates. That is why the stores.
 - **An app needs a newer version** (its plan says `outdated`, spec 1.22.0; since 0.29.0): the connection's row says
   *Update needed*, the icon shows ↑, and its details say *<app> needs a newer version of this extension.* with
-  **Update now** (`src/update.ts`): the browser is asked for the update (`runtime.requestUpdateCheck`, which Chrome's
-  documentation names for this case) and one it has applies at once (`runtime.reload`); otherwise the extension's page
+  **Update now** (`src/update.ts`): Chrome and Edge are asked for the update (`runtime.requestUpdateCheck`, which Chrome's
+  documentation names for this case) and one they have applies at once (`runtime.reload`); Firefox hasn't implemented
+  that call, and its build leaves it out (`src/update-check.firefox.ts`, below); otherwise the extension's page
   in the store it came from opens (from `management.getSelf`: the Chrome Web Store or Edge Add-ons by its id, Firefox's
   signed add-on on the project's site), and for one loaded by hand the releases. The web app's same card loads the page
   anew.
@@ -407,7 +408,9 @@ pnpm e2e                                    # click checks (from the repository 
   Raising the version stays the deliberate step: when what goes into the extension changed since the last
   release without a new version, CI's run says so (a notice, no failure). A tag `extension-v<version>`, or
   *Actions › Release extension* on `main`, still works by hand. `release.yml`
-  tests (unless CI just did), lints the Firefox build with Mozilla's `web-ext lint` (`--self-hosted`: it names its own `update_url`) and
+  tests (unless CI just did), lints the Firefox build with Mozilla's `web-ext lint` (`--self-hosted`: it names its own `update_url`;
+  warnings fail it, so an API Firefox lacks may not even be named in its bundles: a module `src/x.ts` with a
+  `src/x.firefox.ts` beside it takes that one in Firefox's build, `build.mjs` › `perBrowser`, `src/build.test.ts`) and
   attaches both zips to a GitHub release. Submitting to the Chrome Web Store, Edge Add-ons and Mozilla is done
   by hand (below); no store credentials live in this repository.
 

@@ -46,6 +46,7 @@ import { ExtensionStorage } from './storage.ts';
 import { nearOf, openTab, showTab, type Near, type TabsApi } from './tabs.ts';
 import { ShapeKeeper } from './shape-keeper.ts';
 import { updateExtension } from './update.ts';
+import { requestUpdateCheck } from './update-check.ts';
 
 declare const __VERSION__: string;
 declare const __BROWSER__: 'chrome' | 'firefox';
@@ -932,7 +933,7 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
         ok: true,
         update: await updateExtension({
           browser: __BROWSER__,
-          ...(typeof chrome.runtime.requestUpdateCheck === 'function' ? { requestUpdateCheck: () => chrome.runtime.requestUpdateCheck() } : {}),
+          ...requestUpdateCheck(),
           // A moment later, so this answer reaches the page before the extension restarts with the update.
           reload: () => void setTimeout(() => chrome.runtime.reload(), 300),
           self: () => chrome.management.getSelf(),
