@@ -374,6 +374,13 @@ Nobody has to tell a player there is a new version:
   from the newest release that carries a signed `.xpi`; `pages.yml` runs it with every publish of the site and again
   when such a release is edited (the `.xpi` attached). Firefox looks about once a day.
 - **Loaded by hand**: nothing updates. That is why the stores.
+- **An app needs a newer version** (its plan says `outdated`, spec 1.22.0; since 0.29.0): the connection's row says
+  *Update needed*, the icon shows ↑, and its details say *<app> needs a newer version of this extension.* with
+  **Update now** (`src/update.ts`): the browser is asked for the update (`runtime.requestUpdateCheck`, which Chrome's
+  documentation names for this case) and one it has applies at once (`runtime.reload`); otherwise the extension's page
+  in the store it came from opens (from `management.getSelf`: the Chrome Web Store or Edge Add-ons by its id, Firefox's
+  signed add-on on the project's site), and for one loaded by hand the releases. The web app's same card loads the page
+  anew.
 
 ## Build, test, release
 

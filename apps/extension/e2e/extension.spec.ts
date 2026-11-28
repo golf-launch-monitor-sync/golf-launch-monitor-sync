@@ -179,6 +179,33 @@ test('says when the sign-in ran out, and when the app ended the connection', asy
   await expect(pop.getByTestId('no-pairings')).toBeVisible();
 });
 
+// SR-8b: the app needs a newer version of the extension - before, the popup said "up to date" and nothing else.
+test('an app that needs a newer version: the row, the icon, and one sentence with *Update now*', async ({ context, world, extensionId, background }) => {
+  const pairPage = await context.newPage();
+  const windowOpens = connectWindow(context, extensionId);
+  await pairPage.goto(pairUrl());
+  const connect = await windowOpens;
+  await chooseService(connect);
+  world.portal.token = world.key();
+  await (await context.newPage()).goto(PORTAL);
+  await connect.getByTestId('confirm-yes').click();
+  await expect(connect.getByTestId('last')).toContainText('2 new sessions', { timeout: 60_000 });
+  await connect.close();
+
+  const plan = world.target.opts as { plan?: () => Record<string, unknown> };
+  plan.plan = () => ({ due: false, outdated: true });
+  const asked = world.tm.count();
+  const pop = await popup(context, extensionId, 'lm');
+  await pop.getByTestId('fetch-now').click();
+  await expect(pop.getByTestId('update')).toContainText('Example App needs a newer version of this extension.', { timeout: 30_000 });
+  await expect(pop.getByTestId('update-now')).toHaveText('Update now');
+  await expect(pop.getByTestId('last')).toContainText('Example App needs a newer version.');
+  expect(world.tm.count()).toBe(asked);
+  await expect.poll(() => badgeText(background)).toBe('↑');
+  const list = await popup(context, extensionId);
+  await expect(list.getByTestId('connection-state')).toHaveText('Update needed');
+});
+
 test('the player can say no in the connect window, and disconnect in the popup', async ({ context, world, extensionId }) => {
   const pairPage = await context.newPage();
   const windowOpens = connectWindow(context, extensionId);

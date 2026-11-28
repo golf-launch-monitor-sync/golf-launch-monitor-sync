@@ -45,6 +45,7 @@ import { accept, sourceOf } from './senders.ts';
 import { ExtensionStorage } from './storage.ts';
 import { nearOf, openTab, showTab, type Near, type TabsApi } from './tabs.ts';
 import { ShapeKeeper } from './shape-keeper.ts';
+import { updateExtension } from './update.ts';
 
 declare const __VERSION__: string;
 declare const __BROWSER__: 'chrome' | 'firefox';
@@ -190,6 +191,8 @@ async function refreshIcon(): Promise<void> {
       ? tr('wizard.title.account', { service: 'golf.de' })
       : proAsking
         ? tr('proLine.ask', { targets: proAsking.targets.join(', ') })
+      : s.attention === 'update'
+        ? tr('update.button')
       : s.attention === 'sign_in'
         ? s.key.state === 'expired'
           ? tr('key.expired')
@@ -923,6 +926,21 @@ async function handle(m: Message, near: Near | null, from: { url?: string | unde
       return shapes.stop();
     case 'shape-discard':
       return shapes.discard();
+    case 'update':
+      // SR-8b: an app said it needs a newer version of this extension - the browser's update at once, else its store page.
+      return {
+        ok: true,
+        update: await updateExtension({
+          browser: __BROWSER__,
+          ...(typeof chrome.runtime.requestUpdateCheck === 'function' ? { requestUpdateCheck: () => chrome.runtime.requestUpdateCheck() } : {}),
+          // A moment later, so this answer reaches the page before the extension restarts with the update.
+          reload: () => void setTimeout(() => chrome.runtime.reload(), 300),
+          self: () => chrome.management.getSelf(),
+          open: async (url) => {
+            await openTab(tabsApi, url, near);
+          },
+        }),
+      };
     case 'switch-account':
       // Someone else's account is signed in to the portal here: Trackman's own sign-out, as a page the player
       // sees; then the portal, to sign in with their own (the extension picks the new key up from there).

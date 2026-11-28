@@ -87,6 +87,7 @@ const FROM: Record<Message['type'], Source | readonly Source[]> = {
   'forget-key': 'extension',
   'open-portal': 'extension',
   'switch-account': 'extension',
+  update: 'extension',
   bridge: 'target-page',
   pending: 'extension',
   'pair-confirm': 'extension',

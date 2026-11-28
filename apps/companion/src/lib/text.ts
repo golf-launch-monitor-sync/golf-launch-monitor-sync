@@ -84,6 +84,7 @@ function realText(run: LastRun, now: number, lang: Lang, t: T): string {
     return line;
   }
   if (run.status === 'not_due') return t('run.notDue', { at });
+  if (run.status === 'outdated') return t('run.outdated', { at });
   if (run.status === 'busy') return busyText(at, run.holder, lang, t);
   if (run.status === 'signed_out') return t('run.signedOut', { at });
   if (run.status === 'other_account') return t('run.otherAccount', { at });

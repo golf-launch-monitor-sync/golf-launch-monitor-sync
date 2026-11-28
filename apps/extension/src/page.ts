@@ -41,6 +41,7 @@ export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; on
   let confirmed = false;
   let askingEnd: string | null = null;
   let testConfirming = false;
+  let updating: 'checking' | 'failed' | null = null;
   let last: ClientStatus | null = null;
   // *Enter a test code* (test mode): drawn apart, so typing survives the panel's redraws; the panel puts it under the
   // sign-in.
@@ -55,7 +56,7 @@ export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; on
     last = s;
     // "Connected, the data is on its way" while the first sync after the yes runs.
     if (confirmed && s.key.state === 'ready' && !s.running.length && s.pairings.some((p) => p.last)) confirmed = false;
-    renderStatus(root, s, { t, lang, now: Date.now(), busy, client: 'extension', asking, confirming, confirmed, askingEnd, testConfirming, memory, testSlot: entryRoot }, actions);
+    renderStatus(root, s, { t, lang, now: Date.now(), busy, client: 'extension', asking, confirming, confirmed, askingEnd, testConfirming, memory, testSlot: entryRoot, updating }, actions);
     entry.update(s);
     opts.onStatus?.(s);
   };
@@ -125,6 +126,16 @@ export function statusPanel(root: HTMLElement, opts: { onPortal?: () => void; on
       void send({ type: 'test-end', id }).then(refresh);
     },
     ...(opts.back ? { back: opts.back } : {}),
+    update: () => {
+      updating = 'checking';
+      if (last) draw(last);
+      void send({ type: 'update' }).then((r) => {
+        // Reloading ends this page with the extension; a store page opened beside it is where the player goes on.
+        updating = r.ok && r.update !== 'failed' ? null : 'failed';
+        if (r.ok && r.update === 'page') opts.onPortal?.();
+        if (last) draw(last);
+      });
+    },
   };
   void refresh();
   const timer = setInterval(() => void refresh(), 3000);

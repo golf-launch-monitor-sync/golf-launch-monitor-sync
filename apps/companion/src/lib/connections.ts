@@ -11,6 +11,7 @@ import { connectionOfHcp, connectionOfPro, connectionState, sortConnections, typ
 import type { HcpView } from '@glmsync/browser/hcp';
 import type { ProView } from '@glmsync/browser/pro';
 import type { LastRun } from '@glmsync/engine';
+import { isOutdated } from './outdated.ts';
 
 export interface AppFacts {
   providers: readonly { id: string; name: string }[];
@@ -24,6 +25,8 @@ export interface AppFacts {
   hcp: Pick<HcpView, 'pairings' | 'account' | 'sending' | 'signed_out'> | null;
   /** A pro's world ranking pages, with the service's name as the player reads it ("World ranking"). */
   pro?: { view: Pick<ProView, 'pairings' | 'question'> | null; service: string };
+  /** This app's version: a target's "too old" holds only while it runs (SR-8b). */
+  version?: string;
 }
 
 export function connectionsOfApp(f: AppFacts): Connection[] {
@@ -49,6 +52,7 @@ export function connectionsOfApp(f: AppFacts): Connection[] {
         failed: runs.some((r) => r?.status === 'failed'),
         // Only gaps (spec 1.21.0): nothing older comes, so it runs.
         history: runs.some((r) => r?.older !== false && (!!r?.more || (typeof r?.left === 'number' && r.left > 0))),
+        outdated: runs.some((r) => isOutdated(r, f.version ?? '')),
       }),
     });
   }

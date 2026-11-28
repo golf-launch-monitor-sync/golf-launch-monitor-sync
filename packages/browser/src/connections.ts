@@ -3,21 +3,24 @@
 /**
  * The main view of every client: *Connect new* and the list of connections, one per service and account, each with
  * where it stands - set up halfway, running, fetching the older history, run out (sign in again), another account
- * signed in, the last fetch failed, or test mode. A row opens its details (the overview as before).
+ * signed in, the last fetch failed, test mode, or the app needs a newer version of this client (SR-8b). A row opens its details (the overview as before).
  *
  * Pure, so it is tested without a browser: each client turns its own state into `ConnectionFacts` (the browser
  * clients through `connectionsOfStatus`, `connectionOfHcp` and `connectionOfPro`, the companion app its own), `connectionState` decides,
  * `connectionLine` says it.
  */
 
-import type { ClientStatus } from './client.ts';
+import { lastOutdated, type ClientStatus } from './client.ts';
 import type { HcpView } from './hcp.ts';
 import type { ProView } from './pro.ts';
 import type { T } from './i18n.ts';
 import { factsOfAccount, factsOfHcp, wizardOf, type ServiceKind } from './wizard.ts';
 
-/** `ended`: the app ended the pairing (its token refused, or disconnected there); only that app can pair again. */
-export type ConnectionState = 'setup' | 'running' | 'history' | 'expired' | 'other' | 'failed' | 'test' | 'ended';
+/**
+ * `ended`: the app ended the pairing (its token refused, or disconnected there); only that app can pair again.
+ * `outdated`: the app's plan said it needs a newer version of this client (spec 1.22.0) - an update is the one step.
+ */
+export type ConnectionState = 'setup' | 'running' | 'history' | 'expired' | 'other' | 'failed' | 'test' | 'ended' | 'outdated';
 
 export interface ConnectionFacts {
   /** Its steps aren't through yet (the wizard stands before "done"). */
@@ -30,11 +33,17 @@ export interface ConnectionFacts {
   failed: boolean;
   /** Its older history is still coming. */
   history: boolean;
+  /** An app said it needs a newer version of this client, and that version still runs. */
+  outdated?: boolean;
 }
 
-/** What needs the player first wins: a test says so before anything; then what they must do; then what runs. */
+/**
+ * What needs the player first wins: a test says so before anything; then what they must do - an update first, as
+ * nothing else (signing in, the steps) helps before it -; then what runs.
+ */
 export function connectionState(f: ConnectionFacts): ConnectionState {
   if (f.test) return 'test';
+  if (f.outdated) return 'outdated';
   if (f.setup) return 'setup';
   if (f.signIn === 'expired') return 'expired';
   if (f.signIn === 'other') return 'other';
@@ -61,7 +70,7 @@ type Pairing = ClientStatus['pairings'][number];
  * A launch monitor client's connections: one for the account signed in (its real pairings), and one per pairing in
  * test mode (each its own made-up account).
  */
-export function connectionsOfStatus(s: Pick<ClientStatus, 'key' | 'pairings' | 'running' | 'provider'> & { player?: string | null }, busy: ReadonlySet<string> = new Set()): Connection[] {
+export function connectionsOfStatus(s: Pick<ClientStatus, 'key' | 'pairings' | 'running' | 'provider'> & { player?: string | null; version?: string }, busy: ReadonlySet<string> = new Set()): Connection[] {
   const out: Connection[] = [];
   const real = s.pairings.filter((p) => !p.test);
   if (real.length) {
@@ -80,6 +89,7 @@ export function connectionsOfStatus(s: Pick<ClientStatus, 'key' | 'pairings' | '
         failed: real.some((p) => p.last?.status === 'failed'),
         // Only gaps (spec 1.21.0): nothing older comes, so it runs.
         history: real.some((p) => p.history?.done === false && p.history.older !== false),
+        outdated: real.some((p) => lastOutdated(p.last, s.version)),
       }),
     });
   }
@@ -147,7 +157,7 @@ export interface ConnectionLine {
   tone: ConnectionTone;
 }
 
-const TONE: Record<ConnectionState, ConnectionTone> = { setup: 'warn', running: 'ok', history: 'busy', expired: 'warn', other: 'warn', failed: 'warn', test: 'test', ended: 'warn' };
+const TONE: Record<ConnectionState, ConnectionTone> = { setup: 'warn', running: 'ok', history: 'busy', expired: 'warn', other: 'warn', failed: 'warn', test: 'test', ended: 'warn', outdated: 'warn' };
 
 export function connectionLine(c: Connection, t: T): ConnectionLine {
   return {

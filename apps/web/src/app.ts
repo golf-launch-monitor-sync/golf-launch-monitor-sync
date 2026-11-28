@@ -286,6 +286,8 @@ const actions: Actions = {
     // Ending can't fail for the tester: what couldn't be removed is never read again without its listing.
     void client.endTest(id).catch(() => undefined).then(refresh).then(planHistory);
   },
+  // SR-8b: the page is the web app - loaded anew, it is the newest the site serves.
+  update: () => window.location.reload(),
 };
 
 void refresh().then(planHistory);

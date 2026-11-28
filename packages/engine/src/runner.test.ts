@@ -479,3 +479,50 @@ describe('a connection that only signs in (spec 1.27.0)', () => {
     expect(s.services.pairings.list()[0]?.account_ref).toBe('c3ludGhldGljLWFjY291bnQtcmVm');
   });
 });
+
+// SR-8b: a target that needs a newer client (spec 1.22.0, the plan's `outdated`) used to look like "not due" - the
+// player never heard that an update was all it took.
+describe('a target that needs a newer version', () => {
+  it('is a state of its own, with the version it was said to, and nothing asked of Trackman', async () => {
+    const s = setup({ plan: (ask) => (ask.version === '0.1.0-test' ? { due: true, outdated: true } : { due: true, known_ids: [] }) });
+    const p = await paired(s);
+    await s.services.signIns.set('trackman', s.token);
+    const [r] = await s.services.runner.syncAll('timer');
+    expect(r?.run.status).toBe('outdated');
+    expect(r?.run.version).toBe('0.1.0-test');
+    expect(s.tm.requests).toHaveLength(0);
+    expect(s.services.runner.lastRun(p.key)?.status).toBe('outdated');
+  });
+
+  it('goes over the last real result rather than beside it, and the next plan takes it away again', async () => {
+    let now: 'fetch' | 'old' | 'idle' = 'fetch';
+    const s = setup({
+      plan: () => (now === 'old' ? { due: false, outdated: true } : now === 'idle' ? { due: false } : { due: true, plan_id: 'pl_1', known_ids: [], rounds: false, max_sessions: 40 }),
+    });
+    const p = await paired(s);
+    await s.services.signIns.set('trackman', s.token);
+    await s.services.runner.syncAll('open');
+    now = 'old';
+    await s.services.runner.syncAll('timer');
+    const told = s.services.runner.lastRun(p.key);
+    expect(told?.status).toBe('outdated');
+    expect(told?.aside).toBeUndefined();
+    // What came before still counts (the wizard's totals).
+    expect(told?.total?.sessions).toBe(2);
+    // Updated: a plan that isn't due is the last word now, not a line beside "too old".
+    now = 'idle';
+    await s.services.runner.syncAll('timer');
+    expect(s.services.runner.lastRun(p.key)?.status).toBe('not_due');
+  });
+
+  it('wins over a sign-in that ran out: signing in again would not help until the update', async () => {
+    const s = setup({ plan: () => ({ due: false, outdated: true }) });
+    const p = await paired(s);
+    await s.services.signIns.set('trackman', s.token);
+    await s.services.signIns.expire('trackman');
+    const [r] = await s.services.runner.syncAll('timer');
+    expect(r?.run.status).toBe('outdated');
+    expect(s.target.imports).toHaveLength(0);
+    expect(s.services.runner.lastRun(p.key)?.status).toBe('outdated');
+  });
+});

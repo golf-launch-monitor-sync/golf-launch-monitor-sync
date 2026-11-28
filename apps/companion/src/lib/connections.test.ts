@@ -49,6 +49,14 @@ describe('the phone’s connections', () => {
     expect(one(run(), { valid: false, had: true, player: 'Alex Example' })).toMatchObject({ account: null, state: 'expired' });
   });
 
+  it('SR-8b: a target that needs a newer version, while this version runs; run out or not', () => {
+    const one = (r: LastRun, signIn = SIGNED) => connectionsOfApp(facts({ pairings: [pairing('k1')], signedIn: { trackman: signIn }, runs: { k1: r }, version: '0.22.0' }))[0]?.state;
+    expect(one(run({ status: 'outdated', version: '0.22.0' }))).toBe('outdated');
+    expect(one(run({ status: 'outdated', version: '0.22.0' }), { valid: false, had: true, player: 'Alex Example' })).toBe('outdated');
+    // Updated since (the version differs): the next plan says how it goes, until then it runs.
+    expect(one(run({ status: 'outdated', version: '0.21.1' }))).toBe('running');
+  });
+
   it('the demo signed in without an app is a connection too; every app once', () => {
     const list = connectionsOfApp(facts({ pairings: [pairing('k1'), pairing('k2', 'Other App'), pairing('k3')], signedIn: { trackman: SIGNED, demo: { valid: true, had: true, player: 'Demo Player' } } }));
     expect(list.map((c) => [c.id, c.targets])).toEqual([

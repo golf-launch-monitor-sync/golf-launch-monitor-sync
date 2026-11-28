@@ -37,6 +37,30 @@ describe('where a connection stands', () => {
     expect(connectionState(f({ setup: true, signIn: 'expired' }))).toBe('setup');
     expect(connectionState(f({ test: true, setup: true }))).toBe('test');
   });
+
+  // SR-8b: an update is all it takes, and nothing else helps before it (signing in, finishing the steps).
+  it('a target that needs a newer version comes first, a test aside', () => {
+    expect(connectionState(f({ outdated: true }))).toBe('outdated');
+    expect(connectionState(f({ outdated: true, signIn: 'expired', failed: true }))).toBe('outdated');
+    expect(connectionState(f({ outdated: true, setup: true }))).toBe('outdated');
+    expect(connectionState(f({ outdated: true, test: true }))).toBe('test');
+  });
+});
+
+describe('SR-8b: a target that needs a newer version', () => {
+  const told = (version: string) => synced({ history: { done: true }, last: { at: '2026-11-28T10:00:00Z', reason: 'timer', status: 'outdated', version } });
+
+  it('is the connection’s state while this version runs, and goes once another does', () => {
+    expect(connectionsOfStatus({ ...status(READY, [told('0.28.0')]), version: '0.28.0' })[0]?.state).toBe('outdated');
+    expect(connectionsOfStatus({ ...status(READY, [told('0.28.0')]), version: '0.29.0' })[0]?.state).toBe('running');
+  });
+
+  it('says so in a line that wants the player', () => {
+    const c = connectionsOfStatus({ ...status(READY, [told('0.28.0')]), version: '0.28.0' })[0];
+    if (!c) throw new Error('no connection');
+    expect(connectionLine(c, en)).toMatchObject({ state: 'Update needed', tone: 'warn' });
+    expect(connectionLine(c, de).state).toBe('Update nötig');
+  });
 });
 
 describe('a launch monitor client’s connections', () => {

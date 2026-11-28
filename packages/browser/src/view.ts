@@ -51,6 +51,9 @@ export function lastText(e: Entry, t: T, lang: Lang, now: number): string | null
     case 'told_expired':
       what = t('last.told_expired', { name: e.name });
       break;
+    case 'outdated':
+      what = t('last.outdated', { name: e.name });
+      break;
     case 'cancelled':
       what = t('last.cancelled');
       break;
@@ -83,9 +86,11 @@ export function historyText(e: Entry, t: T): string | null {
   return null;
 }
 
-/** The toolbar icon's badge: "!" sign in, "?" answer "Is this you?", "×" another account. */
+/** The toolbar icon's badge: "↑" update, "!" sign in, "?" answer "Is this you?", "×" another account. */
 export function badge(s: Pick<ClientStatus, 'attention'>): { text: string; color: string } {
   switch (s.attention) {
+    case 'update':
+      return { text: '↑', color: '#d68910' };
     case 'sign_in':
       return { text: '!', color: '#c0392b' };
     case 'confirm':

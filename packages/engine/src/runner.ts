@@ -92,7 +92,11 @@ export interface AppProvider extends Provider<string> {
   who(ctx: ProviderContext, token: string): Promise<WhoAnswer>;
 }
 
-export type RunStatus = SyncOutcome['status'] | 'signed_out' | 'unpaired';
+/**
+ * `outdated` (SR-8b): the target's plan said it needs a newer version of this app (spec 1.22.0) - `core` hands that over
+ * as `not_due` with `plan.outdated`; here it is a state of its own, for the screen to say the one step that helps.
+ */
+export type RunStatus = SyncOutcome['status'] | 'signed_out' | 'unpaired' | 'outdated';
 
 /** How the last run of a pairing (or of the file) ended, for the screen. */
 export interface LastRun {
@@ -114,6 +118,8 @@ export interface LastRun {
   older?: false;
   /** For a busy run: who holds the lease (spec 1.13.0). */
   holder?: Holder;
+  /** For `outdated`: the version the target found too old (once another one runs, the update came). */
+  version?: string;
   /** A later run that fetched nothing (busy, not due), kept beside this one instead of over it. */
   aside?: { at: number; status: 'busy' | 'not_due'; holder?: Holder };
 }
@@ -240,7 +246,8 @@ export class Runner {
     if (!this.loaded) await this.loadRuns();
     // What came adds up across runs, and how much is still to come stays until a chunk says otherwise.
     const before = this.runs[key];
-    if (idle(given.status) && before && !idle(before.status)) {
+    // "Too old" is no result to keep: whatever the next plan says (after the update) is the last word.
+    if (idle(given.status) && before && !idle(before.status) && before.status !== 'outdated') {
       // Nothing fetched this time: what the last real run brought stays, this goes beside it.
       const aside: NonNullable<LastRun['aside']> = { at: given.at, status: given.status as 'busy' | 'not_due' };
       if (given.holder) aside.holder = given.holder;
@@ -468,6 +475,10 @@ export class Runner {
       generator: this.generator,
       ...(userAgent ? { userAgent } : {}),
     });
+    if (outcome.status === 'not_due' && outcome.plan.outdated) {
+      await this.heard(p, outcome.plan);
+      return this.outdated(reason);
+    }
     const run: LastRun = { at: this.now(), reason, status: outcome.status };
     if (outcome.status === 'busy' || outcome.status === 'not_due') await this.heard(p, outcome.plan);
     else if (outcome.status === 'synced') await this.heard(p, null);
@@ -506,6 +517,11 @@ export class Runner {
     return run;
   }
 
+  /** The target needs a newer version of this app (SR-8b): the run says so, with the version it said it of. */
+  private outdated(reason: Reason): LastRun {
+    return { at: this.now(), reason, status: 'outdated', ...(this.generator.version ? { version: this.generator.version } : {}) };
+  }
+
   /**
    * No sign-in that works: nothing is asked of the provider. When the target's plan says a sync is
    * due, the target hears why none comes (an empty batch with `auth_expired`, which also releases the
@@ -524,6 +540,8 @@ export class Runner {
         return { at: this.now(), reason, status: 'disconnected' };
       }
       await this.heard(p, plan);
+      // Too old for the target: an update comes before signing in again (the target takes nothing from this version).
+      if (plan.outdated) return this.outdated(reason);
       if (!plan.due) return run;
       const subject = testSubject ?? this.opts.signIns.had(p.provider)?.subject ?? null;
       const ref = testSubject !== undefined ? accountRefOf(p.account_salt, p.provider, testSubject) : (plan.account_ref ?? p.account_ref ?? (subject ? accountRefOf(p.account_salt, p.provider, subject) : null));

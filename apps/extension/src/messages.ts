@@ -22,6 +22,7 @@ import type { Step } from '@glmsync/provider-golfde';
 import type { BridgeReply, BridgeRequest } from '@glmsync/spec';
 import type { Seen as ShapeSeen } from '@glmsync/shape';
 import type { ShapeState } from './shape-keeper.ts';
+import type { UpdateResult } from './update.ts';
 
 export type FromPortal = { type: 'portal-key'; token: string };
 /** From the bridge on a paired target's page (spec/page-bridge.md); the request as read from the page. */
@@ -136,6 +137,8 @@ export type FromPage =
   | { type: 'forget-key' }
   | { type: 'open-portal' }
   | { type: 'switch-account' }
+  /** *Update now* (SR-8b): an app needs a newer version of this extension. */
+  | { type: 'update' }
   | { type: 'pending' }
   /** The yes to an app's pairing, with the service chosen (step 1, the tap that is the yes): the offer's own, or this one when it named none. */
   | { type: 'pair-confirm'; provider?: string }
@@ -187,7 +190,7 @@ export interface Pending {
 }
 
 export type Reply =
-  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; runStep?: run.RunStep; drive?: boolean; pro?: ProView; tour?: TourView; et?: EtView; ocs?: OcsView; alps?: AlpsView; fetch?: 'started' | 'limit' | 'nothing'; run?: RunView; runHere?: boolean; start?: StartOutcome; sent?: TourSite[]; targets?: { id: string; name: string }[]; take?: TakeOutcome; shape?: ShapeState; recording?: boolean }
+  | { ok: true; status?: ClientStatus; pending?: Pending | null; log?: GuardLogExport; bridge?: BridgeReply; test?: TestOutcome; hcp?: HcpView; step?: Step | TourStep; runStep?: run.RunStep; drive?: boolean; pro?: ProView; tour?: TourView; et?: EtView; ocs?: OcsView; alps?: AlpsView; fetch?: 'started' | 'limit' | 'nothing'; run?: RunView; runHere?: boolean; start?: StartOutcome; sent?: TourSite[]; targets?: { id: string; name: string }[]; take?: TakeOutcome; shape?: ShapeState; recording?: boolean; update?: UpdateResult }
   /** `shape`: where the shape recorder stands after a refused step (`error` a `ShapeError`). */
   | { ok: false; error: string; shape?: ShapeState };
 

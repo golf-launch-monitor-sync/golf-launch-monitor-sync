@@ -206,5 +206,12 @@
   "handover.stayed": "{name} couldn't be opened, so you stay here. Open {name} yourself.",
   "handover.unpaired": "The app that asked for your sign-in isn't connected with this phone, so nothing was handed over. Connect it from that app first.",
   "run.who.embedded": "the app itself, on its own",
-  "pairing.signinOnly": "{name} fetches itself on this phone; this app only keeps your sign-in for it."
+  "pairing.signinOnly": "{name} fetches itself on this phone; this app only keeps your sign-in for it.",
+  "run.outdated": "{at}: needs a newer version of this app",
+  "update.text": "{target} needs a newer version of this app.",
+  "update.button": "Update now",
+  "update.checking": "Looking for the update …",
+  "update.latest": "No newer version is out yet – try again later.",
+  "update.nextStart": "The update is loaded and applies when the app starts next.",
+  "update.failed": "Couldn’t look for the update – try again with a connection."
 }

@@ -72,7 +72,10 @@ export interface ClientOptions {
 export interface Last {
   at: string;
   reason: Reason;
-  status: SyncOutcome['status'] | 'told_expired';
+  /** `outdated` (SR-8b): the plan said the target needs a newer version of this client (spec 1.22.0). */
+  status: SyncOutcome['status'] | 'told_expired' | 'outdated';
+  /** For `outdated`: the version the target found too old (once another one runs, the update came). */
+  version?: string;
   result?: ImportResult;
   notice?: Notice;
   /** For `failed`: what went wrong (a target's error code, or `error`). */
@@ -80,6 +83,14 @@ export interface Last {
   more?: boolean;
   /** For `busy`: who holds the lease, as the target named it (spec 1.13.0). */
   holder?: Holder;
+}
+
+/**
+ * An app's last answer said this client is too old for it (SR-8b), and it still is: the version it said it of runs
+ * (one kept from before the version was noted counts until the next plan).
+ */
+export function lastOutdated(last: Last | undefined, version: string | undefined): boolean {
+  return last?.status === 'outdated' && (!last.version || !version || last.version === version);
 }
 
 export interface Entry {
@@ -186,8 +197,10 @@ export interface ClientStatus {
   /** Connections the target app ended since the player last looked. */
   ended: Farewell[];
   counts: GuardCounts | null;
-  /** What the icon should say: sign in, answer "Is this you?", or nothing. */
-  attention: 'sign_in' | 'confirm' | 'other_account' | null;
+  /** What the icon should say: update (an app needs a newer version), sign in, answer "Is this you?", or nothing. */
+  attention: 'update' | 'sign_in' | 'confirm' | 'other_account' | null;
+  /** This client's version (an app's "too old" counts only while it still runs). */
+  version?: string;
 }
 
 export type PairOutcome =
@@ -791,6 +804,15 @@ export class BrowserClient {
       if (outcome.status === 'disconnected' && !(await this.pairings()).length) await this.opts.vault.remove(KEY + this.provider.id);
       return;
     }
+    // Too old for the target (SR-8b): a state of its own, over the last result - an update is the one step that helps.
+    if (outcome.status === 'not_due' && outcome.plan.outdated) {
+      const told: Last = { at, reason, status: 'outdated', version: this.opts.version };
+      return this.update(id, (e) => {
+        const next: Entry = { ...e, last: told, ...(outcome.plan.account_ref ? { account_ref: outcome.plan.account_ref } : {}) };
+        delete next.aside;
+        return next;
+      });
+    }
     const last: Last = { at, reason, status: outcome.status };
     const history = { ...entry.history };
     let accountRef = entry.account_ref;
@@ -899,6 +921,11 @@ export class BrowserClient {
         await this.record(p, entry, reason, { status: 'disconnected' }, token);
         return { status: 'disconnected' };
       }
+      // Too old for the target: the update comes before signing in again (SR-8b).
+      if (plan.outdated) {
+        await this.record(p, entry, reason, { status: 'not_due', plan }, token);
+        return { status: 'not_due', plan };
+      }
       if (!plan.due) return { status: 'skipped', why: 'expired' };
       const batch: Batch = {
         format: FORMAT,
@@ -994,7 +1021,8 @@ export class BrowserClient {
     // A test code just fetched is answered first, and its pairing needs no sign-in (its code stood in for it).
     const signing = real.filter((e) => e.id !== testAsking?.id);
     let attention: ClientStatus['attention'] = null;
-    if (key.state === 'confirm' || testAsking) attention = 'confirm';
+    if (signing.some((e) => lastOutdated(e.last, this.opts.version))) attention = 'update';
+    else if (key.state === 'confirm' || testAsking) attention = 'confirm';
     else if (key.state === 'other' || signing.some((e) => e.other_account)) attention = 'other_account';
     else if (signing.length && (key.state === 'none' || key.state === 'expired')) attention = 'sign_in';
     return {
@@ -1013,6 +1041,7 @@ export class BrowserClient {
       ended: await readList<Farewell>(this.opts.storage, ENDED),
       counts,
       attention,
+      version: this.opts.version,
     };
   }
 

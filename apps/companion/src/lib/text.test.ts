@@ -70,6 +70,11 @@ describe('what a run says', () => {
     expect(runText(null, NOW, 'en', t)).toBe('Not synced yet.');
   });
 
+  it('SR-8b: a target that needs a newer version says so, not "nothing due"', () => {
+    expect(runText(run({ status: 'outdated', version: '0.22.0' }), NOW, 'en', t)).toMatch(/: needs a newer version of this app$/);
+    expect(runText(run({ status: 'outdated' }), NOW, 'de', translator(de))).toMatch(/: braucht eine neuere Version dieser App$/);
+  });
+
   it('times: today, yesterday, or the date', () => {
     expect(when(NOW - 3600_000, NOW, 'en', t)).toMatch(/^today /);
     expect(when(NOW - 86_400_000, NOW, 'en', t)).toMatch(/^yesterday /);

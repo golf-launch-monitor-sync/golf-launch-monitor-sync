@@ -514,6 +514,16 @@ version for weeks, and a target that needs a newer one (`outdated`, spec 1.22.0)
 **The version a target sees** is `version` in `app.config.ts` (sent at pairing, with every plan as `version` since
 0.19.0, and with every batch as `generator`). A target that needs a newer one answers the plan `outdated` and gets
 nothing until the update.
+
+**"Too old" on the screen** (since 0.22.0, engine 0.6.0): a plan with `outdated` is a run of its own
+(`status: 'outdated'`, with the version it was said of), over the last result rather than beside it, and before a
+sign-in that ran out (signing in again wouldn't help first). The list's row says *Update needed*; the connection's card
+says *<app> needs a newer version of this app.* with **Update now** (`src/lib/outdated.ts`, `updateNow`): an update over
+the air is downloaded and applied at once (in the foreground, at the player's tap, a restart is safe), else the new
+build opens (the APK, TestFlight: `newBuild.ts`), else it says nothing newer is out yet - not held back by the
+background's six hours. It holds only while that version runs: once another one does, the next plan says how it goes.
+A sync link's way back carries `result=outdated` (spec 1.22.0, *The result in the way back*; the other results too,
+`wayBack`).
 It doesn't count towards the runtime, so raising it goes out over the air; raise it when a target should be able to
 ask for what this version brings.
 

@@ -6,7 +6,7 @@
  */
 
 import { PORTAL_URL } from '@glmsync/provider-trackman/portal';
-import type { ClientStatus, TestError, TestOutcome } from './client.ts';
+import { lastOutdated, type ClientStatus, type TestError, type TestOutcome } from './client.ts';
 import type { HcpView } from './hcp.ts';
 import { hcpLastText } from './hcpView.ts';
 import type { ProView } from './pro.ts';
@@ -60,6 +60,8 @@ export interface Actions {
   endTest(id: string): void;
   /** The wizard's last step: back to the app (the extension's connect window closes its tab). None: a sentence says so. */
   back?(): void;
+  /** *Update now* (SR-8b), when an app said it needs a newer version of this client. None: the sentence alone. */
+  update?(): void;
 }
 
 export interface RenderContext {
@@ -92,6 +94,8 @@ export interface RenderContext {
   testSlot?: HTMLElement;
   /** The web app's own sign-in (the key box), put where the sign-in is; the extension has *Open the Trackman portal*. */
   signinSlot?: HTMLElement;
+  /** Where *Update now* stands: looking, nothing newer out, or it failed. */
+  updating?: 'checking' | 'none' | 'failed' | null;
 }
 
 /** What a page remembers of the wizard while it is open. */
@@ -110,7 +114,10 @@ export function renderStatus(root: HTMLElement, s: ClientStatus, c: RenderContex
   const facts = factsOfStatus(s, c.busy);
   const view = facts ? wizardOf(facts) : null;
   if (view && view.step !== 'done' && c.memory) c.memory.walked = true;
-  const wizard = view && facts && (view.step !== 'done' || c.memory?.walked) ? { view, facts } : null;
+  // An app needs a newer version of this client (SR-8b): nothing else helps before the update, so it stands first, in
+  // place of the steps.
+  const update = updatePart(s, c, a);
+  const wizard = !update && view && facts && (view.step !== 'done' || c.memory?.walked) ? { view, facts } : null;
   if (wizard && wizard.view.step !== 'done') {
     fill(root, statusWizard(s, wizard.view, wizard.facts, c, a));
     refocus();
@@ -118,6 +125,7 @@ export function renderStatus(root: HTMLElement, s: ClientStatus, c: RenderContex
   }
 
   parts.push(...endedNotes(s.ended, t, lang, a.clearEnded));
+  if (update) parts.push(update);
   if (wizard) parts.push(statusWizard(s, wizard.view, wizard.facts, c, a));
 
   // The sign-in, where it matters: an app connected to the provider's account, or a sign-in kept here. A connection
@@ -204,6 +212,25 @@ export function renderStatus(root: HTMLElement, s: ClientStatus, c: RenderContex
   parts.push(h('p', { class: 'muted small unofficial' }, t('app.unofficial.trackman')));
   fill(root, ...parts);
   refocus();
+}
+
+/**
+ * SR-8b: one sentence and one button when an app's plan said it needs a newer version of this client (and that version
+ * still runs): the extension asks its browser for the update, the web app loads the page anew. Null: none said so.
+ */
+export function updatePart(s: Pick<ClientStatus, 'pairings' | 'version'>, c: Pick<RenderContext, 't' | 'client' | 'updating'>, a: Pick<Actions, 'update'>): HTMLElement | null {
+  const names = [...new Set(s.pairings.filter((p) => !p.test && lastOutdated(p.last, s.version)).map((p) => p.name))];
+  if (!names.length) return null;
+  const { t } = c;
+  const checking = c.updating === 'checking';
+  return h(
+    'section',
+    { class: 'update', 'data-test': 'update' },
+    h('p', { class: 'note warn' }, t(c.client === 'web' ? 'update.web' : 'update.extension', { target: names.join(', ') })),
+    a.update ? h('div', { class: 'row' }, button(checking ? t('update.checking') : t('update.button'), a.update, { class: 'primary', 'data-test': 'update-now', ...(checking ? { disabled: '' } : {}) })) : null,
+    c.updating === 'none' ? h('p', { class: 'muted small', role: 'status', 'data-test': 'update-none' }, t('update.none')) : null,
+    c.updating === 'failed' ? h('p', { class: 'note warn', role: 'alert', 'data-test': 'update-failed' }, t('update.failed')) : null,
+  );
 }
 
 /**

@@ -206,5 +206,12 @@
   "handover.stayed": "{name} ließ sich nicht öffnen, deshalb bleibst du hier. Öffne {name} selbst.",
   "handover.unpaired": "Die App, die nach deiner Anmeldung gefragt hat, ist mit diesem Handy nicht verbunden – deshalb wurde nichts weitergegeben. Verbinde sie zuerst aus dieser App heraus.",
   "run.who.embedded": "die App selbst",
-  "pairing.signinOnly": "{name} holt auf diesem Handy selbst; diese App hält nur deine Anmeldung dafür."
+  "pairing.signinOnly": "{name} holt auf diesem Handy selbst; diese App hält nur deine Anmeldung dafür.",
+  "run.outdated": "{at}: braucht eine neuere Version dieser App",
+  "update.text": "{target} braucht eine neuere Version dieser App.",
+  "update.button": "Jetzt aktualisieren",
+  "update.checking": "Suche das Update …",
+  "update.latest": "Noch keine neuere Version da – bitte später noch einmal.",
+  "update.nextStart": "Das Update ist geladen und gilt beim nächsten Start der App.",
+  "update.failed": "Konnte nicht nach dem Update suchen – bitte mit Verbindung noch einmal."
 }

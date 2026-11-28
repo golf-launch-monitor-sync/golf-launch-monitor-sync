@@ -13,7 +13,7 @@ import { FakeTrackman, fakeToken } from '@glmsync/provider-trackman/testing';
 import { describe, expect, it } from 'vitest';
 import { BrowserClient, pairingId, type Entry } from './client.ts';
 import { translator } from './i18n.ts';
-import { lastText } from './view.ts';
+import { badge, lastText } from './view.ts';
 
 const NOW = Date.parse('2026-11-16T09:00:00Z');
 const SUB = 'player-0001';
@@ -426,6 +426,53 @@ describe('a lease another device holds (spec 1.13.0)', () => {
     const p = (await w.client.status()).pairings[0];
     expect(p?.last).toMatchObject({ status: 'busy', holder: { kind: 'web' } });
     expect(lastText(p as Entry, translator('en'), 'en', w.clock.t)).toMatch(/the web app is fetching right now\.$/);
+  });
+});
+
+// SR-8b: a target that needs a newer version looked like "not due" here; now it is a state of its own, with the button.
+describe('a target that needs a newer version (spec 1.22.0)', () => {
+  it('is kept as such over the last result, asks the player for the update, and goes with the next plan', async () => {
+    let old = false;
+    const w = world({
+      target: { plan: (_ask, t) => (old ? { due: false, outdated: true } : { due: true, plan_id: 'p1', known_ids: t.known(), rounds: false, round_shots: true, max_sessions: 40 }) },
+    });
+    await paired(w);
+    await w.client.setKey(w.token());
+    await w.client.confirm(true);
+    await w.client.run('timer');
+    old = true;
+    w.clock.advance(120_000);
+    await w.client.run('timer');
+    let s = await w.client.status();
+    expect(s.pairings[0]?.last).toMatchObject({ status: 'outdated', version: '0.0.1' });
+    expect(s.pairings[0]?.aside).toBeUndefined();
+    expect(s.version).toBe('0.0.1');
+    expect(s.attention).toBe('update');
+    expect(lastText(s.pairings[0] as Entry, translator('en'), 'en', w.clock.t)).toMatch(/Example App needs a newer version\.$/);
+    expect(lastText(s.pairings[0] as Entry, translator('de'), 'de', w.clock.t)).toMatch(/Example App braucht eine neuere Version\.$/);
+    old = false;
+    w.clock.advance(3_600_000);
+    await w.client.run('manual');
+    s = await w.client.status();
+    expect(s.pairings[0]?.last?.status).toBe('synced');
+    expect(s.attention).toBeNull();
+  });
+
+  it('a key that ran out: the update first (signing in would not help before it)', async () => {
+    const w = world({ target: { plan: () => ({ due: false, outdated: true }) } });
+    await paired(w);
+    await w.client.setKey(w.token('player-0001', 1));
+    await w.client.confirm(true);
+    w.clock.advance(2 * 3_600_000);
+    await w.client.run('timer');
+    const s = await w.client.status();
+    expect(s.key.state).toBe('expired');
+    expect(s.pairings[0]?.last?.status).toBe('outdated');
+    expect(s.attention).toBe('update');
+  });
+
+  it('the icon says it too', () => {
+    expect(badge({ attention: 'update' }).text).toBe('↑');
   });
 });
 

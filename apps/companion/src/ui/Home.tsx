@@ -21,6 +21,8 @@ import { lang, t } from '../i18n';
 import type { KeyedPairing, TestMode } from '@glmsync/engine';
 import { hostOf } from '../lib/links';
 import { checkNewBuild, type NewBuild } from '../lib/newBuild';
+import { outdatedTargets } from '../lib/outdated';
+import { updateNowHere } from '../update';
 import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
 import { countsText, errorText, runText, when } from '../lib/text';
 import { shareFile, version } from '../platform';
@@ -62,6 +64,8 @@ export function Home({
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [build, setBuild] = useState<NewBuild | null>(null);
+  /** *Update now*: looking, or what came of it when it didn't restart the app. */
+  const [updating, setUpdating] = useState<'checking' | 'latest' | 'next_start' | 'failed' | null>(null);
   const pairings = svc.pairings.list();
   const now = Date.now();
   const hcp = useHcpView(svc);
@@ -112,6 +116,24 @@ export function Home({
     }
   }
 
+  /** SR-8b: an update over the air applies at once (the app restarts); else the new build opens; else it says why not. */
+  function update() {
+    setUpdating('checking');
+    void updateNowHere().then(async (r) => {
+      if (r.step === 'reloading') return;
+      if (r.step === 'build') {
+        try {
+          await Linking.openURL(r.url);
+          setUpdating(null);
+        } catch {
+          setUpdating('failed');
+        }
+        return;
+      }
+      setUpdating(r.step);
+    });
+  }
+
   function signOut(provider: ProviderId) {
     Alert.alert(t('signout.title', { provider: svc.providers[provider].name }), t('signout.text'), [
       { text: t('action.cancel'), style: 'cancel' },
@@ -159,6 +181,7 @@ export function Home({
     tests: tests.map((m) => ({ key: m.key, player: m.player })),
     signIn: (id) => ({ valid: svc.signIns.valid(id), had: !!svc.signIns.had(id), player: svc.signIns.get(id)?.player ?? null }),
     lastRun: (key) => svc.runner.lastRun(key),
+    version,
     ended: svc.pairings.ended(),
     hcp: hcp.view,
     pro: { view: pro.view, service: translator(lang)('pro.service') },
@@ -171,6 +194,9 @@ export function Home({
   const focused = pairings.filter((p) => (lmFocus ? p.provider === lmFocus : p.key === testFocus));
   // Under Trackman's sign-in, small, a test code instead (for its pairings not in test mode); nowhere else.
   const testable = testKeys(pairings, 'trackman', (k) => !!svc.tests.of(k));
+  // A target needs a newer version of this app (SR-8b): one sentence, one button, on the connection's card - nothing else
+  // helps before it. The list says it in the row.
+  const tooOld = (lmFocus || testFocus) ? outdatedTargets(focused, (k) => svc.runner.lastRun(k), version) : [];
   const setupText = setup ? wizardText(beforeYes(false), lang, { service: svc.providers.trackman.name, target: targetOf(lmPairings.map((p) => p.target.name)) }) : null;
 
   return (
@@ -211,6 +237,18 @@ export function Home({
 
       {!focus && <Connections list={list} add={() => go({ name: 'new' })} open={(id) => go({ name: 'home', focus: id })} />}
       {focus && !linked && <BackToList onPress={toList} />}
+
+      {tooOld.length > 0 && (
+        <Card>
+          <Body warn>{t('update.text', { target: tooOld.join(', ') })}</Body>
+          <View style={s.row}>
+            <Button label={updating === 'checking' ? t('update.checking') : t('update.button')} busy={updating === 'checking'} onPress={update} />
+          </View>
+          {updating === 'latest' && <Small>{t('update.latest')}</Small>}
+          {updating === 'next_start' && <Small>{t('update.nextStart')}</Small>}
+          {updating === 'failed' && <Body warn>{t('update.failed')}</Body>}
+        </Card>
+      )}
 
       {lmFocus === 'trackman' && setupText && (
         <WizardFrame view={setupText.view} lines={setupText.lines}>

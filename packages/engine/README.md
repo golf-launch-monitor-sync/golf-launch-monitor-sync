@@ -16,7 +16,7 @@ the provider only, a target gets batches and nothing else.
 | File | |
 | --- | --- |
 | `engine.ts` | `makeEngine(platform)`: the parts put together from what the platform brings |
-| `runner.ts` | pairing, a sync per pairing (a tap joins one under way), the history chunk by chunk, a sync into a file, "Is this you?", the guard's log |
+| `runner.ts` | pairing, a sync per pairing (a tap joins one under way), the history chunk by chunk, a sync into a file, "Is this you?", the guard's log; a target that needs a newer version is a run of its own (`outdated`, with the `version` it was said of, since 0.6.0) |
 | `signins.ts` | the provider sign-in in the secure store, with the account it was of (for a quiet renewal) and the User-Agent of the browser it was signed in with |
 | `pairings.ts` | the targets: what a pairing says in storage, its import token in the secure store; ended pairings |
 | `secrets.ts` | the secure store's interface, and `ChunkedSecrets` for values longer than it likes |
@@ -58,8 +58,8 @@ once all of CI's checks of that commit are green (`.github/workflows/engine-rele
 ```jsonc
 // package.json of the app
 "dependencies": {
-  "glmsync-engine": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.5.0/glmsync-engine-0.5.0.tgz",
-  "glmsync-power": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.5.0/glmsync-power-0.5.0.tgz"
+  "glmsync-engine": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.6.0/glmsync-engine-0.6.0.tgz",
+  "glmsync-power": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.6.0/glmsync-power-0.6.0.tgz"
 }
 ```
 

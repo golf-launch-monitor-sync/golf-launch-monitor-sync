@@ -3,7 +3,8 @@
 /**
  * `glmsync://sync?return=…`: a target app asks to fetch now (on iOS an app can start another only by
  * a visible switch). The plans are asked like for any manual sync - nothing is fetched that the plan
- * doesn't want - and then the app jumps back, but only to an address the paired target named as its
+ * doesn't want - and then the app jumps back, with what the sync came to (`result`, spec 1.22.0; `outdated` when the
+ * target needs a newer version of this app, SR-8b), but only to an address the paired target named as its
  * own; otherwise it stays here and says what it did, and *OK* shows the card of the launch monitor it synced for (the
  * link's focus, spec 1.18.0), not the list. A link without a way back whose sign-in ran out goes straight to the sign-in
  * instead (Reginald's test of 27 Nov: the results only said so, and the way to sign in was a tap further).
@@ -14,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { lang, t } from '../i18n';
 import { afterDone, lmFocus, signInAfterLink } from '../lib/done';
+import { wayBack } from '../lib/outdated';
 import { backTo } from '../lib/links';
 import type { LastRun } from '@glmsync/engine';
 import { PROVIDERS, type Services } from '../lib/services';
@@ -62,7 +64,8 @@ export function SyncView({
       setRuns(out.map((o) => ({ name: names.get(o.key) ?? '?', run: o.run })));
       if (back) {
         try {
-          await Linking.openURL(back);
+          // The result rides along only where the jump goes anyway (spec 1.22.0).
+          await Linking.openURL(wayBack(back, out));
           go({ name: 'home' });
           return;
         } catch {
