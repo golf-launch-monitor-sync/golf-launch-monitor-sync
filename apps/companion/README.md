@@ -320,9 +320,27 @@ took days of opening the app on the iPhone, since a wake gives half a minute, on
   installed package and fails if an upgrade changes any of this.
 - **Android** keeps one chunk per run: WorkManager gives up to ten minutes but says nothing before it stops, and its
   timer comes every half hour anyway.
-- **Not measured yet**: how long iOS lets the task work, and how often a night. The exported log's `background_runs`
-  (the last 20: when, how long, how many chunks, how each ended: `done`, `budget`, `expired`, `front`, `failed`) shows
-  it; if runs keep ending `expired`, the ten minutes go down, if always `budget` with history left, they may go up.
+- **Measured** (one night on an iPhone on the charger, 27/28 Nov, 0.17.0): iOS started the task all night, every half
+  hour (the earliest `minimumInterval` allows), and let a run work **20 s to about a minute** before ending it (one run
+  that finished by itself took two minutes; one in the morning got five) - never the ten. At night its end mostly never
+  reached the run: `expo-background-task`'s expiration handler posts the notification and completes the task at once, the
+  app is suspended, and of six runs cut so one heard `onTaskExpired` only on the thaw, an hour and a half later, the
+  others not at all (the morning run heard it in time). So they froze in the middle of a chunk or a pause and went on when
+  iOS next woke the app, often only with the next task half an hour later, and then ended `budget` with 30 minutes, as if
+  they had worked the ten. Nothing broke by it:
+  the thawed chunk handed over what it fetched, the target kept each session once, and the runner's one queue kept the
+  thawed run and the new one from fetching side by side. What ended the history that night was the
+  [guard](../../spec/guard.md)'s day (300 requests in 24 hours, much of it spent by day): from then on each run asked
+  nothing and ended `done` within seconds, until the oldest requests left the window in the morning - as the guard means
+  it (a long history over days, not one night).
+- **Since 0.21.1 a frozen run says so** (`LongEnd` `frozen`, engine 0.5.0): a step that comes back more than five minutes
+  past the run's time (`FROZEN_SLACK_MS`; iOS's next task comes half an hour later at the earliest) can only come back from
+  such a freeze; the run ends there, its `ms` the time it was seen working, up to the step it froze in (so at least what
+  iOS gave), nothing more is started and nothing is done afterwards. iOS's word heard only on the thaw counts as frozen
+  too. The step's own result stands. The exported log's `background_runs` (the last 20: when, how long, how many chunks,
+  how each ended: `done`, `budget`, `expired`, `frozen`, `front`, `failed`) shows it. The ten minutes stay: iOS ends the
+  runs long before them, and a shorter time would change nothing; `expired` or `frozen` with a short `ms` is the normal
+  night on an iPhone.
 
 A build older than 0.17.0 has no `onTaskExpired`: there the ten minutes still bound the run, and iOS ending it sooner
 freezes it in the middle of a chunk, which the next plan repairs the same way.

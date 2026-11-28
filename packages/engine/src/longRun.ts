@@ -26,6 +26,14 @@ export const LONG_BUDGET_MS = 10 * 60_000;
 export const CHUNK_GUESS_MS = 90_000;
 /** The shortest pause between chunks, whatever the target answered (as the screen's loop). */
 export const MIN_GAP_S = 5;
+/**
+ * How far past its own time a run on the iPhone gets only when iOS froze it. iOS ends a task when it likes and starts the
+ * next one half an hour later at the earliest; its word that it ended it may never reach JavaScript (the first night,
+ * 27/28 Nov: six runs cut after 20 s to a minute, five never heard it, one an hour and a half late). The frozen run then
+ * goes on when the app is next woken, in the middle of whatever it was doing. A chunk that merely runs long stays well
+ * inside this.
+ */
+export const FROZEN_SLACK_MS = 5 * 60_000;
 
 /** What of the runner this needs. */
 export interface LongRunner {
@@ -35,7 +43,11 @@ export interface LongRunner {
   stop(): void;
 }
 
-export type LongEnd = 'done' | 'budget' | 'expired' | 'front' | 'failed';
+/**
+ * `frozen`: iOS stopped the app in the middle of the run without the run hearing of it (see FROZEN_SLACK_MS); its `ms`
+ * is then the time it was seen working, up to the step it froze in - how long iOS really let it work, at least.
+ */
+export type LongEnd = 'done' | 'budget' | 'expired' | 'frozen' | 'front' | 'failed';
 
 /** One background run, as the exported log shows it: times and counts, nothing of the player. */
 export interface BackgroundRun {
@@ -66,7 +78,7 @@ export interface BackgroundWorkOptions {
 /** The task's work. Never throws; says how it ended. */
 export async function backgroundWork(opts: BackgroundWorkOptions): Promise<BackgroundRun> {
   const run = await syncWork(opts);
-  if (opts.afterwards && run.ended !== 'expired' && run.ended !== 'front' && !opts.signal.aborted) {
+  if (opts.afterwards && run.ended !== 'expired' && run.ended !== 'frozen' && run.ended !== 'front' && !opts.signal.aborted) {
     try {
       await opts.afterwards(opts.signal);
     } catch {
@@ -82,6 +94,12 @@ async function syncWork(opts: BackgroundWorkOptions): Promise<BackgroundRun> {
   let chunks = 0;
   const done = (ended: LongEnd): BackgroundRun => ({ at: new Date(start).toISOString(), ms: opts.now() - start, chunks, ended });
   if (opts.signal.aborted) return done('expired');
+  // When the step begun at `seen` came back: whether iOS froze the run in it. Then the run ends there, counting the time
+  // up to that step; the step's own result stands (a thawed chunk hands over what it fetched, the target keeps each
+  // session once), but nothing more is started in a time that is long gone.
+  let seen = start;
+  const frozen = () => opts.os === 'ios' && opts.now() - start > budget + FROZEN_SLACK_MS;
+  const thawed = (): BackgroundRun => ({ at: new Date(start).toISOString(), ms: seen - start, chunks, ended: 'frozen' });
 
   // iOS's end stops what runs at once: a chunk under way ends as `cancelled` and hands nothing over.
   const cut = () => opts.runner.stop();
@@ -92,26 +110,32 @@ async function syncWork(opts: BackgroundWorkOptions): Promise<BackgroundRun> {
     } catch {
       // The runner records every way a run ends; a broken store shows again in the chunk below.
     }
+    if (frozen()) return thawed();
     let longest = CHUNK_GUESS_MS;
     for (;;) {
       if (opts.signal.aborted) return done('expired');
       if (opts.inFront?.()) return done('front');
       if (opts.os === 'ios' && opts.now() - start + longest > budget) return done('budget');
       const began = opts.now();
+      seen = began;
       let wait: number | null;
       try {
         wait = await opts.runner.backfill();
       } catch {
-        return done('failed');
+        return frozen() ? thawed() : done('failed');
       }
       chunks++;
-      longest = Math.max(longest, opts.now() - began);
+      // Frozen first: iOS's word arriving only on the thaw (as once that night, an hour and a half late) is a freeze too.
+      if (frozen()) return thawed();
       if (opts.signal.aborted) return done('expired');
+      longest = Math.max(longest, opts.now() - began);
       if (opts.os !== 'ios' || wait === null) return done('done');
       const gap = Math.max(MIN_GAP_S, wait) * 1000;
       // A pause after which no chunk fits any more isn't waited out.
       if (opts.now() - start + gap + longest > budget) return done('budget');
+      seen = opts.now();
       await opts.sleep(gap, opts.signal);
+      if (frozen()) return thawed();
     }
   } finally {
     opts.signal.removeEventListener('abort', cut);
@@ -136,7 +160,7 @@ export function pauseFor(ms: number, signal?: AbortSignal): Promise<void> {
 
 const KEY = 'glmsync/companion/background';
 const KEEP = 20;
-const ENDS: readonly LongEnd[] = ['done', 'budget', 'expired', 'front', 'failed'];
+const ENDS: readonly LongEnd[] = ['done', 'budget', 'expired', 'frozen', 'front', 'failed'];
 
 const isRun = (v: unknown): v is BackgroundRun => {
   const r = v as Partial<BackgroundRun> | null;

@@ -20,7 +20,7 @@ the provider only, a target gets batches and nothing else.
 | `signins.ts` | the provider sign-in in the secure store, with the account it was of (for a quiet renewal) and the User-Agent of the browser it was signed in with |
 | `pairings.ts` | the targets: what a pairing says in storage, its import token in the secure store; ended pairings |
 | `secrets.ts` | the secure store's interface, and `ChunkedSecrets` for values longer than it likes |
-| `longRun.ts` | `backgroundWork`: a background task's run, chunk after chunk within its time, stopped cleanly when the platform ends it; `afterwards` for the app's own step with the time left (the companion: its over-the-air update) |
+| `longRun.ts` | `backgroundWork`: a background task's run, chunk after chunk within its time, stopped cleanly when the platform ends it, `frozen` when iOS stopped the app without the run hearing it; `afterwards` for the app's own step with the time left (the companion: its over-the-air update) |
 | `firstSync.ts` | the first sync after connecting, while the app stays in front |
 | `power.ts` | the rules around the native module `glmsync-power` (iOS: Background App Refresh, Low Power Mode, the end of a task's time) |
 | `providers.ts` | Trackman and the demo |
@@ -58,8 +58,8 @@ once all of CI's checks of that commit are green (`.github/workflows/engine-rele
 ```jsonc
 // package.json of the app
 "dependencies": {
-  "glmsync-engine": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.4.0/glmsync-engine-0.4.0.tgz",
-  "glmsync-power": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.4.0/glmsync-power-0.4.0.tgz"
+  "glmsync-engine": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.5.0/glmsync-engine-0.5.0.tgz",
+  "glmsync-power": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.5.0/glmsync-power-0.5.0.tgz"
 }
 ```
 

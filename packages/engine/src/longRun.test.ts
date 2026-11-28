@@ -11,7 +11,7 @@ import { FakeTrackman, fakeToken } from '@glmsync/provider-trackman/testing';
 import { FakeTarget, VirtualClock } from '@glmsync/core/testing';
 import { MemoryStorage, type FetchLike } from '@glmsync/core';
 import { describe, expect, it, vi } from 'vitest';
-import { BackgroundRuns, backgroundWork, CHUNK_GUESS_MS, LONG_BUDGET_MS, MIN_GAP_S, pauseFor, type LongRunner } from './longRun.ts';
+import { BackgroundRuns, backgroundWork, CHUNK_GUESS_MS, FROZEN_SLACK_MS, LONG_BUDGET_MS, MIN_GAP_S, pauseFor, type LongRunner } from './longRun.ts';
 import { MemorySecrets } from './secrets.ts';
 import { makeEngine } from './engine.ts';
 
@@ -172,6 +172,100 @@ describe('on the iPhone: the older history while iOS lets the app work', () => {
       },
     };
     expect(await backgroundWork({ os: 'ios', runner: broken, now: clock.now, sleep, signal: new AbortController().signal })).toMatchObject({ chunks: 0, ended: 'failed' });
+  });
+});
+
+describe('frozen by iOS without a word (its end never reached the run; the first night, 27/28 Nov)', () => {
+  // iOS ended the tasks after 20 s to a minute and rescheduled them, but the runs never heard: each froze in the middle of a
+  // step and went on half an hour later, when iOS started the next task, then ended as `budget` with 30 minutes - as if
+  // it had worked the ten. A step that returns that far past the run's time can only come back from such a freeze.
+  const FREEZE = 30 * 60_000;
+
+  it('frozen in the middle of a chunk: ends as `frozen` once the chunk comes back, counting only the time seen working', async () => {
+    const clock = new VirtualClock(T0);
+    const r = fakeRunner(clock, [60, 60, 60, null]);
+    let n = 0;
+    const runner: LongRunner = {
+      ...r.runner,
+      async backfill() {
+        if (++n === 2) clock.advance(FREEZE);
+        return r.runner.backfill();
+      },
+    };
+    const { sleep } = abortableSleep(clock);
+    const rec = await backgroundWork({ os: 'ios', runner, now: clock.now, sleep, signal: new AbortController().signal });
+    expect(r.calls).toEqual(['sync:timer', 'chunk@0', 'chunk@1900']);
+    // The thawed chunk is not cut: what it fetched still goes to the target, which keeps each session once.
+    expect(r.stopped()).toBe(0);
+    expect(rec).toMatchObject({ chunks: 2, ended: 'frozen', ms: 100_000 });
+  });
+
+  it('frozen in a pause: no further chunk after it, the time up to the pause', async () => {
+    const clock = new VirtualClock(T0);
+    const r = fakeRunner(clock, [60, 60, null]);
+    const { sleep } = abortableSleep(clock, () => clock.advance(FREEZE));
+    const rec = await backgroundWork({ os: 'ios', runner: r.runner, now: clock.now, sleep, signal: new AbortController().signal });
+    expect(r.calls).toEqual(['sync:timer', 'chunk@0']);
+    expect(rec).toMatchObject({ chunks: 1, ended: 'frozen', ms: 40_000 });
+  });
+
+  it('iOS’s word heard only on the thaw is a freeze too, timed up to the step it froze in', async () => {
+    const clock = new VirtualClock(T0);
+    const r = fakeRunner(clock, [60, 60, null]);
+    const end = new AbortController();
+    const { sleep } = abortableSleep(clock, () => {
+      clock.advance(FREEZE);
+      end.abort();
+    });
+    const rec = await backgroundWork({ os: 'ios', runner: r.runner, now: clock.now, sleep, signal: end.signal });
+    expect(r.calls).toEqual(['sync:timer', 'chunk@0']);
+    expect(rec).toMatchObject({ chunks: 1, ended: 'frozen', ms: 40_000 });
+  });
+
+  it('frozen in the regular look: no chunk at all', async () => {
+    const clock = new VirtualClock(T0);
+    const r = fakeRunner(clock, [60, null]);
+    const runner: LongRunner = { ...r.runner, syncAll: async () => void clock.advance(FREEZE) };
+    const { sleep } = abortableSleep(clock);
+    const rec = await backgroundWork({ os: 'ios', runner, now: clock.now, sleep, signal: new AbortController().signal });
+    expect(r.calls).toEqual([]);
+    expect(rec).toMatchObject({ chunks: 0, ended: 'frozen', ms: 0 });
+  });
+
+  it('a chunk that only runs long past the time is no freeze', async () => {
+    const clock = new VirtualClock(T0);
+    // 40 s chunks a minute apart until the sixth, at 500 s, which takes four minutes: 740 s, past the ten, not frozen.
+    const r = fakeRunner(clock, Array<number>(20).fill(60));
+    let n = 0;
+    const runner: LongRunner = {
+      ...r.runner,
+      async backfill() {
+        if (++n === 6) clock.advance(200_000);
+        return r.runner.backfill();
+      },
+    };
+    const { sleep } = abortableSleep(clock);
+    const rec = await backgroundWork({ os: 'ios', runner, now: clock.now, sleep, signal: new AbortController().signal });
+    expect(rec).toMatchObject({ chunks: 6, ended: 'budget', ms: 740_000 });
+    expect(LONG_BUDGET_MS + FROZEN_SLACK_MS).toBeGreaterThan(740_000);
+  });
+
+  it('nothing afterwards for a frozen run (its time is gone), and Android keeps its one chunk', async () => {
+    const clock = new VirtualClock(T0);
+    const r = fakeRunner(clock, [60, null]);
+    const { sleep } = abortableSleep(clock, () => clock.advance(FREEZE));
+    const after = vi.fn(async () => undefined);
+    expect(await backgroundWork({ os: 'ios', runner: r.runner, now: clock.now, sleep, signal: new AbortController().signal, afterwards: after })).toMatchObject({ ended: 'frozen' });
+    expect(after).not.toHaveBeenCalled();
+
+    const a = fakeRunner(clock, [60, null], FREEZE);
+    expect(await backgroundWork({ os: 'android', runner: a.runner, now: clock.now, sleep, signal: new AbortController().signal })).toMatchObject({ chunks: 1, ended: 'done' });
+  });
+
+  it('the exported log keeps a frozen run', async () => {
+    const storage = new MemoryStorage();
+    await new BackgroundRuns(storage).add({ at: new Date(T0).toISOString(), ms: 19_000, chunks: 1, ended: 'frozen' });
+    expect(await new BackgroundRuns(storage).list()).toEqual([{ at: new Date(T0).toISOString(), ms: 19_000, chunks: 1, ended: 'frozen' }]);
   });
 });
 
