@@ -1,6 +1,6 @@
 {
-  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, sync, (1.8.0) test or (1.11.0) read; kind (1.10.0) lm, hcp or (1.15.0) pro, only where the link names it (read: always, and only hcp or pro). parse_sync_intent (the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> {ok: true, target, reason} or {ok: false, error}. provider (1.18.0) may name several, separated by commas, and stays the string as given; providers_of (that string, or null: none named) -> the list of ids ([]: any the client can connect), or null when it names none validly. Since 1.22.0: with_result ({url, result}) -> the return URL with the sync's result, or null; read_result (the address a target was opened at) -> the result or null; parse_universal (https://…/link/pair|sync#…) -> as parse_link; universal_link (a glmsync:// pair or sync link) -> its universal form, or null.",
-  "spec_version": "1.26.0",
+  "$comment": "Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> {ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, sync, (1.8.0) test or (1.11.0) read; kind (1.10.0) lm, hcp or (1.15.0) pro, only where the link names it (read: always, and only hcp or pro). parse_sync_intent (the Android sync service: the intent's data and its extra glmsync.extra.REASON) -> {ok: true, target, reason} or {ok: false, error}. provider (1.18.0) may name several, separated by commas, and stays the string as given; providers_of (that string, or null: none named) -> the list of ids ([]: any the client can connect), or null when it names none validly. Since 1.22.0: with_result ({url, result}) -> the return URL with the sync's result, or null; read_result (the address a target was opened at) -> the result or null; parse_universal (https://…/link/pair|sync#…) -> as parse_link; universal_link (a glmsync:// pair or sync link) -> its universal form, or null. Since 1.27.0: action signin {ok: true, action, target?, provider, key, nonce, return}; a pair link's mode (only signin), key and nonce (both, only with mode, with a return); the universal form of a signin link (…/link/signin#…).",
+  "spec_version": "1.27.0",
   "generated_by": "spec/reference/generate.py",
   "universal": {
     "base": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/"
@@ -827,6 +827,362 @@
       }
     },
     {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": true,
+        "action": "signin",
+        "provider": "trackman",
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "return": "exampleapp://signedin"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin/?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin&utm=x",
+      "expected": {
+        "ok": true,
+        "action": "signin",
+        "target": "https://app.example.org/lm/v1",
+        "provider": "trackman",
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "return": "exampleapp://signedin"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=https%3A%2F%2Fapp.example.org%2Fsignedin%23card",
+      "expected": {
+        "ok": true,
+        "action": "signin",
+        "provider": "trackman",
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "return": "https://app.example.org/signedin#card"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "missing:provider"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "missing:key"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "missing:nonce"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+      "expected": {
+        "ok": false,
+        "error": "missing:return"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman,demo&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "invalid:provider"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=Trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "invalid:provider"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?target=http%3A%2F%2Fapp.example.org&provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "invalid:target"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "invalid:key"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3gA&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "invalid:key"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3B&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "invalid:key"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g%3D&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "invalid:key"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCn%2Bh0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "invalid:key"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnA&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "invalid:nonce"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=javascript%3Aalert(1)",
+      "expected": {
+        "ok": false,
+        "error": "invalid:return"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=glmsync%3A%2F%2Fsync",
+      "expected": {
+        "ok": false,
+        "error": "invalid:return"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "duplicate:key"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "empty:key"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin#frag",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "GLMSYNC://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&mode=signin",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "mode": "signin"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=trackman&mode=signin&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "provider": "trackman",
+        "return": "exampleapp://signedin",
+        "mode": "signin"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&mode=signin&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "return": "exampleapp://signedin",
+        "mode": "signin",
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&mode=signin&kind=lm&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X",
+        "kind": "lm",
+        "return": "exampleapp://signedin",
+        "mode": "signin",
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&mode=signin&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+      "expected": {
+        "ok": false,
+        "error": "missing:return"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&mode=signin&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "missing:nonce"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&mode=signin&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "missing:key"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&mode=signin&key=AAAA&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "invalid:key"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&mode=signin&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=AAAA&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "invalid:nonce"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": false,
+        "error": "unexpected:key"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+      "expected": {
+        "ok": false,
+        "error": "unexpected:nonce"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&mode=fetch",
+      "expected": {
+        "ok": false,
+        "error": "invalid:mode"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&mode=SIGNIN",
+      "expected": {
+        "ok": false,
+        "error": "invalid:mode"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&mode=",
+      "expected": {
+        "ok": false,
+        "error": "empty:mode"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&mode=signin&mode=signin",
+      "expected": {
+        "ok": false,
+        "error": "duplicate:mode"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=golfde&kind=hcp&mode=signin",
+      "expected": {
+        "ok": false,
+        "error": "invalid:mode"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&provider=pro&kind=pro&mode=signin",
+      "expected": {
+        "ok": false,
+        "error": "invalid:mode"
+      }
+    },
+    {
+      "rule": "parse_link",
+      "input": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&mode=signin&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": true,
+        "action": "sync",
+        "target": "https://app.example.org/lm/v1",
+        "return": "exampleapp://signedin"
+      }
+    },
+    {
       "rule": "parse_pair_fragment",
       "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X",
       "expected": {
@@ -959,6 +1315,16 @@
       "expected": {
         "ok": false,
         "error": "invalid:provider"
+      }
+    },
+    {
+      "rule": "parse_pair_fragment",
+      "input": "#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&mode=signin&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+      "expected": {
+        "ok": true,
+        "action": "pair",
+        "target": "https://app.example.org/lm/v1",
+        "code": "K7M2PQ9X"
       }
     },
     {
@@ -1704,6 +2070,34 @@
       }
     },
     {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/signin#provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": {
+        "ok": true,
+        "action": "signin",
+        "provider": "trackman",
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "return": "exampleapp://signedin"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/signin/#provider=trackman",
+      "expected": {
+        "ok": false,
+        "error": "missing:key"
+      }
+    },
+    {
+      "rule": "parse_universal",
+      "input": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/signin?provider=trackman#key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+      "expected": {
+        "ok": false,
+        "error": "invalid:link"
+      }
+    },
+    {
       "rule": "universal_link",
       "input": "glmsync://sync?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&return=exampleapp%3A%2F%2Fsynced",
       "expected": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&return=exampleapp%3A%2F%2Fsynced"
@@ -1751,6 +2145,16 @@
     {
       "rule": "universal_link",
       "input": null,
+      "expected": null
+    },
+    {
+      "rule": "universal_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin",
+      "expected": "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/signin#provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb&return=exampleapp%3A%2F%2Fsignedin"
+    },
+    {
+      "rule": "universal_link",
+      "input": "glmsync://signin?provider=trackman&key=V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g&nonce=P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
       "expected": null
     }
   ]

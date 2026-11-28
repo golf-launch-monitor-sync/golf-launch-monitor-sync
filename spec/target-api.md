@@ -21,7 +21,10 @@ conventionally ending in `/lm/v1`; the paths are relative to it.
 ## Who holds what
 
 - The **player's provider sign-in stays in the client** (extension, companion app). It never reaches
-  a target, and no endpoint here takes one.
+  a target's server, and no endpoint here takes one. The one way it leaves a client (since 1.27.0): on the phone, to the
+  target's own app that asks for it with a key of its own, sealed so that only that app can read it, by the way back
+  that app named at pairing ([deep-links.md](deep-links.md#signing-in-for-a-target)). That app fetches with it itself,
+  with this project's engine (client kind `embedded`), and keeps it on the phone.
 - The **import token** is the target's: one per player, provider and client, kept by the target only
   as a hash, shown in the target app with when it was last used, revocable there at any time. It can
   only write batches and read its own list of external ids — no shots, no rounds, no profile — and,
@@ -175,6 +178,15 @@ that wants the browser extension or the web app as clients allows their origins 
 
 Since 1.8.0 a target may hand its own test accounts made-up answers of a provider, which a client plays back
 to its real provider code — plan, guard and all — instead of asking the provider: [test-mode.md](test-mode.md).
+
+## Fetching or only signing in (since 1.27.0)
+
+A target whose own app fetches for it (this project's engine built in, client kind **`embedded`**) needs the other
+clients of the player not to fetch the same account as well. Every plan may say **`mode`**: `fetch` (also when absent),
+or `signin_only` - `due` is false, and the client only keeps the provider sign-in and hands it over when the target's
+app asks ([planning.md](planning.md), *Fetching or only signing in*). The engine names itself `embedded` at pairing; a
+target that takes such a client knows the rest from its own app (which provider account, which device). A target older
+than 1.27.0 refuses the kind at pairing like any kind it doesn't know.
 
 ## Reasons
 

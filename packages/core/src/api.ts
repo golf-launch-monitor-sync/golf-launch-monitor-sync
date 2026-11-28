@@ -11,8 +11,14 @@
 import { REASONS, validReturn, type Reason } from '@glmsync/spec';
 import { externalId, when } from './values.ts';
 
-export type ClientKind = 'extension' | 'web' | 'companion' | 'cli' | 'other';
-export const CLIENT_KINDS: readonly ClientKind[] = ['extension', 'web', 'companion', 'cli', 'other'];
+/** `embedded` (1.27.0): this project's engine in a target's own app, fetching with a sign-in handed over to it. */
+export type ClientKind = 'extension' | 'web' | 'companion' | 'cli' | 'embedded' | 'other';
+export const CLIENT_KINDS: readonly ClientKind[] = ['extension', 'web', 'companion', 'cli', 'embedded', 'other'];
+/**
+ * What a client does for a connection (1.27.0, the plan's `mode`): fetch when due, or only keep the provider sign-in
+ * and hand it to the target's own app, which fetches itself (spec/deep-links.md, *Signing in for a target*).
+ */
+export type ConnectionMode = 'fetch' | 'signin_only';
 
 export const PROVIDER_ID = /^[a-z][a-z0-9_-]{1,39}$/;
 export const ACCOUNT_REF = /^[A-Za-z0-9_-]{16,128}$/;
@@ -72,6 +78,8 @@ export interface Plan {
    */
   history?: { done?: boolean; older?: boolean; from?: string };
   last_import_at?: string;
+  /** Since 1.27.0: `signin_only` - the target fetches itself; this client never fetches for the connection (`due` false). */
+  mode?: ConnectionMode;
 }
 
 export interface SessionWanted {
@@ -211,6 +219,11 @@ export function readPlan(data: unknown): Plan {
   }
   const last = when(p.last_import_at);
   if (last) plan.last_import_at = last;
+  // 1.27.0: the target fetches itself - this client keeps the sign-in only, and never fetches for the connection.
+  if (p.mode === 'signin_only') {
+    plan.mode = 'signin_only';
+    plan.due = false;
+  } else if (p.mode === 'fetch') plan.mode = 'fetch';
   return plan;
 }
 

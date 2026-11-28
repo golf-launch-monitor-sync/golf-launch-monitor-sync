@@ -163,8 +163,10 @@ describe('a run beside the last real one (SY-5)', () => {
   });
 
   it('names the kind that holds the lease, never "another device" when it knows', () => {
-    const busy = (kind: 'extension' | 'web' | 'companion' | 'other'): LastRun => ({ at: later, reason: 'timer', status: 'busy', holder: { kind } });
+    const busy = (kind: 'extension' | 'web' | 'companion' | 'embedded' | 'other'): LastRun => ({ at: later, reason: 'timer', status: 'busy', holder: { kind } });
     expect(runText(busy('companion'), now, 'de', tde)).toMatch(/Golf Stats Sync auf einem anderen Handy/);
+    // Spec 1.27.0: the target's own app fetching with the engine built in.
+    expect(runText(busy('embedded'), now, 'de', tde)).toMatch(/die App selbst/);
     expect(runText(busy('web'), now, 'de', tde)).toMatch(/Web-App/);
     expect(runText(busy('other'), now, 'en', t)).toMatch(/another device of yours/);
     expect(runText({ at: later, reason: 'timer', status: 'busy' }, now, 'en', t)).toMatch(/another device of yours/);

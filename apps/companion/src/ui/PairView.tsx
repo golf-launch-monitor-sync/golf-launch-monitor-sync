@@ -9,6 +9,8 @@
  * Then connecting goes on as steps (the wizard): the sign-in when there is none yet, then the first sync, and
  * *Back to …* the link's `return` (spec 1.2.0) - only to an address the target named as its own in its answer. The link
  * may name several launch monitors (spec 1.18.0): one button each, by name; it keeps its focus to *Done* (lib/done.ts).
+ * A link with `mode=signin` (spec 1.27.0) is from an app that fetches itself: no first sync, only the sign-in, and with
+ * a question in the link the sign-in goes back to it sealed (HandoverView).
  */
 
 import { translator } from '@glmsync/browser/i18n';
@@ -35,16 +37,27 @@ export function PairView({ svc, link, go }: { svc: Services; link: Extract<Incom
     setStep('working');
     setError(null);
     try {
-      const p = await svc.runner.pair({ ...link, provider: link.choices.includes(chosen) ? chosen : link.provider });
+      const p = await svc.runner.pair({
+        target: link.target,
+        code: link.code,
+        provider: link.choices.includes(chosen) ? chosen : link.provider,
+        ...(link.mode ? { mode: link.mode } : {}),
+      });
       const back = backAfterPairing(link, p);
       // The link's focus to *Done*: this launch monitor's card where there is no way back (lib/done.ts).
       const focus = `lm:${p.provider}`;
-      if (svc.signIns.credential(p.provider)) {
+      const provider = p.provider as 'trackman' | 'demo';
+      if (link.mode === 'signin_only') {
+        // The app fetches itself: only the sign-in, then back - with it, sealed, when the link asked for it.
+        if (back) go({ name: 'handover', provider, pairing: p.key, target: p.target.name, ask: { ...(link.ask ?? {}), back } });
+        else if (svc.signIns.credential(p.provider)) go({ name: 'home', focus, linked: true });
+        else go({ name: 'signin', provider, focus, only: true });
+      } else if (svc.signIns.credential(p.provider)) {
         // Signed in already: the first sync right away (the target's plan decides what it brings), shown as the
         // wizard's steps 4 and 5 with *Back to …* (FirstSyncView: on the iPhone a sync left running behind a jump stops).
         go({ name: 'first', target: p.base, focus, ...(back ? { back: { url: back, name: p.target.name } } : {}) });
       } else {
-        go({ name: 'signin', provider: p.provider as 'trackman' | 'demo', focus, ...(back ? { back: { url: back, name: p.target.name } } : {}) });
+        go({ name: 'signin', provider, focus, ...(back ? { back: { url: back, name: p.target.name } } : {}) });
       }
     } catch (e) {
       setError(errorText(e, Date.now(), lang, t));

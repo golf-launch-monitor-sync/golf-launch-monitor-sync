@@ -35,12 +35,14 @@ import {
   sync,
   TargetError,
   type ClientKind,
+  type ConnectionMode,
   type FetchLike,
   type FileOut,
   type Guard,
   type GuardCounts,
   type Holder,
   type ImportResult,
+  type Plan,
   type Provider,
   type ProviderContext,
   type Storage,
@@ -95,6 +97,14 @@ export interface LastRun {
 }
 
 export type SyncReport = { key: string; run: LastRun }[];
+
+/**
+ * What a connection that only signs in (spec 1.27.0) asks no plan for: the first sync after pairing, the regular look in
+ * the background (and so a wake), the older history. The app's opening and *fetch now* still ask, so the target can say
+ * when this app is to fetch again.
+ */
+const QUIET_WHEN_SIGNIN_ONLY: ReadonlySet<Reason> = new Set<Reason>(['connect', 'timer', 'backfill']);
+const asks = (p: KeyedPairing, reason: Reason) => !(p.mode === 'signin_only' && QUIET_WHEN_SIGNIN_ONLY.has(reason));
 
 /** A run that fetched nothing: it goes beside the last real one. */
 const idle = (status: RunStatus): status is 'busy' | 'not_due' => status === 'busy' || status === 'not_due';
@@ -243,8 +253,11 @@ export class Runner {
 
   // --- pairing ------------------------------------------------------------------------------
 
-  /** A pairing code for an import token; the pairing it replaces is revoked at the target. */
-  pair(link: { target: string; code: string; provider?: string }, name = this.client.name): Promise<KeyedPairing> {
+  /**
+   * A pairing code for an import token; the pairing it replaces is revoked at the target. `mode` (spec 1.27.0): a pair
+   * link with `mode=signin` - only keep the sign-in for this connection, until the target's plan says otherwise.
+   */
+  pair(link: { target: string; code: string; provider?: string; mode?: ConnectionMode }, name = this.client.name): Promise<KeyedPairing> {
     return this.serial(async () => {
       const provider = link.provider ?? 'trackman';
       if (!this.opts.providers[provider]) throw new TargetError('provider_unknown', 'This app has no such provider.');
@@ -259,6 +272,10 @@ export class Runner {
       });
       const { added, replaced } = await this.opts.pairings.add(pairing);
       if (replaced) await this.revoke(replaced);
+      if (link.mode === 'signin_only') {
+        await this.opts.pairings.setMode(added.key, 'signin_only');
+        return this.opts.pairings.get(added.key) ?? { ...added, mode: 'signin_only' };
+      }
       return added;
     });
   }
@@ -318,7 +335,7 @@ export class Runner {
 
   private queued(reason: Reason, only: { target?: string }): Promise<SyncReport> {
     const done = this.serial(async () => {
-      const pairings = only.target ? this.opts.pairings.ofTarget(only.target) : [...this.opts.pairings.list()];
+      const pairings = (only.target ? this.opts.pairings.ofTarget(only.target) : [...this.opts.pairings.list()]).filter((p) => asks(p, reason));
       const out: SyncReport = [];
       for (const p of pairings) {
         const run = await this.syncOne(p, reason);
@@ -386,6 +403,20 @@ export class Runner {
     return run;
   }
 
+  /**
+   * What a plan said of the connection (spec 1.27.0): whether this app fetches for it or only keeps the sign-in (absent:
+   * fetch), and - as a connection that only signs in never hands a batch over - the provider account the target named.
+   */
+  private async heard(p: KeyedPairing, plan: Plan | null): Promise<void> {
+    const mode: ConnectionMode = plan?.mode ?? 'fetch';
+    try {
+      await this.opts.pairings.setMode(p.key, mode);
+      if (mode === 'signin_only' && plan?.account_ref) await this.opts.pairings.bind(p.key, plan.account_ref);
+    } catch {
+      // Storage refused: the next plan says it again.
+    }
+  }
+
   /** The User-Agent kept with the provider's sign-in on this device, for its calls; null: none (a test, an older sign-in). */
   private userAgent(providerId: string): string | null {
     return this.opts.signIns.get(providerId)?.userAgent ?? null;
@@ -409,6 +440,8 @@ export class Runner {
       ...(userAgent ? { userAgent } : {}),
     });
     const run: LastRun = { at: this.now(), reason, status: outcome.status };
+    if (outcome.status === 'busy' || outcome.status === 'not_due') await this.heard(p, outcome.plan);
+    else if (outcome.status === 'synced') await this.heard(p, null);
     if (outcome.status === 'busy' && outcome.plan.holder) run.holder = outcome.plan.holder;
     if ((outcome.status === 'busy' || outcome.status === 'not_due') && outcome.plan.history?.older === false) run.older = false;
     // The target heard "ready" with the plan; its account is another one, which it hears too (no lease taken).
@@ -455,6 +488,7 @@ export class Runner {
         await this.dropped(p);
         return { at: this.now(), reason, status: 'disconnected' };
       }
+      await this.heard(p, plan);
       if (!plan.due) return run;
       const subject = this.opts.signIns.had(p.provider)?.subject ?? null;
       const ref = plan.account_ref ?? p.account_ref ?? (subject ? accountRefOf(p.account_salt, p.provider, subject) : null);
@@ -491,6 +525,7 @@ export class Runner {
       const waits: number[] = [];
       const soonest = (s: number) => waits.push(s);
       for (const p of this.opts.pairings.list()) {
+        if (!asks(p, 'backfill')) continue;
         const test = await this.testOf(p);
         const provider = test?.provider ?? this.opts.providers[p.provider];
         const credential = test?.credential ?? this.opts.signIns.credential(p.provider);

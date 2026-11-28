@@ -13,12 +13,12 @@ const files = linkFiles as (o?: Record<string, unknown>) => Files;
 const FP = Array.from({ length: 32 }, (_, i) => i.toString(16).toUpperCase().padStart(2, '0')).join(':');
 
 describe('the files that vouch for the companion app (spec 1.22.0)', () => {
-  it('name the spec’s path, pair and sync only', () => {
+  it('name the spec’s path, pair, sync and (spec 1.27.0) signin only', () => {
     expect(new URL(UNIVERSAL_BASE).pathname).toBe(LINK_PATH);
     const { aasa } = files();
     const d = aasa.applinks.details[0]!;
     expect(d.appIDs).toEqual(['XG2RHPU95N.consulting.regsta.glmsync']);
-    expect(d.components.map((c) => c['/'])).toEqual([`${LINK_PATH}pair`, `${LINK_PATH}pair/`, `${LINK_PATH}sync`, `${LINK_PATH}sync/`]);
+    expect(d.components.map((c) => c['/'])).toEqual([`${LINK_PATH}pair`, `${LINK_PATH}pair/`, `${LINK_PATH}sync`, `${LINK_PATH}sync/`, `${LINK_PATH}signin`, `${LINK_PATH}signin/`]);
     expect(d.paths).toEqual(d.components.map((c) => c['/']));
   });
 

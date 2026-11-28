@@ -192,3 +192,37 @@ describe('the handicap record’s links (spec 1.10.0, 1.11.0)', () => {
     expect(readIncoming('glmsync://read', PROVIDERS, []).kind).toBe('invalid');
   });
 });
+
+describe('signing in for an app that fetches itself (spec 1.27.0)', () => {
+  const K = 'V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g';
+  const N = 'P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb';
+  const caddie = pairing('https://app.example.org/lm/v1', ['exampleapp://']);
+  const signin = `glmsync://signin?provider=trackman&key=${K}&nonce=${N}&return=exampleapp%3A%2F%2Fsignedin`;
+
+  it('a signin link names the pairing of the app it goes back to, its question and its way back', () => {
+    expect(readIncoming(signin, PROVIDERS, [pairing('https://other.example/lm/v1', ['otherapp://']), caddie])).toEqual({
+      kind: 'signin', provider: 'trackman', pairing: caddie.key, name: 'Example App', ask: { key: K, nonce: N, back: 'exampleapp://signedin' },
+    });
+  });
+
+  it('names no pairing where no app paired here named that way back, and refuses a provider this app lacks', () => {
+    expect(readIncoming(signin, PROVIDERS, [pairing('https://other.example/lm/v1', ['otherapp://'])])).toEqual({ kind: 'signin', provider: 'trackman', pairing: null });
+    expect(readIncoming(signin.replace('trackman', 'other'), PROVIDERS, [caddie]).kind).toBe('invalid');
+    expect(readIncoming(signin.replace(`key=${K}`, 'key=short'), PROVIDERS, [caddie]).kind).toBe('invalid');
+  });
+
+  it('reads the universal form as the link itself', () => {
+    const universal = `https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/signin#${signin.split('?')[1]}`;
+    expect(readIncoming(universal, PROVIDERS, [caddie])).toEqual(readIncoming(signin, PROVIDERS, [caddie]));
+  });
+
+  it('a pair link may ask to only sign in, and to hand the sign-in over at once', () => {
+    const base = 'glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X&mode=signin';
+    expect(readIncoming(base, PROVIDERS, [])).toMatchObject({ kind: 'pair', mode: 'signin_only' });
+    expect(readIncoming(base, PROVIDERS, [])).not.toHaveProperty('ask');
+    expect(readIncoming(`${base}&key=${K}&nonce=${N}&return=exampleapp%3A%2F%2Fpaired`, PROVIDERS, [])).toMatchObject({
+      kind: 'pair', mode: 'signin_only', return: 'exampleapp://paired', ask: { key: K, nonce: N },
+    });
+    expect(readIncoming('glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X', PROVIDERS, [])).not.toHaveProperty('mode');
+  });
+});

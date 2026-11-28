@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
+import { validKey, validNonce } from './b64url.ts';
+
 /**
  * The deep links and the pairing fragment (spec/deep-links.md), the TypeScript port of
  * spec/reference/deeplinks.py; both answer spec/testvectors/deep-links.json alike.
@@ -13,7 +15,21 @@ export type LinkResult =
    * `kind` (1.10.0): which target API the base URL speaks, only where the link names it (none: the launch monitor one).
    * `provider` (1.18.0) may name several, separated by commas, as given: `providersOf` splits it.
    */
-  | { ok: true; action: 'pair'; target: string; code: string; provider?: string; kind?: PairKind; return?: string }
+  | {
+      ok: true;
+      action: 'pair';
+      target: string;
+      code: string;
+      provider?: string;
+      kind?: PairKind;
+      return?: string;
+      /** Since 1.27.0: only signing in for this connection (the target fetches itself); `key`/`nonce`: hand it over at once. */
+      mode?: LinkMode;
+      key?: string;
+      nonce?: string;
+    }
+  /** Since 1.27.0: hand the provider sign-in over to the target app that asks, sealed for its key (handover.ts). */
+  | { ok: true; action: 'signin'; target?: string; provider: string; key: string; nonce: string; return: string }
   | { ok: true; action: 'sync'; target?: string; return?: string }
   /** Since 1.8.0: a test code for a pairing (spec/test-mode.md); never pairs, never jumps back. */
   | { ok: true; action: 'test'; target?: string; code: string }
@@ -22,6 +38,8 @@ export type LinkResult =
   | { ok: false; error: string };
 
 const MAX_LEN = 2048;
+/** What a pair link's `mode` may say (1.27.0): `signin` - the client only signs in for this connection. */
+export type LinkMode = 'signin';
 /**
  * Which target API a pairing speaks (1.10.0): `lm` (spec/target-api.md, also without a kind), `hcp` (spec/hcp.md) or
  * (1.15.0) `pro`: the handicap target API for a professional's own pages (spec/prores.md).
@@ -39,7 +57,7 @@ const TARGET =
   /^(?:https:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?|http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?)(?:\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$/;
 const SCHEME = /^([a-z][a-z0-9+.-]*):/;
 const NEVER_RETURN = new Set(['javascript', 'data', 'file', 'vbscript', 'about', 'blob', 'glmsync']);
-const LINK = /^glmsync:\/\/(pair|sync|test|read)\/?(?:\?([^#]*))?$/;
+const LINK = /^glmsync:\/\/(pair|sync|test|read|signin)\/?(?:\?([^#]*))?$/;
 const BAD_ESCAPE = /%(?![0-9A-Fa-f]{2})/;
 // What Python's str.isspace() counts: JS's \s plus the separators \x1c-\x1f.
 const SPACE = /[\s\x1c-\x1f]/;
@@ -103,7 +121,8 @@ export function providersOf(provider: string | null | undefined): string[] | nul
 
 const PAIR_KEYS = new Set(['target', 'code', 'provider', 'kind']);
 // A pair link may name where to jump back to once paired (1.2.0); the pairing page's fragment may not.
-const PAIR_LINK_KEYS = new Set(['target', 'code', 'provider', 'kind', 'return']);
+const PAIR_LINK_KEYS = new Set(['target', 'code', 'provider', 'kind', 'return', 'mode', 'key', 'nonce']);
+const SIGNIN_KEYS = new Set(['target', 'provider', 'key', 'nonce', 'return']);
 const SYNC_KEYS = new Set(['target', 'return']);
 const TEST_KEYS = new Set(['target', 'code']);
 const READ_KEYS = new Set(['kind']);
@@ -122,6 +141,17 @@ function pair(p: Map<string, string>): LinkResult {
   if (kind !== undefined && !KINDS.has(kind)) return { ok: false, error: 'invalid:kind' };
   const back = p.get('return');
   if (back !== undefined && !validReturn(back)) return { ok: false, error: 'invalid:return' };
+  // 1.27.0: only signing in for this connection, and the sign-in handed over at once when the link asks with a key.
+  const mode = p.get('mode');
+  if (mode !== undefined) {
+    if (mode !== 'signin' || (kind ?? 'lm') !== 'lm') return { ok: false, error: 'invalid:mode' };
+    if (p.has('key') || p.has('nonce')) {
+      const err = keyNonce(p);
+      if (err) return { ok: false, error: err };
+    }
+  } else if (p.has('key') || p.has('nonce')) return { ok: false, error: `unexpected:${p.has('key') ? 'key' : 'nonce'}` };
+  const key = p.get('key');
+  const nonce = p.get('nonce');
   return {
     ok: true,
     action: 'pair',
@@ -130,7 +160,32 @@ function pair(p: Map<string, string>): LinkResult {
     ...(provider === undefined ? {} : { provider }),
     ...(kind === undefined ? {} : { kind: kind as PairKind }),
     ...(back === undefined ? {} : { return: back }),
+    ...(mode === undefined ? {} : { mode: mode as LinkMode }),
+    ...(key === undefined ? {} : { key }),
+    ...(nonce === undefined ? {} : { nonce }),
   };
+}
+
+/** `key` and `nonce` of a sign-in question (1.27.0): both, each valid, and a way back to answer to. */
+function keyNonce(p: Map<string, string>): string | null {
+  for (const k of ['key', 'nonce', 'return']) if (!p.has(k)) return `missing:${k}`;
+  if (!validKey(p.get('key'))) return 'invalid:key';
+  if (!validNonce(p.get('nonce'))) return 'invalid:nonce';
+  return null;
+}
+
+/** A signin link (1.27.0): the provider, the target's key and nonce, and where to answer. */
+function signin(p: Map<string, string>): LinkResult {
+  for (const k of ['provider', 'key', 'nonce', 'return']) if (!p.has(k)) return { ok: false, error: `missing:${k}` };
+  const target = p.get('target');
+  if (target !== undefined && !validTarget(target)) return { ok: false, error: 'invalid:target' };
+  const provider = p.get('provider') as string;
+  if (!PROVIDER.test(provider)) return { ok: false, error: 'invalid:provider' };
+  const err = keyNonce(p);
+  if (err) return { ok: false, error: err };
+  const back = p.get('return') as string;
+  if (!validReturn(back)) return { ok: false, error: 'invalid:return' };
+  return { ok: true, action: 'signin', ...(target === undefined ? {} : { target }), provider, key: p.get('key') as string, nonce: p.get('nonce') as string, return: back };
 }
 
 /** A test link (1.8.0): the code, and the pairing's target when there are several. */
@@ -152,6 +207,10 @@ export function parseLink(url: unknown): LinkResult {
   if (m[1] === 'pair') {
     const p = params(query, PAIR_LINK_KEYS);
     return typeof p === 'string' ? { ok: false, error: p } : pair(p);
+  }
+  if (m[1] === 'signin') {
+    const p = params(query, SIGNIN_KEYS);
+    return typeof p === 'string' ? { ok: false, error: p } : signin(p);
   }
   if (m[1] === 'test') {
     const p = params(query, TEST_KEYS);
@@ -289,9 +348,9 @@ export function readResult(url: unknown): SyncResult | null {
  * is installed, else the page there shows how to install it. The link's keys go in the fragment, which no server sees.
  */
 export const UNIVERSAL_BASE = 'https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/';
-const UNIVERSAL = /^https:\/\/golf-launch-monitor-sync\.github\.io\/golf-launch-monitor-sync\/link\/(pair|sync)\/?(?:#([^#]*))?$/;
+const UNIVERSAL = /^https:\/\/golf-launch-monitor-sync\.github\.io\/golf-launch-monitor-sync\/link\/(pair|sync|signin)\/?(?:#([^#]*))?$/;
 
-/** `https://…/link/pair#…` or `…/link/sync#…`: the same answer as `parseLink` of `glmsync://<action>?<fragment>`. */
+/** `https://…/link/pair#…`, `…/link/sync#…` or (1.27.0) `…/link/signin#…`: the same answer as `parseLink` of `glmsync://<action>?<fragment>`. */
 export function parseUniversal(url: unknown): LinkResult {
   if (typeof url !== 'string' || url.length > MAX_LEN) return { ok: false, error: 'invalid:link' };
   const m = UNIVERSAL.exec(url);
@@ -299,11 +358,11 @@ export function parseUniversal(url: unknown): LinkResult {
   return parseLink(`glmsync://${m[1] as string}?${m[2] ?? ''}`);
 }
 
-/** The universal form of a valid glmsync:// pair or sync link (its query into the fragment); null for any other. */
+/** The universal form of a valid glmsync:// pair, sync or (1.27.0) signin link (its query into the fragment). */
 export function universalLink(link: unknown): string | null {
   if (!parseLink(link).ok) return null;
   const m = LINK.exec(link as string);
-  if (!m || (m[1] !== 'pair' && m[1] !== 'sync')) return null;
+  if (!m || (m[1] !== 'pair' && m[1] !== 'sync' && m[1] !== 'signin')) return null;
   const out = `${UNIVERSAL_BASE}${m[1]}${m[2] ? `#${m[2]}` : ''}`;
   return out.length <= MAX_LEN ? out : null;
 }

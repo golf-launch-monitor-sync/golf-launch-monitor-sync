@@ -49,7 +49,7 @@ export function when(at: number | string, now: number, lang: Lang, t: T): string
 /** Who holds the lease, as the plan named it (spec 1.13.0): never "another device" when the target says which. */
 function busyText(at: string, holder: Holder | undefined, lang: Lang, t: T): string {
   const kind = holder?.kind;
-  if (kind !== 'extension' && kind !== 'web' && kind !== 'companion') return t('run.busy', { at });
+  if (kind !== 'extension' && kind !== 'web' && kind !== 'companion' && kind !== 'embedded') return t('run.busy', { at });
   const who = t(`run.who.${kind}`);
   const d = holder?.since ? new Date(holder.since) : null;
   if (!d || Number.isNaN(d.getTime())) return t('run.busyBy', { at, who });

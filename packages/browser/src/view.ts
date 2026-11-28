@@ -70,7 +70,7 @@ export function lastText(e: Entry, t: T, lang: Lang, now: number): string | null
 /** Who is fetching, as the target named the lease's holder (spec 1.13.0); "another device" only when it didn't. */
 function busyText(holder: Holder | undefined, t: T, lang: Lang): string {
   const kind = holder?.kind;
-  if (kind !== 'extension' && kind !== 'web' && kind !== 'companion') return t('last.busy');
+  if (kind !== 'extension' && kind !== 'web' && kind !== 'companion' && kind !== 'embedded') return t('last.busy');
   const who = t(`last.who.${kind}` as MessageKey);
   const since = holder?.since ? Date.parse(holder.since) : NaN;
   return Number.isFinite(since) ? t('last.busy_since', { who, time: formatTime(since, lang) }) : t('last.busy_who', { who });

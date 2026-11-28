@@ -194,5 +194,15 @@
   "wakeHint.lowPower": "Im Stromsparmodus weckt iOS die App nicht: Einstellungen › Batterie › Stromsparmodus.",
   "wakeHint.settings": "Zu den Einstellungen",
   "wakeHint.swipe": "Wisch die App nicht im App-Umschalter weg: dann weckt iOS sie nicht mehr, bis du sie wieder öffnest.",
-  "wakeHint.close": "Schließen"
+  "wakeHint.close": "Schließen",
+  "handover.title": "Deine Anmeldung für {name}",
+  "handover.what": "{name} holt deine {provider}-Daten auf diesem Handy selbst. Diese App hält deine Anmeldung und gibt sie {name} versiegelt weiter – lesen kann sie nur {name}.",
+  "handover.renewing": "Deine {provider}-Anmeldung wird erneuert …",
+  "handover.going": "Zurück zu {name} …",
+  "handover.other": "Du bist bei {provider} mit einem anderen Konto angemeldet als dem, mit dem {name} verbunden ist – deshalb wurde nichts weitergegeben. Melde dich mit diesem Konto an oder trenne die Verbindung in {name}.",
+  "handover.failed": "Deine Anmeldung konnte nicht an {name} weitergegeben werden. Versuch es aus {name} noch einmal.",
+  "handover.stayed": "{name} ließ sich nicht öffnen, deshalb bleibst du hier. Öffne {name} selbst.",
+  "handover.unpaired": "Die App, die nach deiner Anmeldung gefragt hat, ist mit diesem Handy nicht verbunden – deshalb wurde nichts weitergegeben. Verbinde sie zuerst aus dieser App heraus.",
+  "run.who.embedded": "die App selbst",
+  "pairing.signinOnly": "{name} holt auf diesem Handy selbst; diese App hält nur deine Anmeldung dafür."
 }

@@ -316,7 +316,11 @@ components:
         asked for it; backfill: the older history, a chunk at a time.
     ClientKind:
       type: string
-      enum: [extension, web, companion, cli, other]
+      enum: [extension, web, companion, cli, embedded, other]
+      description: |
+        embedded (since 1.27.0): this project's engine built into a target's own app, fetching for that target from
+        the player's phone with a sign-in the companion app handed over (spec/deep-links.md, *Signing in for a
+        target*). A target older than 1.27.0 refuses it at pairing like any kind it doesn't know.
     Cause:
       type: string
       enum: [wake, nudge, link, page]
@@ -477,6 +481,10 @@ components:
         outdated:
           type: boolean
           description: "Since 1.22.0: the target needs a newer version of this kind of client; `due` is false. The client tells its player to update and answers an ask with `outdated`."
+        mode:
+          type: string
+          enum: [fetch, signin_only]
+          description: "Since 1.27.0: what this client does for the connection. `fetch` (also when absent): it fetches when a plan is due, as always. `signin_only`: the target fetches for this provider account itself (an engine of this project in its own app, client kind `embedded`); `due` is false, and the client only keeps the provider sign-in and hands it over when the target app asks (spec/deep-links.md, *Signing in for a target*). It runs nothing in the background for the connection and isn't woken for it (planning.md, *Fetching or only signing in*)."
     ImportResult:
       type: object
       additionalProperties: false

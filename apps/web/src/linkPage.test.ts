@@ -32,6 +32,16 @@ describe('the page behind the universal links', () => {
     expect(linkPage(sync, MAC, PAIR_PAGE)).toEqual({ show: 'computer-sync' });
   });
 
+  it('opens a signin link (spec 1.27.0) by its scheme on a phone, and says on a computer that it is the phone’s', () => {
+    const key = 'V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g';
+    const nonce = 'P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb';
+    const signin = universalLink(`glmsync://signin?provider=trackman&key=${key}&nonce=${nonce}&return=exampleapp%3A%2F%2Fsignedin`) as string;
+    expect(linkPage(signin, IPHONE, PAIR_PAGE)).toEqual({
+      show: 'phone', action: 'signin', platform: 'ios', open: `glmsync://signin?provider=trackman&key=${key}&nonce=${nonce}&return=exampleapp%3A%2F%2Fsignedin`,
+    });
+    expect(linkPage(signin, MAC, PAIR_PAGE)).toEqual({ show: 'computer-signin' });
+  });
+
   it('takes nothing that isn’t one of its links', () => {
     for (const href of [`${PAIR_PAGE}#target=${T}&code=K7M2PQ9X`, `${sync}&target=${T}`, `${sync.replace('#', '?')}`, '', 'glmsync://sync']) {
       expect(linkPage(href, IPHONE, PAIR_PAGE)).toEqual({ show: 'invalid' });

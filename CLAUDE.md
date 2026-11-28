@@ -36,8 +36,11 @@ format, the target API, the planning rules, the load guard and the deep links.
   headers of every call); in a browser the browser sends its own.
 - **No borrowed OAuth client id** (a portal's or an app's own). A client id comes from the maker
   registering one for this project, or the feature waits.
-- **Nothing on a server**: no sign-in, token or password ever goes to a target, to a server of this
-  project (there is none) or to anyone else's. No relay, no "sync service" holding tokens.
+- **Nothing on a server**: no sign-in, token or password ever goes to a target's server, to a server of this
+  project (there is none) or to anyone else's. No relay, no "sync service" holding tokens. The one way a sign-in
+  leaves a client (spec 1.27.0, *Signing in for a target*): on the phone, to the target's own app that asked with its
+  key, sealed for that app alone and only by the way back it named at pairing - an app that fetches with this
+  project's engine unchanged and keeps the sign-in in the phone's secure store.
 - **The load guard can't be switched off** ([spec/guard.md](spec/guard.md)): no option, environment
   variable, plan field or debug flag weakens it. Its numbers move down after a measurement, never up
   without one.

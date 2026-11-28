@@ -40,7 +40,7 @@ export async function bookmarklet() {
 export async function buildWeb() {
   rmSync(OUT, { recursive: true, force: true });
   mkdirSync(join(OUT, 'pair'), { recursive: true });
-  for (const kind of ['pair', 'sync']) mkdirSync(join(OUT, 'link', kind), { recursive: true });
+  for (const kind of ['pair', 'sync', 'signin']) mkdirSync(join(OUT, 'link', kind), { recursive: true });
   const files = await bundle({
     entries: { index: join(HERE, 'src', 'index.ts'), pair: join(HERE, 'src', 'pair.ts'), app: join(HERE, 'src', 'app.ts'), link: join(HERE, 'src', 'link.ts') },
     outdir: OUT,
@@ -54,7 +54,7 @@ export async function buildWeb() {
   // The site's own path is fixed by the spec (UNIVERSAL_BASE), so the page names its files from there: the same page
   // then works at `link/sync` and `link/sync/`, whichever Pages serves.
   const link = readFileSync(join(OUT, 'link.html'), 'utf8').replaceAll('"./', '"/golf-launch-monitor-sync/');
-  for (const kind of ['pair', 'sync']) {
+  for (const kind of ['pair', 'sync', 'signin']) {
     writeFileSync(join(OUT, 'link', kind, 'index.html'), link);
     writeFileSync(join(OUT, 'link', `${kind}.html`), link);
   }

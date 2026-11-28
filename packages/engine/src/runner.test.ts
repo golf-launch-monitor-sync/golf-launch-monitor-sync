@@ -433,3 +433,49 @@ describe('Is this you?', () => {
     expect(s.services.runner.otherAccountAt('trackman', fakeToken('someone-else-0000'))).toEqual(['Example App']);
   });
 });
+
+describe('a connection that only signs in (spec 1.27.0)', () => {
+  const plans = (s: ReturnType<typeof setup>) => s.target.received.filter((r) => r.method === 'GET' && r.url.includes('/plan')).length;
+
+  it('is kept as such from a pair link that says so, and fetches nothing after pairing, in the background or for the history', async () => {
+    const s = setup();
+    await s.services.load();
+    const p = await s.services.runner.pair({ target: s.target.base, code: 'K7M2PQ9X', mode: 'signin_only' });
+    expect(p.mode).toBe('signin_only');
+    await s.services.signIns.set('trackman', s.token);
+    for (const reason of ['connect', 'timer'] as const) expect(await s.services.runner.syncAll(reason)).toEqual([]);
+    expect(await s.services.runner.backfill()).toBeNull();
+    expect(plans(s)).toBe(0);
+    expect(s.tm.requests).toHaveLength(0);
+    // A fresh start knows it still.
+    const again = makeEngine({ secrets: s.secrets, storage: s.storage });
+    await again.load();
+    expect(again.pairings.list()[0]?.mode).toBe('signin_only');
+  });
+
+  it('asks the plan when the app is opened, and goes back to fetching only when the target says so', async () => {
+    let mode = 'signin_only';
+    const s = setup({ plan: () => ({ due: true, mode, known_ids: [], rounds: false }) });
+    await paired(s);
+    await s.services.signIns.set('trackman', s.token);
+    const [first] = await s.services.runner.syncAll('timer');
+    // Fetching until the target said otherwise: its plan says signin_only, so nothing is fetched although `due`.
+    expect(first?.run.status).toBe('not_due');
+    expect(s.tm.requests).toHaveLength(0);
+    expect(s.services.pairings.list()[0]?.mode).toBe('signin_only');
+    expect(await s.services.runner.syncAll('timer')).toEqual([]);
+    mode = 'fetch';
+    const [open] = await s.services.runner.syncAll('open');
+    expect(open?.run.status).toBe('synced');
+    // Fetching is what a pairing without a mode does (as before 1.27.0).
+    expect(s.services.pairings.list()[0]?.mode).toBeUndefined();
+  });
+
+  it('remembers the provider account the target named, though it never hands a batch over', async () => {
+    const s = setup({ plan: () => ({ due: false, mode: 'signin_only', account_ref: 'c3ludGhldGljLWFjY291bnQtcmVm' }) });
+    await paired(s);
+    await s.services.signIns.set('trackman', s.token);
+    await s.services.runner.syncAll('open');
+    expect(s.services.pairings.list()[0]?.account_ref).toBe('c3ludGhldGljLWFjY291bnQtcmVm');
+  });
+});

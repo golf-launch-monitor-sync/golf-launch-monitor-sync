@@ -117,7 +117,8 @@ And, as a rule for every line of code here:
 - **no borrowed credentials**: never another application's OAuth client id;
 - **only your own account**, with your own sign-in;
 - **nothing on a server**: no sign-in, token or password of yours is ever sent to or kept on a
-  server, ours or anyone's;
+  server, ours or anyone's. On a phone, an app you connected that fetches itself with this project's engine may ask
+  the companion app for your sign-in: it gets it sealed for that app alone, and keeps it on the phone (spec 1.27.0);
 - **golf.de: reads only what golf.de's own page loaded in your tab; sends no request of its own.**
   Nothing happens unless you open the page or tap *Fetch all* there - or, while you are signed in, the app
   you connected says your record is due (once a day at most): then the extension opens golf.de in a

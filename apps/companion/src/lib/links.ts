@@ -19,19 +19,42 @@
  *   `pro`, none other), and its read link only opens the app's window on those sites, where the player opens their page
  *   and taps *Send* themselves;
  * - since spec 1.18.0 a launch monitor's pair link may name several providers (this app offers those it has), and the
- *   pair links of golf.de's record and a pro's pages keep their `return` too, followed by the same rule.
+ *   pair links of golf.de's record and a pro's pages keep their `return` too, followed by the same rule;
+ * - since spec 1.27.0 a pair link may say `mode=signin` (the app that asks fetches itself: this one only keeps the
+ *   sign-in for that connection), with a question to answer at once; a signin link asks for the sign-in of a paired
+ *   app, answered sealed for that app's key alone and only by the way back it named at pairing (lib/handover.ts);
+ * - an address of the project's universal links (spec 1.22.0, `…/link/pair#…` and the others) reads as its link.
  */
 
 import { PROVIDER_ID as GOLFDE } from '@glmsync/provider-golfde';
-import { parseLink, PRO_PROVIDER, providersOf, returnAllowed } from '@glmsync/spec';
+import { parseLink, parseUniversal, PRO_PROVIDER, providersOf, returnAllowed } from '@glmsync/spec';
 import type { KeyedPairing } from '@glmsync/engine';
+import { pickPairing, type Ask } from './handover.ts';
 
 export type Incoming =
   /**
    * A launch monitor: `choices` the providers of this app's the link allows (spec 1.18.0: it may name several; none
    * named: Trackman - the demo only when a link names it), `provider` the first of them.
    */
-  | { kind: 'pair'; target: string; code: string; provider: string; choices: string[]; host: string; replaces: boolean; return?: string }
+  | {
+      kind: 'pair';
+      target: string;
+      code: string;
+      provider: string;
+      choices: string[];
+      host: string;
+      replaces: boolean;
+      return?: string;
+      /** Spec 1.27.0: only keep the sign-in for this connection; `ask`: hand it over at once, sealed for that key. */
+      mode?: 'signin_only';
+      ask?: { key: string; nonce: string };
+    }
+  /**
+   * Spec 1.27.0: a paired app asks for the sign-in. `pairing`: the one whose app the way back belongs to (null: none here
+   * - nothing is handed over and nothing jumps back); `name`: that app's.
+   */
+  | { kind: 'signin'; provider: string; pairing: string; name: string; ask: Required<Ask> }
+  | { kind: 'signin'; provider: string; pairing: null }
   /** The handicap record (kind=hcp); `return` since spec 1.18.0, followed once the target named it as its own. */
   | { kind: 'pair-hcp'; target: string; code: string; provider: string; host: string; return?: string }
   /** A pro's world ranking pages (kind=pro, spec 1.15.0); `return` likewise. */
@@ -51,9 +74,15 @@ export function hostOf(target: string): string {
 
 /** What a link asks for; `providers`: those this app has. */
 export function readIncoming(url: unknown, providers: readonly string[], pairings: readonly KeyedPairing[]): Incoming {
-  const link = parseLink(url);
+  const link = typeof url === 'string' && url.startsWith('https://') ? parseUniversal(url) : parseLink(url);
   if (!link.ok) return { kind: 'invalid', error: link.error };
   if (link.action === 'read') return { kind: 'read', what: link.kind === 'pro' ? 'pro' : 'hcp' };
+  if (link.action === 'signin') {
+    if (!providers.includes(link.provider)) return { kind: 'invalid', error: 'unknown:provider' };
+    const p = pickPairing(link, pairings);
+    if (!p) return { kind: 'signin', provider: link.provider, pairing: null };
+    return { kind: 'signin', provider: link.provider, pairing: p.key, name: p.target.name, ask: { key: link.key, nonce: link.nonce, back: link.return } };
+  }
   if (link.action === 'pair' && link.kind === 'pro') {
     const provider = link.provider ?? PRO_PROVIDER;
     if (provider !== PRO_PROVIDER) return { kind: 'invalid', error: 'unknown:provider' };
@@ -80,6 +109,8 @@ export function readIncoming(url: unknown, providers: readonly string[], pairing
       host: hostOf(link.target),
       replaces,
       ...(link.return ? { return: link.return } : {}),
+      ...(link.mode === 'signin' ? { mode: 'signin_only' as const } : {}),
+      ...(link.key && link.nonce ? { ask: { key: link.key, nonce: link.nonce } } : {}),
     };
   }
   if (link.action === 'test') return { kind: 'test', code: link.code, keys: testPairings(pairings, link.target) };

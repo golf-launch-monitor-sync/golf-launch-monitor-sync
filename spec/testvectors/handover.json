@@ -1,0 +1,1038 @@
+{
+  "$comment": "Signing in for a target: the sealed handover (spec/deep-links.md, *Signing in for a target*; 1.27.0; reference/handover.py). Keys, nonces, `from` and `box` are base64url without padding (keys 32 bytes, nonces 24). public_key (a secret key) -> its public key or null. seal ({message, key, nonce, secret}: the client's secret key for this answer) -> {from, box} (NaCl box of the message as compact JSON with the keys v, provider, token, account_ref, expires_at?, user_agent in this order) or null; compare exactly. open ({box, from, nonce, secret}: the target's secret key) -> the message read strictly {provider, token, account_ref, expires_at?, user_agent} or null. with_answer ({url, answer}) -> the way back with the answer in its fragment, or null. read_answer (the address the target was opened at) -> {signin, from?, box?} or null.",
+  "spec_version": "1.27.0",
+  "generated_by": "spec/reference/generate.py",
+  "keys": {
+    "target_secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY",
+    "target_key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+    "client_secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI",
+    "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb"
+  },
+  "results": [
+    "sealed",
+    "none",
+    "other_account",
+    "failed"
+  ],
+  "max_answer": 8192,
+  "cases": [
+    {
+      "rule": "public_key",
+      "input": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY",
+      "expected": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g"
+    },
+    {
+      "rule": "public_key",
+      "input": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI",
+      "expected": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0"
+    },
+    {
+      "rule": "public_key",
+      "input": "F2iCaeeq_28nARPe-bckX1gItjHfkYQj9GlPD0xXcCc",
+      "expected": "vsbuu4oxzzWPnnmPcUOHWfC0-jIKhqULm9aNxGuNCk8"
+    },
+    {
+      "rule": "public_key",
+      "input": "",
+      "expected": null
+    },
+    {
+      "rule": "public_key",
+      "input": "AAAA",
+      "expected": null
+    },
+    {
+      "rule": "public_key",
+      "input": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArYA",
+      "expected": null
+    },
+    {
+      "rule": "public_key",
+      "input": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuAr",
+      "expected": null
+    },
+    {
+      "rule": "public_key",
+      "input": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY=",
+      "expected": null
+    },
+    {
+      "rule": "public_key",
+      "input": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuAr/",
+      "expected": null
+    },
+    {
+      "rule": "public_key",
+      "input": 5,
+      "expected": null
+    },
+    {
+      "rule": "public_key",
+      "input": null,
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": {
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg"
+      }
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": {
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "box": "fuoIAE7soPfF_Ubz5DptSTx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbJnJXQ6-xIOAGYgCfnikdxWp4kvXdcBiXHkRtym1lmGfscRpaYYHPxMX9prktfumO1F-Q_E2-_jzf0_VO1kZlTbG42R87sQyTk-tQ8aYlhtTYeMKkvBOGdBsp0MeD6y5ACJVNVoivRmBnvvKESbcBEbe38yIrfL_73hKHDg"
+      }
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T09:12:00+01:00",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": {
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "box": "jDV4JZwPbT61UH9w4mdarTx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlU-qzcwxjL8YWgwBJGEuI_nu7l_btvJgAm771fw2jjAmtRD1EkfMKHA2FYqqRORk4cV0L0Z0pK-IJjk6B34Ehswo9Dmhg4FQ5wEcIzsIUpX9cWESbseA7K-wWh4ApO-xRyVRkQ6h97J4GI02BbDumbBQkG5c_KuOQ2ii-o3ahNkwOoihP3GGqahgRqG"
+      }
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": {
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "box": "xq3kGZ8dS0WMsgr_vIuJ8Dx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1Ohb8OwrXWMmuXQq6nnK-X3coy7rhHdT-P8hHAaco2RajQZWJkbuT1qxjuE1uiUcgij0i8EVDEfMscHPkuVj-uIl995AD3OepoLSvAWpmP32SrYtdJoyQzSQL7y6SXNMR2S61ovYGpcZDH8InbBK1RLDIgclzvpszR6OQvgFRvGcZzYgBK3lKSYioP_0QblrdxBwKx3tshuyKPU7fRhR84n1yjnqvKSFyTNne7NXqsKR1ScLWnR-3tRWq7y_Ci8BXzR5SZumYiEcCuQSHjsRN65U0ioOWMI_y9UXPOUN54_ev3hoUUIFcRZX3eX18reXVEYIWC6aj7nViMYKyklLdCxJz0ZeEuDIH6Dr2jjKZVlCqbqqRJBaxnLtvXwR-0f4_07SLJ-_twUCDiu0Lvc3hrwgxK_ssO_BYuAN0ITeO9tVXgDK7oKoZGUT6LRIKtOYe13HLuP7XcU8cKKokONHPHNDSySkSDmoMXO0Ly5NZb_TujHnkAktc-DgtBF4iv84AnVfyMSiw7w4Lwat1Xp8u8nJYuuPd_sc7TaI_fq8q3CitzZG-gxs-ZKr12ZTXWDBr0PdLODyplHhvUYRJuEIvOJ5U9bCeEJVbVWB7HZdloGLIrOIeFlfgbNfz2VIz6srIgEfr5SoZnjnrMuh1yL1x5iUv9qL8K-M4URNECuUNaNUjCJuNvdZkbs-EsGjl2V14tUsZpnTX7dNuuEjtd9jgEyhMDZy6XhLFcF2mF5H0uugZFHqC7Y8wVa257cHz3LnY8b7cbgDHhtutCovIOtgvjWJsku2UxNVX7ptmQqE6xSWT7PvSPaP6aE0U1DPEfpGYOAVZouP_h6w72DijzKNLal4RI1uGopEX-Fs2z_ZM_K7KZYSW-xg8w9_bBSMpi4ur44nyH0BmHOHG2xMA1gtey_64kZzsIUDFArEOTsJ0K0f1MUmWPplPViuiQJIjtN2DocBwRh0xCwbWb1UzoeElABMoPzpcXn9vKUrjRG2RDfLQUYXyvAD3PpyhkNnkcNere6pdziFJLcTFag386rAnWPyoxvtouWivCXLTmZr51JlroH_B6dX23oK68ZDrt83SPDjHKz1JURu6GgCLdI6S7lc6JRBjeTd8eagN6gqc5vbkxXRaNWmBE-Q-vKvuinWlY6TbZ0fya4Delk-npPZMSOt-Zmrq4WRlalzOpuqqX3tjLje2PAiqb7CMxxNuQKQMYt27a1prEJJMBmWXEdv0cPEMFwuJ3A1gFQ6wOT8Jt0C7xJOnT0p6ds5DsDFW66qU_m2Xgcglf6podosv2FFCkd1sKAMv61OEzF0EB0ldXMGYAaxjTfNaOo11cUh6p5mwuV_Tj0-m0rQeeNDX7CDHwGJWyMofASm5hz1sdEEOOOZT3rcmhdLjHkq3n_aM7bJgbBODqxOWfoYV1C4BYLhXZ3422h3vvj6CbfUCOhv-ZVNLVFslD8hWTR2f09QzF3u-5d_Xmd9h3l3g4BlOUp6qiykuOJB1rbjDqDw3EeSp5-fODrWCN08Stm8TBiidD5-6RsJ8WSViiyw-Wz9xIMrIjlNBzcHo1glFWpcKADGSUUATIzsVoVl8GxQonAb-NAOtg59bfROsUk_E71FNwYPtmW4fGiD0cH_T2_hpkuOeFY-vRi_4DmqtRd6yVnGm7aBh5oVd3g9he2230nnoPQ3m471WsCzkVfvAq10cPOE7DozAHiba-Wf6jzz1WHQp_74JmmwcVd8g4-TNyZkEDA0fiLSM-UoJFGEXuikKxo_NpBNbZMNCF5iLOFyyjP4VtuXv7xSeTjJ2Tu_EBWIEgzMPZP2NfyaJyi0jHZGZo23BJJc-_6ln8dl9Ar8erxDfczXZL5tAWA3jsdqzxgZqMdM8Q_nFpV7DwYR34vp18R7pahIVqu6b2drReHh1tJsFMTIAPkBwlBOs87rvhxT21zSieOAfFSVo-FsG9abv9s3aWucooJWQXdbQ8S5IvloKbSkL4EYCJqpzy5xTwiowX_FJFMELOGJA2hw3NxBWbmookaD0ZD5L2KIndHYySM31A94D21pLdyyGk1i-0HJo8tMUkqRoRXoWlKFrSJTbrVRrPC2arCczevc5uDWSoZwf0CVq2yfVWItBjkzp806WiF0ApdT8PTmgnlIrtBDr-4uJTUjof7GzpzRMQsscxWb0G3q_-R-ApujFYtpm3ylb3GMePxLpVsdinY0wxTW5_fQKY4g_xLI6zR5ReDp5CiXeAI02cAHCb-KWPpExpoXEvc77GSG2qOUf9HCBWRwxcljiRf5bKna6fifyTCf-5vqi00J-5u_EYwuYUXK19ltQ9yDiTCGslOsdkRN0wP5u_A7d3EETghw2kJr-WBtcWv32r46ph_Y2dclZfMRWtk1ow-QNVwoM-Crji0YfaqXGrsPh2r5B3ATnRQ0YDKyHoRfors7xKccPGwpM_F9EsgT64DZAMw9vJFYl8WoWHcivzmSxW01zhSmi5vwLuWco9uCPy8Ik9UGCXVnje90eGvnyn5dbjwG7tKDd7vt82uOCTObm2_GvT2fF9Q2pgk4BGy7STjAzksi3orl2IPBG8Zybk-IAxTWvQHpcbKCOlJgwAqWEr7dcAOFVcJT6SfB0j6LRFkyXOHwD21I4QPcuNQ5rkg16Kxq42yGnnFd5SzkQ9ejnaHehUG171_Gw3JQ0IivffgBCfrSb-bgLjVmUGPDHU3CTG6z6lZxXi8ntFi9MkvP0lewUB7bXGyygdi1m-QJfM1fPCFquBPzGqaEeCW34v5UFVX8ASKV27NI0-M1lxvcErO29zge-Uy8uxhmFsi7CM8GotAdxXNZMNVgUWWxz0PzBylO6OxG9rWT04souGSvz8Uqami5WgoULTsPFrnq6zZv-wR6o4xhxMZb-NaANlZOd0emFzfKYRW_TuLeQnzJXTrbSpKyJrMiDSzTnfIPJQFiL44DcxJzOZAZO4-_yv8UJj8iIX63QroHViz0OPJyll9pwhqxxJVi-J-rvpwpx217_CyoEAuOY28ifbgNLcEM_q9iyh4L7GSkHNNEup1QwnDz7NixAK66-wOuA93-MQYJHvmjR6YJEYONqznBKoEkfP9Am4e8BVU2ZeGUvPq5d-LiKY3nCGUeUIrceWsxTsZqq_CWMi7wGtw5RslNusCFn6EZxAf7HE9fYh3fjTiRbIaoslnR2m4kVIRJXWzgqY-LUqJ6-gmciAUakJwOK22Esy7rEXFm5b48SPnyNZO5PiIq76MD1cnfhG3otoITPuurhNWe2uzgOwEkZ8p3NjB3J0dREhMeS1Ztyqvb-9URJKfTCnbuWa9139stkRGNvxVp9QRyv1ftsas1ufMfZ8JvpJR_COwNmgedya0lAv700hqcMeZXOG0-9nBOva6GLBZXSVsfRfgvYQZZlIuzjxOSkUZGOWI06TR7amdBU3jeNuhBX84mdCfPwDsX2xWgChvpMIIFYpEf1GOIRFdJ13ZNpxqjLp6uEKLRlmSkiSbH0sYNG0SXQLVvaFnTMmWA39Pf-xlFldoMzTtlzmq3zkTQ0goPUGF0SgQkZ1S4OPJW_B6wnbtMPyzqn6CVWJ_zITiQkGFav-Z5Fi2SnUoaW1xZRRyX3Z4wegaYPvquaoem5CNYs6zalu96PeRMwIiHcCMAJz7dBWG_hvI4y8INRoiXTh0PIpT2b11mwFFhgP6DTFofn6eKzpqz2gK-tCm1ewZ3T2l5gdk4GylIisRKYJhermyj4bsRvl6UJvaOu_gR1pG8NaiHr1QCjlZFgDqB_UJGLEHBqIngAEIuY6nNRjMN6nWHBl4Apbo17Ax_-1tDF0K32N_uAOPt5xBeT11tcEfOQXkstPWFTOwUs5akeUDJ97lVipS9AU08BKDHYIGeiJOqWL625_n18-F-ddgJG1t9D33xiRHkRZl-hotTOZ67sPmn64SQhH1uAEU8Pdh5wmfs5FSelsD6cwe1wR3ivz0VP3NkB6ddhPis1KAsY70KkDmmtN1rfVM4xSPlMCccimEFKsD6si_fAGTS-rOdeRCmm3fFXcHc2H7XqfgaRgfoyTMaRu5DYbxluOkTIGdvK8oqVZWFMaQyDyNL5Wtb2sunjqWEEycXgHQPd9IpMAmUJIAUnaZk3wNTaK2Srj1dRQn3QNIFPSB9P1TU9nHmdblkjl023l4L_rws6I_UX-ZasYp8nVt7bEWEdiAHn97Cj5wZo-eW5oXbFZSRKjxu_9K8_afEGy552LzL2SbAbLjpirE4I1MpKOMXZ7YZA0N4FBIqUHnJDr-ESf69u4j3XrWxI5tIb6Jupp8vwIjtX39HiaIMywbGALc5U9nYRWDtFRwWrjC_rm8R2-Qxmuk5LsRp7IrmNe-My4hgj_BOzfs_x3B3kSLxTL3j6knJ_NxaWQl7oJQXWZ88z85lukQnV7ZzogxEuFpvOh8cXkaL7UXppNX6Lh_blzIp1g-8mQ_G9CFpfOrAvH_HiM1IBFtMP2F6_OsfjghjmiByHUsk9-xdnXNGuWPMxznqaS5QPqaboKqxAecKxMik76WKwePKBteAafwP8q3qaWDP8FZvB5BAh4rU_D8teYZs43LOxo2gzMZUhLp1NWSA7BDxTVWRGVJOkl6AnaxvQys0a1sRANhAa6sBdjW67hSLz7WQcU4GkyArtQTOc4352qGd6gZRvPupU0Wo6dbLvn13HcFYwUp67lb1VdtQB7gcseqRoZVhLok9StROAdBPS5tHlDLEQoQKSBliwlbLzQWMzdm1jW2Nvc5HJ84tIZ9GnF5U1X9u360Rw4kuI2vYpSH3UVAtAwSEz6rv-1dZMKare0cAAKvjoeql-9KUFUT4ba6Td5xDos_SbzPASmb02oX8Py0Ndg2WQ5C2vwN8-s7WbfUruE_ocDFhvIsPk8Uv3gdzI8Pp4v-HuVT03avjMlLaX2vRruqbWsW03SCNoouCHonMxz-C94QIbwMaJJnMJcc_7lPuVe1nWPZ5Ru8gVpnAXJJDAxuHVHS8BtmUxIT71jS7lXLwrAf8nUZSOQ1vBCWwEQvN5WrgFJwAYbDyGBpup0hVRX2dZUKRiuWILgKfGNCqUy8pQZGLSk3EsCesdgRG3Jb_52ALokX-4uXPqllLeyxSV_TLMmYy3sRpCWaOnjK-EabYBiXtH--nucXpdoaXy0Sz9BxzFk_WuN39TWj2rJxrEYfNfTXJDERg7Za19QmkTDhbNNNsDSORRMwi9lzLJZKpKKmUHasH1iyunVcoCNMcX2MvxvYCNBM4mmaHDlxd3wuITQfptnywSme4bn5AmyMqhX6zrGcTWV8XO2XlQ5X1NWPYtkZW2ePtRY35i6oJuflB346MqeP-_5_WFr5e2ojIavab6Ai89m2CPnzAAqS9xtN529PbSs7SLyZJcRs3G6W4J_FdPRDoDpXfQdCvprDQCmVvhYtGHLxGUotI7wO23zcwuMkpIbS1T9CQinJ7Zyac0U-EYvH5x1GHsd-WZqpgdfDJhSGH-YhtaEqLrI7TDG3Jy5pr8yv-_axdel0q5w6N2wJc98MlaKUs6Ad5qKfPMWUz_PLOHhdq3az-nSUuqRpCMBUPaHmM1Fp8o12nDTZWwY_JE_a4yAQExU56fP65nsXGgOAf19J74EpWkHcf3VbgeLuNOj12YMWmCSDSURCahhtGYgJtFqsLOE3JWfRUq8ZLbjEpISavdmM8kW0TV4L0ENbUmo-Oza0gqf9QKZzImVIjLG0bEyfwdYoz2pQCFkjI"
+      }
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "a b",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "Trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "short",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": ""
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": " Mozilla/5.0"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": "Mozilla/5.0 ü"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": null,
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-02-30T08:12:00Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+          "later": "kept out"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": {
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg"
+      }
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnA",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrk"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+        },
+        "key": null,
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": "not a message",
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": {
+        "provider": "trackman",
+        "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+        "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+        "expires_at": "2026-12-05T08:12:00Z"
+      }
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "fuoIAE7soPfF_Ubz5DptSTx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbJnJXQ6-xIOAGYgCfnikdxWp4kvXdcBiXHkRtym1lmGfscRpaYYHPxMX9prktfumO1F-Q_E2-_jzf0_VO1kZlTbG42R87sQyTk-tQ8aYlhtTYeMKkvBOGdBsp0MeD6y5ACJVNVoivRmBnvvKESbcBEbe38yIrfL_73hKHDg",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": {
+        "provider": "trackman",
+        "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+        "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+      }
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "w2DmPNTOHkAIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "3lYYSx6uoMdjYrHVxWjgZIAJbWpGjRfx",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "F2iCaeeq_28nARPe-bckX1gItjHfkYQj9GlPD0xXcCc"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg",
+        "from": "vsbuu4oxzzWPnnmPcUOHWfC0-jIKhqULm9aNxGuNCk8",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "w2DmPNTOHkmIH6_Dguic",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg=",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": null,
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "uF5W2sCzHS3K32x5sZXYuzx9GE56VH_eBk3ieGSQcacJihN-5NBfApAKponqqDS45U48UcQQIQfLKjjaQoPjSTurkWOib2Mn-qj2DP_qI-V2F-9-xBeRQ4mmoKqkx55hpWIjwV4fpHU733BPCswsYG7Ll1nPrsEr7NsX0fuWsKCzPn50ZSnItJBGMYGGwQMB8jDIHokKkjq4vskWsdp8C9ATQyynZfqJyNNll5coUo2F5FULoWcR3IIcIF5TRdLqZbdYJBSIjVZfjzZAzqzIdASdDlxeuCkog3GyIwZrU8TI4I-o6pFiS9PCiQbg-EPit3_To9BA2wMRPtKwpR8TkRSQmNkV3L5sw8Oxedfm5FbSYXZg-K-Y9UI0AdllTZ3jZFJht9bEHdVYQ-v1pyMrfNrioWLxPiYniYOVqy9f1yftnSXIDmW9dLuFOUH40YYmE0QkhaQxifbCc7X52EyegLdJscfssg0",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": {
+        "provider": "trackman",
+        "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+        "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+        "expires_at": "2026-12-05T08:12:00Z"
+      }
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "Tw3dQdvquT13fszvF8Uz1jx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnhcd0G020raHNlPVYQ1j_2t-1Dj1HDZwXc3K9YKn5uwtGdP-jQihqFby1Afv09F_3QlEe7Gvox9L-SPO1tBc-Ihsv5qNaLjZrWWeYXpx6-Oy8QcOY5BQEtu_NCs1-6yYSdIlO4qW2iE6JZOhjwriFglgxsbcjSUd-S7r2XvUaxnmLvCU",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": {
+        "provider": "trackman",
+        "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+        "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+      }
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "wyeCkQQCUDKZcLvA8GpiyTx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCf0hEe0y82i-eXN2nGWQlq7icw1E-4KzBmWMCJoYOi6PRkYdLBiwL07S6CwnfTo9BA2wMKUcLAwQcl8FyTn9dQs6AtkduhG9fSpB32MUtt_tiyxCkFXNYSDdihMCs14L2FIrI6PpL3tmFzIp_qrU_GGAUiiaKToiMT9W2_ww_QGhDwaw",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": {
+        "provider": "trackman",
+        "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+        "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+      }
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "w33sSqO1GR_AuAaaYB4fPTx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjL1fXt_R8TUy8z1rbJ5E4CMqAi1pAG-9niP3YgPnQ96dv6OlQRagiyq1tVl-4Iil9uhG9e7tWKGYVdo8Or36wMPCLZ3HbWmIUR0pfHIPp8MOLevuTsqfNT7xBuQU0JA4buxjGZf_Cvlk2qmS0u5efvJEQGrja9yCE0z7Ldzk-6O",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": {
+        "provider": "trackman",
+        "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+        "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+      }
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "_Rq2uY-5rSapppdgAam6MDx9Hh4vEDqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "_XebUPsep9ruq4xWHq25yzx9Hh4vVmTPBhPiMjSLda8OhAw9sNAHUoUGpoHl5Cy2okMZUsM5YFSmJgvlSNORRhuNj0CzRT1l34vwEsXiD9xIMLU_yD23Xbi4h_PFy61RulFBuFYXmw8g7WoOWeoTXjv9lm3yo7Z9540s8uaYtvz5GiFyMmGtvZ9BGZiCl3BR9jWJS94H1Qm_v-hc55xYVNYqcC2lUKz3ldtHkaUhZunR9xtHlWsC2KYUcS0QVIigLvcNZX3EyEZInTEkzKLfdASKDllQqj0wxzDtYWlQFo2E4d73uoNsVt_AkUX17yC97T7Wn9kAgEgaPrmJoFcVrxnE1v9lxs0lopOBJpKqwm6XcANeqq-7zwkJCLRFXs3AUiVc_L3sGYoCFom-9EZzPdX82h-LQkQ6nM_UiwIr3Q6i1iaIRU3yUbeKNwHgxI54RRVqzKl2nonCa6-3xA",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "ovqn37ndq6f3kOeUEGXRyDx9Hh4vACeYTx2wMCmSaqIPk1wlqIYBQYcOoI3qqCK49FgdXMh1eEzhOjjHQva1TD2rrH-kFTo8-qvuDMjOK8d2E7A58gK_bKSf2e2O155hpGJfmHAxuD8_3wgLCMwCOGrLjFTlh4lt6r8t3da_6OK0Sn5rI0KCuZdiMp7KmX4S9DWFUcUd_iSovKxE_90IC887UwKhWI_ck_1cgIkSDeLZpBd4sHwM451bfyNXSYC5NeAbSUPRnl5QjTMmyLnDdxuXCzg0oj87xDjnYQMoGIPT58jgl71qVNTax13tgAKo_jvWkpcam1YKNviwmFAUpEfftexgs4QcmpSALdfF3h2GeWQwu-O-zQdMZZhHHaLcIV0t9dzdGZYLJLu53WRuZsz63wSUXVs-ice3iB4y3G6umiOKSwiVc7GCM0fpqax1ThBjhrdy7v3HZ7Xo",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "v5K2pZjFVOWJa5vaxY6tOjx9GE56VH_eBk3ieGSQcacJihN-5NBfApAKponqqDS45U48UcQQIQfLKjjaQoPjSTurkWOib2Mn-qj2DP_qI-V2F-9-xBeRQ4mmoKqkx55hpWIjwV4fpHU733BPCswsYG7Ll1nPrsEr7NsX0fuWsKCzPn50ZSnItJBGMYGGwQMB8jDIHokKkjq4vskWsdp8C9ATQyynZfqJyNNll5coUo2F5FULoWcR3IIcIF5TRdLqZbdYJBSIjVZfjzZAzqzIdASdDlxeuCkog3GyIwZrU8TI4I-o6pFiS9PCiQbg-EPit3_To9BA2wMRPtKwpR8TkRSQmNkV3L5sw8Oxedfm5FbSYXZg-K-Y9UI0AdllTZ3jZFJht9bEHdVYQ-v1pyMrfNrioWLxPiYniYOVqy9f1yftnSXIDmW9dLuFOUH40YYmE0Qk1A",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "J5k6m5eEZuKjbzzOqeTgoTx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNcyQ",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "SGusXvLJyBO9dNvnRj998jx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1YEKmIhHMT8S4US2wg2zkHS0zgK7sAevuK9R4FbUc9iixYN_I2KGF_6B4rWN70xN6lz0q4U9eGtQ1fCmm4xK28scovtpWlKqF6PTtSCAkdzWw998HK4eNxwMS8DOEUIlTgxuioOcSsd8UUpRvNEKkbKDfl9Qw5qAbavuBlhFGqnpB-qNZYjltANC8Lu4NNm_E30Q97CNM17SzNUbLWzth-E5jgi3hYWwkBY-XoY26g5RZfPaCxQumpgjy0DLZmNcGlStFfPiMlRBL9DnOwoQX7g",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "-BkqW686YASBjFHWXgb-XDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflURX",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "j1u5l_mWq-Hs2WwJMIbk1BwkSkxnTWDTB1qyYHzGd7QLghVy65xRDMYRoofh5CygolIPc841BQ3tDBvlVdPkEB6Lj32vQ0c8xIvzCsXVK9RqMLFgjwuic5eVvoqC4b1RulBBxA85tRNq6Wp2HegTcGP5lnb_iZ81oYtIyOq1n6S7HVVyLSfG95JGPZud2ygs5TOMBpFLwmWhr-o5tdJfINY1WD2LVpGCwIBpqLI_XLa-q1sF5noZxZkLNnJtUITyfadaJhCTkVVAkjMhqqTKfweVBFw0wCcm1HekNCtVVcbD-tmw8v5AXsDHiQuu4lj8p3eSmuhH2ghPJbGjoGpaqCyXmdJQs6If0srWF8aq4VTcJBtM-uz36TFMcNAEfJ3_bWBTsP_mAI5BRe7uuDw0eM_qwmHtJydHhc-QqSEasAXrlSGOBwifebCAMAvm1fZSFkg-i_sa",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "qaYs0LBe3gjWDVZcTjZ9xCkwHBx_UXnU",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "VapMIOQaCrZpDj0geAwoPrih",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "Ip1qjht8RjrYiZRw9sCySjx9Hh4vEzqYGx36DCeqfg",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "E-4_XFvyIhF76RQI1AOmHg",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "exampleapp://signedin",
+        "answer": {
+          "signin": "sealed",
+          "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+          "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg"
+        }
+      },
+      "expected": "exampleapp://signedin#signin=sealed&from=lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0&box=w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg"
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "exampleapp://signedin",
+        "answer": {
+          "signin": "none"
+        }
+      },
+      "expected": "exampleapp://signedin#signin=none"
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "exampleapp://signedin",
+        "answer": {
+          "signin": "other_account"
+        }
+      },
+      "expected": "exampleapp://signedin#signin=other_account"
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "exampleapp://signedin",
+        "answer": {
+          "signin": "failed"
+        }
+      },
+      "expected": "exampleapp://signedin#signin=failed"
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "https://app.example.org/profile?tab=lm#card",
+        "answer": {
+          "signin": "sealed",
+          "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+          "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg"
+        }
+      },
+      "expected": "https://app.example.org/profile?tab=lm#card&signin=sealed&from=lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0&box=w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg"
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "https://app.example.org/profile#card&signin=none&box=x",
+        "answer": {
+          "signin": "failed"
+        }
+      },
+      "expected": "https://app.example.org/profile#card&signin=failed"
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "exampleapp://signedin#",
+        "answer": {
+          "signin": "none"
+        }
+      },
+      "expected": "exampleapp://signedin#signin=none"
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "exampleapp://signedin",
+        "answer": {
+          "signin": "sealed"
+        }
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "exampleapp://signedin",
+        "answer": {
+          "signin": "sealed",
+          "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0"
+        }
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "exampleapp://signedin",
+        "answer": {
+          "signin": "sealed",
+          "from": "x",
+          "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg"
+        }
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "exampleapp://signedin",
+        "answer": {
+          "signin": "sealed",
+          "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+          "box": ""
+        }
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "exampleapp://signedin",
+        "answer": {
+          "signin": "done"
+        }
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "exampleapp://signedin",
+        "answer": null
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "javascript:alert(1)",
+        "answer": {
+          "signin": "none"
+        }
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "glmsync://sync",
+        "answer": {
+          "signin": "none"
+        }
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": null,
+        "answer": {
+          "signin": "none"
+        }
+      },
+      "expected": null
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "https://app.example.org/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "answer": {
+          "signin": "sealed",
+          "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+          "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg"
+        }
+      },
+      "expected": "https://app.example.org/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#signin=sealed&from=lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0&box=w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg"
+    },
+    {
+      "rule": "with_answer",
+      "input": {
+        "url": "https://app.example.org/x",
+        "answer": {
+          "signin": "sealed",
+          "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+          "box": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        }
+      },
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#signin=sealed&from=lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0&box=w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg",
+      "expected": {
+        "signin": "sealed",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#signin=none",
+      "expected": {
+        "signin": "none"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#card&signin=other_account",
+      "expected": {
+        "signin": "other_account"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#signin=failed",
+      "expected": {
+        "signin": "failed"
+      }
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin?signin=none",
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#signin=none&signin=failed",
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#signin=sealed",
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#signin=sealed&from=lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#signin=sealed&box=w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg",
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#signin=sealed&from=lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0&box=w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg&box=w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg",
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#signin=sealed&from=lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy&box=w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg",
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#signin=sealed&from=lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0&box=",
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#signin=sealed&from=lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0&box=a%20b",
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#signin=None",
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#signin=",
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin",
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "exampleapp://signedin#signin=none#x",
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#signin=none",
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": null,
+      "expected": null
+    },
+    {
+      "rule": "read_answer",
+      "input": 7,
+      "expected": null
+    }
+  ]
+}

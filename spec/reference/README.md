@@ -16,6 +16,7 @@ must match its vectors field for field.
 | `guard.py` | The load guard. |
 | `wake.py` | The wake: what a client registers, when a target wakes it, what a wake is (since 1.9.0). |
 | `deeplinks.py` | Deep links, the pairing fragment and the Android sync service's intent; the result in the way back and the universal links (since 1.22.0). |
+| `handover.py` | Signing in for a target (since 1.27.0): the sealed handover - NaCl's `box` (X25519, XSalsa20, Poly1305) written out with the standard library, the message, the answer in the way back. |
 | `ask.py` | Asking and answering (since 1.22.0): `cause`, `version`, `env` as a target reads them, the answer over the Android binding, when a client's own look may ask (`next_at`). |
 | `prores.py` | A professional's pages (since 1.15.0): a finish, a world ranking's tour code, an ISO week, whose name. |
 | `event.py` | One tournament from golf.de's page the player has open (since 1.19.0): its lines, by their label, as dgvevent/1. |

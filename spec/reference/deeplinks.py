@@ -3,6 +3,9 @@
 """The deep links and the pairing fragment (spec/deep-links.md).
 
     glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>[,<id>…]][&kind=hcp|pro][&return=<URL to go back to>]
+                  [&mode=signin[&key=<public key>&nonce=<nonce>]]                  (mode, key, nonce: 1.27.0)
+    glmsync://signin?[target=<target base URL>&]provider=<id>&key=<public key>&nonce=<nonce>&return=<URL to go back to>
+                                                                         (1.27.0, spec/deep-links.md, handover.py)
     glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
     glmsync://test?[target=<target base URL>&]code=<test code>           (1.8.0, spec/test-mode.md)
     glmsync://read?kind=hcp|pro                                          (1.11.0, spec/hcp.md; pro 1.15.0)
@@ -27,7 +30,7 @@ TARGET = re.compile(r"^(?:https://[A-Za-z0-9.-]+(?::\d{1,5})?|http://(?:localhos
                     r"(?:/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$")
 SCHEME = re.compile(r"^([a-z][a-z0-9+.-]*):")
 NEVER_RETURN = {"javascript", "data", "file", "vbscript", "about", "blob", "glmsync"}
-LINK = re.compile(r"^glmsync://(pair|sync|test|read)/?(?:\?([^#]*))?$")
+LINK = re.compile(r"^glmsync://(pair|sync|test|read|signin)/?(?:\?([^#]*))?$")
 MAX_LEN = 2048
 # Which target API a pairing's base URL speaks (1.10.0): `lm` (the launch monitor one, also when no kind is given)
 # or `hcp` (spec/hcp.md), and (1.15.0) `pro`: the handicap target API for a professional's pages (spec/prores.md). Any
@@ -98,6 +101,25 @@ def providers_of(provider: str | None) -> list[str] | None:
     return ids
 
 
+def _key_nonce(p: dict[str, str]) -> str | None:
+    """`key` and `nonce` of a sign-in question (1.27.0): both, each valid, and a way back to answer to."""
+    from handover import valid_key, valid_nonce  # noqa: PLC0415 - one module of rules uses the other's
+
+    for k in ("key", "nonce", "return"):
+        if k not in p:
+            return "missing:" + k
+    if not valid_key(p["key"]):
+        return "invalid:key"
+    if not valid_nonce(p["nonce"]):
+        return "invalid:nonce"
+    return None
+
+
+#: What a pair link's `mode` may say (1.27.0): `signin` - the target fetches itself (an engine of this project in its
+#: own app); the client only signs in for this connection and hands the sign-in over (spec/deep-links.md).
+LINK_MODES = {"signin"}
+
+
 def _pair(p: dict[str, str]) -> dict[str, Any]:
     if "target" not in p or "code" not in p:
         return {"ok": False, "error": "missing:" + ("target" if "target" not in p else "code")}
@@ -111,8 +133,35 @@ def _pair(p: dict[str, str]) -> dict[str, Any]:
         return {"ok": False, "error": "invalid:kind"}
     if "return" in p and not valid_return(p["return"]):
         return {"ok": False, "error": "invalid:return"}
+    # 1.27.0: only signing in for this connection, and the sign-in handed over at once when the link asks with a key.
+    if "mode" in p:
+        if p["mode"] not in LINK_MODES or p.get("kind", "lm") != "lm":
+            return {"ok": False, "error": "invalid:mode"}
+        if "key" in p or "nonce" in p:
+            err = _key_nonce(p)
+            if err:
+                return {"ok": False, "error": err}
+    elif "key" in p or "nonce" in p:
+        return {"ok": False, "error": "unexpected:" + ("key" if "key" in p else "nonce")}
     return {"ok": True, "action": "pair",
-            **{k: p[k] for k in ("target", "code", "provider", "kind", "return") if k in p}}
+            **{k: p[k] for k in ("target", "code", "provider", "kind", "return", "mode", "key", "nonce") if k in p}}
+
+
+def _signin(p: dict[str, str]) -> dict[str, Any]:
+    """1.27.0: hand the provider sign-in over to the target app that asks, sealed for its key (handover.py)."""
+    for k in ("provider", "key", "nonce", "return"):
+        if k not in p:
+            return {"ok": False, "error": "missing:" + k}
+    if "target" in p and not valid_target(p["target"]):
+        return {"ok": False, "error": "invalid:target"}
+    if not PROVIDER.fullmatch(p["provider"]):
+        return {"ok": False, "error": "invalid:provider"}
+    err = _key_nonce(p)
+    if err:
+        return {"ok": False, "error": err}
+    if not valid_return(p["return"]):
+        return {"ok": False, "error": "invalid:return"}
+    return {"ok": True, "action": "signin", **{k: p[k] for k in ("target", "provider", "key", "nonce", "return") if k in p}}
 
 
 def parse_link(url: str) -> dict[str, Any]:
@@ -125,8 +174,11 @@ def parse_link(url: str) -> dict[str, Any]:
     if action == "pair":
         # `return` (1.2.0): where to jump back once paired - checked against the target's return_prefixes only after
         # POST /pair, like a sync's (return_allowed).
-        p = _params(query, {"target", "code", "provider", "kind", "return"})
+        p = _params(query, {"target", "code", "provider", "kind", "return", "mode", "key", "nonce"})
         return p_error(p) or _pair(p)  # type: ignore[arg-type]
+    if action == "signin":
+        p = _params(query, {"target", "provider", "key", "nonce", "return"})
+        return p_error(p) or _signin(p)  # type: ignore[arg-type]
     if action == "test":
         # 1.8.0: a test code for the pairing with `target` (or the only one); never a token, never a return.
         p = _params(query, {"target", "code"})
@@ -248,12 +300,12 @@ def read_result(url: Any) -> str | None:
 #: when it is installed (iOS Universal Links, Android App Links, vouched for by the host's .well-known files); else the
 #: host's page, which shows the way to install it. A fork that publishes its own companion app has its own host.
 UNIVERSAL_BASE = "https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/"
-UNIVERSAL = re.compile(r"^https://golf-launch-monitor-sync\.github\.io/golf-launch-monitor-sync/link/(pair|sync)/?"
+UNIVERSAL = re.compile(r"^https://golf-launch-monitor-sync\.github\.io/golf-launch-monitor-sync/link/(pair|sync|signin)/?"
                        r"(?:#([^#]*))?$")
 
 
 def parse_universal(url: Any) -> dict[str, Any]:
-    """`https://…/link/pair#…` or `https://…/link/sync#…`: the keys of the glmsync:// link in the fragment (which no
+    """`https://…/link/pair#…`, `…/link/sync#…` or (1.27.0) `…/link/signin#…`: the keys of the glmsync:// link in the fragment (which no
     server sees), read by the same rules - the same answer as parse_link of `glmsync://<action>?<fragment>`. A query
     (it would reach the host's server) or another host or path: invalid."""
     if not isinstance(url, str) or len(url) > MAX_LEN:
@@ -265,11 +317,12 @@ def parse_universal(url: Any) -> dict[str, Any]:
 
 
 def universal_link(link: str) -> str | None:
-    """The universal form of a valid glmsync:// pair or sync link (its query into the fragment); None for any other."""
+    """The universal form of a valid glmsync:// pair, sync or (1.27.0) signin link (its query into the fragment); None for
+    any other."""
     if not parse_link(link)["ok"]:
         return None
     m = LINK.fullmatch(link)
-    if not m or m.group(1) not in ("pair", "sync"):
+    if not m or m.group(1) not in ("pair", "sync", "signin"):
         return None
     out = UNIVERSAL_BASE + m.group(1) + (f"#{m.group(2)}" if m.group(2) else "")
     return out if len(out) <= MAX_LEN else None

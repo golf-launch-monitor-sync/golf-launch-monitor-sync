@@ -327,10 +327,31 @@ took days of opening the app on the iPhone, since a wake gives half a minute, on
 A build older than 0.17.0 has no `onTaskExpired`: there the ten minutes still bound the run, and iOS ending it sooner
 freezes it in the middle of a chunk, which the next plan repairs the same way.
 
+## Signing in for an app that fetches itself
+
+Since 0.20.0 (spec 1.27.0, [spec/deep-links.md](../../spec/deep-links.md#signing-in-for-a-target)). An app may fetch your
+data itself, on this phone, with this project's engine built in. The sign-in at the provider still happens here: that
+app shows none. It asks with a signin link (or a pair link with `mode=signin`) and a key of its own; this app answers by
+the way back that app named when it paired - nowhere else - with your sign-in sealed so that only that app can read it
+(`lib/handover.ts`, `ui/HandoverView.tsx`):
+
+- a key that runs out within three days (or was kept without its browser's User-Agent) is renewed quietly first, as at
+  the opening; where that can't be done, you sign in and confirm the account as always;
+- a key of another provider account than the one that app connected is never handed over (`other_account`);
+- the connection is then one that only signs in (`mode: signin_only`, until that app's plans say otherwise): this app
+  fetches nothing for it - no first sync after pairing, nothing in the background, no history, a wake asks nothing for
+  it - and shows on its card that the app fetches itself. Opening this app or *Fetch now* still asks its plan, so the
+  app can say when this one is to fetch again.
+
+The seal's secret key is this app's own, made for each answer: from the phone's random source where React Native has
+one, always mixed with the pairing's import token and the question, so that it is never one an outsider could know.
+Android's binding has no part in it; the link is the way on both phones, and it needs no new native build.
+
 ## Universal links
 
 Since spec 1.22.0 the pair and sync links also have an `https` form,
-`https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/pair#…` and `…/link/sync#…`
+`https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/pair#…` and `…/link/sync#…` (since 1.27.0
+also `…/link/signin#…`; the files of `tools/link-files.mjs` name it, so the host's copy is written anew)
 ([spec/deep-links.md](../../spec/deep-links.md#universal-links)): a phone opens this app for them where it is installed,
 and the web app's page where it isn't ([apps/web](../web/README.md)). Three parts, of which the spec and the page are
 built:
@@ -345,7 +366,7 @@ built:
    (`applinks:golf-launch-monitor-sync.github.io`) and an Android intent filter with `autoVerify` for `https`, that host
    and the path prefix `/golf-launch-monitor-sync/link/`, in `app.config.ts`; the App ID gets *Associated Domains*.
 3. **The app reads them**: `parseUniversal` of `@glmsync/spec`, which answers what `parseLink` answers for the
-   `glmsync://` form.
+   `glmsync://` form (`lib/links.ts` reads an `https` address so since 0.20.0).
 
 Until all three stand, the page's *Open Golf Stats Sync* opens the app by its scheme.
 
@@ -355,6 +376,8 @@ Until all three stand, the page's *Open Golf Stats Sync* opens the app by its sc
 | --- | --- |
 | The provider sign-in (and the account it was of, for the quiet renewal), with the sign-in window's User-Agent | the secure store (Keychain / Keystore), readable after the first unlock, this device only; cut into pieces where long (`ChunkedSecrets`) |
 | Each pairing's import token | the secure store |
+| Whether a pairing only signs in for an app that fetches itself (spec 1.27.0) | app storage, with the rest of the pairing |
+| The secret key of a sealed answer (spec 1.27.0) | memory only, for that one answer |
 | The rest of a pairing (address, name, limits, return prefixes), the guard's counts and log, the last run per pairing | app storage (AsyncStorage) |
 | The last 20 background runs: when, how long, how many history chunks, how each ended (nothing of the player) | app storage; in the exported log |
 | A pairing its app ended: which app and provider, when (no token, no address; the last ten) | app storage, until that app pairs again or the player removes the row |
@@ -388,8 +411,9 @@ src/lib/            everything without a screen, tested with vitest: secrets, si
                     links, the runner (pair, sync, history, file, "Is this you?"), test mode (tests),
                     the Android sync service's rules (nudge), whether a new build is out (newBuild),
                     golf.de's Fetch all (fetchAll) and when it runs by itself (autoFetch), what keeps iOS
-                    from waking the app (wakeHints), the background task's work (longRun), the wording
-src/ui/             the screens: App (links, opening, quiet renewal), Home, PairView, SignInView,
+                    from waking the app (wakeHints), the background task's work (longRun), signing in for an
+                    app that fetches itself (handover), the wording
+src/ui/             the screens: App (links, opening, quiet renewal), Home, PairView, SignInView, HandoverView,
                     FirstSyncView, SyncView, TestView, Licenses, TrackmanLoginView, PairHcpView, GolfdeView,
                     UnseenGolfde (the window behind the screen), HcpCard, PairProView, RankingsView, ToursView,
                     ProCard, WakeHints

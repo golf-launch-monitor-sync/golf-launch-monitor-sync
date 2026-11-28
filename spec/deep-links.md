@@ -4,7 +4,8 @@
 
 How a target app hands a pairing code to a client, and how it asks the companion app to fetch now -
 with a visible switch by link, or on Android without one, by binding to the companion app's sync
-service ([Android](#android)).
+service ([Android](#android)) - and, since 1.27.0, how a target app that fetches itself asks for the player's provider
+sign-in ([Signing in for a target](#signing-in-for-a-target)).
 The scheme is open: any app may implement the receiving side. Reference:
 [`reference/deeplinks.py`](reference/deeplinks.py); vectors:
 [`testvectors/deep-links.json`](testvectors/deep-links.json).
@@ -13,16 +14,20 @@ The scheme is open: any app may implement the receiving side. Reference:
 
 ```
 glmsync://pair?target=<target base URL>&code=<pairing code>[&provider=<id>[,<id>…]][&kind=hcp|pro][&return=<URL to go back to>]
+              [&mode=signin[&key=<public key>&nonce=<nonce>]]
 glmsync://sync?[target=<target base URL>&]return=<URL to go back to>
+glmsync://signin?[target=<target base URL>&]provider=<id>&key=<public key>&nonce=<nonce>&return=<URL to go back to>
 glmsync://test?[target=<target base URL>&]code=<test code>
 glmsync://read?kind=hcp|pro
 https://<web app>/pair#target=<target base URL>&code=<pairing code>[&provider=<id>[,<id>…]][&kind=hcp|pro]
 https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/pair#<the keys of a pair link>
 https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#<the keys of a sync link>
+https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/signin#<the keys of a signin link>
 ```
 
-The last two (since 1.22.0) are the [universal links](#universal-links): the same pair and sync links as an `https`
-address, which opens the companion app where it is installed and a page with the way to install it where it isn't.
+The last three (since 1.22.0, `signin` since 1.27.0) are the [universal links](#universal-links): the same pair, sync
+and signin links as an `https` address, which opens the companion app where it is installed and a page with the way to
+install it where it isn't.
 
 - **pair** opens the companion app (on a phone) with what it needs to call `POST /pair`. On a
   computer the target opens the web app's pairing page instead; the code travels in the
@@ -47,8 +52,15 @@ address, which opens the companion app where it is installed and a page with the
   ([prores.md](prores.md)). A client older than 1.10.0 ignores the key and pairs for launch monitor data, which a
   handicap target refuses (`provider_unknown`), so nothing half-paired remains; one of 1.10.0 to 1.14.0 refuses `pro`
   (`invalid:kind`).
+- **mode** (since 1.27.0, pair; only `signin`, only for `kind=lm`): the target app fetches itself (this project's
+  engine built in) - the client only signs in for this connection, fetches nothing for it and hands the sign-in over
+  ([below](#signing-in-for-a-target)). With **key** and **nonce** (both, and a `return`) the pair link is a sign-in
+  question too: once paired and signed in, the client answers it in the way back. A pair link of an older client reads
+  past these keys and pairs to fetch, which the target's plans then hold back (`mode` in the plan, [planning.md](planning.md)).
 - **sync** asks the companion app to fetch now (it still asks the target's plan first) and then to
   jump back to `return`. `target` picks the pairing when there are several.
+- **signin** (since 1.27.0) asks the companion app for the player's sign-in at `provider`, for the target app that
+  opens the link: [Signing in for a target](#signing-in-for-a-target). It never pairs and never fetches.
 - **test** (since 1.8.0) hands a client the test code of a target's test account, for a target it is
   already paired with; `target` picks the pairing when there are several. It never pairs, and it has no
   `return` (a key `return` is ignored like any unknown one). What the code is for: [test-mode.md](test-mode.md).
@@ -83,8 +95,8 @@ The focus is the client's matter alone: nothing of it goes to a target, and a ta
 
 A link comes from outside and is read strictly; anything unexpected makes it invalid:
 
-- exactly `glmsync://pair`, `glmsync://sync`, `glmsync://test` or `glmsync://read` (an optional `/` before `?`), no
-  fragment;
+- exactly `glmsync://pair`, `glmsync://sync`, `glmsync://test`, `glmsync://read` or `glmsync://signin` (an optional
+  `/` before `?`), no fragment;
 - `key=value` pairs separated by `&`, percent- and `+`-decoded as UTF-8. A `%` that starts no valid
   escape, or bytes that aren't UTF-8, make the link invalid. A known key twice, or empty: invalid.
   Unknown keys are ignored (a later version may add some);
@@ -96,7 +108,12 @@ A link comes from outside and is read strictly; anything unexpected makes it inv
   (`providers_of` splits it);
 - `kind`: `lm`, `hcp` or (1.15.0) `pro`, nothing else (`HCP` or a kind of a later version is invalid: pairing with an
   API the client doesn't speak would only be refused); in a read link required, and only `hcp` or `pro`;
-- `return` (sync, and pair since 1.2.0, of every kind since 1.18.0): an absolute URL — `https://host/…`, `http://` to this machine, or an app's own scheme
+- `mode` (pair, 1.27.0): `signin` only, and only with `kind` `lm` or none (else `invalid:mode`); `key` and `nonce`
+  only with it (else `unexpected:key`), both and with a `return` (else `missing:…`);
+- `key` (pair and signin, 1.27.0): an X25519 public key, 32 bytes as unpadded base64url (43 letters, only the one
+  spelling of each value: the unused low bits of the last letter zero); `nonce`: 24 bytes the same way (32 letters).
+  In a signin link `provider`, `key`, `nonce` and `return` are required, and `provider` names one id;
+- `return` (sync, signin, and pair since 1.2.0, of every kind since 1.18.0): an absolute URL — `https://host/…`, `http://` to this machine, or an app's own scheme
   written `scheme://…`; never `javascript:`, `data:`, `file:`, `vbscript:`, `about:`, `blob:` or
   `glmsync:`. At most 2048 characters for every link.
 
@@ -137,6 +154,7 @@ pair and sync links therefore also have an `https` form of this project:
 ```
 https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/pair#target=…&code=…[&provider=…][&kind=…][&return=…]
 https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#[target=…&]return=…
+https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/signin#[target=…&]provider=…&key=…&nonce=…&return=…
 ```
 
 - **Where the companion app is installed**, the phone opens it with the address (iOS Universal Links, Android App
@@ -145,8 +163,8 @@ https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#[t
 - **Where it isn't**, the browser opens the host's page, which shows the way to install the companion app (and, for a
   pair link on a computer, forwards to the pairing page). The keys are in the **fragment**, which no server sees -
   the pairing code included; the page reads it in the browser only.
-- **Reading** ([`parse_universal`](reference/deeplinks.py)): exactly this host and path, `pair` or `sync`, an
-  optional `/`, no query (it would reach the host's server); the fragment is read as the `glmsync://` link's query,
+- **Reading** ([`parse_universal`](reference/deeplinks.py)): exactly this host and path, `pair`, `sync` or (1.27.0)
+  `signin`, an optional `/`, no query (it would reach the host's server); the fragment is read as the `glmsync://` link's query,
   with the same rules and the same answers. `test` and `read` have no universal form. A target makes one from the
   `glmsync://` link ([`universal_link`](reference/deeplinks.py)): its query becomes the fragment.
 - A target may use either form; the universal one is the better one for a phone. A companion app older than its
@@ -154,9 +172,81 @@ https://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#[t
   whose button opens the `glmsync://` link.
 - A fork that publishes its own companion app has its own host and files; the format stays.
 
+## Signing in for a target
+
+Since 1.27.0. A target may fetch for itself, on the player's phone, with this project's engine built into its own app
+(client kind `embedded`, [target-api.md](target-api.md)). The provider sign-in still happens in the companion app -
+the target app shows no sign-in of the provider - and the companion app hands it to the target app when that app asks.
+The companion app keeps signing in, renewing and confirming the account; for that connection it fetches nothing
+(`mode`, [planning.md](planning.md), *Fetching or only signing in*).
+
+**The question.** The target app makes a key pair for this one question (X25519, NaCl's `box`) and a nonce of 24
+random bytes, keeps the secret key until the answer came, and opens
+
+```
+glmsync://signin?[target=<target base URL>&]provider=<id>&key=<public key>&nonce=<nonce>&return=<URL to go back to>
+```
+
+or its universal form (`…/link/signin#…`, the better one: no other app can take it), or - when it pairs - a pair link
+with `mode=signin&key=…&nonce=…&return=…`.
+
+**What the companion app does** ([`reference/handover.py`](reference/handover.py); vectors in
+[`testvectors/handover.json`](testvectors/handover.json)):
+
+- It answers only for a pairing it has with that target (of `target` when named) and `provider` whose `return_prefixes`
+  allow `return` ([below](#where-a-sync-may-jump-back-to)) - the way back belongs to the app the pairing is with. With
+  none it answers nothing and jumps nowhere.
+- It hands over a sign-in that lasts: one that runs out within three days, or that it holds without the User-Agent of
+  the browser it was signed in with, it renews first where it can without asking (as it renews an expired one), else
+  the player signs in and confirms the account, as always.
+- It hands over only a sign-in of the provider account the target connected (the pairing's `account_ref`); another
+  one's never.
+- It sets the connection to `signin_only` until the target's plan says otherwise.
+
+**The answer** goes in the fragment of `return`, after the fragment's own keys
+([`with_answer`](reference/handover.py); a key of the answer that was there already is dropped):
+
+| `signin` | other keys | The companion app … |
+| --- | --- | --- |
+| `sealed` | `from`, `box` | hands the sign-in over, sealed |
+| `none` | – | didn't get one: the player left the sign-in |
+| `other_account` | – | holds only one of another provider account than the target's: nothing handed over |
+| `failed` | – | couldn't hand one over (anything else) |
+
+`exampleapp://signedin` comes back as `exampleapp://signedin#signin=sealed&from=…&box=…`. The address may be up to
+**8192** characters (`max_answer`); an answer that would make it longer is `failed`.
+
+**The seal.** `box` is NaCl's `crypto_box` (X25519, XSalsa20, Poly1305; what TweetNaCl's `nacl.box` gives: the 16-byte
+tag, then the ciphertext) of the message, with the question's `nonce`, for the target app's `key`, under a secret key
+of the companion app's own for this one answer, whose public key is `from`. That secret key is the client's alone:
+random where the system gives randomness, else made from a secret only the client holds (its import token) and the
+question - never one an outsider could know or one used for another answer. The message is UTF-8 JSON:
+
+```json
+{"v":1,"provider":"trackman","token":"…","account_ref":"…","expires_at":"2026-12-05T08:12:00Z","user_agent":"Mozilla/5.0 (iPhone; …)"}
+```
+
+- `v` 1; `provider`; `token`: the provider's key as it goes into its requests (printable ASCII without spaces, at
+  most 4096); `account_ref` ([olmd.md](olmd.md), with the target's salt); `expires_at` when the key says (RFC 3339 with
+  its zone); `user_agent`: the User-Agent of the browser the player signed in with on this device (a header value, at
+  most 512) - every call to the provider from the target app carries it, as every call from the companion app does.
+- The target reads it strictly ([`open_sealed`](reference/handover.py)): one wrong required value and it is none;
+  `expires_at` that isn't a time with its zone is left out; unknown keys are ignored. It reads the answer strictly too
+  ([`read_answer`](reference/handover.py)): exactly one `signin` of the four, and for `sealed` exactly one `from` (a key)
+  and one `box`.
+- A target keeps the sign-in only on the phone, in its secure storage, for its engine's calls to that provider - never
+  on a server, in a log, or anywhere else - and takes only one of the account it has connected (`account_ref`). It asks
+  again, with a new key, when the sign-in runs out or the provider refuses it.
+
+**Why sealed.** Any app may claim a target's scheme or listen for its way back; an app that catches the answer reads
+nothing. An app that opens a signin link itself gets only what is sealed for its own key - and only with a way back
+that a target paired with the companion app named as its own, which it isn't. Android's binding
+([below](#android)) has no answer for this: the link is the way on both platforms.
+
 ## What a link never carries
 
-No provider sign-in, no import token, nothing about the player. A pairing code is good for ten
+No provider sign-in, no import token, nothing about the player - in the link a target opens. The one exception is the
+way back of a sign-in question (since 1.27.0): the sign-in, sealed for the asking app alone. A pairing code is good for ten
 minutes and once; whoever reads it first pairs, so a target shows it only to the signed-in player. A test
 code is good only with the import token of the test account it was made for.
 

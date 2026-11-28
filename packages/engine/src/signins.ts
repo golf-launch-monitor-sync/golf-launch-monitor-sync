@@ -4,7 +4,9 @@
  * The player's sign-in at each provider - on this phone, and nowhere else.
  *
  * A sign-in is kept in the secure store for as long as the provider's own key lasts (Trackman's
- * about a week) and goes only to the provider; no target and no server of this project ever sees it.
+ * about a week) and goes only to the provider; no target's server and no server of this project ever sees it. (The app
+ * may hand it, sealed, to a target's own app on this phone that asks for it - spec 1.27.0, the companion app's
+ * lib/handover.ts - which fetches with this engine itself.)
  * When it runs out, or the provider rejects it, the key goes - nothing is kept that could renew it
  * on its own: no password, no refresh token, no cookie of ours.
  *
@@ -146,6 +148,25 @@ export class SignIns {
     if (!item) return false;
     const exp = this.keys.expiresAt(provider, item.token);
     return exp === null || exp > now + SLACK_MS;
+  }
+
+  /** When the key held runs out (ms); null: none held, or the key doesn't say. */
+  expiresAt(provider: string): number | null {
+    const item = this.items.get(provider);
+    return item ? this.keys.expiresAt(provider, item.token) : null;
+  }
+
+  /**
+   * Whether a quiet renewal may be tried before the key runs out (spec 1.27.0: a target app asked for the sign-in and
+   * should get one that lasts): a key held before, and none now that works for longer than `withinMs` with the browser
+   * it was signed in with.
+   */
+  mayRenewEarly(provider: string, withinMs: number, now = this.now()): boolean {
+    if (!this.marks.get(provider)) return false;
+    if (!this.valid(provider, now)) return true;
+    const item = this.items.get(provider);
+    const exp = this.expiresAt(provider);
+    return !item?.userAgent || (exp !== null && exp - now <= withinMs);
   }
 
   /** The key, if it should still work. */

@@ -34,14 +34,14 @@ export function linkFiles({ appId = 'consulting.regsta.glmsync', teamId = 'XG2RH
   if (!TEAM.test(teamId)) throw new Error(`Not an Apple team id: ${teamId}`);
   for (const f of fingerprints) if (!FINGERPRINT.test(f)) throw new Error(`Not a SHA-256 fingerprint (AA:BB:… in capitals): ${f}`);
   const appID = `${teamId}.${appId}`;
-  const paths = ['pair', 'sync'].flatMap((k) => [`${LINK_PATH}${k}`, `${LINK_PATH}${k}/`]);
+  const paths = ['pair', 'sync', 'signin'].flatMap((k) => [`${LINK_PATH}${k}`, `${LINK_PATH}${k}/`]);
   const aasa = {
     applinks: {
       details: [
         {
           appIDs: [appID],
           // iOS 13 and later: the path exactly (the keys are in the fragment, which any fragment matches).
-          components: paths.map((p) => ({ '/': p, comment: 'Golf Stats Sync: a pair or sync link (spec/deep-links.md)' })),
+          components: paths.map((p) => ({ '/': p, comment: 'Golf Stats Sync: a pair, sync or signin link (spec/deep-links.md)' })),
           // Before iOS 13.
           appID,
           paths,

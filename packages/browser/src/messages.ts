@@ -59,6 +59,7 @@ export const en = {
   'last.who.extension': 'the browser extension in another browser',
   'last.who.web': 'the web app',
   'last.who.companion': 'Golf Stats Sync on your phone',
+  'last.who.embedded': 'the app on your phone itself',
   'last.other_account': 'Another Trackman account than the one {name} has connected.',
   'last.told_expired': '{name} was told your sign-in ran out.',
   'last.cancelled': 'Stopped.',
@@ -192,6 +193,7 @@ export const en = {
   'link.installIos': 'Golf Stats Sync on the iPhone (in testing)',
   'link.again': 'Once it is installed, go back to your app and tap the button there again.',
   'link.computerSync': 'Fetching now happens in Golf Stats Sync on your phone, or in the browser extension on a computer: open this link on your phone, or start it in your app there.',
+  'link.computerSignin': 'Handing your sign-in to an app happens on your phone, in Golf Stats Sync: start it in that app on your phone.',
   'link.forwarding': 'On to the pairing page …',
   'link.invalid': 'This page was opened without a valid link. Start again in your app.',
 
@@ -472,6 +474,7 @@ export const de: Record<MessageKey, string> = {
   'last.who.extension': 'die Browser-Erweiterung in einem anderen Browser',
   'last.who.web': 'die Web-App',
   'last.who.companion': 'Golf Stats Sync auf deinem Handy',
+  'last.who.embedded': 'die App auf deinem Handy selbst',
   'last.other_account': 'Ein anderes Trackman-Konto als das, das {name} verbunden hat.',
   'last.told_expired': '{name} weiß, dass deine Anmeldung abgelaufen ist.',
   'last.cancelled': 'Abgebrochen.',
@@ -605,6 +608,7 @@ export const de: Record<MessageKey, string> = {
   'link.installIos': 'Golf Stats Sync auf dem iPhone (im Test)',
   'link.again': 'Ist es installiert, geh zurück in deine App und tippe dort noch einmal auf den Knopf.',
   'link.computerSync': 'Jetzt holen geht in Golf Stats Sync auf deinem Handy oder in der Browser-Erweiterung am Computer: öffne diesen Link auf dem Handy, oder starte es dort in deiner App.',
+  'link.computerSignin': 'Deine Anmeldung an eine App weitergeben geht auf dem Handy, in Golf Stats Sync: starte es in dieser App auf deinem Handy.',
   'link.forwarding': 'Weiter zur Seite zum Verbinden …',
   'link.invalid': 'Diese Seite wurde ohne gültigen Link geöffnet. Fang in deiner App noch einmal an.',
 

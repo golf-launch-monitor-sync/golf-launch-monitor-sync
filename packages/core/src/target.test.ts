@@ -199,6 +199,17 @@ describe('a plan, read from an untrusted target', () => {
     expect(readPlan({ due: true, pace: Number.POSITIVE_INFINITY }).pace).toBe(1);
   });
 
+  it('reads only signing in (spec 1.27.0): never due then, and nothing else read as it', () => {
+    expect(readPlan({ due: true, mode: 'signin_only' })).toMatchObject({ due: false, mode: 'signin_only' });
+    expect(readPlan({ due: true, mode: 'fetch' })).toMatchObject({ due: true, mode: 'fetch' });
+    for (const junk of ['SIGNIN_ONLY', 'signin', true, 1, null, ['signin_only']]) {
+      const p = readPlan({ due: true, mode: junk });
+      expect(p.due).toBe(true);
+      expect(p.mode).toBeUndefined();
+    }
+    expect(readPlan({ due: true, busy: true, holder: { kind: 'embedded', since: '2026-11-28T09:00:00Z' } }).holder).toEqual({ kind: 'embedded', since: '2026-11-28T09:00:00Z' });
+  });
+
   it('reads where the older scorecards start and the sessions wanted again (spec 1.20.0), nothing it can’t read', () => {
     const p = readPlan({
       due: true, rounds: true, rounds_skip: 2,

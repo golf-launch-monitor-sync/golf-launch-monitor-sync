@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * The page behind the universal links (`link/pair/`, `link/sync/`; spec/deep-links.md, *Universal links*). It comes up
+ * The page behind the universal links (`link/pair/`, `link/sync/`, since spec 1.27.0 `link/signin/`; spec/deep-links.md, *Universal links*). It comes up
  * only where the phone didn't open the companion app for the address: it offers to open it by its own scheme and the
  * way to install it. On a computer a pair link goes on to the pairing page. The keys stay in the fragment, which
  * reaches no server; nothing here sends anything anywhere.
@@ -35,6 +35,9 @@ switch (page.show) {
     break;
   case 'computer-sync':
     fill(main, h('p', { 'data-test': 'link-status' }, t('link.computerSync')));
+    break;
+  case 'computer-signin':
+    fill(main, h('p', { 'data-test': 'link-status' }, t('link.computerSignin')));
     break;
   default:
     fill(main, h('p', { class: 'note warn', 'data-test': 'link-status' }, t('link.invalid')));

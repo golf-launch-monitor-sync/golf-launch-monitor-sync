@@ -10,6 +10,9 @@
  *
  * A link keeps its focus (spec 1.18.0, lib/done.ts): from its first step to *Done* only the kind it came for, and after
  * *Done* back to the app - or, where there is no way back, this one connection's card (`linked`), not the list.
+ *
+ * An app that fetches itself (spec 1.27.0) asks for the sign-in by a signin link (HandoverView): renewed or signed in,
+ * then handed back sealed for that app alone.
  */
 
 import * as Linking from 'expo-linking';
@@ -24,6 +27,7 @@ import { t } from '../i18n';
 import { LOOK_AFTER_MS } from '../lib/autoFetch';
 import { afterDone, afterLeaving, type DoneHow } from '../lib/done';
 import { goBack } from '../lib/firstSync';
+import type { Ask } from '../lib/handover';
 import { Once, readIncoming, type Incoming } from '../lib/links';
 import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
 import { testKeys } from '../lib/wizard';
@@ -37,6 +41,7 @@ import { NewView } from './NewView';
 import { PairView } from './PairView';
 import { FirstSyncView } from './FirstSyncView';
 import { GolfdeView } from './GolfdeView';
+import { HandoverView } from './HandoverView';
 import { PairHcpView } from './PairHcpView';
 import { PairProView } from './PairProView';
 import { RankingsView } from './RankingsView';
@@ -70,8 +75,13 @@ export type Screen =
   | { name: 'rankings'; site?: RankingSite; linked?: true; back?: Back }
   /** His tour's pages (a pro's pages too): the window on the tour's site. */
   | { name: 'tours'; site: TourSite; linked?: true; back?: Back }
-  /** `focus`: the connection a link was for (`lm:<provider>`), kept to *Done* (1.18.0). */
-  | { name: 'signin'; provider: ProviderId; back?: Back; focus?: string }
+  /**
+   * `focus`: the connection a link was for (`lm:<provider>`), kept to *Done* (1.18.0). `only` (1.27.0): a connection
+   * that only signs in - no first sync after it; back where there is a way, else its card.
+   */
+  | { name: 'signin'; provider: ProviderId; back?: Back; focus?: string; only?: true }
+  /** Spec 1.27.0: an app paired here asks for the sign-in (`pairing`, its key; `name`, its name). */
+  | { name: 'handover'; provider: ProviderId; pairing: string; target: string; ask: Ask }
   | { name: 'sync'; link: { target?: string; return?: string } }
   /** Just signed in: the first sync shown as the wizard's steps 4 and 5, then (with `back`) *Back to …*. */
   | { name: 'first'; target?: string; back?: Back; focus?: string }
@@ -98,7 +108,8 @@ export function App() {
 
 /**
  * The quiet renewal: Trackman's page in a hidden window, once per start of the app, only where this
- * phone held the player's key before. `renew` resolves when a key came or the time is up.
+ * phone held the player's key before. `renew` resolves when a key came or the time is up. `early` (spec 1.27.0): an app
+ * that fetches itself asked for the sign-in - renew one that runs out within that long too, whether tried before or not.
  */
 function useRenewal(svc: Services | null) {
   const [on, setOn] = useState(false);
@@ -118,13 +129,14 @@ function useRenewal(svc: Services | null) {
   }, []);
 
   const renew = useCallback(
-    (maxMs: number) =>
+    (maxMs: number, early?: number) =>
       new Promise<void>((done) => {
         if (active.current) {
           waiters.current.push(done); // one already under way: wait for it
           return;
         }
-        if (!svc || tried.current || !svc.signIns.canRenew('trackman')) return done();
+        const may = early === undefined ? !tried.current && !!svc?.signIns.canRenew('trackman') : !!svc?.signIns.mayRenewEarly('trackman', early);
+        if (!svc || !may) return done();
         tried.current = true;
         active.current = true;
         waiters.current.push(done);
@@ -222,6 +234,17 @@ function Main() {
         } else {
           setMessage(null);
           setScreen({ name: 'test', keys: incoming.keys, code: incoming.code });
+        }
+      } else if (incoming.kind === 'signin') {
+        // Only for an app paired here, answered only by the way back it named (lib/handover.ts); else nothing happens.
+        if (incoming.pairing === null) {
+          setMessage(t('handover.unpaired'));
+          setScreen({ name: 'home' });
+        } else {
+          setMessage(null);
+          // It fetches itself: this app keeps only the sign-in for it, until its plan says otherwise.
+          void svc.pairings.setMode(incoming.pairing, 'signin_only').catch(() => undefined);
+          setScreen({ name: 'handover', provider: incoming.provider as ProviderId, pairing: incoming.pairing, target: incoming.name, ask: incoming.ask });
         }
       } else if (incoming.kind === 'pair') {
         setMessage(null);
@@ -382,6 +405,13 @@ function Main() {
     },
     [],
   );
+  /** Back to the app after only signing in (spec 1.27.0): there where it may, else this connection's card. */
+  const windowLess = (back: Back, focus?: string) => {
+    void goBack(back.url, (url) => Linking.openURL(url)).then((how) => {
+      setScreen(focus ? afterDone(focus, how) : { name: 'home' });
+      if (how === 'stayed') setMessage(t('sync.stayed'));
+    });
+  };
   /** The app the data of a provider goes to, for the wizard's words (null: several, or none). */
   const targetFor = (provider: string) => (svc ? targetOf(svc.pairings.list().filter((p) => p.provider === provider).map((p) => p.target.name)) : null);
 
@@ -436,13 +466,20 @@ function Main() {
         {...(screen.provider === 'trackman' && testable.length ? { test: () => setScreen({ name: 'test', keys: testable, ...(screen.back ? { back: screen.back } : {}) }) } : {})}
         done={(signedIn) => {
           renewal.allowAgain();
+          // Only signing in for an app that fetches itself (spec 1.27.0): no first sync; back to it where it may.
+          if (signedIn && screen.only) {
+            if (screen.back) windowLess(screen.back, screen.focus);
+            else setScreen(screen.focus ? afterDone(screen.focus, 'here') : { name: 'home' });
+          }
           // Signed in: the first sync, and when paired from a link with a return, back to the target app once it is
           // through (spec 1.2.0; FirstSyncView).
-          if (signedIn) setScreen({ name: 'first', ...(screen.back ? { back: screen.back } : {}), ...(screen.focus ? { focus: screen.focus } : {}) });
+          else if (signedIn) setScreen({ name: 'first', ...(screen.back ? { back: screen.back } : {}), ...(screen.focus ? { focus: screen.focus } : {}) });
           else setScreen(screen.focus ? afterDone(screen.focus, 'here') : { name: 'home' });
         }}
       />
     );
+  } else if (screen.name === 'handover') {
+    body = <HandoverView key={`${screen.pairing}|${screen.ask.nonce ?? ''}`} svc={svc} provider={screen.provider} pairing={screen.pairing} name={screen.target} ask={screen.ask} renew={renewal.renew} go={setScreen} />;
   } else if (screen.name === 'sync') {
     body = <SyncView svc={svc} link={screen.link} renew={renewal.renew} go={setScreen} />;
   } else if (screen.name === 'first') {

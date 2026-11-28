@@ -12,6 +12,7 @@ these files instead of keeping its own idea of the rule.
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -29,6 +30,7 @@ import clubs  # noqa: E402
 import deeplinks  # noqa: E402
 import event  # noqa: E402
 import guard  # noqa: E402
+import handover  # noqa: E402
 import hcp  # noqa: E402
 import plan  # noqa: E402
 import cases_prores  # noqa: E402
@@ -455,6 +457,46 @@ def deep_link_vectors() -> dict[str, Any]:
              f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=golfde&kind=hcp&return=exampleapp%3A%2F%2Fprofile%3Ffocus%3Dhcp",
              f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=pro&kind=pro&return=https%3A%2F%2Fapp.example.org%2Fprofile",
              f"glmsync://pair?target={t}&code=K7M2PQ9X&kind=hcp&return=javascript%3Aalert(1)"]
+    # 1.27.0: only signing in for a connection, and the sealed handover (spec/deep-links.md, *Signing in for a target*)
+    k, n, back = HANDOVER_KEY, HANDOVER_NONCE, "exampleapp%3A%2F%2Fsignedin"
+    links += [f"glmsync://signin?provider=trackman&key={k}&nonce={n}&return={back}",
+              f"glmsync://signin/?target={t}&provider=trackman&key={k}&nonce={n}&return={back}&utm=x",
+              f"glmsync://signin?provider=trackman&key={k}&nonce={n}&return=https%3A%2F%2Fapp.example.org%2Fsignedin%23card",
+              f"glmsync://signin?key={k}&nonce={n}&return={back}", f"glmsync://signin?provider=trackman&nonce={n}&return={back}",
+              f"glmsync://signin?provider=trackman&key={k}&return={back}", f"glmsync://signin?provider=trackman&key={k}&nonce={n}",
+              f"glmsync://signin?provider=trackman,demo&key={k}&nonce={n}&return={back}",
+              f"glmsync://signin?provider=Trackman&key={k}&nonce={n}&return={back}",
+              f"glmsync://signin?target=http%3A%2F%2Fapp.example.org&provider=trackman&key={k}&nonce={n}&return={back}",
+              f"glmsync://signin?provider=trackman&key={k[:-1]}&nonce={n}&return={back}",
+              f"glmsync://signin?provider=trackman&key={k}A&nonce={n}&return={back}",
+              f"glmsync://signin?provider=trackman&key={k[:-1]}B&nonce={n}&return={back}",
+              f"glmsync://signin?provider=trackman&key={k}%3D&nonce={n}&return={back}",
+              f"glmsync://signin?provider=trackman&key={k[:20]}%2B{k[21:]}&nonce={n}&return={back}",
+              f"glmsync://signin?provider=trackman&key={k}&nonce={n[:-1]}&return={back}",
+              f"glmsync://signin?provider=trackman&key={k}&nonce={n}&return=javascript%3Aalert(1)",
+              f"glmsync://signin?provider=trackman&key={k}&nonce={n}&return=glmsync%3A%2F%2Fsync",
+              f"glmsync://signin?provider=trackman&key={k}&key={k}&nonce={n}&return={back}",
+              f"glmsync://signin?provider=trackman&key=&nonce={n}&return={back}",
+              f"glmsync://signin?provider=trackman&key={k}&nonce={n}&return={back}#frag",
+              f"GLMSYNC://signin?provider=trackman&key={k}&nonce={n}&return={back}",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&mode=signin",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=trackman&mode=signin&return={back}",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&mode=signin&key={k}&nonce={n}&return={back}",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&mode=signin&kind=lm&key={k}&nonce={n}&return={back}",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&mode=signin&key={k}&nonce={n}",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&mode=signin&key={k}&return={back}",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&mode=signin&nonce={n}&return={back}",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&mode=signin&key=AAAA&nonce={n}&return={back}",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&mode=signin&key={k}&nonce=AAAA&return={back}",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&key={k}&nonce={n}&return={back}",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&nonce={n}",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&mode=fetch",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&mode=SIGNIN",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&mode=",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&mode=signin&mode=signin",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=golfde&kind=hcp&mode=signin",
+              f"glmsync://pair?target={t}&code=K7M2PQ9X&provider=pro&kind=pro&mode=signin",
+              f"glmsync://sync?target={t}&mode=signin&key={k}&nonce={n}&return={back}"]
     cases: list[dict[str, Any]] = [{"rule": "parse_link", "input": u, "expected": deeplinks.parse_link(u)} for u in links]
     frags = [f"#target={t}&code=K7M2PQ9X", f"target={t}&code=K7M2PQ9X&provider=demo", "#code=K7M2PQ9X", "#",
              f"#target={t}&code=K7M2PQ9X&target={t}",
@@ -462,7 +504,8 @@ def deep_link_vectors() -> dict[str, Any]:
              f"#target={t}&code=K7M2PQ9X&kind=hcp", f"#target={t}&code=K7M2PQ9X&kind=lm",
              f"#kind=hcp&target={t}&code=K7M2PQ9X&provider=golfde", f"#target={t}&code=K7M2PQ9X&kind=other",
              f"#target={t}&code=K7M2PQ9X&kind=hcp&kind=hcp", f"#target={t}&code=K7M2PQ9X&kind=pro",
-             f"#target={t}&code=K7M2PQ9X&provider=trackman%2Cdemo", f"#target={t}&code=K7M2PQ9X&provider=trackman,,demo"]
+             f"#target={t}&code=K7M2PQ9X&provider=trackman%2Cdemo", f"#target={t}&code=K7M2PQ9X&provider=trackman,,demo",
+             f"#target={t}&code=K7M2PQ9X&mode=signin&key={k}&nonce={n}"]
     cases += [{"rule": "parse_pair_fragment", "input": f, "expected": deeplinks.parse_pair_fragment(f)} for f in frags]
     prefixes = ["https://app.example.org/", "exampleapp://", "https://app.example.net"]
     for u in ["https://app.example.org/profile", "https://app.example.org.evil.test/", "exampleapp://synced",
@@ -510,12 +553,16 @@ def deep_link_vectors() -> dict[str, Any]:
               f"http://golf-launch-monitor-sync.github.io/golf-launch-monitor-sync/link/sync#target={t}",
               f"https://golf-launch-monitor-sync.github.io.evil.test/golf-launch-monitor-sync/link/sync#target={t}",
               f"{ub}sync#return=javascript%3Aalert(1)", f"{ub}sync#target={t}&target={t}", f"{ub}sync#target={t}\n",
-              f"glmsync://sync?target={t}", None]:
+              f"glmsync://sync?target={t}", None,
+              f"{ub}signin#provider=trackman&key={k}&nonce={n}&return={back}", f"{ub}signin/#provider=trackman",
+              f"{ub}signin?provider=trackman#key={k}"]:
         cases.append({"rule": "parse_universal", "input": u, "expected": deeplinks.parse_universal(u)})
     for u in [f"glmsync://sync?target={t}&return=exampleapp%3A%2F%2Fsynced", "glmsync://sync",
               f"glmsync://pair?target={t}&code=K7M2PQ9X&kind=hcp", f"glmsync://pair/?target={t}&code=K7M2PQ9X",
               "glmsync://test?code=T7K2M9QX", "glmsync://read?kind=hcp", f"glmsync://pair?target={t}",
-              "glmsync://sync?return=javascript%3Aalert(1)", f"https://app.example.org/sync?target={t}", None]:
+              "glmsync://sync?return=javascript%3Aalert(1)", f"https://app.example.org/sync?target={t}", None,
+              f"glmsync://signin?provider=trackman&key={k}&nonce={n}&return={back}",
+              f"glmsync://signin?provider=trackman&key={k}&nonce={n}"]:
         cases.append({"rule": "universal_link", "input": u, "expected": deeplinks.universal_link(u)})
     return doc("Deep links and the pairing fragment (spec/deep-links.md). parse_link / parse_pair_fragment -> "
                "{ok: true, action, target?, code?, provider?, kind?, return?} or {ok: false, error}; action is pair, "
@@ -527,7 +574,10 @@ def deep_link_vectors() -> dict[str, Any]:
                "ids ([]: any the client can connect), or null when it names none validly. Since 1.22.0: with_result "
                "({url, result}) -> the return URL with the sync's result, or null; read_result (the address a target "
                "was opened at) -> the result or null; parse_universal (https://…/link/pair|sync#…) -> as parse_link; "
-               "universal_link (a glmsync:// pair or sync link) -> its universal form, or null.", cases,
+               "universal_link (a glmsync:// pair or sync link) -> its universal form, or null. Since 1.27.0: action "
+               "signin {ok: true, action, target?, provider, key, nonce, return}; a pair link's mode (only signin), key "
+               "and nonce (both, only with mode, with a return); the universal form of a signin link (…/link/signin#…).",
+               cases,
                universal={"base": deeplinks.UNIVERSAL_BASE}, results=list(deeplinks.RESULTS))
 
 
@@ -1082,6 +1132,122 @@ def dgvevent_examples() -> dict[str, Any]:
                cases_event.examples(full))
 
 
+# The sealed handover (1.27.0): fixed keys, so that every implementation of NaCl's box can check its bytes.
+
+def _fixed(label: str, size: int) -> str:
+    return handover.b64url(hashlib.sha256(f"glmsync handover vectors: {label}".encode()).digest()[:size])
+
+
+HANDOVER_TARGET_SECRET = _fixed("the target app's secret key", 32)
+HANDOVER_CLIENT_SECRET = _fixed("the client's secret key for its answer", 32)
+HANDOVER_OTHER_SECRET = _fixed("someone else's secret key", 32)
+HANDOVER_KEY = handover.public_key(HANDOVER_TARGET_SECRET)
+HANDOVER_NONCE = _fixed("the nonce of the question", 24)
+HANDOVER_OTHER_NONCE = _fixed("another question's nonce", 24)
+
+
+def handover_vectors() -> dict[str, Any]:
+    ts, cs, os_, key, nonce = (HANDOVER_TARGET_SECRET, HANDOVER_CLIENT_SECRET, HANDOVER_OTHER_SECRET, HANDOVER_KEY,
+                               HANDOVER_NONCE)
+    # Synthetic: shaped like a provider's key, made up for the vectors.
+    msg = {"provider": "trackman",
+           "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+           "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm", "expires_at": "2026-12-05T08:12:00Z",
+           "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like "
+                         "Gecko) Mobile/15E148"}
+    no_exp = {k: v for k, v in msg.items() if k != "expires_at"}
+    cases: list[dict[str, Any]] = []
+    for s in [ts, cs, os_, "", "AAAA", ts + "A", ts[:-1], ts + "=", ts[:-1] + "/", 5, None]:
+        cases.append({"rule": "public_key", "input": s, "expected": handover.public_key(s)})
+    seals = [(msg, key, nonce, cs), (no_exp, key, nonce, cs),
+             ({**msg, "expires_at": "2026-12-05T09:12:00+01:00"}, key, nonce, cs),
+             ({**msg, "token": "x" * 4096}, key, nonce, cs), ({**msg, "token": "x" * 4097}, key, nonce, cs),
+             ({**msg, "token": "a b"}, key, nonce, cs), ({**msg, "provider": "Trackman"}, key, nonce, cs),
+             ({**msg, "account_ref": "short"}, key, nonce, cs), ({**msg, "user_agent": ""}, key, nonce, cs),
+             ({**msg, "user_agent": " Mozilla/5.0"}, key, nonce, cs),
+             ({**msg, "user_agent": "Mozilla/5.0 ü"}, key, nonce, cs),
+             ({**msg, "expires_at": "2026-12-05"}, key, nonce, cs),
+             ({**msg, "expires_at": "2026-12-05T08:12:00"}, key, nonce, cs), ({**msg, "expires_at": None}, key, nonce, cs),
+             ({**msg, "expires_at": "2026-02-30T08:12:00Z"}, key, nonce, cs), ({**msg, "later": "kept out"}, key, nonce, cs),
+             ({k: v for k, v in msg.items() if k != "user_agent"}, key, nonce, cs),
+             (msg, key[:-1], nonce, cs), (msg, key, nonce[:-1], cs), (msg, key, nonce, cs[:-1]), (msg, None, nonce, cs),
+             ("not a message", key, nonce, cs)]
+    for m, k, n, sec in seals:
+        cases.append({"rule": "seal", "input": {"message": m, "key": k, "nonce": n, "secret": sec},
+                      "expected": handover.seal(m, k, n, sec)})
+    good = handover.seal(msg, key, nonce, cs)
+    plain = handover.seal(no_exp, key, nonce, cs)
+    assert good is not None and plain is not None
+    frm, sealed = good["from"], good["box"]
+    flipped = sealed[:10] + ("A" if sealed[10] != "A" else "B") + sealed[11:]
+    raw_n, raw_k, raw_s = handover.unb64url(nonce), handover.unb64url(key), handover.unb64url(cs)
+    assert raw_n is not None and raw_k is not None and raw_s is not None
+
+    def raw(data: bytes) -> str:
+        return handover.b64url(handover.box(data, raw_n, raw_k, raw_s))
+
+    def j(o: Any) -> bytes:
+        return json.dumps(o, separators=(",", ":")).encode()
+
+    no_ua = {k: v for k, v in msg.items() if k != "user_agent"}
+    opens = [(sealed, frm, nonce, ts), (plain["box"], frm, nonce, ts),
+             (flipped, frm, nonce, ts), (sealed, frm, HANDOVER_OTHER_NONCE, ts), (sealed, frm, nonce, os_),
+             (sealed, handover.public_key(os_), nonce, ts), (sealed[:20], frm, nonce, ts), ("", frm, nonce, ts),
+             (sealed + "=", frm, nonce, ts), (sealed, frm[:-1], nonce, ts), (None, frm, nonce, ts),
+             (raw(j({**msg, "v": 1, "later": True})), frm, nonce, ts),
+             (raw(j({"v": 1, **msg, "expires_at": "soon"})), frm, nonce, ts),
+             (raw(j({"v": 1, **msg, "expires_at": None})), frm, nonce, ts),
+             (raw(j({"v": 1, **msg, "expires_at": "2026-12-05T08:12:00"})), frm, nonce, ts),
+             (raw(j({"v": 2, **msg})), frm, nonce, ts), (raw(j({"v": True, **msg})), frm, nonce, ts),
+             (raw(j({"v": "1", **msg})), frm, nonce, ts), (raw(j({**msg})), frm, nonce, ts),
+             (raw(j({"v": 1, **no_ua})), frm, nonce, ts), (raw(j({"v": 1, **msg, "token": ""})), frm, nonce, ts),
+             (raw(j({"v": 1, **msg, "user_agent": "Mozilla/5.0 "})), frm, nonce, ts),
+             (raw(j([msg])), frm, nonce, ts), (raw(b"not json"), frm, nonce, ts), (raw(b"\xff\xfe"), frm, nonce, ts),
+             (raw(b'{"v":1,"x":NaN}'), frm, nonce, ts), (raw(b""), frm, nonce, ts)]
+    for b, f, n, sec in opens:
+        cases.append({"rule": "open", "input": {"box": b, "from": f, "nonce": n, "secret": sec},
+                      "expected": handover.open_sealed(b, f, n, sec)})
+    answer = {"signin": "sealed", "from": frm, "box": sealed}
+    for u, a in [("exampleapp://signedin", answer), ("exampleapp://signedin", {"signin": "none"}),
+                 ("exampleapp://signedin", {"signin": "other_account"}), ("exampleapp://signedin", {"signin": "failed"}),
+                 ("https://app.example.org/profile?tab=lm#card", answer),
+                 ("https://app.example.org/profile#card&signin=none&box=x", {"signin": "failed"}),
+                 ("exampleapp://signedin#", {"signin": "none"}),
+                 ("exampleapp://signedin", {"signin": "sealed"}),
+                 ("exampleapp://signedin", {"signin": "sealed", "from": frm}),
+                 ("exampleapp://signedin", {"signin": "sealed", "from": "x", "box": sealed}),
+                 ("exampleapp://signedin", {"signin": "sealed", "from": frm, "box": ""}),
+                 ("exampleapp://signedin", {"signin": "done"}), ("exampleapp://signedin", None),
+                 ("javascript:alert(1)", {"signin": "none"}), ("glmsync://sync", {"signin": "none"}),
+                 (None, {"signin": "none"}),
+                 ("https://app.example.org/" + "x" * 2000, answer),
+                 ("https://app.example.org/x", {"signin": "sealed", "from": frm, "box": "A" * 8100})]:
+        cases.append({"rule": "with_answer", "input": {"url": u, "answer": a}, "expected": handover.with_answer(u, a)})
+    back = handover.with_answer("exampleapp://signedin", answer)
+    for u in [back, "exampleapp://signedin#signin=none", "exampleapp://signedin#card&signin=other_account",
+              "exampleapp://signedin#signin=failed", "exampleapp://signedin?signin=none",
+              "exampleapp://signedin#signin=none&signin=failed", "exampleapp://signedin#signin=sealed",
+              f"exampleapp://signedin#signin=sealed&from={frm}", f"exampleapp://signedin#signin=sealed&box={sealed}",
+              f"exampleapp://signedin#signin=sealed&from={frm}&box={sealed}&box={sealed}",
+              f"exampleapp://signedin#signin=sealed&from={frm[:-1]}&box={sealed}",
+              f"exampleapp://signedin#signin=sealed&from={frm}&box=",
+              f"exampleapp://signedin#signin=sealed&from={frm}&box=a%20b",
+              "exampleapp://signedin#signin=None", "exampleapp://signedin#signin=", "exampleapp://signedin",
+              "exampleapp://signedin#signin=none#x", "x" * 8200 + "#signin=none", None, 7]:
+        cases.append({"rule": "read_answer", "input": u, "expected": handover.read_answer(u)})
+    return doc("Signing in for a target: the sealed handover (spec/deep-links.md, *Signing in for a target*; 1.27.0; "
+               "reference/handover.py). Keys, nonces, `from` and `box` are base64url without padding (keys 32 bytes, "
+               "nonces 24). public_key (a secret key) -> its public key or null. seal ({message, key, nonce, secret}: "
+               "the client's secret key for this answer) -> {from, box} (NaCl box of the message as compact JSON with "
+               "the keys v, provider, token, account_ref, expires_at?, user_agent in this order) or null; compare "
+               "exactly. open ({box, from, nonce, secret}: the target's secret key) -> the message read strictly "
+               "{provider, token, account_ref, expires_at?, user_agent} or null. with_answer ({url, answer}) -> the way "
+               "back with the answer in its fragment, or null. read_answer (the address the target was opened at) -> "
+               "{signin, from?, box?} or null.", cases,
+               keys={"target_secret": ts, "target_key": key, "client_secret": cs, "nonce": nonce},
+               results=list(handover.RESULTS), max_answer=handover.MAX_ANSWER)
+
+
 FILES = {
     "trackman-olmd.json": trackman_vectors,
     "clubs.json": club_vectors,
@@ -1101,6 +1267,7 @@ FILES = {
     "prores-examples.json": prores_examples,
     "wake.json": wake_vectors,
     "ask.json": ask_vectors,
+    "handover.json": handover_vectors,
 }
 
 

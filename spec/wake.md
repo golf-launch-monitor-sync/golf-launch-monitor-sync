@@ -67,7 +67,9 @@ A client reads it with [`is_wake`](reference/wake.py) and ignores every other pu
   ([planning.md](planning.md), *When the player is there*) needs only `back_gap_s` (**300 s**) - it is the
   wake the player waits for, and it comes once per return;
 - no time the client reported it can't fetch before has still to come (`notice.until` of a guard limit
-  or the provider's pause, [olmd.md](olmd.md)).
+  or the provider's pause, [olmd.md](olmd.md));
+- since 1.27.0, the client's plans don't say `mode: signin_only` ([planning.md](planning.md), *Fetching or only signing
+  in*): a client that only keeps the sign-in for the target's own app is never woken for it.
 
 A wake doesn't take the plan's lease (the plan it leads to does), and a target that has another client of
 the player holding the lease of that kind waits. One push per address and run, however many tokens name

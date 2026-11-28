@@ -58,8 +58,8 @@ once all of CI's checks of that commit are green (`.github/workflows/engine-rele
 ```jsonc
 // package.json of the app
 "dependencies": {
-  "glmsync-engine": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.1.0/glmsync-engine-0.1.0.tgz",
-  "glmsync-power": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.1.0/glmsync-power-0.1.0.tgz"
+  "glmsync-engine": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.3.0/glmsync-engine-0.3.0.tgz",
+  "glmsync-power": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.3.0/glmsync-power-0.3.0.tgz"
 }
 ```
 
@@ -75,12 +75,12 @@ const engine = makeEngine({
   storage,          // ordinary storage: { get, set, remove } of strings
   fetch,            // the platform's fetch (it must let a request set its own User-Agent)
   version: '1.2.3',
-  client: { kind: 'other', name: 'Golf Stats Sync engine' }, // how it names itself to its target
+  client: { kind: 'embedded', name: 'Golf Stats Sync engine' }, // how it names itself to its target (spec 1.27.0)
 });
 await engine.load();
 
-// A key the player signed in with elsewhere on this device, with that sign-in window's User-Agent:
-await engine.signIns.set('trackman', token, null, userAgent);
+// The key the companion app handed over (spec/deep-links.md, *Signing in for a target*), with its User-Agent:
+await engine.signIns.set('trackman', handed.token, null, handed.user_agent);
 
 await engine.runner.syncAll('manual');       // asks each target's plan first, fetches only when it says due
 
@@ -96,8 +96,17 @@ Pairing works as everywhere ([spec/target-api.md](../../spec/target-api.md)): `e
 with a code the target hands out. The keys it writes in storage keep the names the companion app gave them first
 (`glmsync/companion/…`, `glmsync.signin.…`), so a phone keeps what it had; in another app's storage they meet nothing.
 
+**Where its sign-in comes from** (spec 1.27.0, [spec/deep-links.md](../../spec/deep-links.md#signing-in-for-a-target)):
+the app shows no sign-in of the provider. It asks the companion app with a signin link (a key pair and a nonce made
+for the question) and gets the sign-in back sealed in its way back: the key, the account (`account_ref`), when it runs
+out and the User-Agent of the browser it was signed in with. That side is the target's, as its planning rules are: it
+implements it against `spec/testvectors/handover.json` (the repository's own TypeScript of it is
+`packages/spec/src/handover.ts`, on TweetNaCl; it isn't part of this package). Its engine names itself `embedded` to its target, which then tells the companion
+app's connection `mode: signin_only` - one app fetches per account, the other only signs in.
+
 What an embedding app keeps to:
 
 - The engine unchanged, its version pinned: no fetching code of the app's own toward the provider.
-- The provider's token only in the platform's secure store, never on a server, in a log or a crash report.
+- The provider's token only in the platform's secure store, never on a server, in a log or a crash report; only one of
+  the account its target connected; asked for anew when it runs out or the provider refuses it.
 - The load guard as it is: one engine per device and account, so its counts hold.

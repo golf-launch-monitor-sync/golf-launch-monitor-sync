@@ -1,6 +1,6 @@
 {
   "$comment": "The client's sign-in as a target reads it (spec/target-api.md, *The client's sign-in*; 1.5.0): input is the list of the values the query parameter `signin` has in the request (a string or null: not a list); expected the sign-in, or null for no answer.",
-  "spec_version": "1.26.0",
+  "spec_version": "1.27.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {

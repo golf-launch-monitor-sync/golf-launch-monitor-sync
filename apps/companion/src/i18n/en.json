@@ -194,5 +194,15 @@
   "wakeHint.lowPower": "In Low Power Mode iOS won't wake the app: Settings › Battery › Low Power Mode.",
   "wakeHint.settings": "Open settings",
   "wakeHint.swipe": "Don't swipe the app away in the app switcher: iOS then won't wake it until you open it again.",
-  "wakeHint.close": "Close"
+  "wakeHint.close": "Close",
+  "handover.title": "Your sign-in for {name}",
+  "handover.what": "{name} fetches your {provider} data itself on this phone. This app keeps your sign-in and hands it to {name}, sealed so that only {name} can read it.",
+  "handover.renewing": "Renewing your {provider} sign-in …",
+  "handover.going": "Back to {name} …",
+  "handover.other": "You're signed in to {provider} with another account than the one {name} is connected with, so nothing was handed over. Sign in with that account, or end the connection in {name}.",
+  "handover.failed": "Your sign-in couldn't be handed over to {name}. Try again from {name}.",
+  "handover.stayed": "{name} couldn't be opened, so you stay here. Open {name} yourself.",
+  "handover.unpaired": "The app that asked for your sign-in isn't connected with this phone, so nothing was handed over. Connect it from that app first.",
+  "run.who.embedded": "the app itself, on its own",
+  "pairing.signinOnly": "{name} fetches itself on this phone; this app only keeps your sign-in for it."
 }

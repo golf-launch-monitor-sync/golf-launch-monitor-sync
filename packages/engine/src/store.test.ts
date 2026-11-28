@@ -113,6 +113,26 @@ describe('sign-ins', () => {
     expect(s.had('trackman')).toBeNull();
   });
 
+  it('says when a key runs out, and may renew one early that runs out soon or lacks its browser (spec 1.27.0)', async () => {
+    let now = at;
+    const s = new SignIns(new MemorySecrets(), keys, ['trackman', 'demo'], { now: () => now });
+    const week = fakeToken('sub-0001', { exp: Math.floor((at + 7 * 86_400_000) / 1000) });
+    expect(s.expiresAt('trackman')).toBeNull();
+    expect(s.mayRenewEarly('trackman', 3 * 86_400_000)).toBe(false); // never held: nothing to renew
+    await s.set('trackman', week, 'Test Player', 'Mozilla/5.0 (iPhone)');
+    expect(s.expiresAt('trackman')).toBe(at + 7 * 86_400_000);
+    expect(s.mayRenewEarly('trackman', 3 * 86_400_000)).toBe(false);
+    now = at + 4 * 86_400_000 + 1;
+    expect(s.mayRenewEarly('trackman', 3 * 86_400_000)).toBe(true);
+    now = at;
+    await s.set('trackman', fakeToken('sub-0001', { n: 3, exp: Math.floor((at + 7 * 86_400_000) / 1000) }));
+    expect(s.get('trackman')?.userAgent).toBe('Mozilla/5.0 (iPhone)'); // kept from the same account
+    await s.set('trackman', fakeToken('sub-0002', { exp: Math.floor((at + 7 * 86_400_000) / 1000) }));
+    expect(s.mayRenewEarly('trackman', 3 * 86_400_000)).toBe(true); // another account's key came without its browser
+    await s.set('demo', 'demo-key');
+    expect(s.expiresAt('demo')).toBeNull();
+  });
+
   it('a secure store that refuses at start reads as signed out', async () => {
     const s = new SignIns({ get: () => Promise.reject(new Error('locked')), set: async () => {}, remove: async () => {} }, keys, ['trackman']);
     await s.load();

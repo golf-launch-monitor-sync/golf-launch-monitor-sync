@@ -187,6 +187,29 @@ target keeps which client holds it (by its import token, as a rule) and since wh
 A client therefore never asks for a plan while a sync of its own of that kind runs: a second "fetch
 now" joins the one under way (or waits for it) instead.
 
+## Fetching or only signing in (since 1.27.0)
+
+A target may fetch for itself: an app of the target with this project's engine built in (client kind `embedded`,
+[target-api.md](target-api.md)), which fetches on the player's phone with a sign-in the companion app handed over
+([deep-links.md](deep-links.md#signing-in-for-a-target)). Two clients fetching the same account from one phone would
+only double the load, so a target says per client what it does, in every plan: **`mode`**.
+
+- `fetch` (also when absent): as always.
+- `signin_only`: `due` is always false for this client (and it takes no lease). It keeps the provider sign-in and hands
+  it to the target's app when that app asks. A target answers `signin_only` to the client it took the sign-in from - as
+  a rule, every other client of the player on the same phone - while its own engine is paired, and `fetch` again once
+  that engine is gone.
+- A client that hears `signin_only` keeps it for the connection and asks no plan for it on its own: not after pairing,
+  not at its regular look in the background, not for the older history. It still asks when the player opens it or taps
+  *fetch now*, so the target can tell it to fetch again. A pair link may set it from the start (`mode=signin`), before
+  the first plan.
+- A target never wakes such a client ([wake.md](wake.md)); a wake that comes anyway is answered by its regular look,
+  which asks nothing for the connection.
+- The guard holds in the target's engine as in every client.
+
+A client before 1.27.0 reads past `mode`, as it reads past any field it doesn't know; it fetches when a plan is due,
+and a target that wants it to keep still leaves its plans not due.
+
 ## Pace
 
 `pace` multiplies the client's pauses between provider requests (1 = normal) and is never below

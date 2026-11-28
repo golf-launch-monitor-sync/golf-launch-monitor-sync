@@ -12,13 +12,18 @@
  * the list keeps a row that says so and where to pair again - only the target app can start a pairing (Reginald's test
  * of 27 Nov: the list showed nothing but *Connect new*, which waits for that app's pair link). It goes when that target
  * pairs again or the player takes it off the list.
+ *
+ * Each pairing keeps what this app does for it (spec 1.27.0, `mode`): fetch when its target's plan says so, or only keep
+ * the provider sign-in and hand it to the target's own app, which fetches itself. A pair link may say the latter; after
+ * that the target's plans decide.
  */
 
-import { base64url, readJson, sha256, utf8, type Pairing, type Storage } from '@glmsync/core';
+import { base64url, readJson, sha256, utf8, type ConnectionMode, type Pairing, type Storage } from '@glmsync/core';
 import type { Secrets } from './secrets.ts';
 
-export type StoredPairing = Omit<Pairing, 'token'> & { key: string };
-export type KeyedPairing = Pairing & { key: string };
+/** `mode` (1.27.0): absent is `fetch`, as before. */
+export type StoredPairing = Omit<Pairing, 'token'> & { key: string; mode?: ConnectionMode };
+export type KeyedPairing = Pairing & { key: string; mode?: ConnectionMode };
 /** A pairing its target ended: which target and provider, when - nothing else of it (no token, no address). */
 export interface EndedPairing {
   key: string;
@@ -40,7 +45,7 @@ export function pairingKey(base: string, provider: string): string {
 
 function readIndex(v: unknown): StoredPairing[] {
   if (!Array.isArray(v)) return [];
-  return v.filter(
+  const list = v.filter(
     (p): p is StoredPairing =>
       !!p &&
       typeof p === 'object' &&
@@ -53,6 +58,12 @@ function readIndex(v: unknown): StoredPairing[] {
       Array.isArray((p as StoredPairing).target.return_prefixes) &&
       !!(p as StoredPairing).limits,
   );
+  // A mode this version doesn't know reads as fetching, as before 1.27.0.
+  return list.map((p) => {
+    if (p.mode === undefined || p.mode === 'signin_only') return p;
+    const { mode: _, ...rest } = p;
+    return rest;
+  });
 }
 
 function readEnded(v: unknown): EndedPairing[] {
@@ -171,6 +182,19 @@ export class Pairings {
     }
     this.tell();
     return { added, replaced };
+  }
+
+  /** What this app does for the pairing (spec 1.27.0): a pair link said so, or the target's plan. */
+  async setMode(key: string, mode: ConnectionMode): Promise<void> {
+    const p = this.get(key);
+    if (!p || (p.mode ?? 'fetch') === mode) return;
+    this.items = this.items.map((x) => {
+      if (x.key !== key) return x;
+      const { mode: _, ...rest } = x;
+      return mode === 'fetch' ? rest : { ...rest, mode };
+    });
+    await this.writeIndex();
+    this.tell();
   }
 
   /** Remember what the target bound the pairing to (its `account_ref`), once it says. */

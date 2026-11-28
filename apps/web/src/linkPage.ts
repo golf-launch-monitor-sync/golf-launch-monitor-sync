@@ -20,16 +20,18 @@ export type LinkPage =
   /** A pair link on a computer: the pairing page takes over (it has the extension's way and the one by hand). */
   | { show: 'forward'; to: string }
   /** A phone without the companion app (or one whose app didn't take the address): open it by its scheme, or install. */
-  | { show: 'phone'; action: 'pair' | 'sync'; open: string; platform: 'ios' | 'android' }
+  | { show: 'phone'; action: 'pair' | 'sync' | 'signin'; open: string; platform: 'ios' | 'android' }
   /** A sync link on a computer: fetching on the phone happens in the companion app. */
-  | { show: 'computer-sync' };
+  | { show: 'computer-sync' }
+  /** A signin link on a computer (spec 1.27.0): handing a sign-in to an app is a phone's matter. */
+  | { show: 'computer-signin' };
 
 const enc = encodeURIComponent;
 
 /** `href`: the page's whole address (the keys are in its fragment); `pairPage`: the pairing page's address. */
 export function linkPage(href: string, userAgent: string, pairPage: string): LinkPage {
   const link = parseUniversal(href);
-  if (!link.ok || (link.action !== 'pair' && link.action !== 'sync')) return { show: 'invalid' };
+  if (!link.ok || (link.action !== 'pair' && link.action !== 'sync' && link.action !== 'signin')) return { show: 'invalid' };
   const platform = /iPhone|iPad|iPod/.test(userAgent) ? 'ios' : /Android/.test(userAgent) ? 'android' : null;
   if (platform) {
     // The same keys behind the app's own scheme: what an app installed before its build knew the host still opens.
@@ -38,6 +40,7 @@ export function linkPage(href: string, userAgent: string, pairPage: string): Lin
     return { show: 'phone', action: link.action, open, platform };
   }
   if (link.action === 'sync') return { show: 'computer-sync' };
+  if (link.action === 'signin') return { show: 'computer-signin' };
   // The pairing page's fragment takes no way back: on a computer the page stays where it is.
   const keys = [`target=${enc(link.target)}`, `code=${enc(link.code)}`];
   if (link.provider !== undefined) keys.push(`provider=${enc(link.provider)}`);

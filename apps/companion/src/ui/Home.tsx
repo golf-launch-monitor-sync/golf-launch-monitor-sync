@@ -325,7 +325,8 @@ export function Home({
                   {hostOf(p.base)} · {svc.providers[p.provider as ProviderId]?.name ?? p.provider}
                 </Small>
                 {svc.tests.of(p.key) && <Small>{t('test.pairingLine', { name: svc.tests.of(p.key)?.name ?? '' })}</Small>}
-                <Small>{runText(svc.runner.lastRun(p.key), now, lang, t)}</Small>
+                {/* Spec 1.27.0: that app fetches itself; nothing of its runs is this app's to show. */}
+                {p.mode === 'signin_only' ? <Small>{t('pairing.signinOnly', { name: p.target.name })}</Small> : <Small>{runText(svc.runner.lastRun(p.key), now, lang, t)}</Small>}
                 <View style={s.row}>
                   <Button label={t('unpair.button')} kind="danger" busy={busy === `unpair-${p.key}`} onPress={() => unpair(p)} />
                 </View>
