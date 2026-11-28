@@ -82,13 +82,13 @@ jobs:
       - run: pnpm e2e
       # The store packages of main, for testers before a release (unsigned; load unpacked).
       - if: github.event_name == 'push'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: extension-packages
           path: apps/extension/dist/*.zip
           retention-days: 30
       - if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-results
           path: test-results/
