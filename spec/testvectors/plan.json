@@ -1,6 +1,6 @@
 {
-  "$comment": "The reference planning rules of a target (spec/planning.md; here_due_at and is_due's `here` since 1.12.0, a case without `here` has none; `holder`, and `leases` with clients and holders, since 1.13.0; read_can, rounds_skip and sessions_wanted since 1.20.0). Times compare as instants within compare.time_tolerance_s; dict results compare without regard to key order.",
-  "spec_version": "1.25.0",
+  "$comment": "The reference planning rules of a target (spec/planning.md; here_due_at and is_due's `here` since 1.12.0, a case without `here` has none; `holder`, and `leases` with clients and holders, since 1.13.0; read_can, rounds_skip and sessions_wanted since 1.20.0; rounds_skip's `passed` and rounds_passed since 1.26.0). Times compare as instants within compare.time_tolerance_s; dict results compare without regard to key order.",
+  "spec_version": "1.26.0",
   "generated_by": "spec/reference/generate.py",
   "rules": {
     "$comment": "The reference planning rules of a target (spec/planning.md). Informative: a target may plan more gently; the load guard (spec/guard/limits.json) holds regardless.",
@@ -5480,6 +5480,190 @@
         "known_rounds": "x"
       },
       "expected": 0
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": 12,
+        "passed": 92
+      },
+      "expected": 92
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": 12,
+        "passed": 0
+      },
+      "expected": 2
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": 405,
+        "passed": 92
+      },
+      "expected": 395
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": 12,
+        "passed": -5
+      },
+      "expected": 2
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": 12,
+        "passed": "92"
+      },
+      "expected": 2
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": 12,
+        "passed": null
+      },
+      "expected": 2
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": 12,
+        "passed": true
+      },
+      "expected": 2
+    },
+    {
+      "rule": "rounds_skip",
+      "input": {
+        "known_rounds": 0,
+        "passed": 182
+      },
+      "expected": 182
+    },
+    {
+      "rule": "rounds_passed",
+      "input": {
+        "passed": 0,
+        "skip": 2,
+        "ended": false,
+        "new_rounds": 0
+      },
+      "expected": 92
+    },
+    {
+      "rule": "rounds_passed",
+      "input": {
+        "passed": 92,
+        "skip": 92,
+        "ended": false,
+        "new_rounds": 0
+      },
+      "expected": 182
+    },
+    {
+      "rule": "rounds_passed",
+      "input": {
+        "passed": 182,
+        "skip": 182,
+        "ended": true,
+        "new_rounds": 2
+      },
+      "expected": 182
+    },
+    {
+      "rule": "rounds_passed",
+      "input": {
+        "passed": 0,
+        "skip": 2,
+        "ended": false,
+        "new_rounds": 3
+      },
+      "expected": 0
+    },
+    {
+      "rule": "rounds_passed",
+      "input": {
+        "passed": 0,
+        "skip": 2,
+        "ended": null,
+        "new_rounds": 0
+      },
+      "expected": 0
+    },
+    {
+      "rule": "rounds_passed",
+      "input": {
+        "passed": 0,
+        "skip": 2,
+        "ended": true,
+        "new_rounds": 0
+      },
+      "expected": 0
+    },
+    {
+      "rule": "rounds_passed",
+      "input": {
+        "passed": 92,
+        "skip": 2,
+        "ended": false,
+        "new_rounds": 0
+      },
+      "expected": 92
+    },
+    {
+      "rule": "rounds_passed",
+      "input": {
+        "passed": 0,
+        "skip": "2",
+        "ended": false,
+        "new_rounds": 0
+      },
+      "expected": 90
+    },
+    {
+      "rule": "rounds_passed",
+      "input": {
+        "passed": 0,
+        "skip": 2,
+        "ended": false,
+        "new_rounds": false
+      },
+      "expected": 0
+    },
+    {
+      "rule": "rounds_passed",
+      "input": {
+        "passed": 0,
+        "skip": 2,
+        "ended": false,
+        "new_rounds": "0"
+      },
+      "expected": 0
+    },
+    {
+      "rule": "rounds_passed",
+      "input": {
+        "passed": 0,
+        "skip": 2,
+        "ended": 0,
+        "new_rounds": 0
+      },
+      "expected": 0
+    },
+    {
+      "rule": "rounds_passed",
+      "input": {
+        "passed": "x",
+        "skip": 2,
+        "ended": false,
+        "new_rounds": 0
+      },
+      "expected": 92
     },
     {
       "rule": "sessions_wanted",

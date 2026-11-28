@@ -301,16 +301,37 @@ def read_can(values: Any) -> list[str]:
     return [w for w in CAN if w in words]
 
 
-def rounds_skip(known_rounds: int) -> int:
+def _count(value: Any) -> int:
+    """A count kept by the target: a whole number of at least 0, anything else 0."""
+    return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else 0
+
+
+def rounds_skip(known_rounds: int, passed: Any = 0) -> int:
     """Where a history chunk starts listing the scorecards (`rounds_skip`): the provider lists them
     newest first, and the target's rounds are as a rule the newest ones - the regular syncs brought
     them. So it skips about as many as the target has, less a margin for rounds the provider lists a
-    little out of order, and no chunk pages again through what is there."""
+    little out of order, and no chunk pages again through what is there. Since 1.26.0 at least
+    `passed` (`rounds_passed`): where the list holds entries the target never stores (a game
+    without a stroke, a round the player deleted), the count alone never moves past them."""
     try:
         n = int(known_rounds)
     except (TypeError, ValueError):
-        return 0
-    return max(0, n - RULES["rounds_skip_slack"])
+        n = 0
+    return max(0, n - RULES["rounds_skip_slack"], _count(passed))
+
+
+def rounds_passed(passed: Any, skip: Any, ended: Any, new_rounds: Any) -> int:
+    """How far down the provider's list of scorecards a history chunk has looked (since 1.26.0), kept
+    by the target for the next chunk's `rounds_skip`. A chunk that listed its pages whole without the
+    list ending (`rounds_end` false) and brought no round new to the target moves it past what it
+    listed, less the margin (a round played meanwhile moves the list down by one). Any other chunk
+    leaves it: one that brought rounds moves `rounds_skip` by its count anyway, and one that didn't
+    say where the list ended may not have listed at all."""
+    kept = _count(passed)
+    if ended is not False or isinstance(new_rounds, bool) or new_rounds != 0:
+        return kept
+    listed = RULES["history_rounds_pages"] * RULES["history_rounds_page"]
+    return max(kept, _count(skip) + listed - RULES["rounds_skip_slack"])
 
 
 def sessions_wanted(sessions: list[dict[str, Any]], asked: dict[str, Any]) -> list[dict[str, Any]]:

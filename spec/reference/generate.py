@@ -273,6 +273,17 @@ def plan_vectors() -> dict[str, Any]:
         cases.append({"rule": "read_can", "input": {"values": values}, "expected": plan.read_can(values)})
     for known in [0, 5, 10, 11, 12, 405, -3, "x"]:
         cases.append({"rule": "rounds_skip", "input": {"known_rounds": known}, "expected": plan.rounds_skip(known)})
+    # Since 1.26.0: at least where a chunk without a new round got to (a list of games before the missing cards).
+    for known, passed in [(12, 92), (12, 0), (405, 92), (12, -5), (12, "92"), (12, None), (12, True), (0, 182)]:
+        cases.append({"rule": "rounds_skip", "input": {"known_rounds": known, "passed": passed},
+                      "expected": plan.rounds_skip(known, passed)})
+    # A player with 12 rounds and 270 games before his two older cards: 2, 92, 182 - then the list ends.
+    for passed, skip, ended, new in [(0, 2, False, 0), (92, 92, False, 0), (182, 182, True, 2), (0, 2, False, 3),
+                                     (0, 2, None, 0), (0, 2, True, 0), (92, 2, False, 0), (0, "2", False, 0),
+                                     (0, 2, False, False), (0, 2, False, "0"), (0, 2, 0, 0), ("x", 2, False, 0)]:
+        cases.append({"rule": "rounds_passed", "input": {"passed": passed, "skip": skip, "ended": ended,
+                                                         "new_rounds": new},
+                      "expected": plan.rounds_passed(passed, skip, ended, new)})
     pro = [{"external_id": f"T{i:02d}", "started_at": f"2026-02-{i:02d}T10:00:00Z", "shots": 0} for i in range(1, 15)]
     pro += [{"external_id": "C1", "started_at": "2026-11-11T09:00:00Z", "shots": 0},
             {"external_id": "S1", "started_at": "2026-11-22T09:00:00Z", "shots": 23},
@@ -283,7 +294,7 @@ def plan_vectors() -> dict[str, Any]:
                       "expected": plan.sessions_wanted(pro, asked)})
     return doc("The reference planning rules of a target (spec/planning.md; here_due_at and is_due's `here` since "
                "1.12.0, a case without `here` has none; `holder`, and `leases` with clients and holders, since 1.13.0; "
-               "read_can, rounds_skip and sessions_wanted since 1.20.0). Times compare as instants within "
+               "read_can, rounds_skip and sessions_wanted since 1.20.0; rounds_skip's `passed` and rounds_passed since 1.26.0). Times compare as instants within "
                "compare.time_tolerance_s; dict results compare without regard to key order.", cases,
                rules=plan.RULES, compare={"time_tolerance_s": 0.001})
 

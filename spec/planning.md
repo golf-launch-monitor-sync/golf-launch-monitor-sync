@@ -128,7 +128,13 @@ with every chunk and never say where the list ended.
   the chunk, before its sessions (since 1.25.0), so the guard stopping a chunk among them never keeps
   the older scorecards back chunk after chunk. The target
   plans the part until a chunk said so; the next chunk starts further down, since the target now
-  has more. A plan with `rounds: true` and no `rounds_skip` (before 1.20.0, or a file target) means
+  has more. Since 1.26.0 the target also keeps how far down a chunk has looked
+  ([`rounds_passed`](reference/plan.py)), and `rounds_skip` is at least that: a chunk that listed its
+  pages whole (`rounds_end` false) and brought no round new to the target moves it past what it
+  listed, less `rounds_skip_slack`. Otherwise a list that holds, before the missing scorecards, a page
+  or two of entries the target never keeps (a game without a stroke on any hole, which a client since
+  1.24.0 doesn't hand over; a round the player deleted) would be listed again chunk after chunk, and
+  the part would never end. Nothing changes for a client. A plan with `rounds: true` and no `rounds_skip` (before 1.20.0, or a file target) means
   what it always meant: the client pages from the top, up to its usual number of new rounds.
 - **Sessions asked for again** (`sessions_again`): known sessions the target holds without a single
   shot, of kinds a client may now fetch with their shots (a client before this version asked
