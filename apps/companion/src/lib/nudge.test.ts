@@ -10,8 +10,7 @@ import { FakeTarget, VirtualClock, type FakeTargetOptions } from '@glmsync/core/
 import { MemoryStorage, type FetchLike } from '@glmsync/core';
 import { describe, expect, it } from 'vitest';
 import { NUDGE_MIN_GAP_MS, NudgeGate, readNudge, runNudge } from './nudge.ts';
-import type { KeyedPairing } from './pairings.ts';
-import { MemorySecrets } from './secrets.ts';
+import { type KeyedPairing, MemorySecrets } from '@glmsync/engine';
 import { makeServices } from './services.ts';
 
 const SUB = '7c1d2e3f-0000-4000-8000-0000000000c1';

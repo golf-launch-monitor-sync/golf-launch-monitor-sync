@@ -10,7 +10,7 @@ import { FakeTrackman, fakeToken } from '@glmsync/provider-trackman/testing';
 import { FakeTarget, VirtualClock, type FakeTargetOptions } from '@glmsync/core/testing';
 import { MemoryStorage, type FetchLike, type Storage } from '@glmsync/core';
 import { describe, expect, it } from 'vitest';
-import { MemorySecrets } from './secrets.ts';
+import { MemorySecrets } from '@glmsync/engine';
 import { makeServices } from './services.ts';
 import { isWakePush, runWake, WAKE_FAIL_RETRY_MS, WAKE_NONE_RETRY_MS, WAKE_REFRESH_MS, WAKE_RUN_GAP_MS, WakeGate } from './wake.ts';
 

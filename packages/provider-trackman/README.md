@@ -21,8 +21,10 @@ const who = await provider.who(providerContext({ guard, account }), token);
 - **The token goes to `api.trackmangolf.com` and nowhere else** — not to a target, not to any server
   of this project (there is none). It is handed in per call, so a sync keeps the sign-in it started
   with. How the client gets it (from the portal, from a sign-in window) is the client's business.
-- **No disguise**: plain requests with `Authorization`, `Content-Type` and `Accept`; no User-Agent,
-  no cookies, no copied headers. **No borrowed OAuth client id.**
+- **No disguise**: plain requests with `Authorization`, `Content-Type` and `Accept`; on a phone also the
+  User-Agent of the browser the player signed in with on that device (kept beside the sign-in, set by core's
+  `providerContext`; in a browser the browser sends its own). No cookies, no `Origin`, no `Referer`, no other
+  copied headers (`headers.test.ts` checks every call of a sync). **No borrowed OAuth client id.**
 - **Every request through the guard**, the plan first: this module never decides *when* to fetch.
 - **Ask only for what is mapped**: the queries ask for the fields `mapping.ts` reads (a test checks).
 - **Untrusted answers**: every field is mapped or dropped; one bad value never fails a sync.

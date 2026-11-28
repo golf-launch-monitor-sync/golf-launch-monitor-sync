@@ -4,7 +4,7 @@ import { expiresAt, subjectOf } from '@glmsync/provider-trackman';
 import { fakeToken } from '@glmsync/provider-trackman/testing';
 import { describe, expect, it } from 'vitest';
 import { ChunkedSecrets, MemorySecrets, type Secrets } from './secrets.ts';
-import { makeServices } from './services.ts';
+import { makeEngine } from './engine.ts';
 import { SignIns, SLACK_MS } from './signins.ts';
 import { MemoryStorage } from '@glmsync/core';
 
@@ -123,11 +123,11 @@ describe('sign-ins', () => {
 describe('the parts together', () => {
   it('a long Trackman key survives the secure store in pieces', async () => {
     const secrets = new MemorySecrets();
-    const services = makeServices({ secrets, storage: new MemoryStorage() });
+    const services = makeEngine({ secrets, storage: new MemoryStorage() });
     await services.load();
     const token = fakeToken('sub-0001', { padding: 'p'.repeat(5000) });
     await services.signIns.set('trackman', token);
-    const again = makeServices({ secrets, storage: new MemoryStorage() });
+    const again = makeEngine({ secrets, storage: new MemoryStorage() });
     await again.load();
     expect(again.signIns.credential('trackman')).toBe(token);
     for (const v of secrets.data.values()) expect(v.length).toBeLessThanOrEqual(1800);

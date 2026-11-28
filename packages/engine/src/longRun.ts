@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * What the background task does (src/background.ts runs it; the rules live here, tested on a virtual clock).
+ * What a background task does (the companion's src/background.ts runs it, an app embedding the engine its own; the
+ * rules live here, tested on a virtual clock).
  *
  * On the iPhone `expo-background-task` is a `BGProcessingTask` (UIBackgroundModes `processing`): iOS starts the app for
  * it when it likes - mostly while the phone charges and nobody uses it, at night - and lets it work for minutes, not the

@@ -24,7 +24,7 @@
 
 import { PROVIDER_ID as GOLFDE } from '@glmsync/provider-golfde';
 import { parseLink, PRO_PROVIDER, providersOf, returnAllowed } from '@glmsync/spec';
-import type { KeyedPairing } from './pairings.ts';
+import type { KeyedPairing } from '@glmsync/engine';
 
 export type Incoming =
   /**

@@ -67,8 +67,11 @@ provider's "Is this you?"), so it starts a run of its own.
 
 - `pair()` and `HttpTarget`: the target API with an import token. Every answer of a target is read
   field by field (`readPlan` & co.): a plan can only make a client do less. A target that takes less
-  than 64 KiB a batch is not paired with (the client would fetch for nothing). Requests carry no
-  cookies and no borrowed User-Agent.
+  than 64 KiB a batch is not paired with (the client would fetch for nothing). Requests to a target carry
+  no cookies and no User-Agent of our own.
+- A provider's requests (`providerContext`): the module's own headers and, on a phone, the User-Agent of the
+  browser the player signed in with there (`userAgent`, also an option of `sync`; `cleanUserAgent` keeps only a
+  header value). No cookies, no `Origin`, no `Referer`.
 - Test mode (spec 1.8.0, [test-mode.md](../../spec/test-mode.md)): `HttpTarget.testScenario(code)` asks
   `GET /test-scenario` with the code in `X-Test-Code` (never the address), reads the scenario strictly and says what
   went wrong by its codes (`code_invalid`, `test_unavailable` for any other 404 or a path the target doesn't know,

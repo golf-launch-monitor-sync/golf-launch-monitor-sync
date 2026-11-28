@@ -14,7 +14,7 @@ import { ProClient } from '@glmsync/browser/pro';
 import { keptPage } from './rankingsPage.ts';
 import { keptTourPage } from './toursPage.ts';
 import { SlotSecrets } from './hcp.ts';
-import type { Secrets } from './secrets.ts';
+import type { Secrets } from '@glmsync/engine';
 
 /** How the app names itself to a target of a pro's pages (the target lists it among the player's tools). */
 export function proClientName(os: string | undefined): string {

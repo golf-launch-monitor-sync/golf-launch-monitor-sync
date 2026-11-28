@@ -12,9 +12,8 @@ import { Platform } from 'react-native';
 import { File, Paths } from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
 import * as Sharing from 'expo-sharing';
-import type { Secrets } from './lib/secrets';
+import type { Secrets, Blobs } from '@glmsync/engine';
 import { makeServices, type Services } from './lib/services';
-import type { Blobs } from './lib/tests';
 
 /**
  * Keychain / Keystore. "After first unlock": the background task must read the sign-in while the

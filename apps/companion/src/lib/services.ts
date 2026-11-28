@@ -14,59 +14,22 @@ import { OcsKeeper } from '@glmsync/browser/ocs';
 import { RunKeeper } from '@glmsync/browser/runs';
 import { SeasonKeeper } from '@glmsync/browser/season';
 import { TourKeeper } from '@glmsync/browser/tours';
-import { Guard, HttpTarget, type FetchLike, type FileOut, type Storage } from '@glmsync/core';
-import { demo } from '@glmsync/provider-demo';
-import { expiresAt, trackman } from '@glmsync/provider-trackman';
+import { HttpTarget } from '@glmsync/core';
+import { ChunkedSecrets, makeEngine, type Engine, type EnginePlatform } from '@glmsync/engine';
 import { AutoFetch } from './autoFetch.ts';
 import { HcpSender, makeHcp } from './hcp.ts';
-import { Pairings } from './pairings.ts';
 import { LastPage, makePro } from './pro.ts';
-import { BackgroundRuns } from './longRun.ts';
-import { Runner, type AppProvider } from './runner.ts';
-import { ChunkedSecrets, type Secrets } from './secrets.ts';
-import { SignIns } from './signins.ts';
-import { MemoryBlobs, Tests, type Blobs } from './tests.ts';
 import { Wakes } from './wake.ts';
 
-/** The providers this app offers, in the order shown: Trackman first, the demo for trying it out. */
-export const PROVIDERS = ['trackman', 'demo'] as const;
-export type ProviderId = (typeof PROVIDERS)[number];
+// What fetches from a launch monitor's cloud is the engine's (packages/engine): this app runs it as before.
+export { appProviders, DEMO_CREDENTIAL, PROVIDERS, type ProviderId } from '@glmsync/engine';
 
-/** The demo's "sign-in": one made-up player (spec: any text is an account of its own). */
-export const DEMO_CREDENTIAL = 'player';
-
-export function appProviders(): Record<ProviderId, AppProvider> {
-  const d = demo();
-  return {
-    trackman: trackman(),
-    demo: { id: d.id, name: d.name, ...(d.notice ? { notice: d.notice } : {}), subject: d.subject, fetch: d.fetch, who: (ctx) => d.who(ctx) },
-  };
-}
-
-export interface Platform {
-  secrets: Secrets;
-  storage: Storage;
-  writeFile?: (file: FileOut) => Promise<void>;
-  /** Files of the app's own, for a test scenario (memory when the platform brings none). */
-  blobs?: Blobs;
-  fetch?: FetchLike;
-  now?: () => number;
-  sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
-  version?: string;
+export interface Platform extends Omit<EnginePlatform, 'client' | 'generator'> {
   /** `ios` or `android`: how the app names itself to a handicap target (and one of a pro's pages). */
   os?: string;
 }
 
-export interface Services {
-  providers: Record<ProviderId, AppProvider>;
-  signIns: SignIns;
-  pairings: Pairings;
-  /** Test mode's scenarios, per pairing (spec/test-mode.md). */
-  tests: Tests;
-  guard: Guard;
-  runner: Runner;
-  /** The last background runs, for the exported log (src/lib/longRun.ts). */
-  background: BackgroundRuns;
+export interface Services extends Omit<Engine, 'load'> {
   /** This phone's push address at each target (the wake, spec/wake.md; iOS only). */
   wakes: Wakes;
   /** The handicap record read along in the golf.de window, and its pairings (spec/hcp.md). */
@@ -99,42 +62,11 @@ export interface Services {
 }
 
 export function makeServices(platform: Platform): Services {
+  // The engine names the companion app to its targets, as before (no `client`, no `generator`).
+  const engine = makeEngine(platform);
+  const { pairings } = engine;
+  // golf.de's and the pros' pairings keep their tokens in the same secure store, cut the same way.
   const secrets = new ChunkedSecrets(platform.secrets);
-  const providers = appProviders();
-  const signIns = new SignIns(
-    secrets,
-    {
-      subject: (p, token) => providers[p as ProviderId]?.subject(token) ?? null,
-      expiresAt: (p, token) => (p === 'trackman' ? expiresAt(token) : null),
-    },
-    PROVIDERS,
-    platform.now ? { now: platform.now } : {},
-  );
-  const pairings = new Pairings(secrets, platform.storage);
-  const tests = new Tests(platform.storage, platform.blobs ?? new MemoryBlobs(), {
-    ...(platform.now ? { now: platform.now } : {}),
-    ...(platform.sleep ? { sleep: platform.sleep } : {}),
-  });
-  const guard = new Guard({
-    storage: platform.storage,
-    ...(platform.now ? { now: platform.now } : {}),
-    ...(platform.sleep ? { sleep: platform.sleep } : {}),
-  });
-  const background = new BackgroundRuns(platform.storage);
-  const runner = new Runner({
-    background,
-    pairings,
-    signIns,
-    guard,
-    storage: platform.storage,
-    providers,
-    tests,
-    ...(platform.fetch ? { fetch: platform.fetch } : {}),
-    ...(platform.now ? { now: platform.now } : {}),
-    ...(platform.sleep ? { sleep: platform.sleep } : {}),
-    ...(platform.writeFile ? { writeFile: platform.writeFile } : {}),
-    ...(platform.version ? { version: platform.version } : {}),
-  });
   const wakes = new Wakes({
     storage: platform.storage,
     pairings,
@@ -158,13 +90,13 @@ export function makeServices(platform: Platform): Services {
     ...(platform.now ? { now: platform.now } : {}),
   });
   return {
-    providers,
-    signIns,
+    providers: engine.providers,
+    signIns: engine.signIns,
     pairings,
-    tests,
-    guard,
-    runner,
-    background,
+    tests: engine.tests,
+    guard: engine.guard,
+    runner: engine.runner,
+    background: engine.background,
     wakes,
     hcp,
     hcpSender: new HcpSender(hcp),
@@ -177,11 +109,6 @@ export function makeServices(platform: Platform): Services {
     runs: new RunKeeper(platform.storage, platform.now ?? Date.now),
     seasonPages: new SeasonKeeper(platform.storage),
     lastPage: new LastPage(platform.storage),
-    async load() {
-      await Promise.all([signIns.load(), pairings.load(), runner.loadRuns()]);
-      // After the pairings: a test whose pairing went while the app was closed goes too.
-      await tests.load();
-      for (const m of tests.list()) if (!pairings.get(m.key)) await tests.end(m.key);
-    },
+    load: () => engine.load(),
   };
 }

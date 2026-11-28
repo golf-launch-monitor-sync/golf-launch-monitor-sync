@@ -3,6 +3,11 @@
 /**
  * What a provider module is (Trackman, the demo, another maker with a cloud account later), and
  * the context it fetches in: every request it makes goes through the load guard, at the plan's pace.
+ *
+ * The headers of a request are the module's own (`Content-Type`, `Accept`, `Authorization` for Trackman) and, on a
+ * phone, the User-Agent of the browser the player signed in with on that device (`userAgent`: read in the sign-in
+ * window, kept beside the sign-in). Nothing else: no cookies, no `Origin`, no `Referer`. A browser client passes none -
+ * the browser sends its own.
  */
 
 import type { Batch, Reason, Round, Session } from '@glmsync/spec';
@@ -89,17 +94,45 @@ export interface ContextOptions {
   now?: () => number;
   /** Where the provider tells what it has so far (`ProviderContext.got`). */
   got?: (items: { sessions: Session[] }) => void;
+  /**
+   * The User-Agent of the browser the player signed in with on this device, kept beside the sign-in: every request to
+   * the provider carries it (a phone; `cleanUserAgent` drops anything that is no header value). Absent: none is set.
+   */
+  userAgent?: string | null;
+}
+
+/** The longest User-Agent kept: a phone's web view sends about 150 characters. */
+export const MAX_USER_AGENT = 512;
+
+/**
+ * A User-Agent as it may go out: printable ASCII only (so no line break can add a header), trimmed, 1-512 characters;
+ * anything else null. It was read in a web view's page and is treated as untrusted like everything from there.
+ */
+export function cleanUserAgent(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const t = v.trim();
+  return t.length >= 1 && t.length <= MAX_USER_AGENT && /^[\x20-\x7E]+$/.test(t) ? t : null;
+}
+
+/** The module's headers, with the sign-in browser's User-Agent in place of any it set itself. */
+function withUserAgent(headers: Record<string, string>, ua: string | null): Record<string, string> {
+  if (!ua) return headers;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(headers)) if (k.toLowerCase() !== 'user-agent') out[k] = v;
+  out['User-Agent'] = ua;
+  return out;
 }
 
 type Guarded = ProviderContext['guarded'];
 
 /** `http` of a context: one request through `fetch`, counted and paced by the guard's `guarded`. */
-function httpThrough(guarded: Guarded, fetchOf: () => FetchLike, now: () => number): ProviderContext['http'] {
+function httpThrough(guarded: Guarded, fetchOf: () => FetchLike, now: () => number, ua: string | null = null): ProviderContext['http'] {
   return (kind, url, init) => {
     const f = fetchOf();
+    const sent = { ...init, headers: withUserAgent(init.headers, ua) };
     return guarded(kind, async (signal) => {
       try {
-        const x = await exchange(f, url, init, { signal, now });
+        const x = await exchange(f, url, sent, { signal, now });
         return { status: x.status, retryAfterS: x.retryAfterS, value: { status: x.status, body: x.body, retryAfterS: x.retryAfterS } };
       } catch (e) {
         if (e instanceof Cancelled) throw e;
@@ -127,7 +160,7 @@ export function providerContext(opts: ContextOptions): ProviderContext {
     now,
     ...(opts.got ? { got: opts.got } : {}),
     guarded,
-    http: httpThrough(guarded, () => (fetchImpl ??= defaultFetch()), now),
+    http: httpThrough(guarded, () => (fetchImpl ??= defaultFetch()), now, cleanUserAgent(opts.userAgent)),
   };
 }
 

@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * Everything the companion app does with targets and providers, without a screen: pairing, a sync
- * for each pairing, the older history a chunk at a time, a sync into a file, "Is this you?".
+ * Everything the engine does with targets and providers, without a screen: pairing, a sync for each
+ * pairing, the older history a chunk at a time, a sync into a file, "Is this you?". The companion app
+ * runs it; an app that embeds the engine runs the same.
  *
  * The rules of the project hold here as everywhere (CLAUDE.md §2):
  * - the target's plan first, every time: nothing here fetches on its own initiative, a timer or a
  *   link only asks; `sync` from @glmsync/core asks the provider only when the plan says "due";
  * - every request to a provider through the one guard of this app, whose counts outlive restarts;
- * - the provider's sign-in goes to the provider only; a target gets batches and nothing else.
+ * - the provider's sign-in goes to the provider only; a target gets batches and nothing else;
+ * - every call to the provider carries the User-Agent of the browser the player signed in with on this
+ *   device, when one was kept with the sign-in (signins.ts), and nothing else of the device or the app.
  *
  * One thing at a time: runs are queued, so a timer in the background and a "fetch now" from a target
  * app never fetch side by side (the plan's lease keeps different apps apart, this keeps one app's -
@@ -21,6 +24,7 @@
 
 import {
   accountRefOf,
+  cleanUserAgent,
   FileTarget,
   GuardLimitError,
   guardAccount,
@@ -49,7 +53,10 @@ import type { KeyedPairing, Pairings } from './pairings.ts';
 import type { SignIns } from './signins.ts';
 import { TestModeError, type TestMode, type Tests } from './tests.ts';
 
+/** How the engine names itself to a target unless the app gives a client of its own (the companion app's). */
 export const CLIENT: ClientKind = 'companion';
+export const CLIENT_NAME = 'Golf Stats Sync';
+export const GENERATOR = 'Golf Stats Sync companion';
 
 export interface WhoAnswer {
   player: string | null;
@@ -107,10 +114,15 @@ export interface RunnerOptions {
   /** The share sheet (`toFile`). */
   writeFile?: (file: FileOut) => Promise<void>;
   version?: string;
-  /** The last background runs (src/lib/longRun.ts), which go into the exported log. */
+  /** The last background runs (longRun.ts), which go into the exported log. */
   background?: { list(): Promise<BackgroundRun[]> };
+  /** How the app names itself to a target (default: the companion app, `CLIENT` and `CLIENT_NAME`). */
+  client?: { kind: ClientKind; name: string };
+  /** The generator every batch names (default `GENERATOR`). */
+  generator?: string;
 }
 
+// The names the companion app wrote first stay, so a phone keeps what it had (in another app's storage they meet nothing).
 const RUNS = 'glmsync/companion/runs';
 const MAX_RUNS = 40;
 /** A history chunk the target let go just now: the next may go at the earliest after this. */
@@ -133,10 +145,12 @@ export class Runner {
   private readonly listeners = new Set<() => void>();
   private readonly now: () => number;
   private readonly generator: { name: string; version?: string };
+  private readonly client: { kind: ClientKind; name: string };
 
   constructor(private readonly opts: RunnerOptions) {
     this.now = opts.now ?? Date.now;
-    this.generator = { name: 'Golf Stats Sync companion', ...(opts.version ? { version: opts.version } : {}) };
+    this.generator = { name: opts.generator ?? GENERATOR, ...(opts.version ? { version: opts.version } : {}) };
+    this.client = opts.client ?? { kind: CLIENT, name: CLIENT_NAME };
   }
 
   subscribe(fn: () => void): () => void {
@@ -230,7 +244,7 @@ export class Runner {
   // --- pairing ------------------------------------------------------------------------------
 
   /** A pairing code for an import token; the pairing it replaces is revoked at the target. */
-  pair(link: { target: string; code: string; provider?: string }, name = 'Golf Stats Sync'): Promise<KeyedPairing> {
+  pair(link: { target: string; code: string; provider?: string }, name = this.client.name): Promise<KeyedPairing> {
     return this.serial(async () => {
       const provider = link.provider ?? 'trackman';
       if (!this.opts.providers[provider]) throw new TargetError('provider_unknown', 'This app has no such provider.');
@@ -238,7 +252,7 @@ export class Runner {
         target: link.target,
         code: link.code,
         provider,
-        client: { kind: CLIENT, name, ...(this.opts.version ? { version: this.opts.version } : {}) },
+        client: { kind: this.client.kind, name, ...(this.opts.version ? { version: this.opts.version } : {}) },
         ...(this.opts.fetch ? { fetch: this.opts.fetch } : {}),
         signal: this.signal,
         now: this.now,
@@ -366,19 +380,24 @@ export class Runner {
       run = { at: this.now(), reason, status: 'failed', error: 'provider_unknown' };
     } else {
       const credential = this.opts.signIns.credential(p.provider);
-      run = credential ? await this.fetchFor(p, provider, credential, reason) : await this.signedOut(p, reason);
+      run = credential ? await this.fetchFor(p, provider, credential, reason, false, this.userAgent(p.provider)) : await this.signedOut(p, reason);
     }
     await this.record(p.key, run);
     return run;
   }
 
-  private async fetchFor(p: KeyedPairing, provider: AppProvider, credential: string, reason: Reason, test = false): Promise<LastRun> {
+  /** The User-Agent kept with the provider's sign-in on this device, for its calls; null: none (a test, an older sign-in). */
+  private userAgent(providerId: string): string | null {
+    return this.opts.signIns.get(providerId)?.userAgent ?? null;
+  }
+
+  private async fetchFor(p: KeyedPairing, provider: AppProvider, credential: string, reason: Reason, test = false, userAgent: string | null = null): Promise<LastRun> {
     const outcome = await sync({
       target: this.target(p),
       provider,
       credential,
       reason,
-      client: CLIENT,
+      client: this.client.kind,
       // A sign-in is kept here only once the player said it is theirs: it can fetch (spec 1.5.0).
       signin: 'ready',
       guard: this.opts.guard,
@@ -387,6 +406,7 @@ export class Runner {
       now: this.now,
       ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}),
       generator: this.generator,
+      ...(userAgent ? { userAgent } : {}),
     });
     const run: LastRun = { at: this.now(), reason, status: outcome.status };
     if (outcome.status === 'busy' && outcome.plan.holder) run.holder = outcome.plan.holder;
@@ -430,7 +450,7 @@ export class Runner {
     try {
       const target = this.target(p);
       // Where the sign-in stands (spec 1.5.0): ran out here, or never made on this phone.
-      const plan = await target.plan(p.provider, reason, CLIENT, this.opts.signIns.had(p.provider) ? 'expired' : 'none');
+      const plan = await target.plan(p.provider, reason, this.client.kind, this.opts.signIns.had(p.provider) ? 'expired' : 'none');
       if (plan.disconnected) {
         await this.dropped(p);
         return { at: this.now(), reason, status: 'disconnected' };
@@ -475,12 +495,13 @@ export class Runner {
         const provider = test?.provider ?? this.opts.providers[p.provider];
         const credential = test?.credential ?? this.opts.signIns.credential(p.provider);
         if (!provider || !credential) continue;
+        const userAgent = test ? null : this.userAgent(p.provider);
         const outcome = await sync({
           target: this.target(p),
           provider,
           credential,
           reason: 'backfill',
-          client: CLIENT,
+          client: this.client.kind,
           signin: 'ready',
           guard: this.opts.guard,
           ...(this.opts.fetch ? { fetch: this.opts.fetch } : {}),
@@ -488,6 +509,7 @@ export class Runner {
           now: this.now,
           ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}),
           generator: this.generator,
+          ...(userAgent ? { userAgent } : {}),
         });
         if (outcome.status === 'not_due') {
           if (outcome.plan.history?.done !== true && outcome.plan.wait_s !== undefined) soonest(outcome.plan.wait_s);
@@ -530,18 +552,20 @@ export class Runner {
       else if (!credential) run = { at: this.now(), reason: 'manual', status: 'signed_out', notice: 'auth_expired' };
       else {
         const target = await FileTarget.open({ storage: this.opts.storage, provider: providerId, write, now: this.now });
+        const userAgent = this.userAgent(providerId);
         const outcome = await sync({
           target,
           provider,
           credential,
           reason: 'manual',
-          client: CLIENT,
+          client: this.client.kind,
           guard: this.opts.guard,
           ...(this.opts.fetch ? { fetch: this.opts.fetch } : {}),
           signal: this.signal,
           now: this.now,
           ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}),
           generator: this.generator,
+          ...(userAgent ? { userAgent } : {}),
         });
         run = { at: this.now(), reason: 'manual', status: outcome.status };
         if (outcome.status === 'synced') {
@@ -558,13 +582,17 @@ export class Runner {
 
   // --- the provider account -----------------------------------------------------------------
 
-  /** "Is this you?": through the guard, in a run of its own. Throws what the provider or guard said. */
-  who(providerId: string, token: string): Promise<WhoAnswer> {
+  /**
+   * "Is this you?": through the guard, in a run of its own, with the User-Agent of the window the key came from (null:
+   * none). Throws what the provider or guard said.
+   */
+  who(providerId: string, token: string, userAgent: string | null = null): Promise<WhoAnswer> {
     return this.serial(async () => {
       const provider = this.opts.providers[providerId];
       if (!provider) throw new TargetError('provider_unknown', 'This app has no such provider.');
       const account = guardAccount(providerId, provider.subject(token));
       await this.opts.guard.beginRun(account);
+      const ua = cleanUserAgent(userAgent);
       const ctx = providerContext({
         guard: this.opts.guard,
         account,
@@ -572,6 +600,7 @@ export class Runner {
         ...(this.opts.fetch ? { fetch: this.opts.fetch } : {}),
         signal: this.signal,
         now: this.now,
+        ...(ua ? { userAgent: ua } : {}),
       });
       return provider.who(ctx, token);
     });

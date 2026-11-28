@@ -6,8 +6,10 @@
  *
  * The device calls api.trackmangolf.com itself, in a browser and on a phone alike: Trackman's API
  * answers cross-origin requests that carry an `Authorization` header. There is no relay and no
- * server in the middle. Nothing here pretends to be the portal: no copied User-Agent, no spoofing,
- * no cookies; the request says who it is by the token it carries, and nothing else.
+ * server in the middle. The request says whose it is by the token it carries. Its headers are the three
+ * below; on a phone the context adds the User-Agent of the browser the player signed in with on that device
+ * (kept beside the sign-in; core's `providerContext`), in a browser the browser sends its own. No cookies, no
+ * `Origin` or `Referer`, nothing else copied (headers.test.ts).
  *
  * The token is handed in with every call rather than read from a store, so a sync keeps the
  * sign-in it started with.

@@ -7,7 +7,7 @@ import { owgrPage } from '@glmsync/provider-rankings/testing';
 import { describe, expect, it } from 'vitest';
 import { LastPage, makePro, proClientName } from './pro.ts';
 import { readRankingMessage, readScript } from './rankingsPage.ts';
-import { ChunkedSecrets, MemorySecrets } from './secrets.ts';
+import { ChunkedSecrets, MemorySecrets } from '@glmsync/engine';
 
 const TARGET = 'https://app.example.org/hcp/v1';
 const OWGR = 'https://www.owgr.com/playerprofile/max-mustermann-90001';

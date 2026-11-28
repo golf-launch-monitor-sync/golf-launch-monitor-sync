@@ -11,7 +11,7 @@
 
 import { translator } from '@glmsync/browser/i18n';
 import { wizardLines, wizardOf, type WizardFacts, type WizardLines, type WizardView, type WizardWords } from '@glmsync/browser/wizard';
-import type { LastRun } from './runner.ts';
+import type { LastRun } from '@glmsync/engine';
 import type { Lang } from './text.ts';
 
 /** The steps before the yes: not signed in yet (2), or the account named and waiting for the answer (3). */

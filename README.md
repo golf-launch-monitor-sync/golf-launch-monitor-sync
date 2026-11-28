@@ -111,8 +111,9 @@ target can switch off:
 
 And, as a rule for every line of code here:
 
-- **no disguise**: no faked User-Agent, no TLS fingerprint spoofing, nothing meant to make the
-  traffic look like the maker's own apps;
+- **no disguise**: no TLS fingerprint spoofing, no headers copied from the maker's own apps (no cookies, no
+  `Origin`, no `Referer`), no made-up User-Agent. On a phone, calls to the provider carry the User-Agent of the
+  browser you signed in with there (the sign-in window's); in a browser, the browser sends its own;
 - **no borrowed credentials**: never another application's OAuth client id;
 - **only your own account**, with your own sign-in;
 - **nothing on a server**: no sign-in, token or password of yours is ever sent to or kept on a
@@ -139,6 +140,7 @@ And, as a rule for every line of code here:
 | `packages/spec` | The spec for TypeScript: olmd types and schema check, limits, deep links, `account_ref`. |
 | [`packages/core`](packages/core/README.md) | One sync from a target's plan to an imported batch: plan and push client, the file target and its cursor, the load guard, errors. |
 | [`packages/provider-trackman`](packages/provider-trackman/README.md) | Reading your own Trackman account, into olmd. |
+| [`packages/engine`](packages/engine/README.md) | What fetches on a phone, without a screen: pairings, the sign-in kept on the device, a sync per pairing, the history chunk by chunk, the background run. The companion app runs it; released as a package another app can embed (*Embedding the engine*). |
 | [`packages/provider-golfde`](packages/provider-golfde/README.md) | Reading along on golf.de's pages (your handicap record), into dgvhcp/1: the page script and its mapping. |
 | [`packages/provider-rankings`](packages/provider-rankings/README.md) | A pro's own page of the world rankings (OWGR, Rolex Rankings), read as the page shows it on the player's tap, into prores/1. |
 | [`packages/provider-tours`](packages/provider-tours/README.md) | A pro's own pages of a tour (Pro Golf Tour, DP World Tour, HotelPlanner Tour, LET, LET Access Series, PGA Tour, Korn Ferry Tour, LPGA Tour, Epson Tour): his ranking, his tournaments with their rounds, his season statistics, into prores/1; *Fetch all* on his tap on every tour (the Pro Golf Tour's tournament pages; elsewhere his pages opened and the seasons, tours and reports picked in the page's own pickers), on the season pages (PGA Tour, Korn Ferry, LPGA, Epson) his *Results* page on *Send*. |

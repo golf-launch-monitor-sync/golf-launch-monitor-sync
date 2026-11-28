@@ -38,6 +38,8 @@ export interface SyncOptions<C> {
   now?: () => number;
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
   generator?: { name: string; version?: string };
+  /** On a phone: the User-Agent of the browser the player signed in with, for every request to the provider. */
+  userAgent?: string | null;
 }
 
 export type SyncOutcome =
@@ -125,6 +127,7 @@ export async function sync<C>(opts: SyncOptions<C>): Promise<SyncOutcome> {
         ...(opts.fetch ? { fetch: opts.fetch } : {}),
         ...(early ? { signal: early.signal } : opts.signal ? { signal: opts.signal } : {}),
         ...(early ? { got: early.got } : {}),
+        ...(opts.userAgent ? { userAgent: opts.userAgent } : {}),
         now,
       });
       fetched = await provider.fetch(plan, opts.credential, ctx);

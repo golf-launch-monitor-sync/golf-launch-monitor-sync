@@ -103,7 +103,9 @@ describe('the sign-in window', () => {
 });
 
 /** PAGE_SCRIPT run in a stand-in of the page: what it hands the app, and that the page's own calls still go out. */
-function page(opts: { credentials?: boolean } = {}) {
+const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148';
+
+function page(opts: { credentials?: boolean; userAgent?: string | null } = {}) {
   const posted: unknown[] = [];
   const calls: string[] = [];
   const credentials =
@@ -127,18 +129,24 @@ function page(opts: { credentials?: boolean } = {}) {
     ReactNativeWebView: { postMessage: (m: string) => posted.push(JSON.parse(m)) },
     fetch: (..._args: unknown[]) => Promise.resolve('fetched'),
   };
-  const navigator = { credentials };
+  const navigator = { credentials, ...(opts.userAgent !== null ? { userAgent: opts.userAgent ?? UA } : {}) };
   new Function('window', 'navigator', 'XMLHttpRequest', 'location', 'URL', PAGE_SCRIPT)(window, navigator, XHR, { href: 'https://login.trackmangolf.com/' }, URL);
   return { window, navigator, posted, calls };
 }
 
 describe('the page script', () => {
-  it('passes on the key the portal sends to Trackman, and the call still goes out', async () => {
+  it('passes on the key the portal sends to Trackman with this window’s User-Agent, and the call still goes out', async () => {
     const p = page();
     const key = 'aaa.bbb.ccc';
     await expect(p.window.fetch('https://api.trackmangolf.com/graphql', { headers: { Authorization: `Bearer ${key}` } })).resolves.toBe('fetched');
     await p.window.fetch('https://example.com/', { headers: { Authorization: `Bearer ${key}` } });
-    expect(p.posted).toEqual([{ token: key }]);
+    expect(p.posted).toEqual([{ token: key, ua: UA }]);
+  });
+
+  it('hands the key on without a User-Agent where the page has none to read', async () => {
+    const p = page({ userAgent: null });
+    await p.window.fetch('https://api.trackmangolf.com/graphql', { headers: { Authorization: 'Bearer aaa.bbb.ccc' } });
+    expect(p.posted).toEqual([{ token: 'aaa.bbb.ccc', ua: null }]);
   });
 
   it('says when the page asks for a passkey, and lets the page’s call go on as it would', async () => {
@@ -166,11 +174,20 @@ describe('the page script', () => {
 });
 
 describe('readPageMessage', () => {
-  it('reads a key and a passkey ask, only from a Trackman page', () => {
-    expect(readPageMessage('https://portal.trackmangolf.com/', JSON.stringify({ token: 'aaa.bbb.ccc' }))).toEqual({ kind: 'token', token: 'aaa.bbb.ccc' });
+  it('reads a key with the window’s User-Agent, and a passkey ask, only from a Trackman page', () => {
+    expect(readPageMessage('https://portal.trackmangolf.com/', JSON.stringify({ token: 'aaa.bbb.ccc', ua: UA }))).toEqual({ kind: 'token', token: 'aaa.bbb.ccc', userAgent: UA });
+    expect(readPageMessage('https://portal.trackmangolf.com/', JSON.stringify({ token: 'aaa.bbb.ccc' }))).toEqual({ kind: 'token', token: 'aaa.bbb.ccc', userAgent: null });
     expect(readPageMessage('https://login.trackmangolf.com/', JSON.stringify({ passkey: true }))).toEqual({ kind: 'passkey' });
     expect(readPageMessage('https://appleid.apple.com/', JSON.stringify({ passkey: true }))).toBeNull();
     expect(readPageMessage('https://login.trackmangolf.com/', JSON.stringify({ passkey: 'yes' }))).toBeNull();
     expect(readPageMessage('https://login.trackmangolf.com/', 42)).toBeNull();
+  });
+});
+
+describe('the User-Agent a page hands with its key', () => {
+  it('is kept only when it is a header value; the key comes through either way', () => {
+    for (const bad of ['a\r\nCookie: x', 'x'.repeat(513), '', 42, { a: 1 }]) {
+      expect(readPageMessage('https://portal.trackmangolf.com/', JSON.stringify({ token: 'aaa.bbb.ccc', ua: bad })), String(bad)).toEqual({ kind: 'token', token: 'aaa.bbb.ccc', userAgent: null });
+    }
   });
 });

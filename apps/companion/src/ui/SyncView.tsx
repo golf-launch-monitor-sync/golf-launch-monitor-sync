@@ -15,7 +15,7 @@ import { ScrollView } from 'react-native';
 import { lang, t } from '../i18n';
 import { afterDone, lmFocus, signInAfterLink } from '../lib/done';
 import { backTo } from '../lib/links';
-import type { LastRun } from '../lib/runner';
+import type { LastRun } from '@glmsync/engine';
 import { PROVIDERS, type Services } from '../lib/services';
 import { runText } from '../lib/text';
 import type { Screen } from './App';

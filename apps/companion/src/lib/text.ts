@@ -15,8 +15,7 @@ import {
   type GuardCounts,
   type Holder,
 } from '@glmsync/core';
-import type { LastRun } from './runner.ts';
-import { TestModeError } from './tests.ts';
+import { type LastRun, TestModeError } from '@glmsync/engine';
 
 export type Dict = Record<string, string>;
 export type T = (key: string, vars?: Record<string, string | number>) => string;

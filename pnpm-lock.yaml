@@ -32,6 +32,9 @@ importers:
       '@glmsync/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@glmsync/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@glmsync/provider-demo':
         specifier: workspace:*
         version: link:../../packages/provider-demo
@@ -178,6 +181,21 @@ importers:
 
   packages/core:
     dependencies:
+      '@glmsync/spec':
+        specifier: workspace:*
+        version: link:../spec
+
+  packages/engine:
+    dependencies:
+      '@glmsync/core':
+        specifier: workspace:*
+        version: link:../core
+      '@glmsync/provider-demo':
+        specifier: workspace:*
+        version: link:../provider-demo
+      '@glmsync/provider-trackman':
+        specifier: workspace:*
+        version: link:../provider-trackman
       '@glmsync/spec':
         specifier: workspace:*
         version: link:../spec

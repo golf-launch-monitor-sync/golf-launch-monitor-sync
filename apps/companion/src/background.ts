@@ -8,7 +8,7 @@
  *
  * On the iPhone the task is a `BGProcessingTask` (`expo-background-task`), which iOS gives minutes, mostly while the
  * phone charges at night: there the older history goes on chunk after chunk until it is through, the time is up or iOS
- * ends it (src/lib/longRun.ts has the rules). On Android one chunk per run.
+ * ends it (@glmsync/engine's longRun.ts has the rules). On Android one chunk per run.
  *
  * Defined at the top of index.ts: the system may start the app only to run it.
  */
@@ -16,7 +16,7 @@
 import * as BackgroundTask from 'expo-background-task';
 import * as TaskManager from 'expo-task-manager';
 import { AppState, Platform } from 'react-native';
-import { backgroundWork, pauseFor } from './lib/longRun';
+import { backgroundWork, pauseFor } from '@glmsync/engine';
 import { services } from './platform';
 import { onTaskExpired } from './power';
 

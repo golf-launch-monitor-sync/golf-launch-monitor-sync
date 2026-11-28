@@ -15,7 +15,7 @@ import { whoLine } from '@glmsync/browser/wizard';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { lang, t } from '../i18n';
-import type { WhoAnswer } from '../lib/runner';
+import type { WhoAnswer } from '@glmsync/engine';
 import { DEMO_CREDENTIAL, type ProviderId, type Services } from '../lib/services';
 import { errorText } from '../lib/text';
 import { beforeYes, wizardText } from '../lib/wizard';
@@ -26,8 +26,8 @@ import { WizardFrame } from './WizardFrame';
 type Step =
   | { name: 'window'; fresh: boolean; key: number }
   | { name: 'checking' }
-  | { name: 'confirm'; token: string; who: WhoAnswer; others: string[] }
-  | { name: 'error'; text: string; token: string | null };
+  | { name: 'confirm'; token: string; userAgent: string | null; who: WhoAnswer; others: string[] }
+  | { name: 'error'; text: string; token: string | null; userAgent: string | null };
 
 /**
  * `done(true)`: signed in and kept; `done(false)`: cancelled. `backTo`: the app it goes back to then. `target`: the app
@@ -55,14 +55,15 @@ export function SignInView({
   const [passkey, setPasskey] = useState(false);
   const p = svc.providers[provider];
 
+  // The key and the User-Agent of the window it came from: "Is this you?" asks with it, and it is kept beside the key.
   const check = useCallback(
-    async (token: string) => {
+    async (token: string, userAgent: string | null = null) => {
       setStep({ name: 'checking' });
       try {
-        const who = await svc.runner.who(provider, token);
-        setStep({ name: 'confirm', token, who, others: svc.runner.otherAccountAt(provider, token) });
+        const who = await svc.runner.who(provider, token, userAgent);
+        setStep({ name: 'confirm', token, userAgent, who, others: svc.runner.otherAccountAt(provider, token) });
       } catch (e) {
-        setStep({ name: 'error', text: errorText(e, Date.now(), lang, t), token });
+        setStep({ name: 'error', text: errorText(e, Date.now(), lang, t), token, userAgent });
       }
     },
     [svc, provider],
@@ -72,13 +73,13 @@ export function SignInView({
     if (provider === 'demo') void check(DEMO_CREDENTIAL);
   }, [provider, check]);
 
-  async function yes(token: string, who: WhoAnswer) {
+  async function yes(token: string, userAgent: string | null, who: WhoAnswer) {
     setSaving(true);
     try {
-      await svc.signIns.set(provider, token, who.player);
+      await svc.signIns.set(provider, token, who.player, userAgent);
     } catch {
       setSaving(false);
-      setStep({ name: 'error', text: t('signin.notKept'), token });
+      setStep({ name: 'error', text: t('signin.notKept'), token, userAgent });
       return;
     }
     // The first sync with this sign-in comes next (App: each paired target's plan says what it wants).
@@ -108,7 +109,7 @@ export function SignInView({
           </View>
           <Button label={t('action.cancel')} kind="secondary" onPress={cancel} />
         </View>
-        <TrackmanLoginView key={step.key} fresh={step.fresh} onToken={(token) => void check(token)} onPasskey={() => setPasskey(true)} />
+        <TrackmanLoginView key={step.key} fresh={step.fresh} onToken={(token, userAgent) => void check(token, userAgent)} onPasskey={() => setPasskey(true)} />
       </View>
     );
   }
@@ -131,7 +132,7 @@ export function SignInView({
         {facts && <Body muted>{facts}</Body>}
         {provider === 'demo' && <Body muted>{t('provider.demo.notice')}</Body>}
         {step.others.length > 0 && <Body warn>{t('signin.otherAccount', { targets: step.others.join(', ') })}</Body>}
-        <Button label={t('signin.yes')} onPress={() => void yes(step.token, step.who)} busy={saving} />
+        <Button label={t('signin.yes')} onPress={() => void yes(step.token, step.userAgent, step.who)} busy={saving} />
         {provider !== 'demo' ? (
           <Button label={t('signin.no')} kind="secondary" onPress={() => again(true)} disabled={saving} />
         ) : (
@@ -143,7 +144,7 @@ export function SignInView({
     content = (
       <WizardFrame view={w.view} lines={{ ...w.lines, title: t('signin.failed') }} banner={paired}>
         <Body warn>{step.text}</Body>
-        {step.token && <Button label={t('action.retry')} onPress={() => void check(step.token as string)} />}
+        {step.token && <Button label={t('action.retry')} onPress={() => void check(step.token as string, step.userAgent)} />}
         {provider !== 'demo' && <Button label={t('signin.again')} kind="secondary" onPress={() => again(false)} />}
         <Button label={t('action.cancel')} kind="secondary" onPress={cancel} />
       </WizardFrame>

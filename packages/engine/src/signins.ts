@@ -14,11 +14,15 @@
  * account is taken from it: on a phone where someone else is signed in to the provider, the window
  * would otherwise bring their key. Taking the sign-in away ("forget") removes the mark as well.
  *
- * The port of the Birdie Box Caddie's `session.ts`, without its per-user slots: this app holds one
- * player's sign-ins.
+ * Beside the key the User-Agent of the browser it was signed in with on this device (the sign-in window's own,
+ * `navigator.userAgent`, read at every sign-in and every quiet renewal): every call to the provider carries it, so a
+ * call from this device looks like the browser the player signed in with, not like an app of its own. A renewal that
+ * couldn't read it keeps the last one of the same account; a value that is no header value is never kept.
+ *
+ * One player's sign-ins per device.
  */
 
-import { PROVIDER_ID } from '@glmsync/core';
+import { cleanUserAgent, PROVIDER_ID } from '@glmsync/core';
 import type { Secrets } from './secrets.ts';
 
 export interface SignIn {
@@ -29,6 +33,8 @@ export interface SignIn {
   player: string | null;
   /** When the player signed in or the key was renewed (ms). */
   at: number;
+  /** The User-Agent of the browser it was signed in with on this device; null: none read (or an older sign-in). */
+  userAgent: string | null;
 }
 
 export interface Had {
@@ -57,6 +63,7 @@ function readSignIn(raw: string | null): SignIn | null {
       subject: typeof v.subject === 'string' ? v.subject : null,
       player: typeof v.player === 'string' ? v.player : null,
       at: typeof v.at === 'number' ? v.at : 0,
+      userAgent: cleanUserAgent(v.userAgent),
     };
   } catch {
     return null;
@@ -166,17 +173,23 @@ export class SignIns {
     return !!had && !!had.subject && subject === had.subject;
   }
 
-  /** A new or renewed key. Throws when the secure store won't take it (then nothing was kept). */
-  async set(provider: string, token: string, player: string | null = null): Promise<SignIn> {
+  /**
+   * A new or renewed key, with the User-Agent of the window it came from (null: it couldn't be read). Throws when the
+   * secure store won't take it (then nothing was kept).
+   */
+  async set(provider: string, token: string, player: string | null = null, userAgent: string | null = null): Promise<SignIn> {
     if (!this.providers.includes(provider)) throw new Error(`Not a provider of this app: ${provider}`);
     const subject = this.keys.subject(provider, token);
     const before = this.items.get(provider);
+    const same = !!before && before.subject === subject;
     const item: SignIn = {
       token,
       subject,
       // A renewal keeps the name the player confirmed, as long as it is the same account.
-      player: player ?? (before && before.subject === subject ? before.player : null),
+      player: player ?? (same && before ? before.player : null),
       at: this.now(),
+      // Read anew each time; one that couldn't be read keeps the last of the same account, never another's.
+      userAgent: cleanUserAgent(userAgent) ?? (same && before ? before.userAgent : null),
     };
     await this.secrets.set(slot(provider), JSON.stringify(item));
     await this.secrets.set(mark(provider), JSON.stringify({ subject } satisfies Had));

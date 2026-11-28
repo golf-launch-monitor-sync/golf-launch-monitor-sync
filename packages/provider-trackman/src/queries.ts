@@ -9,9 +9,10 @@
  * portal's queries, cut down to the fields the olmd mapping reads (mapping.ts): what isn't mapped
  * isn't asked for. A field added here needs its place there first (a test checks).
  *
- * Not an official, documented API: Trackman can change it at any time. Nothing here tries to look
- * like the portal - no copied User-Agent, no spoofing; a request says who it is by the token it
- * carries. Unofficial: this project is not affiliated with or endorsed by Trackman.
+ * Not an official, documented API: Trackman can change it at any time. A request says whose it is by the
+ * token it carries; on a phone it carries the User-Agent of the browser the player signed in with (core's
+ * `providerContext`), no cookies, no other copied headers. Unofficial: this project is not affiliated with
+ * or endorsed by Trackman.
  */
 
 /** "Is this you?" without the activities, for when Trackman refuses the longer question. */

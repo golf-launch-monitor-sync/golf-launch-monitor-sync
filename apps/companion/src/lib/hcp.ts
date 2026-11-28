@@ -12,7 +12,7 @@
 
 import { MemoryStorage, type FetchLike, type Storage } from '@glmsync/core';
 import { HcpClient, SEND_AFTER_MS, type HcpView } from '@glmsync/browser/hcp';
-import { SECRET_KEY, type Secrets } from './secrets.ts';
+import { SECRET_KEY, type Secrets } from '@glmsync/engine';
 
 /**
  * HcpClient names its slots like paths (`glmsync/hcp/pairings`); the secure store takes `[A-Za-z0-9._-]` only. Each

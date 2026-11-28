@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * Which pages the sign-in window trusts (TrackmanLoginView): pure, so the rules are tested.
+ * Which pages the sign-in window trusts (TrackmanLoginView), and what it reads there: the key the portal sends to
+ * Trackman's API, and this window's own User-Agent with it - every call to Trackman from this phone then carries the
+ * User-Agent of the browser the player signed in with (@glmsync/engine, signins.ts). Pure, so the rules are tested.
  */
+
+import { cleanUserAgent } from '@glmsync/core';
 
 /** Trackman's own sites: the only pages the window takes a key from. */
 const TRACKMAN_HOST = /(^|\.)trackman(golf)?\.com$/;
@@ -77,7 +81,8 @@ export const windowRules = {
 
 /**
  * Runs inside Trackman's own page before it loads: whenever the portal calls Trackman's API, pass the
- * access token it sends on to the app; and say when the page asks for a passkey.
+ * access token it sends on to the app, with this window's User-Agent (`navigator.userAgent`, read again with every
+ * key: a sign-in and a quiet renewal alike); and say when the page asks for a passkey.
  *
  * A passkey can't work in an app's web view: WebAuthn there needs the sign-in site to name the app as its own
  * (associated domains on iOS, Digital Asset Links on Android), which no site does for an app it doesn't make; a
@@ -91,9 +96,12 @@ export const PAGE_SCRIPT = `(function () {
     try { var h = new URL(u, location.href).hostname; return h === 'trackmangolf.com' || /\\.trackmangolf\\.com$/.test(h); }
     catch (e) { return false; }
   }
+  function ua() {
+    try { return typeof navigator.userAgent === 'string' ? navigator.userAgent : null; } catch (e) { return null; }
+  }
   function send(v) {
     if (typeof v === 'string' && /^Bearer\\s+[\\w-]+\\.[\\w-]+\\.[\\w-]+/.test(v)) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ token: v.replace(/^Bearer\\s+/, '') }));
+      window.ReactNativeWebView.postMessage(JSON.stringify({ token: v.replace(/^Bearer\\s+/, ''), ua: ua() }));
     }
   }
   var origFetch = window.fetch;
@@ -131,13 +139,25 @@ export const PAGE_SCRIPT = `(function () {
   } catch (e) {}
 })(); true;`;
 
-/** What a page's message to the app says: a key the portal sent to Trackman's API, or that the page asked for a passkey. */
-export type PageMessage = { kind: 'token'; token: string } | { kind: 'passkey' };
+/**
+ * What a page's message to the app says: a key the portal sent to Trackman's API with the window's User-Agent (null:
+ * none, or not a header value), or that the page asked for a passkey.
+ */
+export type PageMessage = { kind: 'token'; token: string; userAgent: string | null } | { kind: 'passkey' };
+
+/** The User-Agent beside a key, as it may go out; null for anything else. */
+function readUserAgent(data: string): string | null {
+  try {
+    return cleanUserAgent((JSON.parse(data) as { ua?: unknown }).ua);
+  } catch {
+    return null;
+  }
+}
 
 /** A message from the page - only from a Trackman page, and only in the shapes PAGE_SCRIPT sends. */
 export function readPageMessage(pageUrl: string | undefined, data: unknown): PageMessage | null {
   const token = readCapturedToken(pageUrl, data);
-  if (token) return { kind: 'token', token };
+  if (token) return { kind: 'token', token, userAgent: readUserAgent(data as string) };
   if (!fromTrackman(pageUrl) || typeof data !== 'string' || data.length > 1_000) return null;
   try {
     return (JSON.parse(data) as { passkey?: unknown }).passkey === true ? { kind: 'passkey' } : null;

@@ -3,8 +3,8 @@
 # Every push to main and every pull request: types, tests, whether the vectors are what the
 # reference writes, and the click checks of the extension and the web app (with the store packages
 # built on the way); whether the extension's version is new, or should be (a hint, no failure). No
-# secrets. The one thing published from here: a push to main that raises the extension's version is
-# released once all of the above is green (release.yml, with the workflow's own token).
+# secrets. Published from here, each with the workflow's own token once all of the above is green: a push to
+# main that raises the extension's version (release.yml), and one that raises the engine's (engine-release.yml).
 name: CI
 
 on:
@@ -123,5 +123,41 @@ jobs:
     permissions:
       contents: write
     uses: ./.github/workflows/release.yml
+    with:
+      checked: true
+
+  # Whether this commit's engine version (packages/engine/package.json) is released yet: a new one goes out by itself.
+  engine-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      release: ${{ steps.check.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./packages/engine/package.json').version")
+          if gh release view "engine-v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Engine $version: released."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Engine version::Engine $version is not released yet: it is released once all checks of this commit are green."
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # A new engine version on main goes out by itself, after every check above is green on this very commit.
+  release-engine:
+    needs: [test, companion-bundle, vectors, e2e, engine-version]
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      github.repository == 'golf-launch-monitor-sync/golf-launch-monitor-sync' &&
+      needs.engine-version.outputs.release == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/engine-release.yml
     with:
       checked: true

@@ -7,8 +7,7 @@ import { GuardLimitError, ProviderAuthError, TargetError, type GuardCounts } fro
 import { describe, expect, it } from 'vitest';
 import de from '../i18n/de.json' with { type: 'json' };
 import en from '../i18n/en.json' with { type: 'json' };
-import type { LastRun } from './runner.ts';
-import { TestModeError } from './tests.ts';
+import { type LastRun, TestModeError } from '@glmsync/engine';
 import { countsText, errorText, pickLanguage, runText, testErrorText, translator, when } from './text.ts';
 import { fromTrackman, isSignInPage, readCapturedToken } from './trackmanPage.ts';
 

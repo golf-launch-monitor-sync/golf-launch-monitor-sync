@@ -10,7 +10,7 @@
 import { connectionOfHcp, connectionOfPro, connectionState, sortConnections, type Connection } from '@glmsync/browser/connections';
 import type { HcpView } from '@glmsync/browser/hcp';
 import type { ProView } from '@glmsync/browser/pro';
-import type { LastRun } from './runner.ts';
+import type { LastRun } from '@glmsync/engine';
 
 export interface AppFacts {
   providers: readonly { id: string; name: string }[];
@@ -19,7 +19,7 @@ export interface AppFacts {
   tests: readonly { key: string; player: string | null }[];
   signIn(provider: string): { valid: boolean; had: boolean; player: string | null };
   lastRun(key: string): LastRun | null;
-  /** Pairings their apps ended (lib/pairings.ts). */
+  /** Pairings their apps ended (@glmsync/engine, pairings.ts). */
   ended: readonly { key: string; provider: string; target: { name: string } }[];
   hcp: Pick<HcpView, 'pairings' | 'account' | 'sending' | 'signed_out'> | null;
   /** A pro's world ranking pages, with the service's name as the player reads it ("World ranking"). */

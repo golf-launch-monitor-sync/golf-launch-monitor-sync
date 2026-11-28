@@ -8,8 +8,9 @@
  *
  * The player types their password into Trackman's page; the app never sees it. A small script that
  * runs in the page before it loads passes on the access key the portal itself sends to Trackman's
- * API - the same key the portal holds, nothing more. No disguise: the page loads as this web view
- * is, with the phone's own browser engine and its own user agent.
+ * API - the same key the portal holds, nothing more - and this window's own User-Agent with it, which every call to
+ * Trackman from this phone then carries (lib/trackmanPage.ts). The page loads as this web view is, with the phone's
+ * own browser engine and its own user agent; nothing is added to it.
  *
  * fresh: without the session this phone already has, and keeping none - for "that's not my account"
  * on a phone someone else signed in to Trackman on.
@@ -33,7 +34,8 @@ export function TrackmanLoginView({
   hidden = false,
   fresh = false,
 }: {
-  onToken: (token: string) => void;
+  /** A key the portal sent, with this window's User-Agent (null: none to read). */
+  onToken: (token: string, userAgent: string | null) => void;
   /** The page asked for a passkey, which can't work in this window (lib/trackmanPage.ts, PAGE_SCRIPT). */
   onPasskey?: () => void;
   hidden?: boolean;
@@ -47,7 +49,7 @@ export function TrackmanLoginView({
     const msg = readPageMessage(e.nativeEvent.url, e.nativeEvent.data);
     if (msg?.kind === 'token') {
       done.current = true;
-      onToken(msg.token);
+      onToken(msg.token, msg.userAgent);
     } else if (msg?.kind === 'passkey') onPasskey?.();
   }
   // A new window of the page (target=_blank, window.open) opens in this one, where the page may go; else nowhere.

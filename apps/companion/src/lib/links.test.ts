@@ -3,7 +3,7 @@
 import type { Pairing } from '@glmsync/core';
 import { describe, expect, it } from 'vitest';
 import { backAfterPairing, backTo, hostOf, Once, readIncoming } from './links.ts';
-import type { KeyedPairing } from './pairings.ts';
+import type { KeyedPairing } from '@glmsync/engine';
 
 const PROVIDERS = ['trackman', 'demo'];
 

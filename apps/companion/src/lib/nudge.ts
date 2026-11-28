@@ -15,8 +15,7 @@
  */
 
 import { parseSyncIntent, type SyncIntentReason } from '@glmsync/spec';
-import type { KeyedPairing } from './pairings.ts';
-import type { LastRun } from './runner.ts';
+import type { KeyedPairing, LastRun } from '@glmsync/engine';
 
 /** The name the headless task is registered under; the native service starts it by this name. */
 export const NUDGE_TASK = 'glmsync-nudge';

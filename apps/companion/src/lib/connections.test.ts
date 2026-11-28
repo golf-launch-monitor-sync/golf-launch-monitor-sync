@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import { describe, expect, it } from 'vitest';
 import { connectionsOfApp, type AppFacts } from './connections.ts';
-import type { LastRun } from './runner.ts';
+import type { LastRun } from '@glmsync/engine';
 
 const run = (over: Partial<LastRun> = {}): LastRun => ({ at: 0, reason: 'timer', status: 'synced', ...over });
 const PROVIDERS = [

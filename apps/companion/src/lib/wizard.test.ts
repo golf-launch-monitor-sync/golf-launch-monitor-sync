@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 import { describe, expect, it } from 'vitest';
-import type { LastRun } from './runner.ts';
+import type { LastRun } from '@glmsync/engine';
 import { translator } from '@glmsync/browser/i18n';
 import { factsOfOffer, serviceChoices, stepParts } from '@glmsync/browser/wizard';
 import { beforeYes, firstLoad, testAccount, testKeys, wizardText } from './wizard.ts';

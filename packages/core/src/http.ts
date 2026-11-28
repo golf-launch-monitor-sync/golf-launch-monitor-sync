@@ -3,8 +3,9 @@
 /**
  * One HTTP exchange with a deadline that covers the whole answer, body included (a body that stalls
  * must not leave a sync marked busy). Used for both sides: the provider (through the guard) and the
- * target. Plain requests: no cookies, no User-Agent of anyone else - a request says who it is by
- * the token it carries.
+ * target. Plain requests: no cookies, no `Origin`, no `Referer`; a request says whose it is by the token it carries.
+ * The one header added to a provider's request is the User-Agent of the browser the player signed in with on a phone
+ * (provider.ts, `userAgent`); a target's request gets none.
  */
 
 import { Cancelled } from './errors.ts';

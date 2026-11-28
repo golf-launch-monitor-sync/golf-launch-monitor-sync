@@ -7,7 +7,7 @@ import { reduce, type Seen } from '@glmsync/provider-golfde';
 import { entry, historyAnswer, memberAnswer } from '@glmsync/provider-golfde/testing';
 import { describe, expect, it, vi } from 'vitest';
 import { HcpSender, hcpClientName, makeHcp, sendDue, SlotSecrets } from './hcp.ts';
-import { ChunkedSecrets, MemorySecrets } from './secrets.ts';
+import { ChunkedSecrets, MemorySecrets } from '@glmsync/engine';
 
 const TARGET = 'https://app.example.org/hcp/v1';
 const member = () => reduce({ kind: 'graphql', op: 'GetMemberDetails' }, 200, memberAnswer()) as Seen;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * The background task's work, offline and on a virtual clock (src/lib/longRun.ts): on the iPhone, where iOS starts the app
+ * The background task's work, offline and on a virtual clock (longRun.ts): on the iPhone, where iOS starts the app
  * for longer work (`BGProcessingTask`), the older history a chunk at a time with the target's pauses until it is through,
  * the time is up, iOS ends it or the player opens the app; on Android one chunk, as before. Nothing is fetched twice into
  * the target, also when iOS ends the time in the middle of a chunk.
@@ -13,7 +13,7 @@ import { MemoryStorage, type FetchLike } from '@glmsync/core';
 import { describe, expect, it, vi } from 'vitest';
 import { BackgroundRuns, backgroundWork, CHUNK_GUESS_MS, LONG_BUDGET_MS, MIN_GAP_S, pauseFor, type LongRunner } from './longRun.ts';
 import { MemorySecrets } from './secrets.ts';
-import { makeServices } from './services.ts';
+import { makeEngine } from './engine.ts';
 
 const T0 = Date.parse('2026-11-28T02:00:00Z');
 
@@ -218,7 +218,7 @@ describe('against a made-up target and a made-up Trackman', () => {
       }
       return target.fetch(url, init);
     };
-    const services = makeServices({ secrets: new MemorySecrets(), storage: new MemoryStorage(), fetch, now: clock.now, sleep: clock.sleep });
+    const services = makeEngine({ secrets: new MemorySecrets(), storage: new MemoryStorage(), fetch, now: clock.now, sleep: clock.sleep });
     const imported = () => target.imports.flatMap((b) => b.sessions.map((s) => s.external_id));
     return { clock, target, tm, token, services, imported, cut: (fn: ((body: string) => void) | null) => (onRequest = fn) };
   }
@@ -317,7 +317,7 @@ describe('pauseFor (the phone’s sleep)', () => {
 
 describe('the exported log', () => {
   it('carries the last background runs beside the guard’s requests', async () => {
-    const services = makeServices({ secrets: new MemorySecrets(), storage: new MemoryStorage(), now: () => T0 });
+    const services = makeEngine({ secrets: new MemorySecrets(), storage: new MemoryStorage(), now: () => T0 });
     await services.load();
     await services.background.add({ at: new Date(T0).toISOString(), ms: 480_000, chunks: 4, ended: 'budget' });
     const file = JSON.parse((await services.runner.logFile()).text) as { format: string; background_runs: unknown };

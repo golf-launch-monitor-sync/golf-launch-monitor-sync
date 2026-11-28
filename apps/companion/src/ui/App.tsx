@@ -135,11 +135,12 @@ function useRenewal(svc: Services | null) {
   );
 
   const onToken = useCallback(
-    async (token: string) => {
+    async (token: string, userAgent: string | null) => {
       // Only a key of the account this phone held: on a shared phone the page may bring someone else's.
       if (svc?.signIns.renewalFits('trackman', token)) {
         try {
-          await svc.signIns.set('trackman', token);
+          // The window's User-Agent read anew with the renewed key (kept beside it, for every call to Trackman).
+          await svc.signIns.set('trackman', token, null, userAgent);
         } catch {
           // the secure store refused: the player signs in again by hand
         }
@@ -461,7 +462,7 @@ function Main() {
       {/* Behind the screen, full size (iOS suspends a web view that isn't on screen); the screen covers it. */}
       {svc && unseen && <UnseenGolfde svc={svc} />}
       <View style={s.screen}>{body}</View>
-      {renewal.on && <TrackmanLoginView hidden onToken={(token) => void renewal.onToken(token)} />}
+      {renewal.on && <TrackmanLoginView hidden onToken={(token, userAgent) => void renewal.onToken(token, userAgent)} />}
     </SafeAreaView>
   );
 }

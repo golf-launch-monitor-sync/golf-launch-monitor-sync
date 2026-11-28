@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "../..",
+    "outDir": "../../dist/engine-types",
+    "paths": {
+      "@glmsync/core": ["../core/src/index.ts"],
+      "@glmsync/spec": ["../spec/src/index.ts"],
+      "@glmsync/provider-demo": ["../provider-demo/src/index.ts"],
+      "@glmsync/provider-trackman": ["../provider-trackman/src/index.ts"]
+    }
+  },
+  "files": ["src/index.ts"]
+}

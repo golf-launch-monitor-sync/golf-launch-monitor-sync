@@ -1,0 +1,93 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Reginald Stadlbauer
+# The engine's packages (packages/engine/README.md, *Embedding the engine*) on a release `engine-v<version>` (the
+# version in packages/engine/package.json): by itself when CI calls it on a push to main whose engine version isn't
+# released yet, once all of CI's checks of that commit are green (ci.yml); by hand on main (Actions › Release engine ›
+# Run workflow); or on a tag `engine-v<version>`. Built by tools/engine-pack.mjs: glmsync-engine-<version>.tgz,
+# glmsync-power-<version>.tgz, SHA512SUMS and integrity.json. No registry, no secret but the workflow's own token.
+name: Release engine
+
+on:
+  push:
+    tags: ['engine-v*']
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      checked:
+        description: CI has just run the tests on this very commit.
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: The tag names the engine's version
+        id: tag
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF: ${{ github.ref_name }}
+          AUTO: ${{ inputs.checked == true }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./packages/engine/package.json').version")
+          if [ "$REF_TYPE" = tag ]; then
+            test "$REF" = "engine-v$version" || { echo "Tag $REF, but packages/engine/package.json says $version"; exit 1; }
+            echo "tag=$REF" >> "$GITHUB_OUTPUT"
+          elif gh release view "engine-v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # By itself: released meanwhile (a run of an earlier push got there first) - nothing to do.
+            if [ "$AUTO" = true ]; then echo "engine-v$version is released already." | tee -a "$GITHUB_STEP_SUMMARY"; echo "go=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+            # By hand: this version must not be released yet (raise it in package.json first).
+            echo "engine-v$version is released already: raise the version in packages/engine/package.json."; exit 1
+          else
+            echo "tag=engine-v$version" >> "$GITHUB_OUTPUT"
+          fi
+          echo "go=true" >> "$GITHUB_OUTPUT"
+      - if: steps.tag.outputs.go == 'true' && !inputs.checked
+        run: pnpm typecheck
+      - if: steps.tag.outputs.go == 'true' && !inputs.checked
+        run: pnpm test
+      - name: Build the packages
+        if: steps.tag.outputs.go == 'true'
+        run: node tools/engine-pack.mjs dist/engine-release
+      - name: The checksums are the files'
+        if: steps.tag.outputs.go == 'true'
+        working-directory: dist/engine-release
+        run: sha512sum -c SHA512SUMS
+      - name: GitHub release
+        if: steps.tag.outputs.go == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          version="${TAG#engine-v}"
+          {
+            echo "The engine of Golf Stats Sync, to embed in an app (packages/engine/README.md, *Embedding the engine*). Pin each file by its address and checksum:"
+            echo
+            echo '```'
+            node -e 'const p=require("./dist/engine-release/integrity.json"); for (const [f,i] of Object.entries(p)) console.log(f+"  "+i)'
+            echo '```'
+            echo
+            echo "glmsync-power needs a new native build once added (Swift). Unofficial: not affiliated with or endorsed by Trackman."
+          } > dist/engine-release/notes.md
+          # By hand the tag doesn't exist yet: the release makes it, at this commit.
+          gh release create "$TAG" \
+            "dist/engine-release/glmsync-engine-$version.tgz" "dist/engine-release/glmsync-power-$version.tgz" \
+            dist/engine-release/SHA512SUMS dist/engine-release/integrity.json \
+            --target "$GITHUB_SHA" --repo "$GITHUB_REPOSITORY" --title "Engine $version" --notes-file dist/engine-release/notes.md

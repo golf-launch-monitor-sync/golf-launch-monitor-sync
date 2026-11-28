@@ -29,8 +29,11 @@ format, the target API, the planning rules, the load guard and the deep links.
 ## 2. Rules toward providers (do not break these)
 
 - **Only the player's own account, with the player's own sign-in**, on the player's own device.
-- **No disguise**: no User-Agent or TLS fingerprint spoofing, no headers copied to look like the
-  maker's own apps or portal; a request says who it is by the token it carries.
+- **No disguise**: no TLS fingerprint spoofing, no made-up User-Agent, no headers copied from the maker's
+  own apps or portal (no cookies, no `Origin`, no `Referer`); a request says whose it is by the token it
+  carries. Calls to the provider from a phone carry the User-Agent of the browser the player signed in with
+  (read in the sign-in window, kept beside the sign-in, set in `core`'s `providerContext`; a test checks the
+  headers of every call); in a browser the browser sends its own.
 - **No borrowed OAuth client id** (a portal's or an app's own). A client id comes from the maker
   registering one for this project, or the feature waits.
 - **Nothing on a server**: no sign-in, token or password ever goes to a target, to a server of this
@@ -70,6 +73,7 @@ packages/spec         the spec for TypeScript (types, schema check, limits, deep
 packages/core         one sync: plan and push client, file target and cursor, the guard, errors
 packages/provider-*   trackman, demo, golfde (each with a fake for tests: core/testing, provider-trackman/testing,
                       provider-golfde/testing)
+packages/engine       what fetches on a phone (the companion app runs it; released for embedding, its README)
 packages/browser      what the extension and the web app share (BrowserClient, texts en/de, the panel)
 apps/extension        browser extension, Manifest V3 (Chrome/Edge and Firefox builds)
 apps/web              static web app (GitHub Pages): pairing page, syncing by hand
@@ -93,7 +97,8 @@ change a client. Browser bundles may not evaluate code (Manifest V3, the web app
 check is compiled ahead of time there (`tools/browser-build.mjs`). Extension releases: raise the
 version in `apps/extension/package.json` when a change should reach players, and CI releases it once
 green (`ci.yml`, `release.yml`; a tag `extension-v<version>` or *Release extension* by hand still work);
-submitting to the stores is done by hand.
+submitting to the stores is done by hand. Engine releases: raise the version in `packages/engine/package.json`;
+CI attaches the packages of `tools/engine-pack.mjs` to `engine-v<version>` once green (`engine-release.yml`).
 
 ## 5. Working agreements
 

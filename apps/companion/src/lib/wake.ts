@@ -16,7 +16,7 @@
 
 import { readJson, TargetError, type Storage } from '@glmsync/core';
 import { isWake, readWake, type Reason, type WakeRegistration } from '@glmsync/spec';
-import type { KeyedPairing } from './pairings.ts';
+import type { KeyedPairing } from '@glmsync/engine';
 
 /** The name the task for a push is registered under (expo-notifications runs it for a push in the background). */
 export const WAKE_TASK = 'glmsync-wake';

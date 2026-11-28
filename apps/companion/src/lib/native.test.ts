@@ -64,9 +64,10 @@ describe('the power module (modules/glmsync-power)', () => {
     expect(readPower('ios/GlmsyncPower.podspec')).toContain("s.dependency 'ExpoModulesCore'");
   });
 
-  it('passes on iOS ending the background task: the notification expo-background-task posts, the event src/power.ts hears', () => {
+  it('passes on iOS ending the background task: the notification expo-background-task posts, the event the engine hears', () => {
     const swift = readPower('ios/GlmsyncPowerModule.swift');
-    const js = readFileSync(new URL('../power.ts', import.meta.url), 'utf8');
+    // src/power.ts hands the module to the engine's rules (packages/engine/src/power.ts), which listen.
+    const js = readFileSync(new URL('../../../../packages/engine/src/power.ts', import.meta.url), 'utf8');
     expect(swift).toContain('Events("onTaskExpired")');
     expect(swift).toContain('Notification.Name("onTasksExpired")');
     expect(swift).toContain('self?.sendEvent("onTaskExpired"');
@@ -75,7 +76,7 @@ describe('the power module (modules/glmsync-power)', () => {
   });
 });
 
-describe('expo-background-task on iOS (what src/lib/longRun.ts counts on)', () => {
+describe('expo-background-task on iOS (what the engine’s longRun.ts counts on)', () => {
   // Read from the installed package: an upgrade that changes any of it fails here, not on a phone at night.
   const pkg = new URL(`file://${realpathSync(fileURLToPath(new URL('../../node_modules/expo-background-task/', import.meta.url)))}/`);
   const readExpo = (path: string) => readFileSync(new URL(path, pkg), 'utf8');

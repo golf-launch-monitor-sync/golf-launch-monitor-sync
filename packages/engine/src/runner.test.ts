@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * The companion app's runs against a made-up target and a made-up Trackman, offline: the plan first,
+ * The engine's runs against a made-up target and a made-up Trackman, offline: the plan first,
  * the sign-in only to the provider, what happens when the sign-in, the pairing or the target goes.
  */
 import { GRAPHQL_URL } from '@glmsync/provider-trackman';
@@ -11,7 +11,8 @@ import { MemoryStorage, type FetchLike, type FileOut } from '@glmsync/core';
 import { validateBatch } from '@glmsync/spec';
 import { describe, expect, it } from 'vitest';
 import { MemorySecrets } from './secrets.ts';
-import { DEMO_CREDENTIAL, makeServices } from './services.ts';
+import { makeEngine } from './engine.ts';
+import { DEMO_CREDENTIAL } from './providers.ts';
 
 const SUB = '7c1d2e3f-0000-4000-8000-0000000000c1';
 const DAY = 86_400_000;
@@ -31,7 +32,7 @@ function setup(opts: { plan?: FakeTargetOptions['plan'] } = {}) {
   const files: FileOut[] = [];
   const secrets = new MemorySecrets();
   const storage = new MemoryStorage();
-  const services = makeServices({
+  const services = makeEngine({
     secrets,
     storage,
     fetch,
@@ -59,7 +60,7 @@ describe('pairing', () => {
     expect([...s.secrets.data.values()].some((v) => v.includes(token))).toBe(true);
     expect([...s.storage.data.values()].some((v) => v.includes(token))).toBe(false);
     // A fresh start finds it again.
-    const again = makeServices({ secrets: s.secrets, storage: s.storage });
+    const again = makeEngine({ secrets: s.secrets, storage: s.storage });
     await again.load();
     expect(again.pairings.list().map((x) => x.token)).toEqual([token]);
   });
@@ -206,7 +207,7 @@ describe('a sync', () => {
     expect(s.services.pairings.list()).toHaveLength(0);
     expect(s.services.pairings.ended()).toEqual([{ key, provider: 'trackman', target: { name: s.target.name }, at: s.clock.t }]);
     // Kept across a start of the app.
-    const again = makeServices({ secrets: s.secrets, storage: s.storage, now: s.clock.now, version: '0.1.0-test' });
+    const again = makeEngine({ secrets: s.secrets, storage: s.storage, now: s.clock.now, version: '0.1.0-test' });
     await again.load();
     expect(again.pairings.ended().map((e) => e.key)).toEqual([key]);
     // Paired again from the app: the ended row goes.
@@ -321,7 +322,7 @@ describe('a sync', () => {
     const p = await paired(s);
     await s.services.signIns.set('trackman', s.token);
     await s.services.runner.syncAll('timer');
-    const again = makeServices({ secrets: s.secrets, storage: s.storage });
+    const again = makeEngine({ secrets: s.secrets, storage: s.storage });
     await again.load();
     expect(again.runner.lastRun(p.key)?.status).toBe('synced');
   });

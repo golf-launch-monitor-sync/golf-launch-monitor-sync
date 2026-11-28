@@ -18,7 +18,13 @@ portal in a sign-in window - so that window lives here, in a small app that does
 - **Signs in at the provider** in the provider's own portal (`src/ui/TrackmanLoginView.tsx`). A small
   script in the page passes on the access key the portal itself sends to the provider's API; the
   password is typed into the provider's page and never seen by the app. Before anything is kept,
-  "Is this you?" names the account (through the load guard, like every request).
+  "Is this you?" names the account (through the load guard, like every request). With the key the script hands on
+  the window's own User-Agent (`navigator.userAgent`, read anew at every sign-in and quiet renewal), which is kept
+  beside the key and sent with every call to the provider: a call from this phone carries the User-Agent of the
+  browser the player signed in with, nothing else (no cookies, no `Origin`, no `Referer`).
+- **Fetches with the engine** ([`@glmsync/engine`](../../packages/engine/README.md)): pairings, the sign-in kept on the
+  phone, a sync per pairing, the older history chunk by chunk, the background run. Another app can embed the same
+  engine; what is this app's own is the screens, the sign-in window, golf.de, the tours, the rankings and the wake.
 - **Keeps the sign-in window in the app** (`src/lib/trackmanPage.ts`, `windowRules`): every load is decided there, so
   nothing goes to the system's browser - a captcha's frame from its provider's site loads in the page (react-native-
   webview hands a URL outside `originWhitelist` to the system, which on the iPhone opened the frame in Safari), a new
@@ -46,7 +52,7 @@ portal in a sign-in window - so that window lives here, in a small app that does
   account and yes or no. golf.de the same: *Is this your golf.de account?* (its handicap index) in the
   window's bar and on the home page's card; nothing goes to an app before the yes.
 - **The first sync before going back**: after signing in the app stays in front showing that it fetches until the
-  first sync is through (at most two minutes; `src/lib/firstSync.ts`): iOS suspends an app in the back within seconds,
+  first sync is through (at most two minutes; `firstSync` of the engine): iOS suspends an app in the back within seconds,
   so a first sync left running behind a jump brought nothing. The step says at once that the player is done
   (*Done – fetching your data …*), with *Back to …* where the target named a way back (the player taps it; the app
   doesn't jump), else *OK*, and the sentence that the rest comes by itself; going back sooner leaves the rest to the
@@ -59,7 +65,7 @@ portal in a sign-in window - so that window lives here, in a small app that does
   [load guard](../../spec/guard.md), whose counts outlive restarts. The older history comes a chunk at
   a time while the app is open, spaced as the target says; in the background one chunk per run on Android and per
   wake, and on the iPhone chunk after chunk while iOS lets the app work ([below](#the-older-history-at-night)).
-- **One sync at a time, and a tap joins it** (`src/lib/runner.ts`): "fetch now" or a sync link while a sync is
+- **One sync at a time, and a tap joins it** (the engine's `runner.ts`): "fetch now" or a sync link while a sync is
   queued or under way waits for it and takes what it brought (*Waiting for the fetch under way …*); only if it
   fetched nothing (not due, another device holds the lease) does the tap ask a plan of its own. A plan that is busy
   or not due goes beside the last real result (*8 new sessions · 11:18: the browser extension on your computer is
@@ -73,7 +79,7 @@ portal in a sign-in window - so that window lives here, in a small app that does
   `enableBackgroundRemoteNotifications`). It shows no notification and asks no permission for one; Android
   registers no address (its timer and the sync service do the job). Switched off with iOS's *Background App
   Refresh* for the app, or by unpairing.
-- **Loads the older history at night on the iPhone** (companion 0.17.0, `src/lib/longRun.ts`; [below](#the-older-history-at-night)):
+- **Loads the older history at night on the iPhone** (companion 0.17.0, the engine's `longRun.ts`; [below](#the-older-history-at-night)):
   while iOS lets the background task work, the history goes on chunk after chunk, each after the target's plan and pause,
   until it is through, ten minutes are up, iOS ends the task or the player opens the app. iOS ending it in the middle of
   a chunk stops it there; that chunk hands nothing over and comes again with the next plan, so nothing reaches a target
@@ -298,7 +304,7 @@ took days of opening the app on the iPhone, since a wake gives half a minute, on
   (`processing` in `UIBackgroundModes`, the network required, external power not), at the earliest `minimumInterval`
   (30 minutes) after the last run, and completes it only when the JavaScript task has ended. iOS runs such tasks mostly
   while the phone charges and nobody uses it, and gives them minutes. So no task of our own: the same task does more.
-- **What it does there** (`backgroundWork` in `src/lib/longRun.ts`, run by `src/background.ts`): the regular look
+- **What it does there** (`backgroundWork` in the engine's `longRun.ts`, run by `src/background.ts`): the regular look
   (`timer`) first, then `Runner.backfill` chunk after chunk - each asks the target's plan (`backfill`), so its size, its
   pause (`wait_s`) and its limits are the target's and the guard's, unchanged - with the pause between them (at least
   5 s). It ends when no chunk is due within half an hour (the history done, or the guard holding), after **10 minutes**
@@ -347,7 +353,7 @@ Until all three stand, the page's *Open Golf Stats Sync* opens the app by its sc
 
 | What | Where |
 | --- | --- |
-| The provider sign-in (and the account it was of, for the quiet renewal) | the secure store (Keychain / Keystore), readable after the first unlock, this device only; cut into pieces where long (`ChunkedSecrets`) |
+| The provider sign-in (and the account it was of, for the quiet renewal), with the sign-in window's User-Agent | the secure store (Keychain / Keystore), readable after the first unlock, this device only; cut into pieces where long (`ChunkedSecrets`) |
 | Each pairing's import token | the secure store |
 | The rest of a pairing (address, name, limits, return prefixes), the guard's counts and log, the last run per pairing | app storage (AsyncStorage) |
 | The last 20 background runs: when, how long, how many history chunks, how each ended (nothing of the player) | app storage; in the exported log |
@@ -369,7 +375,7 @@ Until all three stand, the page's *Open Golf Stats Sync* opens the app by its sc
 | The sites' cookies (a consent banner's choice) | the window's web view, on this phone |
 
 Android backups leave the secure store out (`allowBackup: false`). A sign-in goes to the provider
-only; a target gets batches and nothing else (`src/lib/runner.test.ts` checks both directions). A
+only; a target gets batches and nothing else (the engine's `runner.test.ts` checks both directions). A
 target that disconnects, or revokes the token, ends the pairing here (its row says so until it pairs again); with the
 last pairing of a provider the sign-in goes too.
 

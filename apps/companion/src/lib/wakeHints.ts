@@ -15,14 +15,10 @@
  */
 
 import type { Storage } from '@glmsync/core';
+import type { PowerState } from '@glmsync/engine';
 
-export type Refresh = 'available' | 'denied' | 'restricted';
-export interface PowerState {
-  /** iOS's `backgroundRefreshStatus` for this app; null when unknown. */
-  refresh: Refresh | null;
-  /** Low Power Mode; null when unknown. */
-  lowPower: boolean | null;
-}
+// What the native module answers, and how it is read, are the engine's (power.ts): another app embedding it reads them too.
+export { readPowerState, type PowerState, type Refresh } from '@glmsync/engine';
 export type Block = 'refresh_off' | 'refresh_restricted' | 'low_power';
 export interface WakeHintView {
   block: Block | null;
@@ -34,7 +30,6 @@ export const BLOCK_AGAIN_MS = 86_400_000;
 
 const CLOSED = 'glmsync/companion/wake-hint';
 const SWIPE = 'glmsync/companion/wake-swipe-hint';
-const REFRESH: readonly Refresh[] = ['available', 'denied', 'restricted'];
 const BLOCKS: readonly Block[] = ['refresh_off', 'refresh_restricted', 'low_power'];
 
 interface Closed {
@@ -43,14 +38,6 @@ interface Closed {
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
-
-/** The native module's answer, taken value by value: anything else is unknown. */
-export function readPowerState(raw: unknown): PowerState | null {
-  if (!isRecord(raw)) return null;
-  const refresh = REFRESH.includes(raw.refresh as Refresh) ? (raw.refresh as Refresh) : null;
-  const lowPower = typeof raw.lowPower === 'boolean' ? raw.lowPower : null;
-  return { refresh, lowPower };
-}
 
 /**
  * Why iOS won't wake the app, or null. Only on the iPhone, only with a pairing to wake for. Low Power Mode first: it

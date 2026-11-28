@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
 /**
- * Test mode in the companion app (spec/test-mode.md), offline: a made-up target hands out a made-up scenario for a
+ * Test mode in the engine (spec/test-mode.md), offline: a made-up target hands out a made-up scenario for a
  * test code, the app asks "Is this your account?" through the guard, and after the yes the pairing syncs from the
  * scenario - Trackman never asked, `test` on every batch, other pairings untouched, gone with the tester's sign-out,
  * the pairing or the scenario's end. All of it synthetic.
@@ -13,7 +13,7 @@ import { readTestScenario } from '@glmsync/spec';
 import { FakeTrackman, fakeToken } from '@glmsync/provider-trackman/testing';
 import { describe, expect, it } from 'vitest';
 import { MemorySecrets } from './secrets.ts';
-import { makeServices } from './services.ts';
+import { makeEngine } from './engine.ts';
 import { blobName, MemoryBlobs, TestModeError } from './tests.ts';
 
 const DAY = 86_400_000;
@@ -64,7 +64,7 @@ function setup() {
   const secrets = new MemorySecrets();
   const storage = new MemoryStorage();
   const blobs = new MemoryBlobs();
-  const make = () => makeServices({ secrets, storage, blobs, fetch, now: clock.now, sleep: clock.sleep, version: '0.1.0-test' });
+  const make = () => makeEngine({ secrets, storage, blobs, fetch, now: clock.now, sleep: clock.sleep, version: '0.1.0-test' });
   return { clock, target, other, tm, token, secrets, storage, blobs, make, services: make() };
 }
 
@@ -214,7 +214,7 @@ describe('test mode refuses', () => {
 
   it('a target that has no scenarios at all', async () => {
     const target = new FakeTarget({ base: 'https://none.example.com/lm/v1', tests: false });
-    const services = makeServices({ secrets: new MemorySecrets(), storage: new MemoryStorage(), fetch: target.fetch });
+    const services = makeEngine({ secrets: new MemorySecrets(), storage: new MemoryStorage(), fetch: target.fetch });
     await services.load();
     const p = await services.runner.pair({ target: target.base, code: 'K7M2PQ9X' });
     await expect(services.runner.testScenario(p.key, CODE)).rejects.toMatchObject({ code: 'test_unavailable' });

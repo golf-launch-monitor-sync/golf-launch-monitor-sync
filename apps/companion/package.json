@@ -15,6 +15,7 @@
   "dependencies": {
     "@glmsync/browser": "workspace:*",
     "@glmsync/core": "workspace:*",
+    "@glmsync/engine": "workspace:*",
     "@glmsync/provider-demo": "workspace:*",
     "@glmsync/provider-golfde": "workspace:*",
     "@glmsync/provider-rankings": "workspace:*",

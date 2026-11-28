@@ -1,0 +1,21 @@
+{
+  "name": "@glmsync/engine",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "The part of Golf Stats Sync that fetches on a phone: pairings, the player's sign-in kept on the device, a sync per pairing, the older history chunk by chunk, the background run. The companion app runs it; another app can embed it.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@glmsync/core": "workspace:*",
+    "@glmsync/provider-demo": "workspace:*",
+    "@glmsync/provider-trackman": "workspace:*",
+    "@glmsync/spec": "workspace:*"
+  }
+}

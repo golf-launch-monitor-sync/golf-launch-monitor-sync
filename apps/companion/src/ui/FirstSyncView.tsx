@@ -4,7 +4,7 @@
  * After signing in (and saying yes to the account): the wizard's steps 4 and 5. With the yes the player is done here,
  * and the step says so at once (LMS-AS-4): *Done – fetching your data …*, *Back to …* where the target named a way
  * back (else *OK*), and the sentence that the rest comes by itself - not only once the data is in. The first sync runs
- * while this app is in front (lib/firstSync.ts says why), shown plainly - "10 sessions, 6 rounds fetched", then how
+ * while this app is in front (`firstSync` of @glmsync/engine says why), shown plainly - "10 sessions, 6 rounds fetched", then how
  * much of the older history is still to come, which follows a chunk at a time while the app stays open. The app never
  * jumps by itself; a player who goes back sooner leaves the sync to go on for as long as the phone lets it, and the
  * target's wake brings the rest. A first sync that failed says so; its way out stays the quieter button.
@@ -15,7 +15,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { translator } from '@glmsync/browser/i18n';
 import { lang, t } from '../i18n';
-import { firstSync, goBack } from '../lib/firstSync';
+import { firstSync } from '@glmsync/engine';
+import { goBack } from '../lib/firstSync';
 import type { Services } from '../lib/services';
 import { stepParts } from '@glmsync/browser/wizard';
 import { firstLoad, wizardText } from '../lib/wizard';
