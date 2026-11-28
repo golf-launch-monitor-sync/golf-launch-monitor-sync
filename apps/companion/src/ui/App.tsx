@@ -28,7 +28,7 @@ import { LOOK_AFTER_MS } from '../lib/autoFetch';
 import { afterDone, afterLeaving, type DoneHow } from '../lib/done';
 import { goBack } from '../lib/firstSync';
 import type { Ask } from '../lib/handover';
-import { Once, readIncoming, type Incoming } from '../lib/links';
+import { Once, readIncoming, routeTestLink, type Incoming } from '../lib/links';
 import { PROVIDERS, type ProviderId, type Services } from '../lib/services';
 import { testKeys } from '../lib/wizard';
 import type { RankingSite } from '../lib/rankingsPage';
@@ -80,8 +80,11 @@ export type Screen =
    * that only signs in - no first sync after it; back where there is a way, else its card.
    */
   | { name: 'signin'; provider: ProviderId; back?: Back; focus?: string; only?: true }
-  /** Spec 1.27.0: an app paired here asks for the sign-in (`pairing`, its key; `name`, its name). */
-  | { name: 'handover'; provider: ProviderId; pairing: string; target: string; ask: Ask }
+  /**
+   * Spec 1.27.0: an app paired here asks for the sign-in (`pairing`, its key; `name`, its name). `code` (1.28.0): a test
+   * code a test link brought while the question was open.
+   */
+  | { name: 'handover'; provider: ProviderId; pairing: string; target: string; ask: Ask; code?: string }
   | { name: 'sync'; link: { target?: string; return?: string } }
   /** Just signed in: the first sync shown as the wizard's steps 4 and 5, then (with `back`) *Back to …*. */
   | { name: 'first'; target?: string; back?: Back; focus?: string }
@@ -183,6 +186,9 @@ function Main() {
   /** The screen as the look for a run by itself sees it (it runs later than the render). */
   const screenNow = useRef<Screen['name']>('home');
   screenNow.current = screen.name;
+  /** The sign-in question open now, for a test link that comes meanwhile (spec 1.28.0). */
+  const openQuestion = useRef<{ pairing: string } | null>(null);
+  openQuestion.current = screen.name === 'handover' ? { pairing: screen.pairing } : null;
   /** Whether the unseen golf.de window shows (a run by itself, `svc.auto`). */
   const [unseen, setUnseen] = useState(false);
 
@@ -194,7 +200,7 @@ function Main() {
 
   useEffect(() => {
     if (!svc) return;
-    const offs = [svc.signIns.subscribe(redraw), svc.pairings.subscribe(redraw), svc.runner.subscribe(redraw), svc.tests.subscribe(redraw)];
+    const offs = [svc.signIns.subscribe(redraw), svc.pairings.subscribe(redraw), svc.runner.subscribe(redraw), svc.tests.subscribe(redraw), svc.testSignIns.subscribe(redraw)];
     return () => {
       for (const off of offs) off();
     };
@@ -227,13 +233,19 @@ function Main() {
         setMessage(t('link.invalid'));
         setScreen({ name: 'home' });
       } else if (incoming.kind === 'test') {
-        // A test link never pairs: without a pairing of its app there is nothing to take the code for.
-        if (!incoming.keys.length) {
-          setMessage(t('test.pairFirst'));
-          setScreen({ name: 'home' });
-        } else {
+        // A test link never pairs: without a pairing of its app there is nothing to take the code for. At a connection
+        // that only signs in (spec 1.28.0) it goes into the sign-in question its app asked - the test page's QR, scanned
+        // meanwhile - and outside one the tester hears to start in that app.
+        const route = routeTestLink(openQuestion.current, incoming.keys, svc.pairings.list());
+        if (route.to === 'handover') {
           setMessage(null);
-          setScreen({ name: 'test', keys: incoming.keys, code: incoming.code });
+          setScreen((now) => (now.name === 'handover' ? { ...now, code: incoming.code } : now));
+        } else if (route.to === 'test') {
+          setMessage(null);
+          setScreen({ name: 'test', keys: route.keys, code: incoming.code });
+        } else {
+          setMessage(route.message === 'inTarget' ? t('test.inTarget', { name: route.name }) : t('test.pairFirst'));
+          setScreen({ name: 'home' });
         }
       } else if (incoming.kind === 'signin') {
         // Only for an app paired here, answered only by the way back it named (lib/handover.ts); else nothing happens.
@@ -479,7 +491,19 @@ function Main() {
       />
     );
   } else if (screen.name === 'handover') {
-    body = <HandoverView key={`${screen.pairing}|${screen.ask.nonce ?? ''}`} svc={svc} provider={screen.provider} pairing={screen.pairing} name={screen.target} ask={screen.ask} renew={renewal.renew} go={setScreen} />;
+    body = (
+      <HandoverView
+        key={`${screen.pairing}|${screen.ask.nonce ?? ''}`}
+        svc={svc}
+        provider={screen.provider}
+        pairing={screen.pairing}
+        name={screen.target}
+        ask={screen.ask}
+        {...(screen.code ? { code: screen.code } : {})}
+        renew={renewal.renew}
+        go={setScreen}
+      />
+    );
   } else if (screen.name === 'sync') {
     body = <SyncView svc={svc} link={screen.link} renew={renewal.renew} go={setScreen} />;
   } else if (screen.name === 'first') {

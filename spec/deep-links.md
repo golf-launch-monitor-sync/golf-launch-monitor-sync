@@ -61,7 +61,7 @@ install it where it isn't.
   jump back to `return`. `target` picks the pairing when there are several.
 - **signin** (since 1.27.0) asks the companion app for the player's sign-in at `provider`, for the target app that
   opens the link: [Signing in for a target](#signing-in-for-a-target). It never pairs and never fetches.
-- **test** (since 1.8.0) hands a client the test code of a target's test account, for a target it is
+- **test** (since 1.8.0; at a connection that only signs in since 1.28.0, [test-mode.md](test-mode.md#only-signing-in-for-a-target)) hands a client the test code of a target's test account, for a target it is
   already paired with; `target` picks the pairing when there are several. It never pairs, and it has no
   `return` (a key `return` is ignored like any unknown one). What the code is for: [test-mode.md](test-mode.md).
 - **read** (since 1.11.0) opens a client's way of reading along for `kind` - `hcp`, and since 1.15.0 `pro` (the
@@ -237,6 +237,11 @@ question - never one an outsider could know or one used for another answer. The 
 - A target keeps the sign-in only on the phone, in its secure storage, for its engine's calls to that provider - never
   on a server, in a log, or anywhere else - and takes only one of the account it has connected (`account_ref`). It asks
   again, with a new key, when the sign-in runs out or the provider refuses it.
+- **A test mode's sign-in** (since 1.28.0, [test-mode.md](test-mode.md#only-signing-in-for-a-target)): `"test": true`
+  last in the message, the token a test code (6–64 of `0-9 A-Z a-z -`), `expires_at` always there. A reader refuses
+  `test` of any other value than `true` or `false`, and a test sign-in without a test code or without `expires_at` -
+  so a target can never send a provider's key to its own server as a code, nor a code to the provider. A real sign-in
+  carries no `test`; a target older than 1.28.0 reads past it and would try the code at the provider, which refuses it.
 
 **Why sealed.** Any app may claim a target's scheme or listen for its way back; an app that catches the answer reads
 nothing. An app that opens a signin link itself gets only what is sealed for its own key - and only with a way back

@@ -343,6 +343,15 @@ the way back that app named when it paired - nowhere else - with your sign-in se
   it - and shows on its card that the app fetches itself. Opening this app or *Fetch now* still asks its plan, so the
   app can say when this one is to fetch again.
 
+**Test mode** (since 0.21.0, spec 1.28.0, [spec/test-mode.md](../../spec/test-mode.md#only-signing-in-for-a-target)):
+in that app's question, small under the sign-in, *Enter a test code* (or scan that app's test QR with the camera while
+the question is open: its link brings the code here). The scenario comes from that app with this app's pairing, *Is this
+your account?* as always, then the code goes over sealed as a test sign-in (`test: true`, the scenario's made-up account,
+running out after its `signin_valid_s`, this phone's browser's User-Agent read from an empty web view - Trackman's page
+is never opened). At every later question of that app it goes over again with a new end, without asking, while the test
+lasts; the connection's card says so and has *End test mode*. A test link outside a question, at a connection that only
+signs in, says to start the test in that app. Nothing is fetched here for it, and no new native build is needed.
+
 The seal's secret key is this app's own, made for each answer: from the phone's random source where React Native has
 one, always mixed with the pairing's import token and the question, so that it is never one an outsider could know.
 Android's binding has no part in it; the link is the way on both phones, and it needs no new native build.
@@ -378,6 +387,7 @@ Until all three stand, the page's *Open Golf Stats Sync* opens the app by its sc
 | Each pairing's import token | the secure store |
 | Whether a pairing only signs in for an app that fetches itself (spec 1.27.0) | app storage, with the rest of the pairing |
 | The secret key of a sealed answer (spec 1.27.0) | memory only, for that one answer |
+| A test sign-in for an app that only asks this one to sign in (spec 1.28.0): the test code, the made-up account, the test's end, this phone's browser's User-Agent | the secure store, per pairing; which pairings have one in app storage; until the test is over, the pairing ends or *End test mode* |
 | The rest of a pairing (address, name, limits, return prefixes), the guard's counts and log, the last run per pairing | app storage (AsyncStorage) |
 | The last 20 background runs: when, how long, how many history chunks, how each ended (nothing of the player) | app storage; in the exported log |
 | A pairing its app ended: which app and provider, when (no token, no address; the last ten) | app storage, until that app pairs again or the player removes the row |

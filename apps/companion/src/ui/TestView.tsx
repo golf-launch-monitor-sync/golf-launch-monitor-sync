@@ -31,13 +31,36 @@ type Step =
 /** A code as typed: spaces a tester may copy or type along are taken out (a code has none). */
 export const cleanCode = (typed: string) => typed.replace(/\s+/g, '');
 
-export function TestView({ svc, keys, code: linked, back, go }: { svc: Services; keys: string[]; code?: string; back?: { url: string; name: string }; go: (s: Screen) => void }) {
+export function TestView({
+  svc,
+  keys,
+  code: linked,
+  back,
+  go,
+  taken,
+  cancel,
+}: {
+  svc: Services;
+  keys: string[];
+  code?: string;
+  back?: { url: string; name: string };
+  go: (s: Screen) => void;
+  /**
+   * Spec 1.28.0: in a sign-in question of an app that only asks this one to sign in - after the yes the code goes to
+   * that app (HandoverView) instead of this app syncing from the scenario. Throws: the sentence stays on step 2.
+   */
+  taken?: (pairing: KeyedPairing, scenario: TestScenario, code: string) => Promise<void>;
+  /** Where *Cancel* goes (default: home). */
+  cancel?: () => void;
+}) {
   const pairings = keys.map((k) => svc.pairings.get(k)).filter((p): p is KeyedPairing => !!p);
   const [code, setCode] = useState(linked ?? '');
   const [chosen, setChosen] = useState<string | null>(pairings.length === 1 ? (pairings[0] as KeyedPairing).key : null);
   const [step, setStep] = useState<Step>({ name: 'enter' });
   const [saving, setSaving] = useState(false);
-  const home = () => go({ name: 'home' });
+  const home = cancel ?? (() => go({ name: 'home' }));
+  /** The code the scenario came for (what goes over in a sign-in question). */
+  const asked = useRef('');
   const service = svc.providers.trackman.name;
   const target = back?.name ?? targetOf(pairings.map((p) => p.target.name));
 
@@ -54,6 +77,7 @@ export function TestView({ svc, keys, code: linked, back, go }: { svc: Services;
         return;
       }
       setStep({ name: 'fetching' });
+      asked.current = c;
       try {
         const scenario = await svc.runner.testScenario(key, c);
         const who = await svc.runner.testWho(scenario);
@@ -76,6 +100,15 @@ export function TestView({ svc, keys, code: linked, back, go }: { svc: Services;
 
   async function yes(pairing: KeyedPairing, scenario: TestScenario, who: WhoAnswer) {
     setSaving(true);
+    if (taken) {
+      try {
+        await taken(pairing, scenario, asked.current);
+      } catch {
+        setSaving(false);
+        setStep({ name: 'enter', error: t('test.notKept') });
+      }
+      return;
+    }
     try {
       await svc.runner.startTest(pairing.key, scenario, who.player);
     } catch {

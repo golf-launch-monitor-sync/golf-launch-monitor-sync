@@ -1,11 +1,79 @@
 {
-  "$comment": "The answer of GET /test-scenario as a client reads it (spec/test-mode.md; 1.8.0): input {answer, now} -> {ok: true, scenario: {name, provider, subject, profile, data, latency: {default?, queries}, valid_until}} or {ok: false, error}. All of it synthetic.",
-  "spec_version": "1.27.0",
+  "$comment": "The answer of GET /test-scenario as a client reads it (spec/test-mode.md; 1.8.0): input {answer, now} -> {ok: true, scenario: {name, provider, subject, profile, data, latency: {default?, queries}, valid_until, signin_valid_s? (1.28.0)}} or {ok: false, error}. signin_until (1.28.0): input {scenario, now_ms} -> when a test sign-in handed over then runs out (RFC 3339 in UTC with milliseconds, as JavaScript's toISOString writes it), or null. All of it synthetic.",
+  "spec_version": "1.28.0",
   "generated_by": "spec/reference/generate.py",
+  "signin_until": [
+    {
+      "name": "from_now",
+      "input": {
+        "scenario": {
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 600
+        },
+        "now_ms": 1795284000000
+      },
+      "expected": "2026-11-21T18:10:00.000Z"
+    },
+    {
+      "name": "two_days_one_hour",
+      "input": {
+        "scenario": {
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 176400
+        },
+        "now_ms": 1795284000007
+      },
+      "expected": "2026-11-23T19:00:00.007Z"
+    },
+    {
+      "name": "never_past_the_test",
+      "input": {
+        "scenario": {
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 2592000
+        },
+        "now_ms": 1795284000000
+      },
+      "expected": "2026-11-28T17:00:00.000Z"
+    },
+    {
+      "name": "without_to_the_test",
+      "input": {
+        "scenario": {
+          "valid_until": "2026-11-28T18:00:00+01:00"
+        },
+        "now_ms": 1795284000000
+      },
+      "expected": "2026-11-28T17:00:00.000Z"
+    },
+    {
+      "name": "test_over",
+      "input": {
+        "scenario": {
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 600
+        },
+        "now_ms": 1795885200000
+      },
+      "expected": null
+    },
+    {
+      "name": "test_long_over",
+      "input": {
+        "scenario": {
+          "valid_until": "2026-11-28T18:00:00+01:00"
+        },
+        "now_ms": 1795885200001
+      },
+      "expected": null
+    }
+  ],
   "limits": {
     "max_bytes": 67108864,
     "max_latency_s": 60,
-    "max_queries": 50
+    "max_queries": 50,
+    "min_signin_s": 60,
+    "max_signin_s": 31622400
   },
   "cases": [
     {
@@ -2835,6 +2903,930 @@
       "expected": {
         "ok": false,
         "error": "invalid:scenario"
+      }
+    },
+    {
+      "name": "signin_valid",
+      "input": {
+        "answer": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            },
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 600
+        },
+        "now": "2026-11-21T18:00:00Z"
+      },
+      "expected": {
+        "ok": true,
+        "scenario": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            },
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 600
+        }
+      }
+    },
+    {
+      "name": "signin_valid_least",
+      "input": {
+        "answer": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            },
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 60
+        },
+        "now": "2026-11-21T18:00:00Z"
+      },
+      "expected": {
+        "ok": true,
+        "scenario": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            },
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 60
+        }
+      }
+    },
+    {
+      "name": "signin_valid_too_short",
+      "input": {
+        "answer": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            },
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 59
+        },
+        "now": "2026-11-21T18:00:00Z"
+      },
+      "expected": {
+        "ok": true,
+        "scenario": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            },
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00"
+        }
+      }
+    },
+    {
+      "name": "signin_valid_most",
+      "input": {
+        "answer": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            },
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 31622400
+        },
+        "now": "2026-11-21T18:00:00Z"
+      },
+      "expected": {
+        "ok": true,
+        "scenario": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            },
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 31622400
+        }
+      }
+    },
+    {
+      "name": "signin_valid_too_long",
+      "input": {
+        "answer": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            },
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 31622401
+        },
+        "now": "2026-11-21T18:00:00Z"
+      },
+      "expected": {
+        "ok": true,
+        "scenario": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            },
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00"
+        }
+      }
+    },
+    {
+      "name": "signin_valid_whole_float",
+      "input": {
+        "answer": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            },
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 600.0
+        },
+        "now": "2026-11-21T18:00:00Z"
+      },
+      "expected": {
+        "ok": true,
+        "scenario": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            },
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 600
+        }
+      }
+    },
+    {
+      "name": "signin_valid_fraction",
+      "input": {
+        "answer": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            },
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": 600.5
+        },
+        "now": "2026-11-21T18:00:00Z"
+      },
+      "expected": {
+        "ok": true,
+        "scenario": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            },
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00"
+        }
+      }
+    },
+    {
+      "name": "signin_valid_text",
+      "input": {
+        "answer": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            },
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": "600"
+        },
+        "now": "2026-11-21T18:00:00Z"
+      },
+      "expected": {
+        "ok": true,
+        "scenario": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            },
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00"
+        }
+      }
+    },
+    {
+      "name": "signin_valid_bool",
+      "input": {
+        "answer": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            },
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": true
+        },
+        "now": "2026-11-21T18:00:00Z"
+      },
+      "expected": {
+        "ok": true,
+        "scenario": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            },
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00"
+        }
+      }
+    },
+    {
+      "name": "signin_valid_null",
+      "input": {
+        "answer": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            },
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00",
+          "signin_valid_s": null
+        },
+        "now": "2026-11-21T18:00:00Z"
+      },
+      "expected": {
+        "ok": true,
+        "scenario": {
+          "name": "steady",
+          "provider": "trackman",
+          "subject": "test-0f3a9c21-steady",
+          "profile": {
+            "fullName": "Sam Example (test)"
+          },
+          "data": {
+            "activities": [
+              {
+                "id": "ACT-T1",
+                "kind": "RANGE_PRACTICE",
+                "time": "2026-11-20T17:00:00Z"
+              }
+            ],
+            "nodes": {
+              "ACT-T1": {
+                "strokes": []
+              }
+            },
+            "scorecards": [],
+            "shotHoles": {}
+          },
+          "latency": {
+            "queries": {
+              "Activities": {
+                "median_s": 1.2,
+                "spread_s": 0.4
+              },
+              "Session": {
+                "median_s": 2,
+                "spread_s": 1
+              }
+            },
+            "default": {
+              "median_s": 0.8,
+              "spread_s": 0.3
+            }
+          },
+          "valid_until": "2026-11-28T18:00:00+01:00"
+        }
       }
     }
   ]

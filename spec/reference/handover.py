@@ -11,6 +11,9 @@ NaCl's `box` is written out here with the standard library only, as every rule o
 7748), HSalsa20 and XSalsa20, Poly1305. It must give byte for byte what TweetNaCl's `nacl.box` gives - the vectors are
 made with fixed keys so that every implementation can check that.
 
+Since 1.28.0 a sign-in may be a test mode's (spec/test-mode.md, *Only signing in for a target*): `test` true, the token
+a target's test code (never a provider's key), `expires_at` required. A target tells the two apart by `test` alone.
+
     public_key(secret)                                 -> the public key of a secret key (base64url)
     seal(message, key, nonce, secret)                  -> {"from", "box"}: the message sealed for `key`
     open_sealed(box, from_, nonce, secret)             -> the message, read strictly, or None
@@ -41,6 +44,9 @@ TOKEN = re.compile(r"^[\x21-\x7e]{1,4096}$")
 USER_AGENT = re.compile(r"^[\x20-\x7e]{1,512}$")
 PROVIDER = re.compile(r"^[a-z][a-z0-9_-]{1,39}$")
 ACCOUNT_REF = re.compile(r"^[A-Za-z0-9_-]{16,128}$")
+#: A test sign-in's token is a test code (spec/test-mode.md, 1.28.0): never anything shaped like a provider's key, so a
+#: real key read as a test one could never go to a target as a code.
+TEST_TOKEN = re.compile(r"^[0-9A-Za-z-]{6,64}$")
 KEY_LEN, NONCE_LEN, TAG_LEN = 32, 24, 16
 #: The sealed message: at most this many bytes before sealing.
 MAX_MESSAGE = 6000
@@ -242,14 +248,23 @@ def message_bytes(message: dict[str, Any]) -> bytes:
     for k in ("provider", "token", "account_ref", "expires_at", "user_agent"):
         if k in message:
             out[k] = message[k]
+    if message.get("test") is True:
+        out["test"] = True  # 1.28.0: only a test sign-in says so; a real one carries no `test` at all
     return json.dumps(out, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 
 def read_message(data: Any) -> dict[str, Any] | None:
     """The handed-over sign-in as a target reads it, strictly: an object with `v` 1, `provider`, `token`, `account_ref`
     and `user_agent`, `expires_at` when given (an RFC 3339 time, else left out). One wrong required value: none at all
-    (a target never stores half a sign-in). Unknown keys are ignored; a later version may add some."""
+    (a target never stores half a sign-in). Unknown keys are ignored; a later version may add some.
+
+    `test` (1.28.0): absent or false - a provider's sign-in; true - a test mode's, whose token must be a test code and
+    whose `expires_at` must be there (then `"test": true` in what is read); any other value - none at all: a target
+    must never take one for the other."""
     if not isinstance(data, dict) or data.get("v") != 1 or isinstance(data.get("v"), bool):
+        return None
+    test = data.get("test", False)
+    if test is not True and test is not False:
         return None
     provider, token, ref, ua = data.get("provider"), data.get("token"), data.get("account_ref"), data.get("user_agent")
     if not (isinstance(provider, str) and PROVIDER.fullmatch(provider)):
@@ -266,6 +281,10 @@ def read_message(data: Any) -> dict[str, Any] | None:
         # Kept only as given and with its zone: a time without one could be read differently elsewhere.
         if isinstance(t, str) and when(t) == t:
             out["expires_at"] = t
+    if test:
+        if not TEST_TOKEN.fullmatch(token) or "expires_at" not in out:
+            return None
+        out["test"] = True
     return out
 
 

@@ -28,8 +28,9 @@ export function testAccount(): WizardFacts {
  * The pairings a test code can be for, where a provider's sign-in is asked for (small, *Enter a test code*, under it):
  * that provider's, not in test mode already. None: no test code there.
  */
-export function testKeys(pairings: readonly { key: string; provider: string }[], provider: string, testing: (key: string) => boolean): string[] {
-  return pairings.filter((p) => p.provider === provider && !testing(p.key)).map((p) => p.key);
+export function testKeys(pairings: readonly { key: string; provider: string; mode?: string }[], provider: string, testing: (key: string) => boolean): string[] {
+  // A connection that only signs in (spec 1.28.0) takes its test code in the sign-in question its app asks instead.
+  return pairings.filter((p) => p.provider === provider && p.mode !== 'signin_only' && !testing(p.key)).map((p) => p.key);
 }
 
 /**

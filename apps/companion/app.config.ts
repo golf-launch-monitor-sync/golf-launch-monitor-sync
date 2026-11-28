@@ -26,7 +26,7 @@ const config: ExpoConfig = {
   slug: 'golf-launch-monitor-sync',
   owner,
   scheme: 'glmsync',
-  version: '0.20.0',
+  version: '0.21.0',
   // The native part decides which builds an update can run on (as in the target apps that use EAS).
   runtimeVersion: { policy: 'fingerprint' },
   orientation: 'portrait',

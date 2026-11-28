@@ -779,14 +779,39 @@ def test_scenario_vectors() -> dict[str, Any]:
                                                   for i in range(60)}}), now),
         ("not_object", [ok], now),
         ("null", None, now),
-        ("text", "steady", now)]
+        ("text", "steady", now),
+        # 1.28.0: how long a test sign-in handed to a target app lasts.
+        ("signin_valid", but(signin_valid_s=600), now),
+        ("signin_valid_least", but(signin_valid_s=60), now),
+        ("signin_valid_too_short", but(signin_valid_s=59), now),
+        ("signin_valid_most", but(signin_valid_s=366 * 86400), now),
+        ("signin_valid_too_long", but(signin_valid_s=366 * 86400 + 1), now),
+        ("signin_valid_whole_float", but(signin_valid_s=600.0), now),
+        ("signin_valid_fraction", but(signin_valid_s=600.5), now),
+        ("signin_valid_text", but(signin_valid_s="600"), now),
+        ("signin_valid_bool", but(signin_valid_s=True), now),
+        ("signin_valid_null", but(signin_valid_s=None), now)]
     cases = [{"name": n, "input": {"answer": a, "now": t}, "expected": testmode.read_scenario(a, t)}
              for n, a, t in answers]
+    now_ms = testmode.instant_ms(now)
+    untils = [("from_now", {"valid_until": ok["valid_until"], "signin_valid_s": 600}, now_ms),
+              ("two_days_one_hour", {"valid_until": ok["valid_until"], "signin_valid_s": 2 * 86400 + 3600}, now_ms + 7),
+              ("never_past_the_test", {"valid_until": ok["valid_until"], "signin_valid_s": 30 * 86400}, now_ms),
+              ("without_to_the_test", {"valid_until": ok["valid_until"]}, now_ms),
+              ("test_over", {"valid_until": ok["valid_until"], "signin_valid_s": 600},
+               testmode.instant_ms(ok["valid_until"])),
+              ("test_long_over", {"valid_until": ok["valid_until"]}, testmode.instant_ms(ok["valid_until"]) + 1)]
+    signin = [{"name": n, "input": {"scenario": sc, "now_ms": t}, "expected": testmode.signin_until(sc, t)}
+              for n, sc, t in untils]
     return doc("The answer of GET /test-scenario as a client reads it (spec/test-mode.md; 1.8.0): input {answer, now} "
                "-> {ok: true, scenario: {name, provider, subject, profile, data, latency: {default?, queries}, "
-               "valid_until}} or {ok: false, error}. All of it synthetic.", cases,
+               "valid_until, signin_valid_s? (1.28.0)}} or {ok: false, error}. signin_until (1.28.0): input "
+               "{scenario, now_ms} -> when a test sign-in handed over then runs out (RFC 3339 in UTC with "
+               "milliseconds, as JavaScript's toISOString writes it), or null. All of it synthetic.", cases,
+               signin_until=signin,
                limits={"max_bytes": testmode.MAX_BYTES, "max_latency_s": testmode.MAX_LATENCY_S,
-                       "max_queries": testmode.MAX_QUERIES})
+                       "max_queries": testmode.MAX_QUERIES, "min_signin_s": testmode.MIN_SIGNIN_S,
+                       "max_signin_s": testmode.MAX_SIGNIN_S})
 
 
 # ---------------------------------------------------------------------------
@@ -1156,6 +1181,9 @@ def handover_vectors() -> dict[str, Any]:
            "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like "
                          "Gecko) Mobile/15E148"}
     no_exp = {k: v for k, v in msg.items() if k != "expires_at"}
+    # A test mode's (1.28.0): the token a test code, the account_ref that of the scenario's made-up subject.
+    test_msg = {**msg, "token": "K7MP-Q2RX", "account_ref": "dGVzdC1zdWJqZWN0LWFjY291bnQ", "expires_at":
+                "2026-11-28T10:58:00.000Z", "test": True}
     cases: list[dict[str, Any]] = []
     for s in [ts, cs, os_, "", "AAAA", ts + "A", ts[:-1], ts + "=", ts[:-1] + "/", 5, None]:
         cases.append({"rule": "public_key", "input": s, "expected": handover.public_key(s)})
@@ -1171,7 +1199,14 @@ def handover_vectors() -> dict[str, Any]:
              ({**msg, "expires_at": "2026-02-30T08:12:00Z"}, key, nonce, cs), ({**msg, "later": "kept out"}, key, nonce, cs),
              ({k: v for k, v in msg.items() if k != "user_agent"}, key, nonce, cs),
              (msg, key[:-1], nonce, cs), (msg, key, nonce[:-1], cs), (msg, key, nonce, cs[:-1]), (msg, None, nonce, cs),
-             ("not a message", key, nonce, cs)]
+             ("not a message", key, nonce, cs),
+             # 1.28.0: a test mode's sign-in.
+             (test_msg, key, nonce, cs), ({**test_msg, "test": False}, key, nonce, cs),
+             ({**msg, "test": False}, key, nonce, cs), ({**test_msg, "token": msg["token"]}, key, nonce, cs),
+             ({**test_msg, "token": "K7MP"}, key, nonce, cs), ({**test_msg, "token": "K7MP_Q2RX"}, key, nonce, cs),
+             ({k: v for k, v in test_msg.items() if k != "expires_at"}, key, nonce, cs),
+             ({**test_msg, "test": "true"}, key, nonce, cs), ({**test_msg, "test": 1}, key, nonce, cs),
+             ({**test_msg, "test": None}, key, nonce, cs)]
     for m, k, n, sec in seals:
         cases.append({"rule": "seal", "input": {"message": m, "key": k, "nonce": n, "secret": sec},
                       "expected": handover.seal(m, k, n, sec)})
@@ -1203,7 +1238,17 @@ def handover_vectors() -> dict[str, Any]:
              (raw(j({"v": 1, **no_ua})), frm, nonce, ts), (raw(j({"v": 1, **msg, "token": ""})), frm, nonce, ts),
              (raw(j({"v": 1, **msg, "user_agent": "Mozilla/5.0 "})), frm, nonce, ts),
              (raw(j([msg])), frm, nonce, ts), (raw(b"not json"), frm, nonce, ts), (raw(b"\xff\xfe"), frm, nonce, ts),
-             (raw(b'{"v":1,"x":NaN}'), frm, nonce, ts), (raw(b""), frm, nonce, ts)]
+             (raw(b'{"v":1,"x":NaN}'), frm, nonce, ts), (raw(b""), frm, nonce, ts),
+             # 1.28.0: `test` true only with a test code and an expiry; any other value than true or false: none.
+             (raw(j({"v": 1, **test_msg})), frm, nonce, ts), (raw(j({"v": 1, **msg, "test": False})), frm, nonce, ts),
+             (raw(j({"v": 1, **msg, "test": True})), frm, nonce, ts),
+             (raw(j({"v": 1, **test_msg, "test": "true"})), frm, nonce, ts),
+             (raw(j({"v": 1, **test_msg, "test": None})), frm, nonce, ts),
+             (raw(j({"v": 1, **test_msg, "test": 1})), frm, nonce, ts),
+             (raw(j({"v": 1, **msg, "test": "false"})), frm, nonce, ts),
+             (raw(j({"v": 1, **{k: v for k, v in test_msg.items() if k != "expires_at"}})), frm, nonce, ts),
+             (raw(j({"v": 1, **test_msg, "expires_at": "soon"})), frm, nonce, ts),
+             (raw(j({"v": 1, **test_msg, "token": "eyJ0.eyJ1.c2ln"})), frm, nonce, ts)]
     for b, f, n, sec in opens:
         cases.append({"rule": "open", "input": {"box": b, "from": f, "nonce": n, "secret": sec},
                       "expected": handover.open_sealed(b, f, n, sec)})
@@ -1239,9 +1284,10 @@ def handover_vectors() -> dict[str, Any]:
                "reference/handover.py). Keys, nonces, `from` and `box` are base64url without padding (keys 32 bytes, "
                "nonces 24). public_key (a secret key) -> its public key or null. seal ({message, key, nonce, secret}: "
                "the client's secret key for this answer) -> {from, box} (NaCl box of the message as compact JSON with "
-               "the keys v, provider, token, account_ref, expires_at?, user_agent in this order) or null; compare "
+               "the keys v, provider, token, account_ref, expires_at?, user_agent, test? (1.28.0, only when true) in "
+               "this order) or null; compare "
                "exactly. open ({box, from, nonce, secret}: the target's secret key) -> the message read strictly "
-               "{provider, token, account_ref, expires_at?, user_agent} or null. with_answer ({url, answer}) -> the way "
+               "{provider, token, account_ref, expires_at?, user_agent, test?} or null. with_answer ({url, answer}) -> the way "
                "back with the answer in its fragment, or null. read_answer (the address the target was opened at) -> "
                "{signin, from?, box?} or null.", cases,
                keys={"target_secret": ts, "target_key": key, "client_secret": cs, "nonce": nonce},

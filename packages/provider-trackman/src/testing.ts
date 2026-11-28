@@ -83,6 +83,11 @@ export class FakeTrackman {
   override?: (req: TrackmanRequest) => ResponseLike | Error | null;
   /** How long each answer takes (ms), by the request; none: at once. */
   delay?: (req: TrackmanRequest) => number;
+  /**
+   * From this moment (ms) every sign-in is refused with 401, as Trackman refuses a key that ran out (spec 1.28.0: a test
+   * sign-in handed to a target app runs out at its `expires_at`). None: the keys in `tokens` never run out here.
+   */
+  expiresAt?: number | undefined;
   /** How it waits for `delay` (tests pass a virtual clock's). */
   sleep: (ms: number, signal?: AbortSignal) => Promise<void> = wait;
 
@@ -122,6 +127,7 @@ export class FakeTrackman {
     if (o instanceof Error) throw o;
     if (o) return o;
     if (!this.tokens.has(token)) return respond(401, { errors: [{ message: 'Unauthorized' }] });
+    if (this.expiresAt !== undefined && this.now() >= this.expiresAt) return respond(401, { errors: [{ message: 'Unauthorized' }] });
     const v = req.variables;
     const skip = Number(v.skip ?? 0);
     const take = Number(v.take ?? 100);

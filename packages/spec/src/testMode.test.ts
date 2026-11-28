@@ -11,11 +11,16 @@ import {
   TEST_SCENARIO_MAX_BYTES,
   TEST_SCENARIO_MAX_LATENCY_S,
   TEST_SCENARIO_MAX_QUERIES,
+  TEST_SIGNIN_MAX_S,
+  TEST_SIGNIN_MIN_S,
+  testSigninUntil,
 } from './testMode.ts';
-import { SPEC_DIR, readVectors } from './vectors.ts';
+import { SPEC_DIR, readVectors, type VectorFile } from './vectors.ts';
 
 type Case = { name: string; input: { answer: unknown; now: string }; expected: unknown };
-const file = readVectors<Case>('test-scenario.json');
+const file = readVectors<Case>('test-scenario.json') as VectorFile<Case> & {
+  signin_until: { name: string; input: { scenario: { valid_until: string; signin_valid_s?: number }; now_ms: number }; expected: string | null }[];
+};
 
 describe('a test scenario answers the vectors (1.8.0)', () => {
   it.each(file.cases.map((c) => [c.name, c] as const))('%s', (_, c) => {
@@ -23,7 +28,24 @@ describe('a test scenario answers the vectors (1.8.0)', () => {
   });
 
   it('with the limits the reference keeps', () => {
-    expect(file.limits).toEqual({ max_bytes: TEST_SCENARIO_MAX_BYTES, max_latency_s: TEST_SCENARIO_MAX_LATENCY_S, max_queries: TEST_SCENARIO_MAX_QUERIES });
+    expect(file.limits).toEqual({
+      max_bytes: TEST_SCENARIO_MAX_BYTES,
+      max_latency_s: TEST_SCENARIO_MAX_LATENCY_S,
+      max_queries: TEST_SCENARIO_MAX_QUERIES,
+      min_signin_s: TEST_SIGNIN_MIN_S,
+      max_signin_s: TEST_SIGNIN_MAX_S,
+    });
+  });
+});
+
+describe('when a test sign-in runs out, as the vectors say (1.28.0)', () => {
+  it.each(file.signin_until.map((c) => [c.name, c] as const))('%s', (_, c) => {
+    expect(testSigninUntil(c.input.scenario, c.input.now_ms)).toBe(c.expected);
+  });
+
+  it('never throws on a clock or an end that is none', () => {
+    expect(testSigninUntil({ valid_until: 'soon' }, 0)).toBeNull();
+    expect(testSigninUntil({ valid_until: '2026-11-28T18:00:00Z' }, Number.NaN)).toBeNull();
   });
 });
 

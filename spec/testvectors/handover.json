@@ -1,6 +1,6 @@
 {
-  "$comment": "Signing in for a target: the sealed handover (spec/deep-links.md, *Signing in for a target*; 1.27.0; reference/handover.py). Keys, nonces, `from` and `box` are base64url without padding (keys 32 bytes, nonces 24). public_key (a secret key) -> its public key or null. seal ({message, key, nonce, secret}: the client's secret key for this answer) -> {from, box} (NaCl box of the message as compact JSON with the keys v, provider, token, account_ref, expires_at?, user_agent in this order) or null; compare exactly. open ({box, from, nonce, secret}: the target's secret key) -> the message read strictly {provider, token, account_ref, expires_at?, user_agent} or null. with_answer ({url, answer}) -> the way back with the answer in its fragment, or null. read_answer (the address the target was opened at) -> {signin, from?, box?} or null.",
-  "spec_version": "1.27.0",
+  "$comment": "Signing in for a target: the sealed handover (spec/deep-links.md, *Signing in for a target*; 1.27.0; reference/handover.py). Keys, nonces, `from` and `box` are base64url without padding (keys 32 bytes, nonces 24). public_key (a secret key) -> its public key or null. seal ({message, key, nonce, secret}: the client's secret key for this answer) -> {from, box} (NaCl box of the message as compact JSON with the keys v, provider, token, account_ref, expires_at?, user_agent, test? (1.28.0, only when true) in this order) or null; compare exactly. open ({box, from, nonce, secret}: the target's secret key) -> the message read strictly {provider, token, account_ref, expires_at?, user_agent, test?} or null. with_answer ({url, answer}) -> the way back with the answer in its fragment, or null. read_answer (the address the target was opened at) -> {signin, from?, box?} or null.",
+  "spec_version": "1.28.0",
   "generated_by": "spec/reference/generate.py",
   "keys": {
     "target_secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY",
@@ -432,6 +432,184 @@
       "expected": null
     },
     {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "K7MP-Q2RX",
+          "account_ref": "dGVzdC1zdWJqZWN0LWFjY291bnQ",
+          "expires_at": "2026-11-28T10:58:00.000Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+          "test": true
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": {
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "box": "F70E8c5W_5uDjpuXixIG7Dx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1CVnJE1_-EuOOB17gh2mlSHo-x53rAMqkfZJbPokqxS3qQ4mmo7Kx-ZorjGJQm2Zqy3Q45mwZRakxcHv1s0X1n5BxrdJZlq_j7uHmSD8sf1Hb5ckQZs7YhXJDp2awBodL1CWoqNEfuttVE5hlNieiRqHcldAk8817H_OBlhFGqnpalbMpBiFbYZi_KeBIWXGFjVwtjiN4l_-XZXvGXUxLySVS3yKWISlmUfbD9ub7vPM7AY-A1En--E363B_uvvQDlQpDdfTAt1oZqhPW1vFa8YQgl9TffbK7uQWVbRl1_vyjhFgYWoxBQA"
+      }
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "K7MP-Q2RX",
+          "account_ref": "dGVzdC1zdWJqZWN0LWFjY291bnQ",
+          "expires_at": "2026-11-28T10:58:00.000Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+          "test": false
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": {
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "box": "q8LOfqaHbnkcZ1xIS9lzczx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1CVnJE1_-EuOOB17gh2mlSHo-x53rAMqkfZJbPokqxS3qQ4mmo7Kx-ZorjGJQm2Zqy3Q45mwZRakxcHv1s0X1n5BxrdJZlq_j7uHmSD8sf1Hb5ckQZs7YhXJDp2awBodL1CWoqNEfuttVE5hlNieiRqHcldAk8817H_OBlhFGqnpalbMpBiFbYZi_KeBIWXGFjVwtjiN4l_-XZXvGXUxLySVS3yKWISlmUfbD9ub7vPM7AY-A1En--E363B_uvvQDlQpDdfTAt1oZqhPW1vFa8YQgl9TffbK7uQWVPA"
+      }
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+          "expires_at": "2026-12-05T08:12:00Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+          "test": false
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": {
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg"
+      }
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+          "account_ref": "dGVzdC1zdWJqZWN0LWFjY291bnQ",
+          "expires_at": "2026-11-28T10:58:00.000Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+          "test": true
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "K7MP",
+          "account_ref": "dGVzdC1zdWJqZWN0LWFjY291bnQ",
+          "expires_at": "2026-11-28T10:58:00.000Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+          "test": true
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "K7MP_Q2RX",
+          "account_ref": "dGVzdC1zdWJqZWN0LWFjY291bnQ",
+          "expires_at": "2026-11-28T10:58:00.000Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+          "test": true
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "K7MP-Q2RX",
+          "account_ref": "dGVzdC1zdWJqZWN0LWFjY291bnQ",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+          "test": true
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "K7MP-Q2RX",
+          "account_ref": "dGVzdC1zdWJqZWN0LWFjY291bnQ",
+          "expires_at": "2026-11-28T10:58:00.000Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+          "test": "true"
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "K7MP-Q2RX",
+          "account_ref": "dGVzdC1zdWJqZWN0LWFjY291bnQ",
+          "expires_at": "2026-11-28T10:58:00.000Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+          "test": 1
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
+      "rule": "seal",
+      "input": {
+        "message": {
+          "provider": "trackman",
+          "token": "K7MP-Q2RX",
+          "account_ref": "dGVzdC1zdWJqZWN0LWFjY291bnQ",
+          "expires_at": "2026-11-28T10:58:00.000Z",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+          "test": null
+        },
+        "key": "V3AkokQxcb4Lu-CjPyCnth0dmxHg6ho2Ma9CRWBij3g",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "d4ti8AAOC9po7qxqsE5RhU0KNN9fpvDMm7Xf8vJmrkI"
+      },
+      "expected": null
+    },
+    {
       "rule": "open",
       "input": {
         "box": "w2DmPNTOHkmIH6_DguicxDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRIg",
@@ -727,6 +905,119 @@
       "rule": "open",
       "input": {
         "box": "E-4_XFvyIhF76RQI1AOmHg",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "F70E8c5W_5uDjpuXixIG7Dx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1CVnJE1_-EuOOB17gh2mlSHo-x53rAMqkfZJbPokqxS3qQ4mmo7Kx-ZorjGJQm2Zqy3Q45mwZRakxcHv1s0X1n5BxrdJZlq_j7uHmSD8sf1Hb5ckQZs7YhXJDp2awBodL1CWoqNEfuttVE5hlNieiRqHcldAk8817H_OBlhFGqnpalbMpBiFbYZi_KeBIWXGFjVwtjiN4l_-XZXvGXUxLySVS3yKWISlmUfbD9ub7vPM7AY-A1En--E363B_uvvQDlQpDdfTAt1oZqhPW1vFa8YQgl9TffbK7uQWVbRl1_vyjhFgYWoxBQA",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": {
+        "provider": "trackman",
+        "token": "K7MP-Q2RX",
+        "account_ref": "dGVzdC1zdWJqZWN0LWFjY291bnQ",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+        "expires_at": "2026-11-28T10:58:00.000Z",
+        "test": true
+      }
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "bk7724QxxnU-sU2rW6Mj8jx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRc7Xh3EuP0K8VpNnqsg0",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": {
+        "provider": "trackman",
+        "token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJzeW50aGV0aWMtcGxheWVyIn0.c3ludGhldGlj",
+        "account_ref": "c3ludGhldGljLWFjY291bnQtcmVm",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+        "expires_at": "2026-12-05T08:12:00Z"
+      }
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "KLJmFaAeOvn70loz1qwkVzx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRc7Xh3EuP0K8Ht8D8qg",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "lZ38je9BpfC7_flILkRp8jx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1CVnJE1_-EuOOB17gh2mlSHo-x53rAMqkfZJbPokqxS3qQ4mmo7Kx-ZorjGJQm2Zqy3Q45mwZRakxcHv1s0X1n5BxrdJZlq_j7uHmSD8sf1Hb5ckQZs7YhXJDp2awBodL1CWoqNEfuttVE5hlNieiRqHcldAk8817H_OBlhFGqnpalbMpBiFbYZi_KeBIWXGFjVwtjiN4l_-XZXvGXUxLySVS3yKWISlmUfbD9ub7vPM7AY-A1En--E363B_uvvQDlQpDdfTAt1oZqhPW1vFa8YQgl9TffbK7uQWVbRl1_vyjhFhOXItRWM_y",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "AMuN4iKm6GxYnrjM-VjoKjx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1CVnJE1_-EuOOB17gh2mlSHo-x53rAMqkfZJbPokqxS3qQ4mmo7Kx-ZorjGJQm2Zqy3Q45mwZRakxcHv1s0X1n5BxrdJZlq_j7uHmSD8sf1Hb5ckQZs7YhXJDp2awBodL1CWoqNEfuttVE5hlNieiRqHcldAk8817H_OBlhFGqnpalbMpBiFbYZi_KeBIWXGFjVwtjiN4l_-XZXvGXUxLySVS3yKWISlmUfbD9ub7vPM7AY-A1En--E363B_uvvQDlQpDdfTAt1oZqhPW1vFa8YQgl9TffbK7uQWVbRl1_vyjhFgCXZVIQA",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "_KxMyR41dvivRQ91rNIu-jx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1CVnJE1_-EuOOB17gh2mlSHo-x53rAMqkfZJbPokqxS3qQ4mmo7Kx-ZorjGJQm2Zqy3Q45mwZRakxcHv1s0X1n5BxrdJZlq_j7uHmSD8sf1Hb5ckQZs7YhXJDp2awBodL1CWoqNEfuttVE5hlNieiRqHcldAk8817H_OBlhFGqnpalbMpBiFbYZi_KeBIWXGFjVwtjiN4l_-XZXvGXUxLySVS3yKWISlmUfbD9ub7vPM7AY-A1En--E363B_uvvQDlQpDdfTAt1oZqhPW1vFa8YQgl9TffbK7uQWVbRl1_vyjhFhdVQ",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "-2AAwDnODPtFSdphbHqAJzx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOKxDoQ9iZTDi3hDjzS0Y5xKv9LcDxDtpQEIw8xTuSV93fjLqh1LBMiVxZmHUilxJvuFx8P7s1X0boomf-qJRS2ZEyyq__u_-7DHZZL2mOkp9PfNjK1D8Q-COEUPQbxDDv4Kwd7tJOA_03eA6KUKL8rvdhn9FyDrmGlw1KqUkMl9xbNnlCWIK1NNoJYgCfnlZCjTU5z6bfdQPzDlQ-qzcwxjKNc3UoQdLD5vLzr7ljRZiUxyqgtwS--zaVxpYflU5DTvmPnlpB4T-vo5xcw4UjnJ7OB6SqvAXocBtt8uSyhi8NS9lrbs3XKCVFpe3BDK0LEZWy4iIsec_k2wSURkoj4qeojQZTsC7nnS_BaU2xfb3AfCOmhqp7QlM3nMN2n_TRc7Xh3EuP0K9Ro9T1pBVrLg",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "Ht_kIg4pb9vv2x9jkeM5NTx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1CVnJE1_-EuOOB17gh2mlSHo-x53rAMqkfZJbPokqxS3qQ4mmo7Kx-ZorjGJQm2Zqy3Q45mwZRakhe27unkHhpZ9xrdJZ6fCrsaC7GD0raTXK_Zp1NpuG0GdT1Aa_BMI5yTmjv64xjp4KX-VuNAakV62QtNBo5qwYH4PB5jhZtHME4pUbGGhGHsbgcqtZOBOQnEw591dZsrjSKV_MW0xD_2ZhmSv3HDZoXc3Du5ynje05CZiCxxOqvhnwrSPIht1S",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "9tlYcH56T00e1aVIhHmlhTx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1CVnJE1_-EuOOB17gh2mlSHo-x53rAMqkfZJbPokqxS3qQ4mmo7Kx-ZorjGJQm2Zqy3Q45mwZRakxcHv1s0X1n5BxrdJZ1_C-tu77W2dtIne1tJRAMIDKj34--CyDSMcIjmPj6q5WtO5TCNQ6L0qObJ2QkOFjqY0uH5S75kgRmy5B2ZkSNiF_UJPwCNZITguF_RQC02ZDm_a5LEKICFwxtDQkxzf3eRJCYOzquI3-obdoEf3Lhgyg5E2f-DXTn90AhFNvL6XY0hNYtRmMgp4P5585l4Y",
+        "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
+        "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
+        "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"
+      },
+      "expected": null
+    },
+    {
+      "rule": "open",
+      "input": {
+        "box": "ea61I6dPjjcYRu63gCuJLDx9Hh4vEzqYE02vNC-AZrRI21xr-JMQS4kEo86oqHr161IYG5x1JxfOc1zKWfvnCxHwimTkCy0x0KH2EMLyGMJaH_1qgwqcb5eVqvKRyoNRsW9Bvw8UpQMw0Q8CWOk6WSmw40X-sJh36pskxevz4u7lSSAoajTb-MEdCsXYj2lLrWbaCptZkQzv9qwLrttJONs4cQS5HvKStN5xr48nXvTd6EkJ7HYx3Z8XNjoScqCFZ-w4fk3L2UQ97CMlxsvDZVrOVQkk12Rp1k2EcQEjFODW5MH3n7lvetPaylH_-EPjuWaP05Bk_TJnUr3AnFYRpFy4k99e_MRsv5SMIZvvogyCBAo1o637hBYJW40GB5n9dGB5",
         "from": "lmkpKPbalVsQELHHcnIpg1sL2U4KIF0kA9J0Ek5Dvy0",
         "nonce": "P78Lo5LjcgmeryiX_ZgizR00G9IpLnAb",
         "secret": "6j40DDHe3HPSbcm8PnlWWTKcs6m-Xzdh43SmdptuArY"

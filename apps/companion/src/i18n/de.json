@@ -137,6 +137,8 @@
   "test.end": "Test-Modus beenden",
   "test.endTitle": "Test-Modus beenden?",
   "test.endText": "Die erfundenen Daten verlassen dieses Handy, und das Synchronisieren zu {target} pausiert. Was dort angekommen ist, bleibt dort; du kannst es in der App löschen.",
+  "test.inTarget": "Starte den Test in {name}: Schickt die App dich hierher zur Anmeldung, gibst du dort den Testcode ein.",
+  "test.signinLine": "Test-Modus: {name} bekommt den Testcode statt deiner Anmeldung, längstens bis {until}.",
   "error.codeExpired": "Dieser Testcode ist abgelaufen. Hol dir in deiner App einen neuen.",
   "error.testUnavailable": "Diese App hat keinen Test-Modus.",
   "error.notTestAccount": "Testcodes gehen nur mit einem Testkonto dieser App. Deine Verbindung bleibt, wie sie ist.",

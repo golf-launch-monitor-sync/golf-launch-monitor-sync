@@ -117,6 +117,23 @@ export function readIncoming(url: unknown, providers: readonly string[], pairing
   return { kind: 'sync', ...(link.target ? { target: link.target } : {}), ...(link.return ? { return: link.return } : {}) };
 }
 
+/** Where a test link goes (spec 1.28.0): into an open sign-in question, to test mode, or home with a sentence. */
+export type TestRoute = { to: 'handover' } | { to: 'test'; keys: string[] } | { to: 'home'; message: 'pairFirst' } | { to: 'home'; message: 'inTarget'; name: string };
+
+/**
+ * A test link's way (spec 1.28.0): into the sign-in question that is open for one of its pairings (a QR scanned
+ * meanwhile brings its code there); else test mode for its pairings that this app fetches for; a connection that only
+ * signs in takes a test code only in a question its app asks, so outside one the tester hears to start there.
+ */
+export function routeTestLink(open: { pairing: string } | null, keys: readonly string[], pairings: readonly { key: string; mode?: string; target: { name: string } }[]): TestRoute {
+  if (open && keys.includes(open.pairing)) return { to: 'handover' };
+  const mine = pairings.filter((p) => keys.includes(p.key));
+  const fetching = mine.filter((p) => p.mode !== 'signin_only').map((p) => p.key);
+  if (fetching.length) return { to: 'test', keys: fetching };
+  const only = mine.find((p) => p.mode === 'signin_only');
+  return only ? { to: 'home', message: 'inTarget', name: only.target.name } : { to: 'home', message: 'pairFirst' };
+}
+
 /** The pairings a test code may be for: those of the named target, else all (a test link never pairs). */
 export function testPairings(pairings: readonly KeyedPairing[], target?: string): string[] {
   const base = target?.replace(/\/+$/, '');

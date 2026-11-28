@@ -325,6 +325,14 @@ export function Home({
                   {hostOf(p.base)} · {svc.providers[p.provider as ProviderId]?.name ?? p.provider}
                 </Small>
                 {svc.tests.of(p.key) && <Small>{t('test.pairingLine', { name: svc.tests.of(p.key)?.name ?? '' })}</Small>}
+                {/* Spec 1.28.0: a test code stands in for the sign-in that app gets (test mode, made-up data). */}
+                {svc.testSignIns.get(p.key) && (
+                  <>
+                    <Text style={s.badge}>{t('test.badge')}</Text>
+                    <Small>{t('test.signinLine', { name: p.target.name, until: when(svc.testSignIns.get(p.key)?.validUntil ?? '', now, lang, t) })}</Small>
+                    <Button label={t('test.end')} kind="secondary" busy={busy === `testsignin-${p.key}`} onPress={() => void act(`testsignin-${p.key}`, () => svc.testSignIns.forget(p.key))} />
+                  </>
+                )}
                 {/* Spec 1.27.0: that app fetches itself; nothing of its runs is this app's to show. */}
                 {p.mode === 'signin_only' ? <Small>{t('pairing.signinOnly', { name: p.target.name })}</Small> : <Small>{runText(svc.runner.lastRun(p.key), now, lang, t)}</Small>}
                 <View style={s.row}>

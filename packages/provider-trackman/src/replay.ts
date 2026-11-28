@@ -31,6 +31,8 @@ export interface ReplayOptions {
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
   /** In [0, 1): where each response time falls around its median. */
   random?: () => number;
+  /** When the made-up sign-in runs out (ms; spec 1.28.0): from then the made-up Trackman refuses it with 401. */
+  signinUntil?: number;
 }
 
 export interface Replay extends TrackmanProvider {
@@ -61,6 +63,7 @@ export function replay(scenario: TestScenario, opts: ReplayOptions = {}): Replay
   const random = opts.random ?? Math.random;
   fake.delay = (req) => sampleMs(latencyOf(scenario.latency, req.name), random);
   if (opts.sleep) fake.sleep = opts.sleep;
+  if (opts.signinUntil !== undefined) fake.expiresAt = opts.signinUntil;
   // What `trackman()` runs, with its own memory between chunks; only the requests go to the fake.
   const state = freshState();
   const via = (ctx: ProviderContext) => withFetch(ctx, fake.fetch);

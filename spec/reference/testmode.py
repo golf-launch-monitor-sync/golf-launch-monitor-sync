@@ -6,6 +6,9 @@
 client plays back to its real provider code instead of asking the provider. The answer is untrusted like
 everything a target sends: read strictly, the required parts must be right or the scenario is refused; a
 bad response time is dropped (it only shapes the pace) - never an exception, never a guess.
+
+Since 1.28.0 a scenario may say how long a test sign-in lasts (`signin_valid_s`), for a client that only signs in for a
+target app (spec/test-mode.md, *Only signing in for a target*); `signin_until` is when the one it hands over runs out.
 """
 
 from __future__ import annotations
@@ -22,6 +25,8 @@ MAX_BYTES = 64 * 1024 * 1024
 MAX_LATENCY_S = 60
 #: At most this many queries with a response time of their own; the rest are dropped.
 MAX_QUERIES = 50
+#: How long a test sign-in handed to a target app may last (seconds, 1.28.0: `signin_valid_s`); outside, dropped.
+MIN_SIGNIN_S, MAX_SIGNIN_S = 60, 366 * 86400
 
 _PROVIDER = re.compile(r"[a-z][a-z0-9_-]{1,39}", re.ASCII)
 _SUBJECT = re.compile(r"[\x21-\x7e]{1,200}", re.ASCII)
@@ -92,6 +97,30 @@ def read_scenario(answer: Any, now: str) -> dict[str, Any]:
             entry = _latency(v)
             if entry is not None and _QUERY.fullmatch(q) and len(latency["queries"]) < MAX_QUERIES:
                 latency["queries"][q] = entry
-    return {"ok": True, "scenario": {"name": name, "provider": provider, "subject": subject,
-                                     "profile": answer["profile"], "data": answer["data"], "latency": latency,
-                                     "valid_until": until}}
+    scenario = {"name": name, "provider": provider, "subject": subject, "profile": answer["profile"],
+                "data": answer["data"], "latency": latency, "valid_until": until}
+    valid_s = answer.get("signin_valid_s")
+    # Only a whole number of seconds in range (600.0 is 600: JSON doesn't tell them apart in every language); anything
+    # else is dropped, and the sign-in lasts to `valid_until`.
+    if (isinstance(valid_s, (int, float)) and not isinstance(valid_s, bool) and float(valid_s).is_integer()
+            and MIN_SIGNIN_S <= valid_s <= MAX_SIGNIN_S):
+        scenario["signin_valid_s"] = int(valid_s)
+    return {"ok": True, "scenario": scenario}
+
+
+def iso_ms(ms: int) -> str:
+    """Milliseconds since 1970 as an RFC 3339 time in UTC with milliseconds - as JavaScript's toISOString writes it."""
+    t = datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(milliseconds=ms)
+    return t.strftime("%Y-%m-%dT%H:%M:%S.") + f"{ms % 1000:03d}Z"
+
+
+def signin_until(scenario: dict[str, Any], now_ms: int) -> str | None:
+    """When a test sign-in handed over at `now_ms` runs out (1.28.0): `signin_valid_s` from now, never past the test's
+    end (`valid_until`); without `signin_valid_s`, the test's end. None when the test is over already: nothing to hand
+    over."""
+    until = instant_ms(scenario["valid_until"])
+    if now_ms >= until:
+        return None
+    valid_s = scenario.get("signin_valid_s")
+    end = until if valid_s is None else min(until, now_ms + valid_s * 1000)
+    return iso_ms(end)

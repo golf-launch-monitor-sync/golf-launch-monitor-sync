@@ -12,10 +12,14 @@
  *   one the target connected is never handed over (`other_account`).
  * - Nothing here fetches anything from the provider; the asking app does that itself, with the browser's User-Agent
  *   handed over with the key.
+ * - Test mode (spec 1.28.0, spec/test-mode.md *Only signing in for a target*): instead of signing in, the tester enters
+ *   the asking app's test code; after "Is this your account?" the code goes over as the sign-in (`test: true`), of the
+ *   scenario's made-up account, running out after the scenario's `signin_valid_s`. Kept here per pairing (TestSignIns),
+ *   it is handed over again with a new end at every question while the test lasts - the renewal, without asking.
  */
 
-import { accountRefOf, base64url, sha256, utf8 } from '@glmsync/core';
-import { returnAllowed } from '@glmsync/spec';
+import { accountRefOf, base64url, cleanUserAgent, sha256, utf8 } from '@glmsync/core';
+import { instantMs, returnAllowed, testSigninUntil } from '@glmsync/spec';
 import { seal, withAnswer, type HandedOver } from '@glmsync/spec/handover';
 
 /** A key that runs out within this long is renewed first, so the asking app holds one that lasts (its own reminder comes two days before). */
@@ -28,6 +32,30 @@ export interface Ask {
   key?: string;
   nonce?: string;
   back: string;
+}
+
+/** A test sign-in kept for a pairing (spec 1.28.0): what the tester confirmed, from the asking app's scenario. */
+export interface TestHeld {
+  /** The asking app's test code: it goes over as the token. */
+  code: string;
+  /** The scenario's made-up account. */
+  subject: string;
+  /** The User-Agent of this phone's browser (a web view's, as at a real sign-in). */
+  userAgent: string;
+  /** The test's end (the scenario's `valid_until`). */
+  validUntil: string;
+  /** How long each handed-over sign-in lasts (the scenario's `signin_valid_s`); none: to the test's end. */
+  signinValidS?: number;
+}
+
+/** A minute to spare: a test sign-in that would end within it is none (as a key is for the engine). */
+const SLACK_MS = 60_000;
+
+/** When a test sign-in handed over now would run out (ms), or null when the test can't give one that lasts any more. */
+export function testUntil(test: TestHeld, now: number): string | null {
+  const until = testSigninUntil({ valid_until: test.validUntil, ...(test.signinValidS !== undefined ? { signin_valid_s: test.signinValidS } : {}) }, now);
+  const ms = until === null ? null : instantMs(until);
+  return ms !== null && ms - now > SLACK_MS ? until : null;
 }
 
 export interface HandoverState {
@@ -47,6 +75,8 @@ export interface HandoverState {
   signedIn: boolean;
   /** The player left the sign-in without signing in. */
   cancelled?: boolean;
+  /** A test sign-in kept for this pairing (spec 1.28.0), when there is one. */
+  test?: TestHeld | null;
 }
 
 export type HandoverOutcome = { signin: 'sealed'; message: HandedOver } | { signin: 'none' | 'other_account' | 'failed' };
@@ -57,6 +87,13 @@ const answer = (a: HandoverOutcome): HandoverStep => ({ do: 'answer', answer: a 
 
 /** What to do next for the question, from where the sign-in stands. */
 export function nextStep(st: HandoverState): HandoverStep {
+  // A test that still lasts speaks for the pairing (spec 1.28.0): its code goes over, with a new end each time.
+  const until = st.test ? testUntil(st.test, st.now) : null;
+  if (st.test && until) {
+    const ref = accountRefOf(st.salt, st.provider, st.test.subject);
+    if (st.bound && ref !== st.bound) return answer({ signin: 'other_account' });
+    return answer({ signin: 'sealed', message: { provider: st.provider, token: st.test.code, account_ref: ref, expires_at: until, user_agent: st.test.userAgent, test: true } });
+  }
   const h = st.held;
   const usable = !!h && !!h.userAgent;
   const lasts = usable && (h.expiresAt === null || h.expiresAt - st.now > RENEW_WITHIN_MS);
@@ -126,4 +163,14 @@ export function pickPairing<P extends { base: string; provider: string; target: 
 ): P | null {
   const base = link.target ? bare(link.target) : null;
   return pairings.find((p) => p.provider === link.provider && (base === null || bare(p.base) === base) && returnAllowed(link.return, p.target.return_prefixes)) ?? null;
+}
+
+/** What the empty web view said (UserAgentProbe): its User-Agent, if it is a header value; null for anything else. */
+export function probeUserAgent(data: unknown): string | null {
+  if (typeof data !== 'string' || data.length > 2_000) return null;
+  try {
+    return cleanUserAgent((JSON.parse(data) as { ua?: unknown }).ua);
+  } catch {
+    return null;
+  }
 }

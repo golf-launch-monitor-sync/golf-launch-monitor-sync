@@ -7,6 +7,10 @@
  * The answer of `GET /test-scenario` is untrusted like everything a target sends: the required parts must
  * be right or the scenario is refused; a bad response time is dropped (it only shapes the pace). Never an
  * exception, never a guess.
+ *
+ * Since 1.28.0 a scenario may say how long a test sign-in lasts (`signin_valid_s`), for a client that only signs in for
+ * a target app (spec/test-mode.md, *Only signing in for a target*); `testSigninUntil` is when the one it hands over runs
+ * out.
  */
 
 /** A scenario larger than this (bytes of the answer's body) a client refuses before reading it. */
@@ -15,6 +19,9 @@ export const TEST_SCENARIO_MAX_BYTES = 64 * 1024 * 1024;
 export const TEST_SCENARIO_MAX_LATENCY_S = 60;
 /** At most this many queries with a response time of their own; the rest are dropped. */
 export const TEST_SCENARIO_MAX_QUERIES = 50;
+/** How long a test sign-in handed to a target app may last (seconds, 1.28.0); outside, `signin_valid_s` is dropped. */
+export const TEST_SIGNIN_MIN_S = 60;
+export const TEST_SIGNIN_MAX_S = 366 * 86_400;
 /** The header that carries the test code (never the address). */
 export const TEST_CODE_HEADER = 'X-Test-Code';
 /** What a test code looks like (the same as a pairing code). */
@@ -35,6 +42,8 @@ export interface TestScenario {
   data: Record<string, unknown>;
   latency: { default?: Latency; queries: Record<string, Latency> };
   valid_until: string;
+  /** How long a test sign-in handed to a target app lasts (seconds; 1.28.0); none: to `valid_until`. */
+  signin_valid_s?: number;
 }
 
 export type TestScenarioResult = { ok: true; scenario: TestScenario } | { ok: false; error: string };
@@ -116,5 +125,20 @@ export function readTestScenario(answer: unknown, now: string): TestScenarioResu
       }
     }
   }
-  return { ok: true, scenario: { name, provider, subject, profile, data, latency: lat, valid_until: answer.valid_until as string } };
+  const scenario: TestScenario = { name, provider, subject, profile, data, latency: lat, valid_until: answer.valid_until as string };
+  const validS = answer.signin_valid_s;
+  // Only a whole number of seconds in range; anything else is dropped (then the sign-in lasts to `valid_until`).
+  if (typeof validS === 'number' && Number.isInteger(validS) && validS >= TEST_SIGNIN_MIN_S && validS <= TEST_SIGNIN_MAX_S) scenario.signin_valid_s = validS;
+  return { ok: true, scenario };
+}
+
+/**
+ * When a test sign-in handed over at `nowMs` runs out (1.28.0): `signin_valid_s` from now, never past the test's end
+ * (`valid_until`); without it, the test's end. null when the test is over already: nothing to hand over.
+ */
+export function testSigninUntil(scenario: { valid_until: string; signin_valid_s?: number }, nowMs: number): string | null {
+  const until = instantMs(scenario.valid_until);
+  if (until === null || !Number.isFinite(nowMs) || nowMs >= until) return null;
+  const end = scenario.signin_valid_s === undefined ? until : Math.min(until, nowMs + scenario.signin_valid_s * 1000);
+  return new Date(end).toISOString();
 }

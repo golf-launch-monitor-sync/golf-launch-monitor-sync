@@ -9,12 +9,18 @@
  * sealed with NaCl's box (TweetNaCl) for that key alone (`seal`, `withAnswer`). The target reads the answer
  * (`readHandover`) and opens it with its secret key (`openSealed`). An app that catches the way back reads nothing.
  *
+ * Since 1.28.0 a sign-in may be a test mode's (spec/test-mode.md, *Only signing in for a target*): `test` true, the token
+ * a target's test code, never a provider's key, and `expires_at` always there. A target tells the two apart by `test`.
+ *
  * base64url, UTF-8 and the times are read here by hand, the same in a browser, in Node and on a phone (where neither
  * Buffer nor a strict TextDecoder can be relied on), and as strictly as the reference reads them.
  */
 
 import nacl from 'tweetnacl';
 import { b64url, KEY_LEN, NONCE_LEN, unb64url, validKey } from './b64url.ts';
+import { isObject, readHandedOver, type HandedOver } from './handedOver.ts';
+
+export { readHandedOver, type HandedOver } from './handedOver.ts';
 
 export { b64url, unb64url, validKey, validNonce } from './b64url.ts';
 
@@ -26,24 +32,6 @@ export const HANDOVER_MAX_ANSWER = 8192;
 const ANSWER_KEYS = new Set(['signin', 'from', 'box']);
 const TAG_LEN = 16;
 const MAX_MESSAGE = 6000;
-const TOKEN = /^[\x21-\x7e]{1,4096}$/;
-const USER_AGENT = /^[\x20-\x7e]{1,512}$/;
-const PROVIDER = /^[a-z][a-z0-9_-]{1,39}$/;
-const ACCOUNT_REF = /^[A-Za-z0-9_-]{16,128}$/;
-const TIME = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]{1,9})?(Z|[+-]([0-9]{2}):([0-9]{2}))$/;
-
-/** The handed-over sign-in, as a target reads it. */
-export interface HandedOver {
-  provider: string;
-  /** The provider's key, as it goes into its requests. */
-  token: string;
-  /** Which provider account (spec/olmd.md, `account_ref`, with the target's salt). */
-  account_ref: string;
-  /** When the key runs out, when the provider's key says (RFC 3339). */
-  expires_at?: string;
-  /** The User-Agent of the browser the player signed in with on this device: every call to the provider carries it. */
-  user_agent: string;
-}
 
 export type HandoverAnswer = { signin: 'sealed'; from: string; box: string } | { signin: Exclude<HandoverResult, 'sealed'> };
 
@@ -86,42 +74,12 @@ function fromUtf8(b: Uint8Array): string | null {
   return out;
 }
 
-// --- reading what was handed over -------------------------------------------------------------
-
-const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
-
-function daysIn(y: number, m: number): number {
-  return [31, y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1] ?? 0;
-}
-
-/** An RFC 3339 time with its zone, exactly as given (a time a reader would have to guess at is none). */
-function exactTime(t: unknown): t is string {
-  if (typeof t !== 'string') return false;
-  const m = TIME.exec(t);
-  if (!m) return false;
-  const [y, mo, d, h, mi, s] = m.slice(1, 7).map(Number) as [number, number, number, number, number, number];
-  if (y < 1 || mo < 1 || mo > 12 || d < 1 || d > daysIn(y, mo) || h > 23 || mi > 59 || s > 59) return false;
-  return m[7] === 'Z' || (Number(m[8]) <= 23 && Number(m[9]) <= 59);
-}
-
-/** The handed-over sign-in read strictly: one wrong required value and it is none (a target never keeps half of one). */
-export function readHandedOver(data: unknown): HandedOver | null {
-  if (!isObject(data) || data.v !== 1) return null;
-  const { provider, token, account_ref: ref, user_agent: ua } = data;
-  if (typeof provider !== 'string' || !PROVIDER.test(provider)) return null;
-  if (typeof token !== 'string' || !TOKEN.test(token)) return null;
-  if (typeof ref !== 'string' || !ACCOUNT_REF.test(ref)) return null;
-  if (typeof ua !== 'string' || !USER_AGENT.test(ua) || ua !== ua.trim()) return null;
-  const out: HandedOver = { provider, token, account_ref: ref, user_agent: ua };
-  if (exactTime(data.expires_at)) out.expires_at = data.expires_at;
-  return out;
-}
-
 /** The message as it is sealed: compact JSON, the keys in the spec's order. */
 function messageBytes(m: HandedOver): Uint8Array {
   const o: Record<string, unknown> = { v: 1, provider: m.provider, token: m.token, account_ref: m.account_ref };
   if (m.expires_at !== undefined) o.expires_at = m.expires_at;
   o.user_agent = m.user_agent;
+  if (m.test === true) o.test = true; // only a test sign-in says so
   return utf8(JSON.stringify(o));
 }
 

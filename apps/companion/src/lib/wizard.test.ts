@@ -54,6 +54,8 @@ describe('connecting as steps on the phone', () => {
     ];
     expect(testKeys(pairings, 'trackman', (k) => k === 'b')).toEqual(['a']);
     expect(testKeys(pairings, 'trackman', () => true)).toEqual([]);
+    // Spec 1.28.0: a connection that only signs in takes its test code in the sign-in question instead.
+    expect(testKeys([...pairings.map((p) => ({ ...p, mode: 'signin_only' as const }))], 'trackman', () => false)).toEqual([]);
     const f = testAccount();
     expect(f.test).toBe(true);
     expect(wizardText(f, 'de', words).view.step).toBe('account');

@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Reginald Stadlbauer
 import type { Pairing } from '@glmsync/core';
 import { describe, expect, it } from 'vitest';
-import { backAfterPairing, backTo, hostOf, Once, readIncoming } from './links.ts';
+import { backAfterPairing, backTo, hostOf, Once, readIncoming, routeTestLink } from './links.ts';
 import type { KeyedPairing } from '@glmsync/engine';
 
 const PROVIDERS = ['trackman', 'demo'];
@@ -224,5 +224,26 @@ describe('signing in for an app that fetches itself (spec 1.27.0)', () => {
       kind: 'pair', mode: 'signin_only', return: 'exampleapp://paired', ask: { key: K, nonce: N },
     });
     expect(readIncoming('glmsync://pair?target=https%3A%2F%2Fapp.example.org%2Flm%2Fv1&code=K7M2PQ9X', PROVIDERS, [])).not.toHaveProperty('mode');
+  });
+});
+
+describe('a test link (spec 1.28.0: at a connection that only signs in)', () => {
+  const pairing = (key: string, mode?: 'signin_only') => ({ key, target: { name: `App ${key}` }, ...(mode ? { mode } : {}) });
+
+  it('goes into the sign-in question that is open for its pairing (a QR scanned meanwhile)', () => {
+    expect(routeTestLink({ pairing: 'a' }, ['a'], [pairing('a', 'signin_only')])).toEqual({ to: 'handover' });
+  });
+
+  it('starts the test of a connection that fetches itself, as before', () => {
+    expect(routeTestLink(null, ['a', 'b'], [pairing('a'), pairing('b', 'signin_only')])).toEqual({ to: 'test', keys: ['a'] });
+  });
+
+  it('at a connection that only signs in, outside a question: says to start in that app', () => {
+    expect(routeTestLink(null, ['b'], [pairing('b', 'signin_only')])).toEqual({ to: 'home', message: 'inTarget', name: 'App b' });
+    expect(routeTestLink({ pairing: 'x' }, ['b'], [pairing('b', 'signin_only')])).toEqual({ to: 'home', message: 'inTarget', name: 'App b' });
+  });
+
+  it('without a pairing of its app: to pair first', () => {
+    expect(routeTestLink(null, [], [])).toEqual({ to: 'home', message: 'pairFirst' });
   });
 });

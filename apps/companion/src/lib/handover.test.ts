@@ -3,7 +3,7 @@
 import { accountRefOf } from '@glmsync/core';
 import { newQuestion, openSealed, readHandover } from '@glmsync/spec/handover';
 import { describe, expect, it } from 'vitest';
-import { answerSecret, answerUrl, nextStep, pickPairing, RENEW_WITHIN_MS, type Ask, type HandoverState } from './handover';
+import { answerSecret, answerUrl, nextStep, pickPairing, probeUserAgent, RENEW_WITHIN_MS, type Ask, type HandoverState, type TestHeld } from './handover';
 
 const NOW = Date.parse('2026-11-28T09:00:00Z');
 const DAY = 86_400_000;
@@ -103,5 +103,67 @@ describe('which connection a signin link is for', () => {
     expect(pickPairing({ ...link, target: 'https://other.example.net/lm/v1' }, [other, caddie])).toBeNull();
     expect(pickPairing({ ...link, return: 'evilapp://x' }, [other, caddie])).toBeNull();
     expect(pickPairing(link, [])).toBeNull();
+  });
+});
+
+describe('a test sign-in (spec 1.28.0): the tester’s code instead of the provider’s sign-in', () => {
+  const MIN = 60_000;
+  const test = (over: Partial<TestHeld> = {}): TestHeld => ({
+    code: 'K7MP-Q2RX', subject: 'caddie-test-T21-a-leon', userAgent: UA, validUntil: new Date(NOW + 7 * DAY).toISOString(), signinValidS: 600, ...over,
+  });
+
+  it('hands over the code as the sign-in, of the scenario’s made-up account, running out after signin_valid_s - before any real key held', () => {
+    expect(nextStep(state({ test: test() }))).toEqual({
+      do: 'answer',
+      answer: {
+        signin: 'sealed',
+        message: {
+          provider: 'trackman', token: 'K7MP-Q2RX', account_ref: accountRefOf(SALT, 'trackman', 'caddie-test-T21-a-leon'),
+          expires_at: new Date(NOW + 10 * MIN).toISOString(), user_agent: UA, test: true,
+        },
+      },
+    });
+  });
+
+  it('never past the test’s end; without signin_valid_s, to the test’s end', () => {
+    const end = new Date(NOW + 5 * MIN).toISOString();
+    expect(nextStep(state({ test: test({ validUntil: end }) }))).toMatchObject({ answer: { message: { expires_at: new Date(NOW + 5 * MIN).toISOString() } } });
+    const { signinValidS: _, ...without } = test();
+    expect(nextStep(state({ test: without }))).toMatchObject({ answer: { message: { expires_at: new Date(NOW + 7 * DAY).toISOString(), test: true } } });
+  });
+
+  it('renews by handing it over again with a new end, as long as the code lasts, without asking', () => {
+    const later = nextStep(state({ test: test(), now: NOW + 3 * DAY, renewTried: false }));
+    expect(later).toMatchObject({ do: 'answer', answer: { message: { expires_at: new Date(NOW + 3 * DAY + 10 * MIN).toISOString() } } });
+  });
+
+  it('a test that is over (or ends within the minute) is no sign-in any more: the question goes on as without it', () => {
+    const over = test({ validUntil: new Date(NOW).toISOString() });
+    expect(nextStep(state({ test: over }))).toMatchObject({ answer: { message: { token: 'aaa.bbb.ccc' } } });
+    expect(nextStep(state({ test: test({ validUntil: new Date(NOW + 30_000).toISOString() }), held: null }))).toEqual({ do: 'renew' });
+  });
+
+  it('never for another account than the one the target connected', () => {
+    expect(nextStep(state({ test: test(), bound: accountRefOf(SALT, 'trackman', 'someone-else') }))).toEqual({ do: 'answer', answer: { signin: 'other_account' } });
+  });
+
+  it('goes back sealed, and the asking app reads it as a test’s', () => {
+    const q = newQuestion();
+    const step = nextStep(state({ test: test() }));
+    if (step.do !== 'answer') throw new Error('no answer');
+    const url = answerUrl({ key: q.key, nonce: q.nonce, back: 'exampleapp://signedin' }, step.answer, answerSecret({ importToken: 'glms_x', key: q.key, nonce: q.nonce, now: NOW }));
+    const a = readHandover(url);
+    if (a?.signin !== 'sealed') throw new Error('not sealed');
+    expect(openSealed(a.box, a.from, q.nonce, q.secret)).toMatchObject({ token: 'K7MP-Q2RX', test: true });
+    expect(url).not.toContain('K7MP-Q2RX');
+  });
+});
+
+describe('the browser of this phone, for a test sign-in (spec 1.28.0)', () => {
+  it('takes what the empty web view says only as a header value', () => {
+    expect(probeUserAgent(JSON.stringify({ ua: UA }))).toBe(UA);
+    for (const junk of [null, 7, '', 'not json', JSON.stringify({ ua: 'Mozilla/5.0 ü' }), JSON.stringify({ ua: '' }), JSON.stringify({ ua: 'x'.repeat(513) }), JSON.stringify([UA])]) {
+      expect(probeUserAgent(junk)).toBeNull();
+    }
   });
 });

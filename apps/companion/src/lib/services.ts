@@ -19,6 +19,7 @@ import { ChunkedSecrets, makeEngine, type Engine, type EnginePlatform } from '@g
 import { AutoFetch } from './autoFetch.ts';
 import { HcpSender, makeHcp } from './hcp.ts';
 import { LastPage, makePro } from './pro.ts';
+import { TestSignIns } from './testSignIns.ts';
 import { Wakes } from './wake.ts';
 
 // What fetches from a launch monitor's cloud is the engine's (packages/engine): this app runs it as before.
@@ -57,6 +58,8 @@ export interface Services extends Omit<Engine, 'load'> {
   seasonPages: SeasonKeeper;
   /** The player's page last sent from here (a world ranking's, a tour profile or his page on europeantour.com): where a window opens next time. */
   lastPage: LastPage;
+  /** Test sign-ins kept for apps that only ask this one to sign in (spec 1.28.0), per pairing. */
+  testSignIns: TestSignIns;
   /** Reads what this phone keeps; call once before using the rest. */
   load(): Promise<void>;
 }
@@ -89,6 +92,12 @@ export function makeServices(platform: Platform): Services {
     ...(platform.fetch ? { fetch: platform.fetch } : {}),
     ...(platform.now ? { now: platform.now } : {}),
   });
+  const testSignIns = new TestSignIns(secrets, platform.storage, platform.now ? { now: platform.now } : {});
+  // A test sign-in lasts only as long as its pairing (disconnected here, or ended by the app).
+  pairings.subscribe(() => {
+    const keys = new Set(pairings.list().map((p) => p.key));
+    for (const key of testSignIns.keys()) if (!keys.has(key)) void testSignIns.forget(key);
+  });
   return {
     providers: engine.providers,
     signIns: engine.signIns,
@@ -109,6 +118,11 @@ export function makeServices(platform: Platform): Services {
     runs: new RunKeeper(platform.storage, platform.now ?? Date.now),
     seasonPages: new SeasonKeeper(platform.storage),
     lastPage: new LastPage(platform.storage),
-    load: () => engine.load(),
+    testSignIns,
+    load: async () => {
+      await engine.load();
+      // After the pairings: a test sign-in whose pairing went while the app was closed goes too.
+      await testSignIns.load(pairings.list().map((p) => p.key));
+    },
   };
 }

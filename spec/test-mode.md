@@ -59,6 +59,7 @@ this path.
 | `data` | required | The provider's answers, in the provider's own shape (an object). For `trackman`: `activities` (newest first), `nodes` (each session's node, by activity id), `scorecards` (newest first), `shotHoles` (a scorecard's holes with their shots, by scorecard id) — what `packages/provider-trackman`'s test double answers. |
 | `latency` | | Response times in seconds: `default` and `queries` (by the provider's own name of the query, at most 50), each `{median_s, spread_s}`, 0–60. |
 | `valid_until` | required | When the test is over: RFC 3339 with its zone. |
+| `signin_valid_s` | | Since 1.28.0: how long a test sign-in handed to a target app lasts ([below](#only-signing-in-for-a-target)), whole seconds 60–31,622,400 (366 days). Anything else is dropped: the sign-in then lasts to `valid_until`. |
 
 A client **reads it strictly** ([`reference/testmode.py`](reference/testmode.py), vectors in
 [`testvectors/test-scenario.json`](testvectors/test-scenario.json)): a required field that isn't right, or a
@@ -84,6 +85,43 @@ never executed.
 - **A code is the target's secret, like a pairing code.** A target shows it only to the signed-in tester,
   never logs it, and keeps only what it needs to check it (a hash or an HMAC).
 
+## Only signing in for a target
+
+Since 1.28.0. A target app that fetches itself with this project's engine (client kind `embedded`) asks the companion
+app only for the sign-in ([deep-links.md](deep-links.md), *Signing in for a target*). Its test mode keeps that way
+whole: **only the provider is made up**; the question, the seal, the way back, the target app's engine, plan, lease and
+guard are the real ones.
+
+1. The target app asks for the sign-in as always (a signin link, or a pair link with `mode=signin`, with its key).
+2. In the step where the companion app asks the tester to sign in, it offers, small, *Enter a test code* instead; a
+   test link that comes while the question is open (the target's QR code, scanned meanwhile) brings its code there.
+3. The companion app asks the target for the scenario with **its own** pairing's import token and the code
+   (`GET /test-scenario`, as above) and asks *Is this your account?* about the scenario's `profile`.
+4. After the yes it hands over **the same sealed answer** as after a real sign-in, with a test sign-in in it:
+
+   | Field | Value |
+   | --- | --- |
+   | `token` | the test code (never a provider's key) |
+   | `account_ref` | the scenario's `subject`, salted as any account ([olmd.md](olmd.md)) |
+   | `expires_at` | `signin_valid_s` from now, never past `valid_until`; without it, `valid_until` ([`signin_until`](reference/testmode.py)) |
+   | `user_agent` | the User-Agent of this device's browser, as after a real sign-in |
+   | `test` | `true` |
+
+5. The target app tells it apart by `test` alone (a reader refuses any other value than `true` or `false`, and a test
+   sign-in whose token isn't a test code or that has no `expires_at`: [`read_message`](reference/handover.py)). Its
+   engine asks the target for the scenario with **its own** import token and the code, takes it only when the
+   scenario's `subject` gives the `account_ref` handed over, and plays it back as above, `test` on every batch. From
+   `expires_at` on, the made-up provider refuses the sign-in as the provider refuses a key that ran out (Trackman's: HTTP
+   401), and the engine says it is signed out - so the target app's way of asking for a new sign-in can be tried, and
+   its reminder before a sign-in runs out, with a short `signin_valid_s`.
+6. **Renewing**: the companion app keeps what the tester confirmed (the code, the subject) in its secure store, per
+   pairing, until `valid_until`, the pairing ends or the tester ends it, and at every later question of that target
+   app it hands the test sign-in over again with a new `expires_at`, without asking - as it renews a real one. The
+   engine only moves the end then: no second download of the scenario.
+
+A test link opened outside such a question, for a connection that only signs in, takes no code: the companion app
+says to start the test in the target app. A connection that fetches keeps the flow at the top of this page.
+
 ## The test link
 
 ```
@@ -93,4 +131,5 @@ glmsync://test?[target=<target base URL>&]code=<test code>
 Read like every link ([deep-links.md](deep-links.md)): `code` required (6–64 of `0-9 A-Z a-z -`), `target`
 picks the pairing when there are several. A client takes it only for a target it is **paired** with — a test
 link never pairs — and otherwise says to pair in the target app first. It carries no token and nothing to jump
-back to.
+back to. Since 1.28.0, at a connection that only signs in it goes into the sign-in question that is open
+([above](#only-signing-in-for-a-target)), and outside one it says to start in the target app.

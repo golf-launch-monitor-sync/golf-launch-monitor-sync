@@ -21,6 +21,7 @@ export * from './wake.ts';
 export * from './ask.ts';
 export * from './prores.ts';
 export * from './plan.ts';
+export { readHandedOver, type HandedOver } from './handedOver.ts';
 
 /** The load guard's limits (spec/guard.md). Normative. */
 export const GUARD_LIMITS = limits;

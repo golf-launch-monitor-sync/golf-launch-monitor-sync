@@ -58,8 +58,8 @@ once all of CI's checks of that commit are green (`.github/workflows/engine-rele
 ```jsonc
 // package.json of the app
 "dependencies": {
-  "glmsync-engine": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.3.0/glmsync-engine-0.3.0.tgz",
-  "glmsync-power": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.3.0/glmsync-power-0.3.0.tgz"
+  "glmsync-engine": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.4.0/glmsync-engine-0.4.0.tgz",
+  "glmsync-power": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.4.0/glmsync-power-0.4.0.tgz"
 }
 ```
 
@@ -103,6 +103,16 @@ out and the User-Agent of the browser it was signed in with. That side is the ta
 implements it against `spec/testvectors/handover.json` (the repository's own TypeScript of it is
 `packages/spec/src/handover.ts`, on TweetNaCl; it isn't part of this package). Its engine names itself `embedded` to its target, which then tells the companion
 app's connection `mode: signin_only` - one app fetches per account, the other only signs in.
+
+Once it opened the seal, the app hands the sign-in to its engine: `engine.runner.takeSignIn(pairingKey, handedOver)`
+reads it again strictly and keeps it - `'kept'`, a provider's key in the secure store with its User-Agent (only of the
+account the key itself opens, and of the one the target connected), or `'test'` for a test mode's (spec 1.28.0,
+[spec/test-mode.md](../../spec/test-mode.md#only-signing-in-for-a-target)): the engine fetches the target's scenario
+with its own import token and the code and plays it back, the made-up provider refusing the sign-in from its
+`expires_at` on; a later handover of the same test only moves that end. It throws `SignInRefused` (`unpaired`,
+`provider`, `other_account`, `invalid`, `expired`) or, for a code the target won't take, the target's error.
+`engine.runner.signInOf(pairingKey)` says where the sign-in stands - `{ test, expiresAt, valid }` or null - so the app
+knows when to ask for a new one.
 
 What an embedding app keeps to:
 

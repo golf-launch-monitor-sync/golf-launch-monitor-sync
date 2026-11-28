@@ -137,6 +137,8 @@
   "test.end": "End test mode",
   "test.endTitle": "End test mode?",
   "test.endText": "The made-up data leaves this phone and syncing to {target} pauses. What arrived there stays there; you can delete it in that app.",
+  "test.inTarget": "Start the test in {name}: when it sends you here to sign in, enter the test code there instead.",
+  "test.signinLine": "Test mode: {name} gets the test code instead of your sign-in, until {until} at the latest.",
   "error.codeExpired": "This test code has expired. Get a new one in your app.",
   "error.testUnavailable": "This app has no test mode.",
   "error.notTestAccount": "Test codes only work with a test account of that app. Your connection stays as it is.",

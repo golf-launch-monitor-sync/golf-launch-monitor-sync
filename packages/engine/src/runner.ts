@@ -48,17 +48,39 @@ import {
   type Storage,
   type SyncOutcome,
 } from '@glmsync/core';
-import { FORMAT, type Batch, type NoticeCode, type Reason, type TestScenario } from '@glmsync/spec';
+import { FORMAT, instantMs, readHandedOver, type Batch, type HandedOver, type NoticeCode, type Reason, type TestScenario } from '@glmsync/spec';
 import { replay } from '@glmsync/provider-trackman';
 import type { BackgroundRun } from './longRun.ts';
 import type { KeyedPairing, Pairings } from './pairings.ts';
-import type { SignIns } from './signins.ts';
+import { SLACK_MS, type SignIns } from './signins.ts';
 import { TestModeError, type TestMode, type Tests } from './tests.ts';
 
 /** How the engine names itself to a target unless the app gives a client of its own (the companion app's). */
 export const CLIENT: ClientKind = 'companion';
 export const CLIENT_NAME = 'Golf Stats Sync';
 export const GENERATOR = 'Golf Stats Sync companion';
+
+/**
+ * Why a handed-over sign-in (spec 1.27.0, 1.28.0) wasn't kept: no such pairing here; of another provider than the
+ * pairing's; of another provider account than the target's (or than the key itself opens); not one a target reads (a
+ * real key marked as a test one among them); run out already. A test code the target refuses comes as its TargetError.
+ */
+export class SignInRefused extends Error {
+  override name = 'SignInRefused';
+  constructor(readonly code: 'unpaired' | 'provider' | 'other_account' | 'invalid' | 'expired') {
+    super(`Sign-in not kept: ${code}`);
+  }
+}
+
+/** Where a pairing's sign-in stands, for the app that embeds the engine (when to ask for a new one). */
+export interface SignInState {
+  /** A test mode's (spec 1.28.0), not the provider's. */
+  test: boolean;
+  /** When it runs out (ms); null: it doesn't say. */
+  expiresAt: number | null;
+  /** Whether it should still work (with a minute to spare). */
+  valid: boolean;
+}
 
 export interface WhoAnswer {
   player: string | null;
@@ -381,10 +403,17 @@ export class Runner {
     return done;
   }
 
-  /** The pairing's test, if it has one that lasts: the scenario played back, and its made-up sign-in. */
-  private async testOf(p: KeyedPairing): Promise<{ provider: AppProvider; credential: string } | null> {
+  /**
+   * The pairing's test, if it has one that lasts: the scenario played back, and its made-up sign-in - none (`credential`
+   * null) once a test sign-in handed over has run out (spec 1.28.0), as a real key that ran out gives none.
+   */
+  private async testOf(p: KeyedPairing): Promise<{ provider: AppProvider; credential: string | null; subject: string } | null> {
     const r = (await this.opts.tests?.provider(p.key)) ?? null;
-    return r && r.id === p.provider ? { provider: r, credential: r.credential } : null;
+    if (!r || r.id !== p.provider) return null;
+    const m = this.opts.tests?.of(p.key);
+    const until = m?.signin_until === undefined ? null : instantMs(m.signin_until);
+    const ok = until === null || until > this.now() + SLACK_MS;
+    return { provider: r, credential: ok ? r.credential : null, subject: r.scenario.subject };
   }
 
   private async syncOne(p: KeyedPairing, reason: Reason): Promise<LastRun> {
@@ -392,7 +421,7 @@ export class Runner {
     const test = await this.testOf(p);
     let run: LastRun;
     if (test) {
-      run = await this.fetchFor(p, test.provider, test.credential, reason, true);
+      run = test.credential ? await this.fetchFor(p, test.provider, test.credential, reason, true) : await this.signedOut(p, reason, test.subject);
     } else if (!provider) {
       run = { at: this.now(), reason, status: 'failed', error: 'provider_unknown' };
     } else {
@@ -454,8 +483,12 @@ export class Runner {
         run.notice = outcome.notice.code;
         if (outcome.notice.until) run.until = outcome.notice.until;
       }
-      // The provider refused the sign-in: it goes, the mark stays for a quiet renewal (a test's is made up: never).
-      if (outcome.notice?.code === 'auth_expired' && !test) await this.opts.signIns.expire(p.provider);
+      // The provider refused the sign-in: it goes, the mark stays for a quiet renewal. A test's made-up one counts as run
+      // out (spec 1.28.0: a handed-over test sign-in past its end), until the next handover renews it.
+      if (outcome.notice?.code === 'auth_expired') {
+        if (test) await this.opts.tests?.expireSignin(p.key);
+        else await this.opts.signIns.expire(p.provider);
+      }
       // What the target has bound the pairing to: used to warn before a sign-in of another account.
       const subject = provider.subject(credential);
       if (subject && outcome.result.sessions + outcome.result.rounds + outcome.result.duplicates > 0) {
@@ -478,20 +511,22 @@ export class Runner {
    * due, the target hears why none comes (an empty batch with `auth_expired`, which also releases the
    * lease), so the target app can tell the player to sign in again here.
    */
-  private async signedOut(p: KeyedPairing, reason: Reason): Promise<LastRun> {
+  /** `testSubject`: a test sign-in handed over ran out (spec 1.28.0) - the target hears it of the test's made-up account. */
+  private async signedOut(p: KeyedPairing, reason: Reason, testSubject?: string): Promise<LastRun> {
     const run: LastRun = { at: this.now(), reason, status: 'signed_out', notice: 'auth_expired' };
     try {
       const target = this.target(p);
       // Where the sign-in stands (spec 1.5.0): ran out here, or never made on this phone.
-      const plan = await target.plan(p.provider, reason, this.client.kind, this.opts.signIns.had(p.provider) ? 'expired' : 'none', undefined, this.generator.version);
+      const had = testSubject !== undefined || !!this.opts.signIns.had(p.provider);
+      const plan = await target.plan(p.provider, reason, this.client.kind, had ? 'expired' : 'none', undefined, this.generator.version);
       if (plan.disconnected) {
         await this.dropped(p);
         return { at: this.now(), reason, status: 'disconnected' };
       }
       await this.heard(p, plan);
       if (!plan.due) return run;
-      const subject = this.opts.signIns.had(p.provider)?.subject ?? null;
-      const ref = plan.account_ref ?? p.account_ref ?? (subject ? accountRefOf(p.account_salt, p.provider, subject) : null);
+      const subject = testSubject ?? this.opts.signIns.had(p.provider)?.subject ?? null;
+      const ref = testSubject !== undefined ? accountRefOf(p.account_salt, p.provider, testSubject) : (plan.account_ref ?? p.account_ref ?? (subject ? accountRefOf(p.account_salt, p.provider, subject) : null));
       if (!ref) return run; // never signed in here: nothing to name, the lease runs out by itself
       const batch: Batch = {
         format: FORMAT,
@@ -503,6 +538,7 @@ export class Runner {
         sessions: [],
         rounds: [],
         notice: { code: 'auth_expired', message: 'Sign in to the provider again in the companion app.' },
+        ...(testSubject !== undefined ? { test: true as const } : {}),
       };
       await target.import(batch);
     } catch (e) {
@@ -528,7 +564,7 @@ export class Runner {
         if (!asks(p, 'backfill')) continue;
         const test = await this.testOf(p);
         const provider = test?.provider ?? this.opts.providers[p.provider];
-        const credential = test?.credential ?? this.opts.signIns.credential(p.provider);
+        const credential = test ? test.credential : this.opts.signIns.credential(p.provider);
         if (!provider || !credential) continue;
         const userAgent = test ? null : this.userAgent(p.provider);
         const outcome = await sync({
@@ -561,7 +597,8 @@ export class Runner {
         if (outcome.status !== 'synced') continue;
         await this.record(p.key, { at: this.now(), reason: 'backfill', status: 'synced', result: outcome.result, more: outcome.more, ...(outcome.left !== undefined ? { left: outcome.left } : {}), ...(outcome.older === false ? { older: false as const } : {}), ...(outcome.notice ? { notice: outcome.notice.code, ...(outcome.notice.until ? { until: outcome.notice.until } : {}) } : {}) });
         if (outcome.notice?.code === 'auth_expired') {
-          if (!test) await this.opts.signIns.expire(p.provider);
+          if (test) await this.opts.tests?.expireSignin(p.key);
+          else await this.opts.signIns.expire(p.provider);
           continue;
         }
         if (outcome.notice?.until) {
@@ -676,6 +713,67 @@ export class Runner {
       const ctx = providerContext({ guard: this.opts.guard, account, reason: 'connect', signal: this.signal, now: this.now });
       return r.who(ctx, r.credential);
     });
+  }
+
+  // --- a sign-in handed over (spec 1.27.0; a test mode's, 1.28.0) ---------------------------
+
+  /**
+   * A sign-in the companion app handed over to the app that embeds this engine, once that app opened the seal: kept
+   * for `key`'s pairing, or refused (`SignInRefused`; a test code the target won't take: its `TargetError`).
+   *
+   * - A provider's (`kept`): only of the pairing's provider and of the account the key itself opens (`account_ref`
+   *   with the target's salt), never another than the one the target connected; kept in the secure store with the
+   *   browser's User-Agent, which every call to the provider carries. A test that ran on the pairing ends.
+   * - A test mode's (`test`): the token is the target's test code. The scenario comes from the target with this
+   *   pairing's own import token, only when it is of the account named (its subject's `account_ref`); then the pairing
+   *   syncs from it as from the provider, and the made-up provider refuses the sign-in from `expires_at` on. A later
+   *   handover of the same test only moves that end - no second download. Nothing of it goes to the secure store.
+   *
+   * Read again strictly here, whatever the caller read: a real key marked as a test one never reaches the target.
+   */
+  async takeSignIn(key: string, handedOver: HandedOver): Promise<'kept' | 'test'> {
+    const h = readHandedOver({ ...(handedOver as unknown as Record<string, unknown>), v: 1 });
+    if (!h) throw new SignInRefused('invalid');
+    const p = this.opts.pairings.get(key);
+    if (!p) throw new SignInRefused('unpaired');
+    if (h.provider !== p.provider || !this.opts.providers[p.provider]) throw new SignInRefused('provider');
+    const until = h.expires_at === undefined ? null : instantMs(h.expires_at);
+    if (until !== null && until <= this.now() + SLACK_MS) throw new SignInRefused('expired');
+    if (p.account_ref && h.account_ref !== p.account_ref) throw new SignInRefused('other_account');
+    if (h.test) {
+      const running = this.opts.tests?.of(key);
+      if (running && accountRefOf(p.account_salt, p.provider, running.subject) === h.account_ref) {
+        await this.opts.tests?.renewSignin(key, h.expires_at as string);
+        return 'test';
+      }
+      const scenario = await this.testScenario(key, h.token);
+      if (accountRefOf(p.account_salt, p.provider, scenario.subject) !== h.account_ref) throw new SignInRefused('other_account');
+      if (!this.opts.tests) throw new TestModeError('provider');
+      this.stop(); // a run under way with the sign-in before ends at its next step
+      await this.opts.tests.start(key, scenario, null, h.expires_at as string);
+      return 'test';
+    }
+    const subject = this.opts.providers[p.provider]?.subject(h.token) ?? null;
+    if (!subject || accountRefOf(p.account_salt, p.provider, subject) !== h.account_ref) throw new SignInRefused('other_account');
+    await this.opts.signIns.set(p.provider, h.token, null, h.user_agent);
+    if (this.opts.tests?.of(key)) {
+      this.stop();
+      await this.opts.tests.end(key);
+    }
+    return 'kept';
+  }
+
+  /** Where `key`'s pairing's sign-in stands: its test's (spec 1.28.0) while it has one, else the provider's; null: none. */
+  signInOf(key: string): SignInState | null {
+    const p = this.opts.pairings.get(key);
+    if (!p) return null;
+    const m = this.opts.tests?.of(key);
+    if (m) {
+      const until = m.signin_until === undefined ? null : instantMs(m.signin_until);
+      return { test: true, expiresAt: until, valid: until === null || until > this.now() + SLACK_MS };
+    }
+    if (!this.opts.signIns.get(p.provider)) return null;
+    return { test: false, expiresAt: this.opts.signIns.expiresAt(p.provider), valid: this.opts.signIns.valid(p.provider, this.now()) };
   }
 
   /** The tester said yes: the pairing syncs from the scenario until the test ends. */

@@ -7,6 +7,10 @@
  * Trackman - the real provider code against the made-up Trackman (`replay`), at the plan's pace, through the guard,
  * every batch marked `test`. The companion app, the extension and the web app keep their tests here alike.
  *
+ * A test sign-in handed to a target app (spec 1.28.0, *Only signing in for a target*) has an end of its own
+ * (`signin_until`): from then the made-up Trackman refuses it as Trackman refuses a key that ran out, until the next
+ * handover renews it. A test of the companion app's own has none.
+ *
  * Kept only until the tester ends it, the pairing ends or the scenario's `valid_until` has passed. The scenario can
  * be large (up to 64 MiB), so it lies in `Blobs` (a file of the companion app's own, IndexedDB in a browser), not in
  * storage or a secure store; it is made up and holds no sign-in. What a screen needs about it (its name, its account,
@@ -50,6 +54,8 @@ export interface TestMode {
   valid_until: string;
   /** When the tester said yes (ms). */
   at: number;
+  /** When the test sign-in handed over runs out (RFC 3339; spec 1.28.0); none: it doesn't (the companion's own test). */
+  signin_until?: string;
 }
 
 /** The listing's key in storage, unless a client names its own (the companion's, kept so its tests stay where they are). */
@@ -68,7 +74,8 @@ function readIndex(v: unknown): TestMode[] {
       typeof (m as TestMode).subject === 'string' &&
       typeof (m as TestMode).valid_until === 'string' &&
       typeof (m as TestMode).at === 'number' &&
-      ((m as TestMode).player === null || typeof (m as TestMode).player === 'string'),
+      ((m as TestMode).player === null || typeof (m as TestMode).player === 'string') &&
+      ((m as TestMode).signin_until === undefined || instantMs((m as TestMode).signin_until) !== null),
   );
 }
 
@@ -140,8 +147,9 @@ export class Tests {
     return this.items.filter((m) => !this.over(m));
   }
 
-  private replayOf(scenario: TestScenario): Replay {
-    return replay(scenario, { now: this.now, ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}) });
+  private replayOf(scenario: TestScenario, signinUntil?: string): Replay {
+    const until = signinUntil === undefined ? null : instantMs(signinUntil);
+    return replay(scenario, { now: this.now, ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}), ...(until !== null ? { signinUntil: until } : {}) });
   }
 
   /**
@@ -173,7 +181,7 @@ export class Tests {
       await this.end(key);
       return null;
     }
-    const r = this.replayOf(read.scenario);
+    const r = this.replayOf(read.scenario, m.signin_until);
     this.playing.set(key, r);
     return r;
   }
@@ -182,10 +190,11 @@ export class Tests {
    * The tester said yes: the pairing syncs from the scenario from now on. The file first, then the listing: a
    * listing without its file is never kept (`provider` ends it). Throws when the phone won't keep it.
    */
-  async start(key: string, scenario: TestScenario, player: string | null): Promise<TestMode> {
-    const r = this.replayOf(scenario); // throws for another provider's scenario, before anything is written
+  async start(key: string, scenario: TestScenario, player: string | null, signinUntil?: string): Promise<TestMode> {
+    if (signinUntil !== undefined && instantMs(signinUntil) === null) throw new TypeError('Not a time: signinUntil');
+    const r = this.replayOf(scenario, signinUntil); // throws for another provider's scenario, before anything is written
     await this.blobs.set(blobName(key), JSON.stringify(scenario));
-    const m: TestMode = { key, name: scenario.name, subject: scenario.subject, player, valid_until: scenario.valid_until, at: this.now() };
+    const m: TestMode = { key, name: scenario.name, subject: scenario.subject, player, valid_until: scenario.valid_until, at: this.now(), ...(signinUntil !== undefined ? { signin_until: signinUntil } : {}) };
     this.items = [...this.items.filter((x) => x.key !== key), m];
     try {
       await this.writeIndex();
@@ -197,6 +206,39 @@ export class Tests {
     this.playing.set(key, r);
     this.tell();
     return m;
+  }
+
+  /**
+   * A later handover renewed the test sign-in (spec 1.28.0): it runs out at `until` now, and the playback answers again
+   * until then. false: the pairing has no test that lasts. Throws when storage won't keep it (then nothing changed).
+   */
+  async renewSignin(key: string, until: string): Promise<boolean> {
+    const ms = instantMs(until);
+    if (ms === null) throw new TypeError('Not a time: until');
+    return this.setSignin(key, until, ms);
+  }
+
+  /** The made-up Trackman refused the test sign-in (it ran out under way): it counts as run out from now. Never throws. */
+  async expireSignin(key: string): Promise<void> {
+    const now = this.now();
+    await this.setSignin(key, new Date(now).toISOString(), now).catch(() => false);
+  }
+
+  private async setSignin(key: string, until: string, ms: number): Promise<boolean> {
+    const m = this.of(key);
+    if (!m) return false;
+    const before = this.items;
+    this.items = this.items.map((x) => (x.key === key ? { ...x, signin_until: until } : x));
+    try {
+      await this.writeIndex();
+    } catch (e) {
+      this.items = before;
+      throw e;
+    }
+    const r = this.playing.get(key);
+    if (r) r.fake.expiresAt = ms;
+    this.tell();
+    return true;
   }
 
   /** The test ends (the tester signed out of it, the pairing ended, it is over): listing, playback and file go. */
