@@ -894,7 +894,7 @@ export class BrowserClient {
       return { status: 'skipped', why: 'expired' };
     }
     try {
-      const plan = await target.plan(this.provider.id, reason, this.opts.kind, 'expired');
+      const plan = await target.plan(this.provider.id, reason, this.opts.kind, 'expired', undefined, this.opts.version);
       if (plan.disconnected) {
         await this.record(p, entry, reason, { status: 'disconnected' }, token);
         return { status: 'disconnected' };

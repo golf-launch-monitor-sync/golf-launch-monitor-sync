@@ -81,6 +81,8 @@ export interface NudgeDeps {
   }>;
   gate: NudgeGate;
   now?: () => number;
+  /** Once a sync of the nudge ran (or broke): the over-the-air update (otaUpdate.ts). What it throws changes nothing. */
+  afterwards?: () => Promise<unknown>;
 }
 
 /**
@@ -98,12 +100,21 @@ export async function runNudge(data: unknown, deps: NudgeDeps): Promise<NudgeOut
   if (!read.ok) return { status: 'ignored', why: read.error };
   const { target, reason } = read.nudge;
   if (!deps.gate.admit(target, (deps.now ?? Date.now)())) return { status: 'ignored', why: 'busy' };
+  let out: NudgeOutcome;
   try {
-    return { status: 'ran', runs: await s.runner.syncAll(reason, { target }) };
+    out = { status: 'ran', runs: await s.runner.syncAll(reason, { target }) };
   } catch (e) {
     // syncAll records every way a run ends; this is only what slipped past (a broken store, say).
-    return { status: 'failed', why: e instanceof Error && /^[A-Za-z]{1,40}$/.test(e.name) ? e.name : 'Error' };
+    out = { status: 'failed', why: e instanceof Error && /^[A-Za-z]{1,40}$/.test(e.name) ? e.name : 'Error' };
   } finally {
     deps.gate.done(target);
   }
+  if (deps.afterwards) {
+    try {
+      await deps.afterwards();
+    } catch {
+      // the nudge's answer stands
+    }
+  }
+  return out;
 }

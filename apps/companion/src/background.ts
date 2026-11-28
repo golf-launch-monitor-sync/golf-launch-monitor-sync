@@ -8,7 +8,8 @@
  *
  * On the iPhone the task is a `BGProcessingTask` (`expo-background-task`), which iOS gives minutes, mostly while the
  * phone charges at night: there the older history goes on chunk after chunk until it is through, the time is up or iOS
- * ends it (@glmsync/engine's longRun.ts has the rules). On Android one chunk per run.
+ * ends it (@glmsync/engine's longRun.ts has the rules). On Android one chunk per run. Afterwards, with the time left, the
+ * over-the-air update is downloaded for the next start (src/update.ts).
  *
  * Defined at the top of index.ts: the system may start the app only to run it.
  */
@@ -19,6 +20,7 @@ import { AppState, Platform } from 'react-native';
 import { backgroundWork, pauseFor } from '@glmsync/engine';
 import { services } from './platform';
 import { onTaskExpired } from './power';
+import { quietUpdate } from './update';
 
 export const TASK = 'glmsync-sync';
 /** Minutes; Android won't go below 15, iOS decides itself. */
@@ -46,6 +48,8 @@ TaskManager.defineTask(TASK, async () => {
       sleep: pauseFor,
       signal: ended.signal,
       inFront: () => AppState.currentState === 'active',
+      // With the time left, the over-the-air update for the next start (lib/otaUpdate.ts; Expo: safe in the background).
+      afterwards: (signal) => quietUpdate(signal),
     });
     await s.background.add(run);
     return run.ended === 'failed' ? BackgroundTask.BackgroundTaskResult.Failed : BackgroundTask.BackgroundTaskResult.Success;

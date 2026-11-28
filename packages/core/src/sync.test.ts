@@ -98,13 +98,13 @@ describe('a sync', () => {
     const provider = new Fake();
     expect(await sync({ target, provider, credential: SUB, reason: 'timer', client: 'web', guard })).toMatchObject({ status: 'not_due' });
     expect(provider.asked).toBe(0);
-    expect(fake.asked).toEqual([{ provider: 'demo', reason: 'timer', client: 'web', signin: null }]);
+    expect(fake.asked).toEqual([{ provider: 'demo', reason: 'timer', client: 'web', signin: null, version: null }]);
   });
 
   it('tells the target the client’s sign-in with the plan (1.5.0)', async () => {
     const { fake, target, guard } = await setup({ plan: () => ({ due: false }) });
     await sync({ target, provider: new Fake(), credential: SUB, reason: 'timer', client: 'web', signin: 'ready', guard });
-    expect(fake.asked).toEqual([{ provider: 'demo', reason: 'timer', client: 'web', signin: 'ready' }]);
+    expect(fake.asked).toEqual([{ provider: 'demo', reason: 'timer', client: 'web', signin: 'ready', version: null }]);
     expect(fake.received.at(-1)?.url).toBe(`${fake.base}/plan?provider=demo&reason=timer&client=web&signin=ready`);
   });
 
@@ -123,6 +123,15 @@ describe('a sync', () => {
     fake.accountRef = accountRefOf(fake.salt, 'demo', 'someone-else');
     const provider = new Fake();
     expect(await sync({ target, provider, credential: SUB, reason: 'timer', client: 'web', guard })).toEqual({ status: 'other_account' });
+    expect(provider.asked).toBe(0);
+  });
+
+  it('names its version with the plan, and a target that needs a newer one asks nothing of the provider', async () => {
+    const { fake, target, guard } = await setup({ plan: (ask) => (ask.version === '0.9.0' ? { due: true, outdated: true } : { due: false }) });
+    const provider = new Fake();
+    const got = await sync({ target, provider, credential: SUB, reason: 'manual', client: 'web', guard, generator: { name: 'test', version: '0.9.0' } });
+    expect(got).toMatchObject({ status: 'not_due', plan: { due: false, outdated: true } });
+    expect(fake.asked.at(-1)?.version).toBe('0.9.0');
     expect(provider.asked).toBe(0);
   });
 

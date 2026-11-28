@@ -43,7 +43,7 @@ export interface SyncOptions<C> {
 }
 
 export type SyncOutcome =
-  /** The plan said not now (`wait_s`: for a history chunk, when it may go). */
+  /** The plan said not now (`wait_s`: for a history chunk, when it may go; `outdated`: the target needs a newer client). */
   | { status: 'not_due'; plan: Plan }
   /** Another client of the player holds the plan's lease. */
   | { status: 'busy'; plan: Plan }
@@ -91,8 +91,9 @@ export async function sync<C>(opts: SyncOptions<C>): Promise<SyncOutcome> {
   const { target, provider, reason } = opts;
   try {
     // 1. The plan, always first: a request to the target, not to the provider.
-    const plan = await target.plan(provider.id, reason, opts.client, opts.signin, provider.can);
+    const plan = await target.plan(provider.id, reason, opts.client, opts.signin, provider.can, opts.generator?.version);
     if (plan.disconnected) return { status: 'disconnected' };
+    // Too old for the target (spec 1.22.0): not now, with `plan.outdated` for the client to tell its player.
     if (plan.busy) return { status: 'busy', plan };
     if (!plan.due) return { status: 'not_due', plan };
 

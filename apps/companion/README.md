@@ -453,7 +453,15 @@ updates by itself where automatic updates are on (`src/lib/newBuild.ts`). Only t
 address is the app's own. The request goes to GitHub and carries nothing of the player's. A development build has no
 runtime and asks nothing.
 
-**The version a target sees** is `version` in `app.config.ts` (sent at pairing and with every batch as `generator`).
+**Updates in the background** (since 0.19.0): after a background run, with the time left, and after a target's nudge,
+the app asks the update server and downloads what is there (`src/update.ts`, the rules in `src/lib/otaUpdate.ts`): at
+most every six hours, never applied there - Expo calls downloading in a background task safe and reloading there
+experimental, so the update applies at the next start. Without it a player who never opens the app would run an old
+version for weeks, and a target that needs a newer one (`outdated`, spec 1.22.0) would get nothing meanwhile.
+
+**The version a target sees** is `version` in `app.config.ts` (sent at pairing, with every plan as `version` since
+0.19.0, and with every batch as `generator`). A target that needs a newer one answers the plan `outdated` and gets
+nothing until the update.
 It doesn't count towards the runtime, so raising it goes out over the air; raise it when a target should be able to
 ask for what this version brings.
 

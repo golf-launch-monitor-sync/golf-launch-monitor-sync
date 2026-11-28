@@ -55,10 +55,28 @@ export interface BackgroundWorkOptions {
   /** Whether the app is in front now (its screen then fetches the history itself). */
   inFront?: () => boolean;
   budgetMs?: number;
+  /**
+   * What the app does with the time left once the sync is done, the time is up or a chunk failed - not when the system
+   * ended the task or the player opened the app. The companion fetches its over-the-air update there (it applies at the
+   * next start). Given the task's signal; what it throws or how long it hangs changes nothing of the run's record.
+   */
+  afterwards?: (signal: AbortSignal) => Promise<unknown>;
 }
 
 /** The task's work. Never throws; says how it ended. */
 export async function backgroundWork(opts: BackgroundWorkOptions): Promise<BackgroundRun> {
+  const run = await syncWork(opts);
+  if (opts.afterwards && run.ended !== 'expired' && run.ended !== 'front' && !opts.signal.aborted) {
+    try {
+      await opts.afterwards(opts.signal);
+    } catch {
+      // the app's own step: the sync's record stands
+    }
+  }
+  return run;
+}
+
+async function syncWork(opts: BackgroundWorkOptions): Promise<BackgroundRun> {
   const start = opts.now();
   const budget = opts.budgetMs ?? LONG_BUDGET_MS;
   let chunks = 0;

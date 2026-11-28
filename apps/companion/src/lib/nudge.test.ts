@@ -153,6 +153,26 @@ describe('a nudge', () => {
     expect(s.target.asked.map((a) => a.reason)).toEqual(['timer', 'open']);
   });
 
+  it('afterwards, once its sync is done: the over-the-air update (SR-8), never for a nudge it left alone', async () => {
+    const s = setup();
+    await paired(s);
+    const order: string[] = [];
+    const deps = {
+      ...s.deps,
+      afterwards: async () => {
+        order.push(`afterwards after ${s.target.asked.length} plan(s)`);
+      },
+    };
+    expect((await runNudge({ link: link(s.target.base), reason: 'open' }, deps)).status).toBe('ran');
+    expect(order).toEqual(['afterwards after 1 plan(s)']);
+    expect(await runNudge({ link: link('https://other.example.org/lm/v1') }, deps)).toEqual({ status: 'ignored', why: 'unpaired' });
+    expect(order).toHaveLength(1);
+    // A step that throws changes no answer.
+    s.clock.t += NUDGE_MIN_GAP_MS;
+    const failing = { ...s.deps, afterwards: async () => Promise.reject(new Error('update server')) };
+    expect((await runNudge({ link: link(s.target.base), reason: 'open' }, failing)).status).toBe('ran');
+  });
+
   it('never throws: a start that fails, or a run that breaks, is answered with why', async () => {
     const s = setup();
     await paired(s);

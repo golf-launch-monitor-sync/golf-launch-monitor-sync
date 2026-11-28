@@ -41,6 +41,8 @@ export interface PlanAsked {
   client: string | null;
   /** The client's sign-in as it said it (1.5.0), read as a target reads it. */
   signin: SignIn | null;
+  /** The client's version as it named it with the plan (1.22.0). */
+  version: string | null;
 }
 
 /** A sign-in a client told, with the plan or a status (1.5.0). */
@@ -137,6 +139,7 @@ export class FakeTarget {
         reason: (u.searchParams.get('reason') ?? 'timer') as Reason,
         client: u.searchParams.get('client'),
         signin: readSignIn(u.searchParams.getAll('signin')),
+        version: u.searchParams.get('version'),
       };
       this.asked.push(ask);
       if (ask.signin) this.signins.push({ via: 'plan', signin: ask.signin });

@@ -64,7 +64,7 @@ export interface Target {
    * a plan this client's provider can do beyond earlier versions, so a target plans them (target-api.md, *What a
    * client can*).
    */
-  plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn, can?: readonly Can[]): Promise<Plan>;
+  plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn, can?: readonly Can[], version?: string): Promise<Plan>;
   /** One batch, within `limits`. */
   import(batch: Batch): Promise<ImportResult>;
 }
@@ -116,6 +116,9 @@ export async function call(
 }
 
 export const trimBase = (base: string) => base.replace(/\/+$/, '');
+
+/** What a client's version may look like on the wire (a target reads olmd's `generator.version` the same way). */
+const CLIENT_VERSION = /^[0-9A-Za-z.+_-]{1,50}$/;
 
 export interface PairOptions {
   /** The target's base URL from the deep link or the pairing page. */
@@ -196,11 +199,14 @@ export class HttpTarget implements Target {
     });
   }
 
-  async plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn, can?: readonly Can[]): Promise<Plan> {
+  async plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn, can?: readonly Can[], version?: string): Promise<Plan> {
     const q = new URLSearchParams({ provider, reason, client });
     if (signin) q.set('signin', signin);
     const words = CAN.filter((w) => can?.includes(w));
     if (words.length) q.set('can', words.join(','));
+    // The client's version (spec 1.22.0), as at pairing: a target that needs a newer one answers `outdated`, and hears
+    // the new version with the first plan after the update (a client told it is too old hands over no batch).
+    if (version && CLIENT_VERSION.test(version)) q.set('version', version);
     const x = await this.send('GET', `/plan?${q.toString()}`);
     if (x.status !== 200) throw errorOf(x);
     const body = parseJson(x.body);

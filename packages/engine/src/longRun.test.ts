@@ -175,6 +175,54 @@ describe('on the iPhone: the older history while iOS lets the app work', () => {
   });
 });
 
+describe('afterwards: what the app does with the time left (the companion: its over-the-air update)', () => {
+  it('runs once the sync is done or the time is up, with the task’s signal, and not when iOS ended it or the player came', async () => {
+    const run = async (os: 'ios' | 'android', end: 'done' | 'budget' | 'expired' | 'front' | 'failed') => {
+      const clock = new VirtualClock(T0);
+      const r = fakeRunner(clock, end === 'budget' ? [60, 60, 60, 60, 60, 60, 60, 60, 60, 60] : [60, null]);
+      const stop = new AbortController();
+      const { sleep } = abortableSleep(clock, () => {
+        if (end === 'expired') stop.abort();
+      });
+      const broken: LongRunner = end === 'failed' ? { ...r.runner, backfill: async () => Promise.reject(new TypeError('x')) } : r.runner;
+      const seen: AbortSignal[] = [];
+      const order: string[] = [];
+      const runner: LongRunner = { ...broken, backfill: async () => (order.push('chunk'), broken.backfill()) };
+      const rec = await backgroundWork({
+        os, runner, now: clock.now, sleep, signal: stop.signal, inFront: () => end === 'front' && order.length > 0,
+        afterwards: async (signal) => {
+          seen.push(signal);
+          order.push('afterwards');
+        },
+      });
+      return { rec, seen, order, signal: stop.signal };
+    };
+    for (const os of ['ios', 'android'] as const) {
+      const done = await run(os, 'done');
+      expect(done.rec.ended).toBe('done');
+      expect(done.order.at(-1)).toBe('afterwards');
+      expect(done.seen).toEqual([done.signal]);
+    }
+    expect((await run('ios', 'budget')).order.at(-1)).toBe('afterwards');
+    expect((await run('ios', 'failed')).order).toEqual(['chunk', 'afterwards']); // an update may be what mends it
+    expect((await run('ios', 'expired')).seen).toEqual([]);
+    expect((await run('ios', 'front')).seen).toEqual([]);
+  });
+
+  it('a step that throws or hangs past iOS’s end costs the run nothing', async () => {
+    const clock = new VirtualClock(T0);
+    const r = fakeRunner(clock, [null]);
+    const { sleep } = abortableSleep(clock);
+    const rec = await backgroundWork({
+      os: 'ios', runner: r.runner, now: clock.now, sleep, signal: new AbortController().signal,
+      afterwards: async () => {
+        throw new Error('update server');
+      },
+    });
+    expect(rec).toMatchObject({ chunks: 1, ended: 'done' });
+  });
+});
+
 describe('on Android: as before', () => {
   it('the regular look and one chunk, whatever comes next', async () => {
     const clock = new VirtualClock(T0);

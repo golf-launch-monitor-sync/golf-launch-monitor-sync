@@ -45,6 +45,8 @@ export interface Plan {
   holder?: Holder;
   wait_s?: number;
   disconnected?: boolean;
+  /** The target needs a newer client of this kind (spec 1.22.0, from the `version` the plan named): never due then. */
+  outdated?: boolean;
   account_ref?: string;
   plan_id?: string;
   lease_until?: string;
@@ -153,6 +155,10 @@ export function readPlan(data: unknown): Plan {
   if (p.disconnected === true) {
     plan.disconnected = true;
     plan.due = false;
+  }
+  if (p.outdated === true) {
+    plan.outdated = true;
+    plan.due = false; // the player updates first: nothing is fetched for a target that can't take it
   }
   if (typeof p.wait_s === 'number' && Number.isFinite(p.wait_s) && p.wait_s >= 0) plan.wait_s = p.wait_s;
   if (typeof p.account_ref === 'string' && ACCOUNT_REF.test(p.account_ref)) plan.account_ref = p.account_ref;

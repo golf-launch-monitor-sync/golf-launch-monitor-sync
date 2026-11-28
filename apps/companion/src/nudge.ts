@@ -13,9 +13,11 @@
 import { AppRegistry } from 'react-native';
 import { NUDGE_TASK, NudgeGate, runNudge } from './lib/nudge';
 import { services } from './platform';
+import { quietUpdate } from './update';
 
 const gate = new NudgeGate();
 
 AppRegistry.registerHeadlessTask(NUDGE_TASK, () => async (data: unknown) => {
-  await runNudge(data, { services, gate });
+  // After the sync the over-the-air update, for the next start (src/update.ts).
+  await runNudge(data, { services, gate, afterwards: () => quietUpdate() });
 });

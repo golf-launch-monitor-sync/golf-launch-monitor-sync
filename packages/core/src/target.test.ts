@@ -82,6 +82,17 @@ describe('the target API with an import token', () => {
     expect(fake.received.at(-1)?.url).toBe(`${fake.base}/plan?provider=demo&reason=timer&client=companion`);
   });
 
+  it('names the client’s version with the plan (spec 1.22.0), only one that looks like a version', async () => {
+    const { fake, target } = await paired();
+    await target.plan('demo', 'timer', 'companion', 'ready', [], '0.16.2');
+    expect(fake.received.at(-1)?.url).toBe(`${fake.base}/plan?provider=demo&reason=timer&client=companion&signin=ready&version=0.16.2`);
+    expect(fake.asked.at(-1)?.version).toBe('0.16.2');
+    for (const junk of ['', 'x'.repeat(51), '1.0 beta', 'eyJ.a/b']) {
+      await target.plan('demo', 'timer', 'companion', undefined, undefined, junk);
+      expect(fake.received.at(-1)?.url).toBe(`${fake.base}/plan?provider=demo&reason=timer&client=companion`);
+    }
+  });
+
   it('imports, lists what it has, says its status and disconnects itself', async () => {
     const { fake, target } = await paired();
     expect(await target.import(BATCH)).toEqual({ sessions: 1, shots: 1, rounds: 0, round_shots: 0, duplicates: 0 });
@@ -202,6 +213,11 @@ describe('a plan, read from an untrusted target', () => {
   it('reads whether anything older than what the target has still comes (spec 1.21.0), only as a boolean', () => {
     expect(readPlan({ due: true, history: { done: false, older: false } }).history).toEqual({ done: false, older: false });
     for (const junk of ['no', 0, null, {}]) expect(readPlan({ due: true, history: { done: false, older: junk } }).history).toEqual({ done: false });
+  });
+
+  it('hears that the target needs a newer client (spec 1.22.0): never due then, only as a boolean', () => {
+    expect(readPlan({ due: true, outdated: true })).toMatchObject({ due: false, outdated: true });
+    for (const junk of ['yes', 1, null, {}]) expect(readPlan({ due: true, outdated: junk })).not.toHaveProperty('outdated');
   });
 
   it("names who holds the lease when it is busy (spec 1.13.0), and nothing it can't read", () => {

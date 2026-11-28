@@ -450,7 +450,7 @@ export class Runner {
     try {
       const target = this.target(p);
       // Where the sign-in stands (spec 1.5.0): ran out here, or never made on this phone.
-      const plan = await target.plan(p.provider, reason, this.client.kind, this.opts.signIns.had(p.provider) ? 'expired' : 'none');
+      const plan = await target.plan(p.provider, reason, this.client.kind, this.opts.signIns.had(p.provider) ? 'expired' : 'none', undefined, this.generator.version);
       if (plan.disconnected) {
         await this.dropped(p);
         return { at: this.now(), reason, status: 'disconnected' };

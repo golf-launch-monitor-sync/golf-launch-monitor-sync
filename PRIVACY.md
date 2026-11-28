@@ -36,7 +36,10 @@ disconnect them in the tool at any time.
 
 The web app is a set of static pages on GitHub Pages: GitHub sees a visit as for any web page, and the part of a
 pairing link after `#` (the code) never reaches it. The companion app asks GitHub when it starts whether a newer build is out (it reads a small file of this repository's
-releases); that request carries nothing of yours. Installing and updating happen through the store or site you got
+releases); that request carries nothing of yours. It asks Expo's update server for a newer version of its JavaScript
+when it starts, and since 0.19.0 also after a background run or a target's nudge, at most every six hours (the
+download applies at the next start); that request names the app's build, nothing of yours. With every plan a tool
+names its own version to the target (since spec 1.22.0's `version`), as it does at pairing. Installing and updating happen through the store or site you got
 the tool from (Chrome Web Store, Microsoft Edge Add-ons, Mozilla, Google Play, Apple's TestFlight or App Store,
 GitHub), under their own terms.
 
