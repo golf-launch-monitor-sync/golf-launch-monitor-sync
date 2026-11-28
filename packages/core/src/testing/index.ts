@@ -6,7 +6,7 @@
  * here reaches a network.
  */
 
-import { readSignIn, readWake, validateBatch, type Batch, type Reason, type SignIn, type WakeRegistration } from '@glmsync/spec';
+import { readEnv, readSignIn, readWake, validateBatch, type Batch, type Env, type Reason, type SignIn, type WakeRegistration } from '@glmsync/spec';
 import type { ImportLimits } from '../api.ts';
 import type { FetchLike, ResponseLike } from '../http.ts';
 
@@ -46,6 +46,12 @@ export interface PlanAsked {
 }
 
 /** A sign-in a client told, with the plan or a status (1.5.0). */
+/** What a client told of its system (`env`, 1.22.0 on a plan, 1.29.0 on a status), read as a target reads it. */
+export interface EnvTold {
+  via: 'plan' | 'status';
+  env: Env;
+}
+
 export interface SignInTold {
   via: 'plan' | 'status';
   signin: SignIn;
@@ -79,6 +85,7 @@ export class FakeTarget {
   readonly asked: PlanAsked[] = [];
   /** Every sign-in a client told, in order. */
   readonly signins: SignInTold[] = [];
+  readonly envs: EnvTold[] = [];
   /** The wake addresses clients registered (1.9.0), by token. */
   readonly wakes = new Map<string, WakeRegistration>();
   /** What it stores: external id -> the item. */
@@ -143,6 +150,7 @@ export class FakeTarget {
       };
       this.asked.push(ask);
       if (ask.signin) this.signins.push({ via: 'plan', signin: ask.signin });
+      if (u.searchParams.has('env')) this.envs.push({ via: 'plan', env: readEnv(u.searchParams.getAll('env')) });
       if (this.disconnected) return response(200, { due: false, disconnected: true });
       const plan = this.opts.plan
         ? this.opts.plan(ask, this)
@@ -206,6 +214,7 @@ export class FakeTarget {
     if (path === '/status' && init.method === 'GET') {
       const signin = readSignIn(u.searchParams.getAll('signin'));
       if (signin) this.signins.push({ via: 'status', signin });
+      if (u.searchParams.has('env')) this.envs.push({ via: 'status', env: readEnv(u.searchParams.getAll('env')) });
       return response(200, { target: { name: this.name }, connected: !this.disconnected, provider: 'demo' });
     }
     // The wake (1.9.0): kept per token, as a target keeps it; `opts.wake === false` is a target without one.

@@ -1087,7 +1087,9 @@ def ask_vectors() -> dict[str, Any]:
               ["push:on,os:ios,background:denied"], ["background:restricted"], ["os:android,battery:exempt,later:yes"],
               ["os:android,os:ios,push:on"], ["os:Android"], ["battery:"], ["os"], [":android"], [""],
               ["os:android, push:on"], ["os:android,,push:on"], ["os:android:x"], ["os:" + "a" * 197],
-              ["os:android", "push:on"], [], "os:android", None, [7]]:
+              ["os:android", "push:on"], [], "os:android", None, [7],
+              # since 1.29.0
+              ["os:ios,background:restricted,power:low,push:on"], ["power:normal"], ["power:Low"], ["power:low,power:low"]]:
         cases.append({"rule": "read_env", "input": v, "expected": ask.read_env(v)})
     a = {"v": "1"}
     answers: list[Any] = [

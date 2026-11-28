@@ -13,6 +13,7 @@
 
 import { Guard, type ClientKind, type FetchLike, type FileOut, type Storage } from '@glmsync/core';
 import { expiresAt } from '@glmsync/provider-trackman';
+import type { Env } from '@glmsync/spec';
 import { BackgroundRuns } from './longRun.ts';
 import { Pairings } from './pairings.ts';
 import { appProviders, PROVIDERS, type ProviderId } from './providers.ts';
@@ -40,6 +41,12 @@ export interface EnginePlatform {
   client?: { kind: ClientKind; name: string };
   /** The generator every batch names (default: the companion app). */
   generator?: string;
+  /**
+   * What the phone's system allows the app now (`systemEnv` makes it), told to each target with every plan and status
+   * (spec 1.22.0, on a status 1.29.0), so the target app can name the one setting in the way. Waited for a second at
+   * most; none, an error or no answer: nothing told.
+   */
+  env?: () => Env | null | Promise<Env | null>;
 }
 
 export interface Engine {
@@ -94,6 +101,7 @@ export function makeEngine(platform: EnginePlatform): Engine {
     ...(platform.version ? { version: platform.version } : {}),
     ...(platform.client ? { client: platform.client } : {}),
     ...(platform.generator ? { generator: platform.generator } : {}),
+    ...(platform.env ? { env: platform.env } : {}),
   });
   return {
     providers,

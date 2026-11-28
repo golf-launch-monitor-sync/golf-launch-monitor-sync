@@ -96,11 +96,7 @@ paths:
           required: false
           description: "Since 1.22.0: the client's version, as in its pairing (`client.version`), so a target can tell a client too old for it (`outdated`)."
           schema: { type: string, pattern: "^[0-9A-Za-z.+-]{1,50}$" }
-        - name: env
-          in: query
-          required: false
-          description: "Since 1.22.0: what the system allows the client, comma-separated `key:value` (`os`, `background`, `battery`, `push`; target-api.md, *What a client tells of its system*). Unknown pairs are left out, a key given twice altogether. Informative: it changes no plan."
-          schema: { type: string, maxLength: 200 }
+        - $ref: "#/components/parameters/Env"
       responses:
         "200":
           description: The plan.
@@ -186,6 +182,7 @@ paths:
         the target where its sign-in stands (`signin`, since 1.5.0), without taking a lease.
       parameters:
         - $ref: "#/components/parameters/SignIn"
+        - $ref: "#/components/parameters/Env"
       responses:
         "200":
           description: The status.
@@ -273,6 +270,12 @@ components:
       scheme: bearer
       description: The import token from `POST /pair`. Stored by the target only as a hash; revocable in the target app.
   parameters:
+    Env:
+      name: env
+      in: query
+      required: false
+      description: "Since 1.22.0 on a plan, since 1.29.0 on a status too: what the system allows the client, comma-separated `key:value` (`os`, `background`, `battery`, `push`, since 1.29.0 `power`; target-api.md, *What a client tells of its system*). Unknown pairs are left out, a key given twice altogether. Informative: it changes no plan."
+      schema: { type: string, maxLength: 200 }
     SignIn:
       name: signin
       in: query

@@ -109,12 +109,17 @@ parameter **`env`**, comma-separated `key:value` pairs.
 | `background` | `available`, `restricted`, `denied` | whether the system runs the client's own background work: on iOS *Background App Refresh* for the app (`denied`: off for it, `restricted`: off for the phone or Low Power Mode); on Android `restricted` when the player restricted the app's background activity |
 | `battery` | `optimized`, `exempt` | Android: whether the battery optimisation holds the app back |
 | `push` | `on`, `off` | whether the client has a push address the target may wake it at ([wake.md](wake.md)) |
+| `power` | `low`, `normal` | since 1.29.0: whether the phone saves power now (iOS's Low Power Mode, Android's Battery Saver), which stops background work whatever `background` says; a client that knows it reports Low Power Mode here as well as in `background` |
 
 - A client sends what it knows, nothing it would have to guess; a browser extension sends none.
 - Read strictly ([`read_env`](reference/ask.py), vectors in [`testvectors/ask.json`](testvectors/ask.json)): one value
   of at most 200 characters; a pair of an unknown key or value is left out (a later version may add some), a known key
   given twice is left out altogether.
 - It says nothing about the player. A target keeps the latest per import token, like `signin`.
+- Since 1.29.0 also on **`GET /status`**: a client that asks no plan (no sign-in it could fetch with, or a connection
+  that only signs in) still says what its system allows. A target older than 1.29.0 ignores the parameter there.
+- A client that runs inside a target's own app (the kind `embedded`) sends it like any other: the target app may know
+  it already, but its server learns it this way.
 
 ## The client's sign-in
 

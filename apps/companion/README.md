@@ -333,6 +333,10 @@ took days of opening the app on the iPhone, since a wake gives half a minute, on
   [guard](../../spec/guard.md)'s day (300 requests in 24 hours, much of it spent by day): from then on each run asked
   nothing and ended `done` within seconds, until the oldest requests left the window in the morning - as the guard means
   it (a long history over days, not one night).
+- **Since 0.23.0 it tells what the system allows** with every plan and status (spec `env`, `power` and on a status since
+  1.29.0; `src/env.ts`, engine 0.7.0's `systemEnv`): the background task's status, on the iPhone Background App Refresh
+  and Low Power Mode (`glmsync-power`), on Android that it keeps no push address. The target app can then name the one
+  setting in the way; nothing of the player goes with it.
 - **Since 0.21.1 a frozen run says so** (`LongEnd` `frozen`, engine 0.5.0): a step that comes back more than five minutes
   past the run's time (`FROZEN_SLACK_MS`; iOS's next task comes half an hour later at the earliest) can only come back from
   such a freeze; the run ends there, its `ms` the time it was seen working, up to the step it froze in (so at least what

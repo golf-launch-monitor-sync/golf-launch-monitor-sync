@@ -5,6 +5,7 @@
  */
 
 export * from './engine.ts';
+export * from './env.ts';
 export * from './firstSync.ts';
 export * from './longRun.ts';
 export * from './pairings.ts';

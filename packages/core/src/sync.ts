@@ -13,7 +13,7 @@
  * is split (`split`); a target that stores each part and moves the plan on with the last takes both alike.
  */
 
-import { FORMAT, type Batch, type Reason, type Session, type SignIn } from '@glmsync/spec';
+import { FORMAT, type Batch, type Env, type Reason, type Session, type SignIn } from '@glmsync/spec';
 import { addResults, emptyResult, type ClientKind, type ImportResult, type Plan } from './api.ts';
 import { clean, split } from './batch.ts';
 import { Cancelled, GlmsError, noticeFor, TargetError, type Notice } from './errors.ts';
@@ -40,6 +40,9 @@ export interface SyncOptions<C> {
   generator?: { name: string; version?: string };
   /** On a phone: the User-Agent of the browser the player signed in with, for every request to the provider. */
   userAgent?: string | null;
+  /** What the phone's system allows the client, told with the plan (1.22.0; target-api.md *What a client tells of its
+   * system*). Informative: the plan is the same without it. */
+  env?: Env;
 }
 
 export type SyncOutcome =
@@ -91,7 +94,7 @@ export async function sync<C>(opts: SyncOptions<C>): Promise<SyncOutcome> {
   const { target, provider, reason } = opts;
   try {
     // 1. The plan, always first: a request to the target, not to the provider.
-    const plan = await target.plan(provider.id, reason, opts.client, opts.signin, provider.can, opts.generator?.version);
+    const plan = await target.plan(provider.id, reason, opts.client, opts.signin, provider.can, opts.generator?.version, opts.env);
     if (plan.disconnected) return { status: 'disconnected' };
     // Too old for the target (spec 1.22.0): not now, with `plan.outdated` for the client to tell its player.
     if (plan.busy) return { status: 'busy', plan };

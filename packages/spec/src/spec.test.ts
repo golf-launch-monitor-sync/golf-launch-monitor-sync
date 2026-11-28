@@ -119,7 +119,11 @@ describe('the target API', () => {
     const byName = Object.fromEntries(params.map((p) => [p.name, p]));
     expect(byName.cause?.schema).toEqual({ $ref: '#/components/schemas/Cause' });
     expect(api.components.schemas.Cause.enum).toEqual([...ASK_CAUSES]);
-    expect(byName.env?.schema?.maxLength).toBe(ENV_MAX);
+    // 1.29.0: one parameter `env` for the plan and the status.
+    const env = api.components.parameters.Env as Param;
+    expect([env.name, env.schema?.maxLength]).toEqual(['env', ENV_MAX]);
+    const takesEnv = (op: { parameters?: { $ref?: string }[] }) => (op.parameters ?? []).some((p) => p.$ref === '#/components/parameters/Env');
+    expect([takesEnv(api.paths['/plan'].get), takesEnv(api.paths['/status'].get)]).toEqual([true, true]);
     const version = new RegExp(byName.version?.schema?.pattern ?? '^$');
     for (const c of readVectors<{ rule: string; input: unknown; expected: unknown }>('ask.json').cases.filter((x) => x.rule === 'read_version')) {
       const v = Array.isArray(c.input) && c.input.length === 1 ? c.input[0] : null;

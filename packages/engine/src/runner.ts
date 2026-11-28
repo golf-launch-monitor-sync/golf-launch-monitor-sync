@@ -48,7 +48,7 @@ import {
   type Storage,
   type SyncOutcome,
 } from '@glmsync/core';
-import { FORMAT, instantMs, readHandedOver, type Batch, type HandedOver, type NoticeCode, type Reason, type TestScenario } from '@glmsync/spec';
+import { FORMAT, instantMs, readHandedOver, type Batch, type Env, type HandedOver, type NoticeCode, type Reason, type TestScenario } from '@glmsync/spec';
 import { replay } from '@glmsync/provider-trackman';
 import type { BackgroundRun } from './longRun.ts';
 import type { KeyedPairing, Pairings } from './pairings.ts';
@@ -158,7 +158,12 @@ export interface RunnerOptions {
   client?: { kind: ClientKind; name: string };
   /** The generator every batch names (default `GENERATOR`). */
   generator?: string;
+  /** What the phone's system allows the app now (`systemEnv`), told with every plan and status (spec 1.22.0/1.29.0). */
+  env?: () => Env | null | Promise<Env | null>;
 }
+
+/** The app's word on its system is waited for this long at most: a plan never waits on it (a real timer). */
+export const ENV_WAIT_MS = 1_000;
 
 // The names the companion app wrote first stay, so a phone keeps what it had (in another app's storage they meet nothing).
 const RUNS = 'glmsync/companion/runs';
@@ -351,6 +356,32 @@ export class Runner {
     return new HttpTarget(p, { ...(this.opts.fetch ? { fetch: this.opts.fetch } : {}), now: this.now, signal: this.signal });
   }
 
+  /**
+   * What the app says of its system now, for the plan or status about to go (informative: the target plans the same
+   * without it). Whatever goes wrong - no word, an error, no answer within ENV_WAIT_MS - is none.
+   */
+  private async envFor(): Promise<{ env?: Env }> {
+    const env = await this.env();
+    return env ? { env } : {};
+  }
+
+  private async env(): Promise<Env | undefined> {
+    const ask = this.opts.env;
+    if (!ask) return undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const said = ask();
+      const env = said instanceof Promise
+        ? await Promise.race([said, new Promise<null>((done) => (timer = setTimeout(() => done(null), ENV_WAIT_MS)))])
+        : said;
+      return env ?? undefined;
+    } catch {
+      return undefined;
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+  }
+
   /** A sync for each pairing (or each of one target), one after the other. A manual one joins a sync under way. */
   syncAll(reason: Reason, only: { target?: string } = {}): Promise<SyncReport> {
     if (reason === 'manual') return this.tap(only);
@@ -474,6 +505,7 @@ export class Runner {
       ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}),
       generator: this.generator,
       ...(userAgent ? { userAgent } : {}),
+      ...(await this.envFor()),
     });
     if (outcome.status === 'not_due' && outcome.plan.outdated) {
       await this.heard(p, outcome.plan);
@@ -485,7 +517,7 @@ export class Runner {
     if (outcome.status === 'busy' && outcome.plan.holder) run.holder = outcome.plan.holder;
     if ((outcome.status === 'busy' || outcome.status === 'not_due') && outcome.plan.history?.older === false) run.older = false;
     // The target heard "ready" with the plan; its account is another one, which it hears too (no lease taken).
-    if (outcome.status === 'other_account') await this.target(p).status('other').catch(() => undefined);
+    if (outcome.status === 'other_account') await this.target(p).status('other', await this.env()).catch(() => undefined);
     if (outcome.status === 'synced') {
       run.result = outcome.result;
       run.more = outcome.more;
@@ -534,7 +566,7 @@ export class Runner {
       const target = this.target(p);
       // Where the sign-in stands (spec 1.5.0): ran out here, or never made on this phone.
       const had = testSubject !== undefined || !!this.opts.signIns.had(p.provider);
-      const plan = await target.plan(p.provider, reason, this.client.kind, had ? 'expired' : 'none', undefined, this.generator.version);
+      const plan = await target.plan(p.provider, reason, this.client.kind, had ? 'expired' : 'none', undefined, this.generator.version, await this.env());
       if (plan.disconnected) {
         await this.dropped(p);
         return { at: this.now(), reason, status: 'disconnected' };
@@ -599,6 +631,7 @@ export class Runner {
           ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}),
           generator: this.generator,
           ...(userAgent ? { userAgent } : {}),
+          ...(await this.envFor()),
         });
         if (outcome.status === 'not_due') {
           if (outcome.plan.history?.done !== true && outcome.plan.wait_s !== undefined) soonest(outcome.plan.wait_s);

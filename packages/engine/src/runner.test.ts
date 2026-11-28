@@ -11,13 +11,13 @@ import { MemoryStorage, type FetchLike, type FileOut } from '@glmsync/core';
 import { validateBatch } from '@glmsync/spec';
 import { describe, expect, it } from 'vitest';
 import { MemorySecrets } from './secrets.ts';
-import { makeEngine } from './engine.ts';
+import { makeEngine, type EnginePlatform } from './engine.ts';
 import { DEMO_CREDENTIAL } from './providers.ts';
 
 const SUB = '7c1d2e3f-0000-4000-8000-0000000000c1';
 const DAY = 86_400_000;
 
-function setup(opts: { plan?: FakeTargetOptions['plan'] } = {}) {
+function setup(opts: { plan?: FakeTargetOptions['plan']; env?: EnginePlatform['env'] } = {}) {
   const clock = new VirtualClock(Date.parse('2026-11-16T08:00:00Z'));
   const target = new FakeTarget(opts.plan ? { plan: opts.plan } : {});
   const tm = new FakeTrackman(clock.now);
@@ -42,6 +42,7 @@ function setup(opts: { plan?: FakeTargetOptions['plan'] } = {}) {
       files.push(f);
     },
     version: '0.1.0-test',
+    ...(opts.env ? { env: opts.env } : {}),
   });
   return { clock, target, tm, token, services, files, secrets, storage };
 }
@@ -524,5 +525,46 @@ describe('a target that needs a newer version', () => {
     expect(r?.run.status).toBe('outdated');
     expect(s.target.imports).toHaveLength(0);
     expect(s.services.runner.lastRun(p.key)?.status).toBe('outdated');
+  });
+});
+
+describe('what the system allows (spec 1.22.0, on a status 1.29.0)', () => {
+  const ENV = { os: 'ios', background: 'denied', power: 'low', push: 'on' } as const;
+
+  it('goes with every plan the engine asks and with its status, as the app says it now', async () => {
+    let env: EnginePlatform['env'] extends (() => infer R) | undefined ? Awaited<R> : never = { ...ENV };
+    const s = setup({ env: () => env });
+    await paired(s);
+    await s.services.runner.syncAll('timer'); // never signed in here: the plan with `signin: none`
+    await s.services.signIns.set('trackman', s.token);
+    env = { os: 'ios', background: 'available', power: 'normal' };
+    await s.services.runner.syncAll('open');
+    s.target.accountRef = 'c29tZWJvZHktZWxzZS1zb21lYm9keS1lbHNl';
+    await s.services.runner.syncAll('manual');
+    expect(s.target.envs).toEqual([
+      { via: 'plan', env: { os: 'ios', background: 'denied', push: 'on', power: 'low' } },
+      { via: 'plan', env: { os: 'ios', background: 'available', power: 'normal' } },
+      { via: 'plan', env: { os: 'ios', background: 'available', power: 'normal' } },
+      { via: 'status', env: { os: 'ios', background: 'available', power: 'normal' } },
+    ]);
+  });
+
+  it('an app that can’t tell (throws, hangs, says nothing) changes nothing of the sync', async () => {
+    for (const env of [
+      () => {
+        throw new Error('no native module');
+      },
+      () => Promise.reject(new Error('gone')),
+      () => new Promise<never>(() => undefined),
+      () => null,
+    ] as EnginePlatform['env'][]) {
+      const s = setup(env ? { env } : {});
+      await paired(s);
+      await s.services.signIns.set('trackman', s.token);
+      // A hanging one is waited for a second at most (a real timer: the plan must not wait on the app).
+      const [report] = await s.services.runner.syncAll('timer');
+      expect(report?.run.status).toBe('synced');
+      expect(s.target.envs).toEqual([]);
+    }
   });
 });

@@ -1,6 +1,6 @@
 {
   "$comment": "The wake (spec/wake.md, 1.9.0). read_wake: the body of PUT /wake -> {service, address} or null. should_wake: {now, signin, due_at, woken_at, quiet_until, back_at (1.12.0, optional)} (RFC 3339 times or null) -> whether a target wakes the client now. is_wake: a push's data object -> whether it is a wake.",
-  "spec_version": "1.28.0",
+  "spec_version": "1.29.0",
   "generated_by": "spec/reference/generate.py",
   "wake": {
     "services": [

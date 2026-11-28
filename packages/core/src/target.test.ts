@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Reginald Stadlbauer
+import type { Env } from '@glmsync/spec';
 import { describe, expect, it } from 'vitest';
 import { readPairing, readPlan } from './api.ts';
 import { TargetError } from './errors.ts';
@@ -91,6 +92,23 @@ describe('the target API with an import token', () => {
       await target.plan('demo', 'timer', 'companion', undefined, undefined, junk);
       expect(fake.received.at(-1)?.url).toBe(`${fake.base}/plan?provider=demo&reason=timer&client=companion`);
     }
+  });
+
+  it('tells what the system allows with the plan and the status (spec 1.22.0, on the status 1.29.0), the known pairs only', async () => {
+    const { fake, target } = await paired();
+    await target.plan('demo', 'timer', 'embedded', 'ready', [], '0.6.0', { os: 'ios', background: 'restricted', power: 'low', push: 'on' });
+    expect(fake.received.at(-1)?.url).toBe(`${fake.base}/plan?provider=demo&reason=timer&client=embedded&signin=ready&version=0.6.0&env=os%3Aios%2Cbackground%3Arestricted%2Cpush%3Aon%2Cpower%3Alow`);
+    await target.status('none', { os: 'android', battery: 'optimized' });
+    expect(fake.received.at(-1)?.url).toBe(`${fake.base}/status?signin=none&env=os%3Aandroid%2Cbattery%3Aoptimized`);
+    expect(fake.envs).toEqual([
+      { via: 'plan', env: { os: 'ios', background: 'restricted', push: 'on', power: 'low' } },
+      { via: 'status', env: { os: 'android', battery: 'optimized' } },
+    ]);
+    // Nothing known, or only values no spec knows: no parameter at all.
+    await target.plan('demo', 'timer', 'companion', undefined, undefined, undefined, {});
+    expect(fake.received.at(-1)?.url).toBe(`${fake.base}/plan?provider=demo&reason=timer&client=companion`);
+    await target.status(undefined, { os: 'beos' } as unknown as Env);
+    expect(fake.received.at(-1)?.url).toBe(`${fake.base}/status`);
   });
 
   it('imports, lists what it has, says its status and disconnects itself', async () => {

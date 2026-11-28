@@ -1,6 +1,6 @@
 {
   "$comment": "dgvevent/1 bodies that must (valid: true) or must not validate against spec/hcp/dgvevent-1.schema.json, and what a target does reading each (target: refused, or the fields it left out as dropped).",
-  "spec_version": "1.28.0",
+  "spec_version": "1.29.0",
   "generated_by": "spec/reference/generate.py",
   "cases": [
     {

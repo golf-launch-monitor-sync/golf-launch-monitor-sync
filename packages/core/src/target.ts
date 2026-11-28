@@ -10,6 +10,7 @@
  */
 
 import {
+  envParam,
   readTestScenario,
   readWake,
   TEST_CODE,
@@ -17,6 +18,7 @@ import {
   TEST_SCENARIO_MAX_BYTES,
   validTarget,
   type Batch,
+  type Env,
   type Reason,
   type SignIn,
   type TestScenario,
@@ -62,11 +64,18 @@ export interface Target {
    * Whether to fetch now, and what. Asked before anything is asked of a provider. `signin` (1.5.0): where
    * the client's provider sign-in stands, for the target app to show; it changes no plan. `can` (1.20.0): the parts of
    * a plan this client's provider can do beyond earlier versions, so a target plans them (target-api.md, *What a
-   * client can*).
+   * client can*). `version` (1.22.0): the client's own. `env` (1.22.0): what the phone's system allows the client
+   * (target-api.md, *What a client tells of its system*); informative, it changes no plan.
    */
-  plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn, can?: readonly Can[], version?: string): Promise<Plan>;
+  plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn, can?: readonly Can[], version?: string, env?: Env): Promise<Plan>;
   /** One batch, within `limits`. */
   import(batch: Batch): Promise<ImportResult>;
+}
+
+/** `env` on a plan or a status: only the pairs the spec knows, in its order; nothing known, no parameter. */
+function setEnv(q: URLSearchParams, env: Env | undefined): void {
+  const value = env ? envParam(env) : '';
+  if (value) q.set('env', value);
 }
 
 const CODES: ReadonlySet<string> = new Set([
@@ -199,7 +208,7 @@ export class HttpTarget implements Target {
     });
   }
 
-  async plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn, can?: readonly Can[], version?: string): Promise<Plan> {
+  async plan(provider: string, reason: Reason, client: ClientKind, signin?: SignIn, can?: readonly Can[], version?: string, env?: Env): Promise<Plan> {
     const q = new URLSearchParams({ provider, reason, client });
     if (signin) q.set('signin', signin);
     const words = CAN.filter((w) => can?.includes(w));
@@ -207,6 +216,7 @@ export class HttpTarget implements Target {
     // The client's version (spec 1.22.0), as at pairing: a target that needs a newer one answers `outdated`, and hears
     // the new version with the first plan after the update (a client told it is too old hands over no batch).
     if (version && CLIENT_VERSION.test(version)) q.set('version', version);
+    setEnv(q, env);
     const x = await this.send('GET', `/plan?${q.toString()}`);
     if (x.status !== 200) throw errorOf(x);
     const body = parseJson(x.body);
@@ -232,9 +242,15 @@ export class HttpTarget implements Target {
     return body.external_ids.map((v) => (typeof v === 'string' ? externalId(v) : null)).filter((v): v is string => !!v);
   }
 
-  /** GET /status; `signin` (1.5.0) tells the target where this client's sign-in stands, taking no lease. */
-  async status(signin?: SignIn): Promise<TargetStatus> {
-    const x = await this.send('GET', signin ? `/status?${new URLSearchParams({ signin }).toString()}` : '/status');
+  /**
+   * GET /status; `signin` (1.5.0) tells the target where this client's sign-in stands, taking no lease, and `env`
+   * (1.29.0) what the system allows the client - a client that asks no plan still tells it.
+   */
+  async status(signin?: SignIn, env?: Env): Promise<TargetStatus> {
+    const q = new URLSearchParams();
+    if (signin) q.set('signin', signin);
+    setEnv(q, env);
+    const x = await this.send('GET', q.size ? `/status?${q.toString()}` : '/status');
     if (x.status !== 200) throw errorOf(x);
     const status = readStatus(parseJson(x.body));
     if (!status) throw new TargetError('bad_answer', 'The target answered the status with something else.');

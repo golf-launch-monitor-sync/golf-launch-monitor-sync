@@ -108,6 +108,12 @@ describe('a sync', () => {
     expect(fake.received.at(-1)?.url).toBe(`${fake.base}/plan?provider=demo&reason=timer&client=web&signin=ready`);
   });
 
+  it('tells the target what the system allows with the plan (1.22.0), as the client said it', async () => {
+    const { fake, target, guard } = await setup({ plan: () => ({ due: false }) });
+    await sync({ target, provider: new Fake(), credential: SUB, reason: 'timer', client: 'companion', signin: 'ready', guard, env: { os: 'android', background: 'available', push: 'off' } });
+    expect(fake.envs).toEqual([{ via: 'plan', env: { os: 'android', background: 'available', push: 'off' } }]);
+  });
+
   it.each([
     [{ due: true, busy: true }, 'busy'],
     [{ due: true, disconnected: true }, 'disconnected'],

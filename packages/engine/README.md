@@ -58,8 +58,8 @@ once all of CI's checks of that commit are green (`.github/workflows/engine-rele
 ```jsonc
 // package.json of the app
 "dependencies": {
-  "glmsync-engine": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.6.0/glmsync-engine-0.6.0.tgz",
-  "glmsync-power": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.6.0/glmsync-power-0.6.0.tgz"
+  "glmsync-engine": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.7.0/glmsync-engine-0.7.0.tgz",
+  "glmsync-power": "https://github.com/golf-launch-monitor-sync/golf-launch-monitor-sync/releases/download/engine-v0.7.0/glmsync-power-0.7.0.tgz"
 }
 ```
 
@@ -67,7 +67,7 @@ The package manager writes the checksum into its lockfile; compare it with the r
 install from the lockfile only (`--frozen-lockfile`, `npm ci`) from then on.
 
 ```ts
-import { backgroundWork, makeEngine, powerOf } from 'glmsync-engine';
+import { backgroundWork, makeEngine, powerOf, systemEnv } from 'glmsync-engine';
 import { GlmsyncPower } from 'glmsync-power';
 
 const engine = makeEngine({
@@ -76,6 +76,8 @@ const engine = makeEngine({
   fetch,            // the platform's fetch (it must let a request set its own User-Agent)
   version: '1.2.3',
   client: { kind: 'embedded', name: 'Golf Stats Sync engine' }, // how it names itself to its target (spec 1.27.0)
+  // What the phone's system allows the app, told with every plan and status (spec `env`; since engine 0.7.0):
+  env: async () => systemEnv({ os: 'ios', task: await taskStatus(), power: await powerOf(GlmsyncPower).powerState() }),
 });
 await engine.load();
 
@@ -91,6 +93,14 @@ const sub = power.onTaskExpired(() => ctrl.abort());
 const run = await backgroundWork({ os: 'ios', runner: engine.runner, now: Date.now, sleep, signal: ctrl.signal });
 sub?.remove();
 ```
+
+**What the system allows** (since 0.7.0; spec 1.22.0, on a status 1.29.0, target-api.md *What a client tells of its
+system*): `env` is asked before every plan and status the engine sends and goes with it as `env=os:…,background:…,…`,
+so the target's server knows why a phone doesn't fetch in the background (Background App Refresh off, Low Power Mode,
+the app's background restricted on Android). `systemEnv` makes it from the background task's status (`expo-background-
+task`), `powerOf(…).powerState()` and whether the app keeps a push address; only what it was told, nothing guessed. An
+`env` that throws, answers nothing or takes longer than a second (`ENV_WAIT_MS`, a real timer) is left out: the plan is
+the same without it.
 
 Pairing works as everywhere ([spec/target-api.md](../../spec/target-api.md)): `engine.runner.pair({ target, code })`
 with a code the target hands out. The keys it writes in storage keep the names the companion app gave them first

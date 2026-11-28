@@ -23,11 +23,15 @@ CAUSES = ("wake", "nudge", "link", "page")
 #: `background`: whether the system runs the client's own background work (iOS: Background App Refresh; Android:
 #: whether the player restricted the app's background activity). `battery` (Android): whether the system's battery
 #: optimisation holds the app back. `push`: whether the client has a push address the target may wake it at.
+#: `power` (since 1.29.0): whether the phone saves power now (iOS's Low Power Mode, Android's Battery Saver), which
+#: stops background work whatever `background` says - a target can then name the one setting in the way.
+#: Sent with every plan and, since 1.29.0, with a status too (a client that asks no plan still tells it).
 ENV = {
     "os": ("android", "ios", "other"),
     "background": ("available", "restricted", "denied"),
     "battery": ("optimized", "exempt"),
     "push": ("on", "off"),
+    "power": ("low", "normal"),
 }
 ENV_MAX = 200
 

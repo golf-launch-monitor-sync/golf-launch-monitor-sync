@@ -14,6 +14,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as Sharing from 'expo-sharing';
 import type { Secrets, Blobs } from '@glmsync/engine';
 import { makeServices, type Services } from './lib/services';
+import { phoneEnv } from './env';
 
 /**
  * Keychain / Keystore. "After first unlock": the background task must read the sign-in while the
@@ -74,7 +75,8 @@ let shared: Promise<Services> | null = null;
 /** This runtime's parts, loaded once (the screen and the background task each have their own runtime). */
 export function services(): Promise<Services> {
   if (!shared) {
-    const s = makeServices({ secrets: secureStore, storage, blobs, writeFile: shareFile, version, os: Platform.OS });
+    // `env`: what the system allows the app, with every plan and status (spec 1.22.0/1.29.0; src/env.ts).
+    const s = makeServices({ secrets: secureStore, storage, blobs, writeFile: shareFile, version, os: Platform.OS, env: phoneEnv });
     shared = s.load().then(
       () => s,
       (e: unknown) => {

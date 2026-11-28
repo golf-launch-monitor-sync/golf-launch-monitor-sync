@@ -12,12 +12,16 @@ import type { SignIn } from './bridge.ts';
 export const ASK_CAUSES = ['wake', 'nudge', 'link', 'page'] as const;
 export type AskCause = (typeof ASK_CAUSES)[number];
 
-/** What a client tells about its system with every plan (`env` on GET /plan), key by key. */
+/**
+ * What a client tells about its system with every plan (`env` on GET /plan; since 1.29.0 on GET /status too), key by
+ * key. `power` (1.29.0): whether the phone saves power now (Low Power Mode, Battery Saver).
+ */
 export const ENV_VALUES = {
   os: ['android', 'ios', 'other'],
   background: ['available', 'restricted', 'denied'],
   battery: ['optimized', 'exempt'],
   push: ['on', 'off'],
+  power: ['low', 'normal'],
 } as const;
 export type EnvKey = keyof typeof ENV_VALUES;
 export type Env = { [K in EnvKey]?: (typeof ENV_VALUES)[K][number] };
